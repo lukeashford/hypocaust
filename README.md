@@ -24,3 +24,8 @@ The Machine is an AI-powered sales assistant that helps identify potential custo
    ```
    ./gradlew bootRun
    ```
+
+## Development
+- The project uses GitHub Actions for continuous integration
+- CI automatically builds and tests the application on push to main and pull requests
+- Run tests locally with: `./gradlew test`
