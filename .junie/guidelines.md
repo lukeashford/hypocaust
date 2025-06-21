@@ -1,5 +1,9 @@
 # AI Assistant Guidelines
 
+## Issue Tracking
+- When an issue number is mentioned (e.g., #1), automatically access the corresponding file in the `.issues` directory
+- Use issue details to inform responses and implementation decisions
+
 ## Project Preferences
 - Keep README.md up to date with project features and changes
 
