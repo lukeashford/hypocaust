@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" factoryName="docker-compose.yml" name="pg-compose"
+      server-name="Docker" type="docker-deploy">
+    <deployment type="docker-compose.yml">
+      <settings>
+        <option name="envFilePath" value=""/>
+        <option name="removeImagesOnComposeDown" value="ALL"/>
+        <option name="removeVolumesOnComposeDown" value="true"/>
+        <option name="sourceFilePath" value="docker-compose.yml"/>
+      </settings>
+    </deployment>
+    <method v="2"/>
+  </configuration>
+</component>

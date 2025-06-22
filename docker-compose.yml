@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agents-pg
+    restart: unless-stopped
+    ports:
+      - "5433:5432"            # ← maps to host port 5433
+    environment:
+      POSTGRES_USER: agents
+      POSTGRES_PASSWORD: agents
+      POSTGRES_DB: agents
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    command: >
+      postgres -c max_connections=200
+               -c shared_buffers=512MB
+               -c log_statement=ddl
+
+volumes:
+  pg_data:

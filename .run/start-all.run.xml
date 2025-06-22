@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="start-all"
+      type="CompoundRunConfigurationType">
+    <method v="2"/>
+    <toRun name="ScraperServiceApplication"
+        type="SpringBootApplicationConfigurationType"/>
+    <toRun name="pg-compose" type="docker-deploy"/>
+  </configuration>
+</component>
