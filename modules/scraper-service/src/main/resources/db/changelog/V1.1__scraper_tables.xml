@@ -1,0 +1,31 @@
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <changeSet author="scraper" id="1.1-create-source-doc">
+
+    <createIndex indexName="idx_source_doc_company" tableName="source_doc">
+      <column name="company_id"/>
+    </createIndex>
+
+    <createTable tableName="source_doc">
+      <column defaultValueComputed="gen_random_uuid()" name="id" type="UUID">
+        <constraints nullable="false"
+            primaryKey="true"
+            primaryKeyName="pk_source_doc"/>
+      </column>
+      <column name="company_id" type="UUID"/>
+      <column name="crawl_job_id" type="UUID"/>
+      <column name="source_type" type="VARCHAR(20)"/>
+      <column name="external_id" type="VARCHAR(500)"/>
+      <column name="url" type="VARCHAR(2000)"/>
+      <column name="title" type="TEXT"/>
+      <column name="raw_content" type="TEXT"/>
+      <column name="lang_code" type="VARCHAR(5)"/>
+      <column defaultValueComputed="CURRENT_TIMESTAMP" name="fetched_at"
+          type="TIMESTAMP WITH TIME ZONE"/>
+      <column name="checksum" type="VARCHAR(64)"/>
+    </createTable>
+  </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,3 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog">
+  <include file="db/changelog/V1.1__scraper_tables.xml"/>
+</databaseChangeLog>

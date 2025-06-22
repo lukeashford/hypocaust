@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/agents
+    username: agents
+    password: agents
+  liquibase:
+    change-log: classpath:db/changelog/master.xml
