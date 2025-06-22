@@ -5,10 +5,6 @@
 
   <changeSet author="scraper" id="1.1-create-source-doc">
 
-    <createIndex indexName="idx_source_doc_company" tableName="source_doc">
-      <column name="company_id"/>
-    </createIndex>
-
     <createTable tableName="source_doc">
       <column defaultValueComputed="gen_random_uuid()" name="id" type="UUID">
         <constraints nullable="false"
@@ -27,5 +23,9 @@
           type="TIMESTAMP WITH TIME ZONE"/>
       <column name="checksum" type="VARCHAR(64)"/>
     </createTable>
+
+    <createIndex indexName="idx_source_doc_company" tableName="source_doc">
+      <column name="company_id"/>
+    </createIndex>
   </changeSet>
 </databaseChangeLog>

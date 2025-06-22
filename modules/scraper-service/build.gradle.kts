@@ -17,10 +17,12 @@ dependencies {
   implementation(platform(libs.spring.boot))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-web")
+  implementation("org.springframework.boot:spring-boot-starter-jdbc")
   implementation("org.liquibase:liquibase-core:4.28.0")
   runtimeOnly("org.postgresql:postgresql:42.7.3")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<Test> {
