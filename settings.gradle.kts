@@ -5,7 +5,8 @@ include(
     "modules:scraper-application",
     "modules:scraper-adapter-kafka",
     "modules:scraper-adapter-pg",
-    "modules:scraper-service"
+    "modules:scraper-service",
+    "modules:db-changelog"
 )
 
 dependencyResolutionManagement {
