@@ -1,5 +1,7 @@
 package com.example.scraper.domain
 
+import com.example.shared.contract.ScrapeCompanyCommand
+
 /**
  * Interface for publishing scraping tasks.
  */

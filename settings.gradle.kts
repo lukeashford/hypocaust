@@ -6,7 +6,8 @@ include(
   "modules:scraper-adapter-kafka",
   "modules:scraper-adapter-pg",
   "modules:scraper-service",
-  "modules:db-changelog"
+  "modules:db-changelog",
+  "modules:shared-agent-core"
 )
 
 dependencyResolutionManagement {
