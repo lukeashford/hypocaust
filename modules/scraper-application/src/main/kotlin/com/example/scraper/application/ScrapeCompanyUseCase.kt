@@ -6,12 +6,14 @@ import com.example.scraper.domain.SourceDoc
 import com.example.scraper.domain.TaskPublisher
 import com.example.shared.contract.ScrapeCompanyCommand
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.util.*
 
 /**
  * Application service for scraping company information.
  * Orchestrates the scraping process by planning the crawl, executing it, and publishing results.
  */
+@Service
 class ScrapeCompanyUseCase(
   private val documentRepository: DocumentRepository,
   private val taskPublisher: TaskPublisher,

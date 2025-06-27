@@ -1,0 +1,27 @@
+# Default values for scraper service
+
+image:
+  repository: scraper-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+env:
+  # Database configuration
+  DB_URL: jdbc:postgresql://postgres:5432/agents
+  DB_USERNAME: agents
+  DB_PASSWORD: agents
+
+  # Kafka configuration
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  port: 8080
