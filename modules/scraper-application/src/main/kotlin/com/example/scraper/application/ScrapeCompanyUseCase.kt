@@ -5,6 +5,7 @@ import com.example.scraper.domain.Result
 import com.example.scraper.domain.SourceDoc
 import com.example.scraper.domain.TaskPublisher
 import com.example.shared.contract.ScrapeCompanyCommand
+import org.slf4j.LoggerFactory
 import java.util.*
 
 /**
@@ -13,9 +14,12 @@ import java.util.*
  */
 class ScrapeCompanyUseCase(
   private val documentRepository: DocumentRepository,
-  private val taskPublisher: TaskPublisher
+  private val taskPublisher: TaskPublisher,
+  private val htmlFetcher: HtmlFetcher,
+  private val youtubeMetadataFetcher: YoutubeMetadataFetcher
 ) {
 
+  private val logger = LoggerFactory.getLogger(ScrapeCompanyUseCase::class.java)
   private val crawlPlanner = CrawlPlanner(documentRepository)
 
   /**
@@ -55,41 +59,116 @@ class ScrapeCompanyUseCase(
     // Create a crawl job ID for this scraping operation
     val crawlJobId = UUID.randomUUID()
 
-    // For each source type, create a document and save it
-    // In a real implementation, this would involve actual web scraping
+    // For each source type, fetch data and save it as a document
     val savedDocs = ArrayList<SourceDoc>()
     for (sourceType in sourcesToCrawl) {
-      // In a real implementation, this would fetch data from the source
-      // For now, we'll just create a placeholder document
-      val doc = SourceDoc.create(
-        companyId = command.companyId,
-        crawlJobId = crawlJobId,
-        sourceType = sourceType,
-        url = "https://example.com/$sourceType",
-        title = "Example $sourceType",
-        rawContent = "Content for $sourceType",
-        langCode = "en",
-        checksum = "checksum-placeholder"
-      )
+      try {
+        // Construct a URL for the source type
+        // In a real implementation, this would be more sophisticated
+        val url = "https://example.com/$sourceType"
 
-      // Save the document
-      val saveResult = documentRepository.saveDocument(doc)
-      if (saveResult is Result.Failure) {
-        // Log the error but continue with other source types
-        // In a real implementation, we might want to handle this differently
-        continue
-      }
+        logger.info("Fetching data for source type: $sourceType, URL: $url")
 
-      savedDocs.add((saveResult as Result.Success).data)
+        // Fetch data based on source type
+        when {
+          sourceType.equals("youtube", ignoreCase = true) -> {
+            // Fetch YouTube metadata
+            val fetchResult = youtubeMetadataFetcher.fetch(url)
+            if (fetchResult is Result.Failure) {
+              logger.error("Failed to fetch YouTube metadata: ${fetchResult.error}")
+              continue
+            }
 
-      // Check if we've reached the document limit
-      if (docLimit != null && savedDocs.size >= docLimit) {
-        break
+            val metadata = (fetchResult as Result.Success).data
+
+            // Create and save document
+            val doc = SourceDoc.create(
+              companyId = command.companyId,
+              crawlJobId = crawlJobId,
+              sourceType = sourceType,
+              url = url,
+              title = metadata.title,
+              rawContent = metadata.json,
+              langCode = "en", // Default language code
+              checksum = metadata.json.hashCode().toString()
+            )
+
+            // Save the document
+            val saveResult = documentRepository.saveDocument(doc)
+            if (saveResult is Result.Failure) {
+              logger.error("Failed to save document: ${saveResult.error}")
+              continue
+            }
+
+            savedDocs.add((saveResult as Result.Success).data)
+
+            // If subtitles are available, save them as separate documents
+            metadata.subtitles?.forEach { (langCode, subtitleContent) ->
+              val subtitleDoc = SourceDoc.create(
+                companyId = command.companyId,
+                crawlJobId = crawlJobId,
+                sourceType = "$sourceType-subtitle",
+                url = url,
+                title = "${metadata.title} - $langCode subtitles",
+                rawContent = subtitleContent,
+                langCode = langCode,
+                checksum = subtitleContent.hashCode().toString()
+              )
+
+              val subtitleSaveResult = documentRepository.saveDocument(subtitleDoc)
+              if (subtitleSaveResult is Result.Success) {
+                savedDocs.add(subtitleSaveResult.data)
+              }
+            }
+          }
+
+          else -> {
+            // Default to HTML fetching for other source types
+            val fetchResult = htmlFetcher.fetch(url)
+            if (fetchResult is Result.Failure) {
+              logger.error("Failed to fetch HTML: ${fetchResult.error}")
+              continue
+            }
+
+            val htmlContent = (fetchResult as Result.Success).data
+
+            // Create and save document
+            val doc = SourceDoc.create(
+              companyId = command.companyId,
+              crawlJobId = crawlJobId,
+              sourceType = sourceType,
+              url = url,
+              title = htmlContent.title,
+              rawContent = htmlContent.html,
+              langCode = htmlContent.langCode,
+              checksum = htmlContent.html.hashCode().toString()
+            )
+
+            // Save the document
+            val saveResult = documentRepository.saveDocument(doc)
+            if (saveResult is Result.Failure) {
+              logger.error("Failed to save document: ${saveResult.error}")
+              continue
+            }
+
+            savedDocs.add((saveResult as Result.Success).data)
+          }
+        }
+
+        // Check if we've reached the document limit
+        if (docLimit != null && savedDocs.size >= docLimit) {
+          logger.info("Reached document limit of $docLimit, stopping crawl")
+          break
+        }
+      } catch (e: Exception) {
+        logger.error("Unexpected error processing source type $sourceType", e)
+        // Continue with other source types
       }
     }
 
+    logger.info("Crawl complete, saved ${savedDocs.size} documents")
+
     // Publish a task to indicate that the scraping is complete
-    // In a real implementation, this would publish to Kafka
     return taskPublisher.publishScrapeCompanyTask(command)
   }
 }
