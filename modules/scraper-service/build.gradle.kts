@@ -15,6 +15,7 @@ dependencies {
   implementation(project(":modules:scraper-adapter-kafka"))
   implementation(project(":modules:scraper-adapter-pg"))
   implementation(project(":modules:db-changelog"))
+  implementation(project(":modules:shared-agent-core"))
   implementation(platform(libs.spring.boot))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-web")
@@ -23,7 +24,16 @@ dependencies {
   runtimeOnly("org.postgresql:postgresql:42.7.3")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testImplementation("org.springframework.kafka:spring-kafka")
+  testImplementation("org.springframework.kafka:spring-kafka-test")
   testRuntimeOnly("com.h2database:h2")
+
+  // Testcontainers dependencies
+  testImplementation(platform("org.testcontainers:testcontainers-bom:1.19.6"))
+  testImplementation("org.testcontainers:kafka")
+  testImplementation("org.testcontainers:postgresql")
+  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.awaitility:awaitility:4.2.0")
 }
 
 tasks.withType<Test> {

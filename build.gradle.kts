@@ -15,20 +15,27 @@ java {
   }
 }
 
+kotlin {
+  jvmToolchain {
+    languageVersion.set(JavaLanguageVersion.of(21))
+  }
+}
+
 allprojects {
   repositories {
     mavenCentral()
   }
+
+  plugins.withId("org.jetbrains.kotlin.jvm") {
+    kotlin {
+      jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+      }
+    }
+  }
 }
 
 extra["springAiVersion"] = "1.0.0"
-
-// Define versions for scraper modules
-val versions = mapOf(
-  "springKafka" to "3.1.0",
-  "kotlinCoroutines" to "1.7.3",
-  "exposed" to "0.46.0"
-)
 
 dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
