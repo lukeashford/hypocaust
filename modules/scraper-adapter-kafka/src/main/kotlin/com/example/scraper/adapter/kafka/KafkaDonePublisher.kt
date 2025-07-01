@@ -1,5 +1,6 @@
 package com.example.scraper.adapter.kafka
 
+import com.example.scraper.domain.DonePublisher
 import com.example.scraper.domain.Result
 import com.example.scraper.domain.ScraperError
 import com.example.shared.contract.ScrapeCompanyCommand
@@ -15,7 +16,7 @@ import java.util.concurrent.CompletableFuture
  * Publisher for scrape completion and error events.
  */
 @Component
-class KafkaDonePublisher(private val kafkaTemplate: KafkaTemplate<String, Any>) {
+class KafkaDonePublisher(private val kafkaTemplate: KafkaTemplate<String, Any>) : DonePublisher {
 
   private val logger = LoggerFactory.getLogger(KafkaDonePublisher::class.java)
 
@@ -45,10 +46,18 @@ class KafkaDonePublisher(private val kafkaTemplate: KafkaTemplate<String, Any>) 
    * @param documentCount The number of documents scraped.
    * @return Result indicating success or failure with an error.
    */
-  fun publishScrapeCompleted(command: ScrapeCompanyCommand, documentCount: Int): Result<Unit> {
+  override fun publishScrapeCompleted(
+    command: ScrapeCompanyCommand,
+    documentCount: Int
+  ): Result<Unit> {
+    // Convert Set<SourceType> to List<String>
+    val sourceTypeStrings = command.sourceTypes.map { sourceType ->
+      sourceType.stringValue
+    }
+
     val event = ScrapeCompletedEvent(
       companyId = command.companyId,
-      sourceTypes = command.sourceTypes,
+      sourceTypes = sourceTypeStrings,
       documentCount = documentCount
     )
 
@@ -62,10 +71,18 @@ class KafkaDonePublisher(private val kafkaTemplate: KafkaTemplate<String, Any>) 
    * @param error The error that occurred.
    * @return Result indicating success or failure with an error.
    */
-  fun publishScrapeError(command: ScrapeCompanyCommand, error: ScraperError): Result<Unit> {
+  override fun publishScrapeError(
+    command: ScrapeCompanyCommand,
+    error: ScraperError
+  ): Result<Unit> {
+    // Convert Set<SourceType> to List<String>
+    val sourceTypeStrings = command.sourceTypes.map { sourceType ->
+      sourceType.stringValue
+    }
+
     val event = ScrapeErrorEvent(
       companyId = command.companyId,
-      sourceTypes = command.sourceTypes,
+      sourceTypes = sourceTypeStrings,
       error = error.toString(),
       errorType = error.javaClass.simpleName
     )

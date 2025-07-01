@@ -1,8 +1,10 @@
 package com.example.scraper.adapter.kafka
 
 import com.example.scraper.application.ScrapeCompanyUseCase
+import com.example.scraper.domain.Result
 import com.example.shared.contract.ScrapeCompanyCommand
 import com.example.shared.kafka.Topics
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
@@ -18,19 +20,23 @@ class KafkaScrapeListener(private val scrapeCompanyUseCase: ScrapeCompanyUseCase
   /**
    * Listens to the scrape.tasks topic and processes incoming scrape company commands.
    *
-   * @param command The command containing the details of the company to scrape.
+   * @param record A consumer record containing the ScapeCompanyCommand to execute
    */
-  @KafkaListener(topics = [Topics.SCRAPE_TASKS], groupId = "scraper-service")
-  fun listen(command: ScrapeCompanyCommand) {
-    logger.info("Received scrape company command for company ID: ${command.companyId}")
+  @KafkaListener(
+    topics = [Topics.SCRAPE_TASKS],
+    containerFactory = "scrapeCompanyKafkaListenerContainerFactory"
+  )
+  fun listen(record: ConsumerRecord<String, ScrapeCompanyCommand>) {
+    val command = record.value()
+    logger.info("Scrape listener received command: {}", command)
 
     val result = scrapeCompanyUseCase.execute(command)
 
-    if (result is com.example.scraper.domain.Result.Success) {
+    if (result is Result.Success<*>) {
       logger.info("Successfully processed scrape company command for company ID: ${command.companyId}")
     } else {
-      val error = (result as com.example.scraper.domain.Result.Failure).error
-      logger.error("Failed to process scrape company command for company ID: ${command.companyId}: ${error}")
+      val error = (result as Result.Failure).error
+      logger.error("Failed to process scrape company command for company ID: ${command.companyId}: $error")
     }
   }
 }

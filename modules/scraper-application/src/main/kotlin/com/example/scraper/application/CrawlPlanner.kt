@@ -3,7 +3,7 @@ package com.example.scraper.application
 import com.example.scraper.domain.DocumentRepository
 import com.example.scraper.domain.Result
 import com.example.shared.contract.ScrapeCompanyCommand
-import java.util.*
+import com.example.shared.contract.SourceType
 
 /**
  * Helper class for planning crawl operations.
@@ -15,17 +15,17 @@ class CrawlPlanner(private val documentRepository: DocumentRepository) {
    * Plans a crawl operation for a company.
    *
    * @param command The command containing the details of the company to scrape.
-   * @return Result containing a list of source types to crawl or an error.
+   * @return Result containing a set of source types to crawl or an error.
    */
-  fun planCrawl(command: ScrapeCompanyCommand): Result<List<String>> {
+  fun planCrawl(command: ScrapeCompanyCommand): Result<Set<SourceType>> {
     // If forceRefresh is true, we'll crawl all source types specified in the command
     if (command.forceRefresh) {
       return Result.Success(command.sourceTypes)
     }
 
-    // If no source types are specified, return an empty list
+    // If no source types are specified, return an empty set
     if (command.sourceTypes.isEmpty()) {
-      return Result.Success(Collections.emptyList())
+      return Result.Success(emptySet())
     }
 
     // Check existing documents for the company
@@ -33,17 +33,19 @@ class CrawlPlanner(private val documentRepository: DocumentRepository) {
 
     if (result is Result.Success) {
       val existingDocs = result.data
-      val existingSourceTypes = HashSet<String>()
+      val existingSourceTypeStrings = HashSet<String>()
 
       // Collect existing source types
       for (doc in existingDocs) {
-        existingSourceTypes.add(doc.sourceType)
+        existingSourceTypeStrings.add(doc.sourceType)
       }
 
       // Filter out source types that already exist, unless forceRefresh is true
-      val sourcesToCrawl = ArrayList<String>()
+      val sourcesToCrawl = HashSet<SourceType>()
       for (sourceType in command.sourceTypes) {
-        if (!existingSourceTypes.contains(sourceType)) {
+        val sourceTypeString = sourceType.stringValue
+
+        if (!existingSourceTypeStrings.contains(sourceTypeString)) {
           sourcesToCrawl.add(sourceType)
         }
       }
