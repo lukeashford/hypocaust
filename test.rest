@@ -1,1 +1,8 @@
+### Health
 GET http://localhost:8080/health
+
+### Trigger lukeashford.com scrape
+GET http://localhost:8080/scrape?companyId=aaaaaaaa-bbbb-cccc-dddd-000000000001&
+    companyName=Luke+Ashford&
+    homepage=https://lukeashford.com
+Accept: application/json

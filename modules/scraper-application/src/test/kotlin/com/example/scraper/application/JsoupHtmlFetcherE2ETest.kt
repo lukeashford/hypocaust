@@ -1,14 +1,16 @@
 package com.example.scraper.application
 
 import com.example.scraper.domain.Result
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
+import java.util.concurrent.TimeUnit
 
 /**
  * End-to-end test for JsoupHtmlFetcher.
- * This test verifies that the fetcher can successfully fetch HTML content from a real website.
+ * This test verifies that the fetcher can successfully fetch HTML content from a real website
+ * and that metrics are correctly recorded.
  */
 class JsoupHtmlFetcherE2ETest {
 
@@ -18,7 +20,9 @@ class JsoupHtmlFetcherE2ETest {
     System.out.println("[DEBUG_LOG] Running test: ${testInfo.displayName}")
 
     // Arrange
-    val fetcher = JsoupHtmlFetcher()
+    val meterRegistry = SimpleMeterRegistry()
+    val metricsService = ScraperMetricsService(meterRegistry)
+    val fetcher = JsoupHtmlFetcher(metricsService)
     val url = "https://lukeashford.com"
 
     // Act
@@ -74,5 +78,32 @@ class JsoupHtmlFetcherE2ETest {
 
     // Final success message
     System.out.println("[DEBUG_LOG] Test completed successfully. HTML content was fetched and verified.")
+
+    // Verify metrics were recorded
+    System.out.println("[DEBUG_LOG] Verifying metrics...")
+
+    // Check fetch timer
+    val timer = meterRegistry.get("scraper.html.fetch.time").timer()
+    assertTrue(timer.count() > 0, "Timer count should be greater than 0")
+    assertTrue(timer.totalTime(TimeUnit.MILLISECONDS) > 0, "Total time should be greater than 0ms")
+    System.out.println(
+      "[DEBUG_LOG] Fetch timer recorded ${timer.count()} executions with total time ${
+        timer.totalTime(
+          TimeUnit.MILLISECONDS
+        )
+      }ms"
+    )
+
+    // Check success counter
+    val successCounter = meterRegistry.get("scraper.html.fetch.success.count").counter()
+    assertEquals(1.0, successCounter.count(), "Success counter should be 1")
+    System.out.println("[DEBUG_LOG] Success counter recorded ${successCounter.count()} successful fetches")
+
+    // Check error counter (should be 0 for successful test)
+    val errorCounter = meterRegistry.get("scraper.html.fetch.error.count").counter()
+    assertEquals(0.0, errorCounter.count(), "Error counter should be 0")
+    System.out.println("[DEBUG_LOG] Error counter recorded ${errorCounter.count()} failed fetches")
+
+    System.out.println("[DEBUG_LOG] All metrics verified successfully.")
   }
 }

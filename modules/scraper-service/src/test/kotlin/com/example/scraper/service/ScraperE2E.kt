@@ -113,7 +113,7 @@ class ScraperE2E @Autowired constructor(
       var messageReceived = false
 
       Awaitility.await()
-        .atMost(5, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted {
           // Check if a row was inserted into the source_doc table

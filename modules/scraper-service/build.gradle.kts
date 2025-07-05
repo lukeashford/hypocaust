@@ -20,12 +20,15 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-jdbc")
+  implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("io.micrometer:micrometer-registry-prometheus")
   implementation("org.liquibase:liquibase-core:4.28.0")
   runtimeOnly("org.postgresql:postgresql:42.7.3")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("org.springframework.kafka:spring-kafka")
   testImplementation("org.springframework.kafka:spring-kafka-test")
+  testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
   testRuntimeOnly("com.h2database:h2")
 
   // Testcontainers dependencies
