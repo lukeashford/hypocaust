@@ -145,4 +145,107 @@ class ScraperE2ETest @Autowired constructor(
       println("Test completed successfully!")
     }
   }
+
+  @Test
+  fun testYoutubeMetadataFetching() {
+    // Skip this test if youtube-dl is not available
+    try {
+      val process = ProcessBuilder("youtube-dl", "--version")
+        .redirectErrorStream(true)
+        .start()
+
+      if (!process.waitFor(5, TimeUnit.SECONDS) || process.exitValue() != 0) {
+        println("Skipping YouTube test because youtube-dl is not available")
+        return
+      }
+    } catch (e: Exception) {
+      println("Skipping YouTube test because youtube-dl is not available: ${e.message}")
+      return
+    }
+    // Verify that the database is accessible and the source_doc table exists
+    val tables = jdbcTemplate.queryForList(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+      String::class.java
+    )
+    assert(tables.contains("source_doc")) { "source_doc table not found in database" }
+
+    // Create a ScrapeCompanyCommand with a YouTube URL
+    val companyId = UUID.randomUUID()
+    val youtubeUrl = "https://youtu.be/dOAkx7WlTgE" // The specified YouTube video
+    val expectedTitle = "Why Lord Of The Rings Feels Like Tolkien (Even When It Doesn't)"
+
+    val command = ScrapeCompanyCommand(
+      companyId = companyId,
+      companyName = "YouTube Test",
+      seedUrls = listOf(youtubeUrl),
+      sourceTypes = setOf(SourceType.YouTube),
+      priority = 5,
+      maxDocuments = 1,
+      forceRefresh = false
+    )
+
+    // Create a Kafka consumer for the SCRAPE_DONE topic
+    val consumerProps = Properties().apply {
+      put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.bootstrapServers)
+      put(ConsumerConfig.GROUP_ID_CONFIG, "scraper-youtube-e2e-${UUID.randomUUID()}")
+      put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+      put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+      put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer::class.java.name)
+      put(JsonDeserializer.TRUSTED_PACKAGES, "*")
+    }
+
+    KafkaConsumer<String, Any>(consumerProps).use { consumer ->
+      // Subscribe to the SCRAPE_DONE topic
+      consumer.subscribe(Collections.singletonList(Topics.SCRAPE_DONE))
+
+      // Publish the command to the SCRAPE_TASKS topic
+      kafkaTemplate.send(Topics.SCRAPE_TASKS, companyId.toString(), command).get()
+      println("Published YouTube command to ${Topics.SCRAPE_TASKS} topic: $command")
+
+      // Wait for a row to be inserted into the source_doc table and a message to be received on the SCRAPE_DONE topic
+      var messageReceived = false
+
+      Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS) // Increased timeout for YouTube fetching
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted {
+          // Check if a row was inserted into the source_doc table
+          val count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM source_doc WHERE company_id = ?",
+            Int::class.java,
+            companyId
+          ) ?: 0
+
+          // Check if the title matches the expected title
+          var titleMatches = false
+          if (count > 0) {
+            val title = jdbcTemplate.queryForObject(
+              "SELECT title FROM source_doc WHERE company_id = ? AND url = ?",
+              String::class.java,
+              companyId,
+              youtubeUrl
+            )
+            titleMatches = title == expectedTitle
+            println("Found title in database: $title, expected: $expectedTitle, matches: $titleMatches")
+          }
+
+          // Check if a message was received on the SCRAPE_DONE topic
+          if (!messageReceived) {
+            val records = consumer.poll(Duration.ofMillis(100))
+            for (record in records) {
+              println("Received message on ${Topics.SCRAPE_DONE} topic: ${record.value()}")
+              messageReceived = true
+              break
+            }
+          }
+
+          // Assert that at least one row was inserted, the title matches, and a message was received
+          assert(count >= 1) { "No rows found in source_doc table for company ID: $companyId" }
+          assert(titleMatches) { "Title in database does not match expected title" }
+          assert(messageReceived) { "No message received on ${Topics.SCRAPE_DONE} topic" }
+        }
+
+      println("YouTube test completed successfully!")
+    }
+  }
 }

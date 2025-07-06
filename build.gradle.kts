@@ -24,6 +24,7 @@ kotlin {
 allprojects {
   repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
   }
 
   plugins.withId("org.jetbrains.kotlin.jvm") {
@@ -59,7 +60,14 @@ dependencyManagement {
 }
 
 tasks.withType<Test> {
-  subprojects {
+  useJUnitPlatform()
+  testLogging {
+    events("passed", "skipped", "failed", "standardOut", "standardError")
+  }
+}
+
+subprojects {
+  tasks.withType<Test> {
     useJUnitPlatform()
     testLogging {
       events("passed", "skipped", "failed", "standardOut", "standardError")
