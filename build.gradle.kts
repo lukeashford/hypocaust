@@ -59,5 +59,10 @@ dependencyManagement {
 }
 
 tasks.withType<Test> {
-  useJUnitPlatform()
+  subprojects {
+    useJUnitPlatform()
+    testLogging {
+      events("passed", "skipped", "failed", "standardOut", "standardError")
+    }
+  }
 }

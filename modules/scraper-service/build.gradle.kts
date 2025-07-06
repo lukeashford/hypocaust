@@ -38,10 +38,3 @@ dependencies {
   testImplementation("org.testcontainers:junit-jupiter")
   testImplementation("org.awaitility:awaitility:4.2.0")
 }
-
-tasks.withType<Test> {
-  useJUnitPlatform()
-  testLogging {
-    events("passed", "skipped", "failed", "standardOut", "standardError")
-  }
-}

@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Isolated
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
@@ -16,6 +17,7 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.support.serializer.JsonDeserializer
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ContextConfiguration
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.PostgreSQLContainer
@@ -35,8 +37,10 @@ import java.util.concurrent.TimeUnit
  */
 @SpringBootTest(classes = [ScraperServiceApplication::class])
 @Testcontainers
-@ContextConfiguration(initializers = [ScraperE2E.Initializer::class])
-class ScraperE2E @Autowired constructor(
+@ContextConfiguration(initializers = [ScraperE2ETest.Initializer::class])
+@Isolated
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class ScraperE2ETest @Autowired constructor(
   private val jdbcTemplate: JdbcTemplate,
   private val kafkaTemplate: KafkaTemplate<String, Any>
 ) {
@@ -94,7 +98,7 @@ class ScraperE2E @Autowired constructor(
     // Create a Kafka consumer for the SCRAPE_DONE topic
     val consumerProps = Properties().apply {
       put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.bootstrapServers)
-      put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer")
+      put(ConsumerConfig.GROUP_ID_CONFIG, "scraper-e2e-${UUID.randomUUID()}")
       put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
       put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
       put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer::class.java.name)
@@ -113,7 +117,7 @@ class ScraperE2E @Autowired constructor(
       var messageReceived = false
 
       Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(5, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted {
           // Check if a row was inserted into the source_doc table
