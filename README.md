@@ -13,6 +13,7 @@ The Machine is an AI-powered sales assistant that helps identify potential custo
 - Creative marketing video concept generation
 - Personalized email outreach
 - Spring Boot and Spring AI integration
+- LangChain agent for interactive AI assistance
 
 ## Getting Started
 1. Set your OpenAI API key:
@@ -24,6 +25,12 @@ The Machine is an AI-powered sales assistant that helps identify potential custo
    ```
    ./gradlew bootRun
    ```
+
+3. Interact with the LangChain agent:
+   ```
+   curl "http://localhost:8080/api/langchain/greeting?name=YourName"
+   ```
+   Or visit in your browser: `http://localhost:8080/api/langchain/greeting?name=YourName`
 
 ## Development
 - The project uses GitHub Actions for continuous integration

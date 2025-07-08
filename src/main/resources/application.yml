@@ -4,3 +4,8 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+
+google:
+  custom:
+    api-key: ${GOOGLE_CUSTOM_API_KEY}
+    csi: ${GOOGLE_CUSTOM_CSI}
