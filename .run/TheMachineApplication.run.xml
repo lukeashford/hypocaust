@@ -1,14 +1,19 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="TheMachineApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+  <configuration default="false" name="TheMachineApplication"
+      type="SpringBootApplicationConfigurationType" factoryName="Spring Boot"
+      nameIsGenerated="true">
     <envs>
-      <env name="OPENAI_API_KEY" value="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" />
-      <env name="GOOGLE_CUSTOM_API_KEY" value="730871247333-49sli8prb889ac9f5meuj7l0ovou8drt.apps.googleusercontent.com" />
-      <env name="GOOGLE_CUSTOM_CSI" value="00595183440b44fdb" />
+      <env name="OPENAI_API_KEY"
+          value="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"/>
+      <env name="GOOGLE_CUSTOM_API_KEY"
+          value="AIzaSyDx11r9y6-dCgwx1zIHZwxB8dLEAySHejQ"/>
+      <env name="GOOGLE_CUSTOM_CSI" value="00595183440b44fdb"/>
     </envs>
-    <module name="the_machine.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.the_machine.TheMachineApplication" />
+    <module name="the_machine.main"/>
+    <option name="SPRING_BOOT_MAIN_CLASS"
+        value="com.example.the_machine.TheMachineApplication"/>
     <method v="2">
-      <option name="Make" enabled="true" />
+      <option name="Make" enabled="true"/>
     </method>
   </configuration>
 </component>

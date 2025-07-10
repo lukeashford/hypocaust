@@ -9,3 +9,11 @@ google:
   custom:
     api-key: ${GOOGLE_CUSTOM_API_KEY}
     csi: ${GOOGLE_CUSTOM_CSI}
+
+    # application.yml
+logging:
+  level:
+    dev.langchain4j: DEBUG
+    dev.langchain4j.service.AiServiceExecutor: TRACE
+    dev.langchain4j.internal: TRACE
+    dev.langchain4j.model: TRACE

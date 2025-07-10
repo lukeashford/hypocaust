@@ -26,7 +26,7 @@ public class BrandIntelController {
    * @return A greeting message from the agent
    */
   @GetMapping("/brand")
-  public String getGreeting(@RequestParam(defaultValue = "Luke Ashford") String name) {
+  public String getGreeting(@RequestParam(defaultValue = "Nike") String name) {
     return brandIntelService.analyzeBrand(name);
   }
 }
