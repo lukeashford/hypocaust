@@ -1,4 +1,4 @@
-package com.example.the_machine.langchain;
+package com.example.the_machine.service;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

@@ -35,6 +35,13 @@ dependencies {
   implementation("dev.langchain4j:langchain4j-open-ai")
   implementation("dev.langchain4j:langchain4j-web-search-engine-google-custom")
 
+  // Lucene dependencies for BM25 scoring
+  implementation("org.apache.lucene:lucene-core:9.10.0")
+  implementation("org.apache.lucene:lucene-queryparser:9.10.0")
+
+  // Jsoup for HTML parsing
+  implementation("org.jsoup:jsoup:1.17.2")
+
   // Lombok for reducing boilerplate code
   compileOnly("org.projectlombok:lombok:1.18.30")
   annotationProcessor("org.projectlombok:lombok:1.18.30")

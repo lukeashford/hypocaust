@@ -1,6 +1,6 @@
 package com.example.the_machine;
 
-import com.example.the_machine.langchain.HelloWorldAgentService;
+import com.example.the_machine.service.HelloWorldAgentService;
 import dev.langchain4j.model.chat.ChatModel;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;

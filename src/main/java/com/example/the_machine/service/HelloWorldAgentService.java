@@ -1,4 +1,4 @@
-package com.example.the_machine.langchain;
+package com.example.the_machine.service;
 
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;

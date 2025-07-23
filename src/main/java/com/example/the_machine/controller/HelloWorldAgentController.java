@@ -1,5 +1,6 @@
-package com.example.the_machine.langchain;
+package com.example.the_machine.controller;
 
+import com.example.the_machine.service.HelloWorldAgentService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

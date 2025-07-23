@@ -4,6 +4,9 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+  # Default active profiles
+  profiles:
+    active: google,openai,optimized-retrieval
 
 google:
   custom:
