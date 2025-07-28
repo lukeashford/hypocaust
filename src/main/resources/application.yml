@@ -1,19 +1,25 @@
 spring:
   application:
     name: the_machine
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-  # Default active profiles
-  profiles:
-    active: google,openai,optimized-retrieval
+
+openai:
+  api-key: ${OPENAI_API_KEY}
 
 google:
   custom:
     api-key: ${GOOGLE_CUSTOM_API_KEY}
     csi: ${GOOGLE_CUSTOM_CSI}
 
-    # application.yml
+app:
+  chat-model: openai
+  search-engine: google
+  candidate-discovery: web-search
+  content-retriever: optimized
+  extractor: composite
+  embedding: local
+  topK: 10
+
+  # application.yml
 logging:
   level:
     dev.langchain4j: DEBUG

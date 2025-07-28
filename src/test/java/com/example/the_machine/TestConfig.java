@@ -1,7 +1,8 @@
 package com.example.the_machine;
 
-import com.example.the_machine.service.HelloWorldAgentService;
+import com.example.the_machine.service.BrandIntelService;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -14,15 +15,15 @@ import org.springframework.context.annotation.Primary;
 public class TestConfig {
 
   /**
-   * Provides a mock implementation of the HelloWorldAgentService to avoid making real API calls
+   * Provides a mock implementation of the BrandIntelService to avoid making real API calls
    * during tests.
    */
   @Bean
   @Primary
-  public HelloWorldAgentService helloWorldAgentService() {
-    HelloWorldAgentService mockService = Mockito.mock(HelloWorldAgentService.class);
-    Mockito.when(mockService.getGreeting(Mockito.anyString()))
-        .thenReturn("Hello from mock agent!");
+  public BrandIntelService brandIntelService() {
+    BrandIntelService mockService = Mockito.mock(BrandIntelService.class);
+    Mockito.when(mockService.analyzeBrand(Mockito.anyString()))
+        .thenReturn("Mock brand analysis for testing purposes.");
     return mockService;
   }
 
@@ -34,5 +35,15 @@ public class TestConfig {
   @Primary
   public ChatModel chatLanguageModel() {
     return Mockito.mock(ChatModel.class);
+  }
+
+  /**
+   * Provides a mock implementation of the EmbeddingModel to avoid loading the actual model during
+   * tests.
+   */
+  @Bean
+  @Primary
+  public EmbeddingModel embeddingModel() {
+    return Mockito.mock(EmbeddingModel.class);
   }
 }

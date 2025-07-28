@@ -11,6 +11,7 @@
 - Java for hot loops, heavy data processing, or where an existing Java-only lib fits best.
 - Share DTOs using Java records or Kotlin @JvmRecord to avoid duplication.
 - Follow Spring Boot conventions
+- Each class should be located in its own file
 
 ## Spring Best Practices
 

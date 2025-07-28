@@ -26,13 +26,13 @@ extra["springAiVersion"] = "1.0.0"
 dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-web")
-  implementation("org.springframework.ai:spring-ai-starter-model-openai")
 
   // LangChain4j dependencies
   implementation(platform("dev.langchain4j:langchain4j-bom:1.1.0"))
 
   implementation("dev.langchain4j:langchain4j")
   implementation("dev.langchain4j:langchain4j-open-ai")
+  implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2")
   implementation("dev.langchain4j:langchain4j-web-search-engine-google-custom")
 
   // Lucene dependencies for BM25 scoring
@@ -41,6 +41,15 @@ dependencies {
 
   // Jsoup for HTML parsing
   implementation("org.jsoup:jsoup:1.17.2")
+
+  // Content extraction libraries
+  implementation("net.dankito.readability4j:readability4j:1.0.8")
+  implementation("de.l3s.boilerpipe:boilerpipe:1.1.0")
+  implementation("xerces:xercesImpl:2.12.2")
+  implementation("net.sourceforge.nekohtml:nekohtml:1.9.22")
+
+  // Caffeine cache
+  implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
   // Lombok for reducing boilerplate code
   compileOnly("org.projectlombok:lombok:1.18.30")
