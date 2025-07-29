@@ -15,7 +15,7 @@ import org.springframework.test.context.TestPropertySource;
     "app.search-engine=google",
     "app.candidate-discovery=web-search",
     "app.content-retriever=optimized",
-    "app.extractor=composite",
+    "app.extractor=readability",
     "app.embedding=local",
     "app.topK=10"
 })

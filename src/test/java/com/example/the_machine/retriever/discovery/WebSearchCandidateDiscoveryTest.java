@@ -169,9 +169,8 @@ class WebSearchCandidateDiscoveryTest {
     int maxResults = 5;
 
     // When & Then
-    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-      webSearchCandidateDiscovery.find(query, maxResults);
-    });
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> webSearchCandidateDiscovery.find(query, maxResults));
 
     assertEquals("searchTerms cannot be null or blank", exception.getMessage());
   }
@@ -183,9 +182,8 @@ class WebSearchCandidateDiscoveryTest {
     int maxResults = 5;
 
     // When & Then
-    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-      webSearchCandidateDiscovery.find(query, maxResults);
-    });
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> webSearchCandidateDiscovery.find(query, maxResults));
 
     assertEquals("searchTerms cannot be null or blank", exception.getMessage());
   }
@@ -200,9 +198,8 @@ class WebSearchCandidateDiscoveryTest {
     when(webSearchEngine.search(any(WebSearchRequest.class))).thenThrow(expectedException);
 
     // When & Then
-    RuntimeException actualException = assertThrows(RuntimeException.class, () -> {
-      webSearchCandidateDiscovery.find(query, maxResults);
-    });
+    RuntimeException actualException = assertThrows(RuntimeException.class,
+        () -> webSearchCandidateDiscovery.find(query, maxResults));
 
     assertEquals("Search engine error", actualException.getMessage());
   }

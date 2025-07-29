@@ -44,9 +44,6 @@ dependencies {
 
   // Content extraction libraries
   implementation("net.dankito.readability4j:readability4j:1.0.8")
-  implementation("de.l3s.boilerpipe:boilerpipe:1.1.0")
-  implementation("xerces:xercesImpl:2.12.2")
-  implementation("net.sourceforge.nekohtml:nekohtml:1.9.22")
 
   // Caffeine cache
   implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")

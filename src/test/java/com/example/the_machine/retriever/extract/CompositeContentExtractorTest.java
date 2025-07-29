@@ -126,15 +126,14 @@ class CompositeContentExtractorTest {
   void extract_withRealExtractors_shouldTestFallbackOrder() {
     // Test with real extractors to verify integration
     val readability = new ReadabilityContentExtractor();
-    val boilerpipe = new BoilerpipeContentExtractor(BoilerpipeContentExtractor.Mode.ARTICLE);
 
-    val realComposite = new CompositeContentExtractor(List.of(readability, boilerpipe));
+    val realComposite = new CompositeContentExtractor(List.of(readability));
 
     val html = "<html><head><title>Test Title</title></head><body><article><h1>Main Title</h1><p>This is substantial content that should be extracted by at least one of the extractors.</p></article></body></html>";
 
     val result = realComposite.extract(html);
 
-    // At least one extractor should succeed with this HTML
+    // The readability extractor should succeed with this HTML
     assertTrue(result.isPresent());
     val content = result.get();
     assertNotNull(content.text());

@@ -15,7 +15,7 @@ app:
   search-engine: google
   candidate-discovery: web-search
   content-retriever: optimized
-  extractor: composite
+  extractor: readability
   embedding: local
   topK: 10
 

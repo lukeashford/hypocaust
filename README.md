@@ -32,6 +32,7 @@ The project is organized into a clean, layered architecture:
   - **Model Providers**: AI model implementations (OpenAI, Claude, etc.)
   - **Search Engines**: Web search implementations (Google, Bing, etc.)
   - **Content Retrievers**: Information retrieval strategies
+  - **Content Extractors**: Modern web content extraction using Readability4j
   - **Page Fetcher**: Web page fetching with caching and robots.txt compliance
 
 ### Dependency Injection and Profile-Based Configuration

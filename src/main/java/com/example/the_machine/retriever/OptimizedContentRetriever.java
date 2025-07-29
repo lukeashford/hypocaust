@@ -66,13 +66,13 @@ public class OptimizedContentRetriever implements ContentRetriever {
     // 4) Rank chunks using hybrid BM25 + cosine similarity
     val rankedChunks = chunkRanker.rank(q, allChunks);
     log.debug("[Retriever] Ranked chunks, top score: {}",
-        rankedChunks.isEmpty() ? "N/A" : rankedChunks.get(0).score());
+        rankedChunks.isEmpty() ? "N/A" : rankedChunks.getFirst().score());
 
     // 5) Filter for brand-relevant content
     val brandRelevantChunks = rankedChunks.stream()
         .filter(chunk -> {
           // Find the original page URL for this chunk (simplified approach)
-          val firstPageUrl = pages.isEmpty() ? null : pages.get(0).url();
+          val firstPageUrl = pages.isEmpty() ? null : pages.getFirst().url();
           return brandClassifier.isBrandRelevant(chunk.text(), firstPageUrl);
         })
         .toList();
@@ -102,7 +102,7 @@ public class OptimizedContentRetriever implements ContentRetriever {
     val splitter = DocumentSplitters.recursive(MAX_TOKENS_PER_CHUNK, OVERLAP);
     val doc = Document.document(text);
     return splitter.split(doc).stream()
-        .map(segment -> segment.text())
+        .map(TextSegment::text)
         .collect(Collectors.toList());
   }
 
