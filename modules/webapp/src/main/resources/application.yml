@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: the_machine
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+
+google:
+  custom:
+    api-key: ${GOOGLE_CUSTOM_API_KEY}
+    csi: ${GOOGLE_CUSTOM_CSI}
+
+app:
+  chat-model: openai
+  search-engine: google
+  candidate-discovery: web-search
+  content-retriever: optimized
+  extractor: readability
+  embedding: local
+  topK: 10
+
+  # application.yml
+logging:
+  level:
+    dev.langchain4j: DEBUG
+    dev.langchain4j.service.AiServiceExecutor: TRACE
+    dev.langchain4j.internal: TRACE
+    dev.langchain4j.model: TRACE

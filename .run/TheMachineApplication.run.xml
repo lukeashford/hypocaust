@@ -9,9 +9,9 @@
           value="AIzaSyDx11r9y6-dCgwx1zIHZwxB8dLEAySHejQ"/>
       <env name="GOOGLE_CUSTOM_CSI" value="00595183440b44fdb"/>
     </envs>
-    <module name="the_machine.main"/>
+    <module name="the_machine.modules.webapp.main"/>
     <option name="SPRING_BOOT_MAIN_CLASS"
-        value="com.example.the_machine.TheMachineApplication"/>
+        value="com.example.web.TheMachineApplication"/>
     <method v="2">
       <option name="Make" enabled="true"/>
     </method>
