@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -41,7 +42,7 @@ public class ChunkRanker {
   /**
    * Represents a scored text chunk.
    */
-  public record ScoredChunk(String text, float score, int originalIndex) {
+  public record ScoredChunk(String text, float score, int originalIndex) implements Serializable {
 
   }
 

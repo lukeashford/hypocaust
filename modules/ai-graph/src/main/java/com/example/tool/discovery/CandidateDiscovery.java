@@ -12,8 +12,7 @@ public interface CandidateDiscovery {
    * Find candidate URLs for the given query.
    *
    * @param query the search query
-   * @param max maximum number of results to return
    * @return list of candidate URLs
    */
-  List<URI> find(String query, int max);
+  List<URI> find(String query);
 }

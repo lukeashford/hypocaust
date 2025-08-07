@@ -38,18 +38,18 @@ class PageFetcherTest {
         User-agent: Googlebot
         Disallow: /
         
-        User-agent: OptimizedContentRetriever
+        User-agent: the_machine
         Allow: /
         """;
 
     assertTrue(invokeParseRobotsTxt(robotsTxt),
-        "Should allow OptimizedContentRetriever when explicitly allowed");
+        "Should allow the_machine when explicitly allowed");
   }
 
   @Test
   void testRobotsTxtParsingWithSpecificUserAgentDisallowed() throws Exception {
     String robotsTxt = """
-        User-agent: OptimizedContentRetriever
+        User-agent: the_machine
         Disallow: /
         
         User-agent: *
@@ -57,7 +57,7 @@ class PageFetcherTest {
         """;
 
     boolean result = invokeParseRobotsTxt(robotsTxt);
-    assertFalse(result, "Should disallow OptimizedContentRetriever when specifically disallowed");
+    assertFalse(result, "Should disallow the_machine when specifically disallowed");
   }
 
   @Test
@@ -91,12 +91,12 @@ class PageFetcherTest {
         User-agent: *
         Disallow: /
         
-        User-agent: OptimizedContentRetriever
+        User-agent: the_machine
         Allow: /
         """;
 
     boolean result = invokeParseRobotsTxt(robotsTxt);
-    assertTrue(result, "Should allow OptimizedContentRetriever despite wildcard disallow");
+    assertTrue(result, "Should allow the_machine despite wildcard disallow");
   }
 
   @Test
@@ -125,7 +125,7 @@ class PageFetcherTest {
   void testRobotsTxtParsingWithCommentsAndWhitespace() throws Exception {
     String robotsTxt = """
         # This is a comment
-        User-agent: OptimizedContentRetriever
+        User-agent: the_machine
         # Another comment
         Disallow: /
         
@@ -138,7 +138,6 @@ class PageFetcherTest {
 
   /**
    * Helper method to invoke the private parseRobotsTxt method using reflection. Note: The actual
-   * implementation uses a hardcoded USER_AGENT_NAME = "OptimizedContentRetriever"
    */
   private boolean invokeParseRobotsTxt(String robotsTxt) throws Exception {
     // Get the RobotsTxtCache inner class
@@ -156,10 +155,10 @@ class PageFetcherTest {
     }
 
     java.lang.reflect.Method parseMethod = robotsTxtCacheClass.getDeclaredMethod("parseRobotsTxt",
-        String.class);
+        String.class, String.class);
     parseMethod.setAccessible(true);
 
     // Invoke the method (it's static, so no instance needed)
-    return (Boolean) parseMethod.invoke(null, robotsTxt);
+    return (Boolean) parseMethod.invoke(null, robotsTxt, "the_machine");
   }
 }

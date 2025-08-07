@@ -10,7 +10,8 @@ import org.springframework.context.annotation.ComponentScan;
     "com.example.model",
     "com.example.node",
     "com.example.tool",
-    "com.example.infrastructure"
+    "com.example.infrastructure",
+    "com.example.graph"
 })
 public class TheMachineApplication {
 

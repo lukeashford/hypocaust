@@ -13,6 +13,11 @@ import org.springframework.context.annotation.Configuration;
 public class SearchEngineConfiguration {
 
   /**
+   * Maximum number of search results to retrieve from search engines.
+   */
+  public static final int MAX_SEARCH_RESULTS = 30;
+
+  /**
    * Google Custom Search Engine bean.
    */
   @Bean

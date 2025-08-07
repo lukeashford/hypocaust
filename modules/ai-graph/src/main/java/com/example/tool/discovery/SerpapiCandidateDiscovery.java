@@ -20,7 +20,7 @@ public class SerpapiCandidateDiscovery implements CandidateDiscovery {
    * logic using SerpApi
    */
   @Override
-  public List<URI> find(String query, int max) {
+  public List<URI> find(String query) {
     throw new UnsupportedOperationException(
         "SerpApi candidate discovery is not implemented yet. " +
             "Add the appropriate SerpApi dependency and implement this method.");

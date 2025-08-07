@@ -1,6 +1,7 @@
 package com.example.tool.fetch;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import java.io.Serializable;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -28,12 +30,13 @@ public class PageFetcher {
   private final HttpClient httpClient;
   private final Cache<URI, Page> cache;
 
-  private static final String USER_AGENT_NAME = "OptimizedContentRetriever";
+  @Value("${spring.application.name}")
+  private String applicationName;
 
   /**
    * Represents a fetched web page.
    */
-  public record Page(URI url, String body) {
+  public record Page(URI url, String body) implements Serializable {
 
   }
 
@@ -46,7 +49,7 @@ public class PageFetcher {
   public Optional<Page> fetch(URI url) {
     try {
       // Check robots.txt
-      if (!RobotsTxtCache.isAllowed(url, httpClient)) {
+      if (!RobotsTxtCache.isAllowed(url, httpClient, applicationName)) {
         log.debug("[PageFetcher] Skipping disallowed URL {}", url);
         return Optional.empty();
       }
@@ -72,7 +75,7 @@ public class PageFetcher {
   private Optional<Page> downloadPage(URI url) {
     try {
       val request = HttpRequest.newBuilder(url)
-          .header("User-Agent", USER_AGENT_NAME + " (+mailto:info@lukeashford.com)")
+          .header("User-Agent", applicationName + " (+mailto:info@lukeashford.com)")
           .timeout(Duration.ofSeconds(HTTP_REQUEST_TIMEOUT_SECONDS))
           .GET()
           .build();
@@ -106,22 +109,22 @@ public class PageFetcher {
 
     private static final Map<String, Boolean> allowed = new ConcurrentHashMap<>();
 
-    static boolean isAllowed(URI url, HttpClient httpClient) {
+    static boolean isAllowed(URI url, HttpClient httpClient, String applicationName) {
       try {
         val host = url.getHost().toLowerCase();
-        return allowed.computeIfAbsent(host, h -> fetchRules(h, httpClient));
+        return allowed.computeIfAbsent(host, h -> fetchRules(h, httpClient, applicationName));
       } catch (Exception e) {
         return true; // be permissive on failure
       }
     }
 
-    private static boolean fetchRules(String host, HttpClient httpClient) {
+    private static boolean fetchRules(String host, HttpClient httpClient, String applicationName) {
       try {
         val robots = URI.create("https://" + host + "/robots.txt");
         val req = HttpRequest.newBuilder(robots)
             .timeout(Duration.ofSeconds(ROBOTS_TXT_TIMEOUT_SECONDS))
             .GET()
-            .header("User-Agent", USER_AGENT_NAME)
+            .header("User-Agent", applicationName)
             .build();
 
         val resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
@@ -131,7 +134,7 @@ public class PageFetcher {
         }
 
         // Parse robots.txt properly for our specific user agent
-        return parseRobotsTxt(resp.body());
+        return parseRobotsTxt(resp.body(), applicationName);
 
       } catch (Exception ignore) {
         return true; // network errors → allow
@@ -144,7 +147,7 @@ public class PageFetcher {
      * @param robotsTxt the robots.txt content
      * @return true if allowed, false if disallowed
      */
-    private static boolean parseRobotsTxt(String robotsTxt) {
+    private static boolean parseRobotsTxt(String robotsTxt, String applicationName) {
       if (robotsTxt == null || robotsTxt.isBlank()) {
         return true; // empty robots.txt means allow all
       }
@@ -167,7 +170,7 @@ public class PageFetcher {
 
           // Check if this section applies to our user agent
           // Only use wildcard rules if we haven't found specific rules
-          if (agent.equals(PageFetcher.USER_AGENT_NAME.toLowerCase())) {
+          if (agent.equals(applicationName.toLowerCase())) {
             inRelevantSection = true;
             foundSpecificAgent = true;
           } else {

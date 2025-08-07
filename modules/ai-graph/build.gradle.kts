@@ -1,5 +1,5 @@
 plugins {
-  java
+  `java-library`
   id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -32,7 +32,7 @@ dependencies {
 
   // LangChain4j dependencies
   implementation(platform("dev.langchain4j:langchain4j-bom:1.1.0"))
-  implementation(platform("org.bsc.langgraph4j:langgraph4j-bom:1.6.0-beta5"))
+  api(platform("org.bsc.langgraph4j:langgraph4j-bom:1.6.0-rc4"))
 
   implementation("dev.langchain4j:langchain4j")
   implementation("dev.langchain4j:langchain4j-open-ai")
@@ -40,8 +40,8 @@ dependencies {
   implementation("dev.langchain4j:langchain4j-web-search-engine-google-custom")
 
   // LangGraph4j dependencies
-  implementation("org.bsc.langgraph4j:langgraph4j-core")
-  implementation("org.bsc.langgraph4j:langgraph4j-langchain4j")
+  api("org.bsc.langgraph4j:langgraph4j-core")
+  api("org.bsc.langgraph4j:langgraph4j-langchain4j")
 
   // Lucene dependencies for BM25 scoring
   implementation("org.apache.lucene:lucene-core:9.10.0")

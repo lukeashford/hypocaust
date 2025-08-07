@@ -1,5 +1,7 @@
 package com.example.tool.discovery;
 
+import static com.example.tool.search.SearchEngineConfiguration.MAX_SEARCH_RESULTS;
+
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
@@ -21,10 +23,10 @@ public class WebSearchCandidateDiscovery implements CandidateDiscovery {
   private final WebSearchEngine webSearchEngine;
 
   @Override
-  public List<URI> find(String query, int maxSearchResults) {
+  public List<URI> find(String query) {
     val request = WebSearchRequest.builder()
         .searchTerms(query)
-        .maxResults(maxSearchResults)
+        .maxResults(MAX_SEARCH_RESULTS)
         .build();
 
     val results = webSearchEngine.search(request).results();

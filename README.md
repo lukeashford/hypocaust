@@ -108,6 +108,21 @@ This approach allows for:
    ```
    Or visit in your browser: `http://localhost:8080/api/langchain/greeting?name=YourName`
 
+## Logging
+
+The application uses SLF4J for logging. Debug logs are enabled for the application's packages by
+default in `application.yml`:
+
+```yaml
+logging:
+  level:
+    com.example: DEBUG
+    dev.langchain4j: DEBUG
+```
+
+To see debug logs when running the application, they will appear in the console output with
+`[DEBUG]` prefix.
+
 ## Development
 
 - The project uses GitHub Actions for continuous integration

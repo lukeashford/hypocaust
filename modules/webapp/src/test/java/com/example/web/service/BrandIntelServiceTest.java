@@ -2,8 +2,8 @@ package com.example.web.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import com.example.graph.RetrievalState;
+import org.bsc.langgraph4j.CompiledGraph;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,23 +12,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Simple test to verify that the BrandIntelService can be created with mocked dependencies. This
- * demonstrates that the dependency injection is set up correctly with the Configuration architecture.
+ * demonstrates that the dependency injection is set up correctly with the Configuration
+ * architecture.
  */
 @ExtendWith(MockitoExtension.class)
 class BrandIntelServiceTest {
 
   @Mock
-  private ChatModel chatModel;
-
-  @Mock
-  private ContentRetriever contentRetriever;
+  private CompiledGraph<RetrievalState> stateGraph;
 
   private BrandIntelService brandIntelService;
 
   @BeforeEach
   void setUp() {
-    // Create the service with direct dependencies (no providers)
-    brandIntelService = new BrandIntelService(chatModel, contentRetriever);
+    // Create the service with the mocked StateGraph
+    brandIntelService = new BrandIntelService(stateGraph);
   }
 
   @Test

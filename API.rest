@@ -1,1 +1,1 @@
-GET http://localhost:8080/api/langchain/brand?name=Blackfire+Media+Dresden
+GET http://localhost:8080/api/langchain/brand?name=LinkedIn
