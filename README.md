@@ -99,6 +99,7 @@ The Machine includes a React frontend that is built and served by the Spring Boo
 **Frontend Architecture:**
 
 - **React 18** with modern hooks and functional components
+- **TypeScript** configured for gradual migration from JavaScript
 - **Vite** for fast development and optimized production builds
 - **Tailwind CSS** for responsive, utility-first styling
 - **React Router** for client-side routing
