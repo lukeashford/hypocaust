@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Christopher Nolan-inspired Color Palette - Dark, Minimalist, Sophisticated */
+    --color-background: #0a0a0a; /* Deep space black for theatrical atmosphere */
+    --color-foreground: #e8e8e8; /* Soft white for elegant readability */
+    --color-card: #121212; /* Charcoal elevation for subtle depth */
+    --color-card-foreground: #e8e8e8; /* Consistent soft white */
+    --color-popover: #121212; /* Charcoal elevation */
+    --color-popover-foreground: #e8e8e8; /* Consistent soft white */
+    --color-primary: #1a1a1a; /* Subtle dark primary */
+    --color-primary-foreground: #ffffff; /* Pure white for maximum contrast */
+    --color-secondary: #1f1f1f; /* Slightly elevated dark */
+    --color-secondary-foreground: #e8e8e8; /* Soft white */
+    --color-muted: #161616; /* Muted dark surface */
+    --color-muted-foreground: #888888; /* Sophisticated muted text */
+    --color-accent: #2a2a2a; /* Subtle accent - minimal contrast */
+    --color-accent-foreground: #ffffff; /* Pure white for clarity */
+    --color-destructive: #cc4444; /* Muted red for errors */
+    --color-destructive-foreground: #ffffff; /* White text */
+    --color-success: #4a5a4a; /* Muted green for success */
+    --color-success-foreground: #ffffff; /* White text */
+    --color-warning: #6a5a3a; /* Muted amber for warnings */
+    --color-warning-foreground: #ffffff; /* White text */
+    --color-error: #cc4444; /* Consistent with destructive */
+    --color-error-foreground: #ffffff; /* White text */
+
+    /* UI Elements - Minimalist approach */
+    --color-border: #2a2a2a; /* Subtle border definition */
+    --color-input: #161616; /* Input background blends with muted */
+    --color-ring: #444444; /* Subtle focus ring */
+
+    /* Sophisticated shadows with minimal visibility */
+    --shadow-color: rgba(0, 0, 0, 0.3);
+
+    /* No border radius for Christopher Nolan aesthetic */
+    --radius: 0px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    font-weight: 200; /* Ultra-thin font weight for sophistication */
+    letter-spacing: 0.01em; /* Subtle letter spacing for elegance */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography hierarchy with thin weights */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 300; /* Light weight for headings */
+    letter-spacing: 0.02em;
+  }
+
+  /* Custom shadow utilities with minimal, sophisticated shadows */
+  .shadow-warm-sm {
+    box-shadow: 0 1px 3px 0 var(--shadow-color);
+  }
+
+  .shadow-warm {
+    box-shadow: 0 2px 4px 0 var(--shadow-color);
+  }
+
+  .shadow-warm-md {
+    box-shadow: 0 4px 8px -1px var(--shadow-color);
+  }
+
+  .shadow-warm-lg {
+    box-shadow: 0 8px 16px -3px var(--shadow-color);
+  }
+
+  .shadow-warm-xl {
+    box-shadow: 0 16px 32px -5px var(--shadow-color);
+  }
+
+  .shadow-warm-2xl {
+    box-shadow: 0 24px 48px -12px var(--shadow-color);
+  }
+
+  /* Typography */
+  .font-heading {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+
+  .font-body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 200;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 200;
+  }
+
+  /* Sophisticated animation utilities */
+  .animate-scale-in {
+    animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Minimal scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-muted);
+    border: none;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent);
+  }
+
+  /* Custom utility classes for Nolan aesthetic */
+  .nolan-grid {
+    background-image: linear-gradient(rgba(42, 42, 42, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 42, 42, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .nolan-border {
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+  }
+
+  .nolan-text-primary {
+    color: var(--color-foreground);
+    font-weight: 200;
+  }
+
+  .nolan-text-secondary {
+    color: var(--color-muted-foreground);
+    font-weight: 200;
+  }
+
+  .nolan-backdrop {
+    backdrop-filter: blur(20px) saturate(180%);
+    background-color: rgba(18, 18, 18, 0.9);
+  }
+}

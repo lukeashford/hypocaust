@@ -1,0 +1,218 @@
+import React, {useState} from 'react';
+import {useLocation, useNavigate} from 'react-router-dom';
+import Icon from '../AppIcon';
+import Button from './Button';
+
+const Header = ({user = null, onNavigate = null}) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      navigate(path);
+    }
+    setIsMenuOpen(false);
+  };
+
+  const navigationItems = [
+    {
+      label: 'Treatment Generator',
+      path: '/chat-interface-main-application-screen',
+      icon: 'MessageSquare'
+    },
+    {
+      label: 'PDF Preview',
+      path: '/pdf-preview-and-download-screen',
+      icon: 'FileText'
+    }
+  ];
+
+  const isCurrentPath = (path) => location.pathname === path;
+
+  const Logo = () => (
+      <div
+          className="flex items-center cursor-pointer group transition-all duration-300"
+          onClick={() => handleNavigation('/chat-interface-main-application-screen')}
+      >
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <div
+                className="w-10 h-10 bg-muted border border-border flex items-center justify-center group-hover:border-foreground/30 transition-all duration-300">
+              <Icon name="Film" size={20} color="var(--color-foreground)" strokeWidth={1.5}/>
+            </div>
+          </div>
+          <div className="flex flex-col">
+          <span
+              className="text-lg font-light text-foreground group-hover:text-foreground/80 transition-colors duration-300 tracking-wide">
+            CinematicBrand
+          </span>
+            <span className="text-xs font-light text-muted-foreground -mt-1 tracking-wider">
+            DIRECTOR
+          </span>
+          </div>
+        </div>
+      </div>
+  );
+
+  const UserMenu = () => (
+      <div className="relative">
+        <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="flex items-center space-x-2 hover:bg-muted/30 font-light"
+            iconName="User"
+            iconPosition="left"
+            iconSize={16}
+        >
+        <span className="hidden sm:inline text-sm font-light">
+          {user?.name || 'Account'}
+        </span>
+          <Icon name="ChevronDown" size={14} strokeWidth={1.5}
+                className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`}/>
+        </Button>
+
+        {isMenuOpen && (
+            <div
+                className="absolute right-0 top-full mt-2 w-48 bg-card border border-border shadow-warm-lg z-50 animate-scale-in">
+              <div className="p-2">
+                <div className="px-3 py-2 border-b border-border mb-2">
+                  <p className="text-sm font-light text-foreground">
+                    {user?.name || 'Creative Professional'}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-light">
+                    {user?.email || 'user@example.com'}
+                  </p>
+                </div>
+
+                <button
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-foreground hover:bg-muted/30 transition-colors duration-300 font-light">
+                  <Icon name="Settings" size={16} strokeWidth={1.5}/>
+                  <span>Settings</span>
+                </button>
+
+                <button
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-foreground hover:bg-muted/30 transition-colors duration-300 font-light">
+                  <Icon name="HelpCircle" size={16} strokeWidth={1.5}/>
+                  <span>Help & Support</span>
+                </button>
+
+                <div className="border-t border-border mt-2 pt-2">
+                  <button
+                      className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-300 font-light">
+                    <Icon name="LogOut" size={16} strokeWidth={1.5}/>
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+      </div>
+  );
+
+  const MobileMenu = () => (
+      <div className="lg:hidden">
+        <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            iconName="Menu"
+            iconSize={20}
+            className="font-light"
+        />
+
+        {isMenuOpen && (
+            <div
+                className="absolute top-full left-0 right-0 bg-card border-b border-border shadow-warm-lg z-50 animate-slide-up">
+              <div className="p-4 space-y-2">
+                {navigationItems?.map((item) => (
+                    <button
+                        key={item?.path}
+                        onClick={() => handleNavigation(item?.path)}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 text-left transition-all duration-300 border font-light ${
+                            isCurrentPath(item?.path)
+                                ? 'bg-muted/20 text-foreground border-foreground/20'
+                                : 'text-foreground hover:bg-muted/30 border-transparent hover:border-border'
+                        }`}
+                    >
+                      <Icon name={item?.icon} size={18} strokeWidth={1.5}/>
+                      <span className="font-light">{item?.label}</span>
+                    </button>
+                ))}
+
+                <div className="border-t border-border pt-4 mt-4">
+                  <div className="flex items-center space-x-3 px-4 py-2">
+                    <Icon name="User" size={18} strokeWidth={1.5}/>
+                    <div>
+                      <p className="text-sm font-light text-foreground">
+                        {user?.name || 'Creative Professional'}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-light">
+                        {user?.email || 'user@example.com'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
+      </div>
+  );
+
+  return (
+      <>
+        <header
+            className="fixed top-0 left-0 right-0 z-[1000] nolan-backdrop border-b border-border">
+          <div className="px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Logo/>
+
+              {/* Desktop Navigation */}
+              <nav className="hidden lg:flex items-center space-x-1">
+                {navigationItems?.map((item) => (
+                    <Button
+                        key={item?.path}
+                        variant={isCurrentPath(item?.path) ? "outline" : "ghost"}
+                        size="sm"
+                        onClick={() => handleNavigation(item?.path)}
+                        className={`flex items-center space-x-2 transition-all duration-300 font-light ${
+                            isCurrentPath(item?.path)
+                                ? 'bg-muted/20 border-foreground/20'
+                                : 'hover:bg-muted/20 border-transparent'
+                        }`}
+                        iconName={item?.icon}
+                        iconPosition="left"
+                        iconSize={16}
+                    >
+                      {item?.label}
+                    </Button>
+                ))}
+              </nav>
+
+              {/* Desktop User Menu */}
+              <div className="hidden lg:block">
+                <UserMenu/>
+              </div>
+
+              {/* Mobile Menu Button */}
+              <MobileMenu/>
+            </div>
+          </div>
+        </header>
+        {/* Click outside to close menu */}
+        {isMenuOpen && (
+            <div
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+                onClick={() => setIsMenuOpen(false)}
+            />
+        )}
+        {/* Spacer for fixed header */}
+        <div className="h-16"/>
+      </>
+  );
+};
+
+export default Header;

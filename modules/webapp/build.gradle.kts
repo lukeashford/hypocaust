@@ -2,6 +2,7 @@ plugins {
   java
   id("org.springframework.boot") version "3.5.0"
   id("io.spring.dependency-management") version "1.1.7"
+  id("com.github.node-gradle.node") version "7.0.2"
 }
 
 group = "com.example"
@@ -11,6 +12,14 @@ java {
   toolchain {
     languageVersion.set(JavaLanguageVersion.of(21))
   }
+}
+
+node {
+  version = "22.15.0"  // Match system version
+  npmVersion = "10.7.0"
+  download = true
+  workDir = file("src/main/frontend")
+  nodeProjectDir = file("src/main/frontend")
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -46,4 +55,28 @@ dependencies {
 
 tasks.withType<Test> {
   useJUnitPlatform()
+}
+
+// Frontend build tasks using Node.js plugin
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("buildFrontend") {
+  dependsOn("npmInstall")
+  workingDir.set(file("src/main/frontend"))
+  args.set(listOf("run", "build"))
+
+  // Better caching with comprehensive inputs
+  inputs.dir("src/main/frontend/src")
+  inputs.file("src/main/frontend/package.json")
+  inputs.file("src/main/frontend/vite.config.mjs")
+  inputs.file("src/main/frontend/postcss.config.js")
+  inputs.files(fileTree("src/main/frontend") {
+    include("tailwind.config.*")
+    include("tsconfig.json")
+    include("index.html")
+  })
+  outputs.dir("src/main/resources/static")
+  outputs.cacheIf { true }
+}
+
+tasks.named("processResources") {
+  dependsOn("buildFrontend")
 }

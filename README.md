@@ -12,11 +12,13 @@ videos. It:
 
 ## Features
 
-- Company analysis and targeting
-- Creative marketing video concept generation
-- Personalized email outreach
-- Spring Boot and Spring AI integration
-- LangChain agent for interactive AI assistance
+- **React Frontend**: Modern web interface for interacting with the AI assistant
+- **Company Analysis**: AI-powered brand intelligence and targeting
+- **Creative Generation**: Marketing video concept generation
+- **Personalized Outreach**: Automated email drafting and sending
+- **Full-Stack Integration**: React frontend served by Spring Boot
+- **Spring Boot and Spring AI**: Backend powered by Spring ecosystem
+- **LangChain Agent**: Interactive AI assistance with advanced reasoning
 
 ## Architecture and Best Practices
 
@@ -90,23 +92,78 @@ This approach allows for:
 - Simplified testing with mock components
 - Flexible runtime configuration
 
+### Frontend Integration
+
+The Machine includes a React frontend that is built and served by the Spring Boot application:
+
+**Frontend Architecture:**
+
+- **React 18** with modern hooks and functional components
+- **Vite** for fast development and optimized production builds
+- **Tailwind CSS** for responsive, utility-first styling
+- **React Router** for client-side routing
+- **Axios** for API communication with the Spring Boot backend
+
+**Build Integration:**
+
+- Frontend source code is located in `modules/webapp/src/main/frontend/`
+- Gradle automatically runs `npm install` and `npm run build` during the build process
+- Built frontend assets are placed in `src/main/resources/static/` for Spring Boot to serve
+- Spring Boot serves the React app at the root path (`/`) and API endpoints at `/api/*`
+
+**SPA Routing:**
+
+- Custom `WebConfig` handles client-side routing by forwarding non-API routes to `index.html`
+- API routes (`/api/*`) are preserved for backend communication
+- Static assets (CSS, JS, images) are served directly
+
 ## Getting Started
 
-1. Set your OpenAI API key:
-   ```
-   export OPENAI_API_KEY=your_api_key_here
-   ```
+### Prerequisites
 
-2. Run the application:
-   ```
+- Java 21 or higher
+- Node.js and npm (for frontend development)
+
+### Environment Setup
+
+Set the required environment variables:
+
+```bash
+export OPENAI_API_KEY=your_openai_api_key_here
+export GOOGLE_CUSTOM_API_KEY=your_google_api_key_here
+export GOOGLE_CUSTOM_CSI=your_google_custom_search_engine_id_here
+```
+
+### Running the Application
+
+1. **Build and run the complete application** (includes frontend build):
+   ```bash
    ./gradlew bootRun
    ```
 
-3. Interact with the LangChain agent:
+2. **Access the application**:
+
+- **Frontend**: Open your browser to `http://localhost:8080/`
+- **API Endpoints**: Available at `http://localhost:8080/api/*`
+
+3. **Test the API directly**:
+   ```bash
+   curl "http://localhost:8080/api/langchain/brand?name=Nike"
    ```
-   curl "http://localhost:8080/api/langchain/greeting?name=YourName"
-   ```
-   Or visit in your browser: `http://localhost:8080/api/langchain/greeting?name=YourName`
+
+### Development
+
+**Frontend Development:**
+
+- Frontend source: `modules/webapp/src/main/frontend/`
+- For frontend-only development: `cd modules/webapp/src/main/frontend && npm start`
+- Frontend dev server runs on port 4028 (configured in vite.config.mjs)
+
+**Backend Development:**
+
+- The Gradle build automatically handles frontend compilation
+- Frontend assets are built into `modules/webapp/src/main/resources/static/`
+- Spring Boot serves both frontend and API from a single port (8080)
 
 ## Logging
 
