@@ -1,4 +1,13 @@
 import OpenAI from 'openai';
+import type {
+  CompanyAnalysis,
+  ImagePrompt,
+  StoryOutline,
+  StreamChunkCallback,
+  TreatmentDocument,
+  VisualAsset,
+  VisualConcepts
+} from '../types/interfaces';
 
 /**
  * OpenAI Service for CinematicBrand Director
@@ -13,10 +22,10 @@ const openai = new OpenAI({
 
 /**
  * Analyzes a company by researching its brand identity and online presence
- * @param {string} brandName - Name of the brand to research
- * @returns {Promise<object>} Company analysis results
+ * @param brandName - Name of the brand to research
+ * @returns Company analysis results
  */
-export async function analyzeCompany(brandName) {
+export async function analyzeCompany(brandName: string): Promise<CompanyAnalysis> {
   try {
     const response = await openai?.chat?.completions?.create({
       model: 'gpt-4o',
@@ -64,20 +73,22 @@ export async function analyzeCompany(brandName) {
       temperature: 0.7,
     });
 
-    return JSON.parse(response?.choices?.[0]?.message?.content);
+    return JSON.parse(response?.choices?.[0]?.message?.content || '{}') as CompanyAnalysis;
   } catch (error) {
     console.error('Error analyzing company:', error);
-    throw new Error(`Failed to analyze company: ${error?.message || 'Unknown error'}`);
+    throw new Error(
+        `Failed to analyze company: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
  * Generates a cinematic story outline based on brand analysis
- * @param {string} brandName - Name of the brand
- * @param {object} companyData - Company analysis data
- * @returns {Promise<object>} Story outline results
+ * @param brandName - Name of the brand
+ * @param companyData - Company analysis data
+ * @returns Story outline results
  */
-export async function generateStoryOutline(brandName, companyData) {
+export async function generateStoryOutline(brandName: string,
+    companyData: CompanyAnalysis): Promise<StoryOutline> {
   try {
     const response = await openai?.chat?.completions?.create({
       model: 'gpt-4o',
@@ -135,21 +146,26 @@ export async function generateStoryOutline(brandName, companyData) {
       temperature: 0.8,
     });
 
-    return JSON.parse(response?.choices?.[0]?.message?.content);
+    return JSON.parse(response?.choices?.[0]?.message?.content || '{}') as StoryOutline;
   } catch (error) {
     console.error('Error generating story outline:', error);
-    throw new Error(`Failed to generate story outline: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Failed to generate story outline: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
   }
 }
 
 /**
  * Generates visual concepts and character descriptions
- * @param {string} brandName - Name of the brand
- * @param {object} storyData - Story outline data
- * @param {object} companyData - Company analysis data
- * @returns {Promise<object>} Visual concepts results
+ * @param brandName - Name of the brand
+ * @param storyData - Story outline data
+ * @param companyData - Company analysis data
+ * @returns Visual concepts results
  */
-export async function generateVisualConcepts(brandName, storyData, companyData) {
+export async function generateVisualConcepts(
+    brandName: string,
+    storyData: StoryOutline,
+    companyData: CompanyAnalysis
+): Promise<VisualConcepts> {
   try {
     const response = await openai?.chat?.completions?.create({
       model: 'gpt-4o',
@@ -222,23 +238,28 @@ export async function generateVisualConcepts(brandName, storyData, companyData) 
       temperature: 0.7,
     });
 
-    return JSON.parse(response?.choices?.[0]?.message?.content);
+    return JSON.parse(response?.choices?.[0]?.message?.content || '{}') as VisualConcepts;
   } catch (error) {
     console.error('Error generating visual concepts:', error);
-    throw new Error(`Failed to generate visual concepts: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Failed to generate visual concepts: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
   }
 }
 
 /**
  * Generates visual assets using DALL-E
- * @param {string} brandName - Name of the brand
- * @param {object} visualConcepts - Visual concepts data
- * @param {object} storyData - Story data
- * @returns {Promise<array>} Array of generated image assets
+ * @param brandName - Name of the brand
+ * @param visualConcepts - Visual concepts data
+ * @param storyData - Story data
+ * @returns Array of generated image assets
  */
-export async function generateVisualAssets(brandName, visualConcepts, storyData) {
+export async function generateVisualAssets(
+    brandName: string,
+    visualConcepts: VisualConcepts,
+    storyData: StoryOutline
+): Promise<VisualAsset[]> {
   try {
-    const imagePrompts = [];
+    const imagePrompts: ImagePrompt[] = [];
 
     // Generate prompts based on key scenes and characters
     if (visualConcepts?.characters?.length > 0) {
@@ -280,7 +301,7 @@ export async function generateVisualAssets(brandName, visualConcepts, storyData)
     }
 
     // Generate images
-    const assets = [];
+    const assets: VisualAsset[] = [];
     for (const imagePrompt of imagePrompts) {
       try {
         const imageResponse = await openai?.images?.generate({
@@ -293,7 +314,7 @@ export async function generateVisualAssets(brandName, visualConcepts, storyData)
 
         assets?.push({
           type: 'image',
-          url: imageResponse?.data?.[0]?.url,
+          url: imageResponse?.data?.[0]?.url || '',
           title: imagePrompt?.title,
           description: imagePrompt?.prompt,
           category: imagePrompt?.type
@@ -310,17 +331,18 @@ export async function generateVisualAssets(brandName, visualConcepts, storyData)
     return assets;
   } catch (error) {
     console.error('Error generating visual assets:', error);
-    throw new Error(`Failed to generate visual assets: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Failed to generate visual assets: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
   }
 }
 
 /**
  * Generates streaming chat completion for real-time responses
- * @param {string} userMessage - User input message
- * @param {Function} onChunk - Callback for streaming chunks
- * @returns {Promise<void>}
+ * @param userMessage - User input message
+ * @param onChunk - Callback for streaming chunks
  */
-export async function getStreamingResponse(userMessage, onChunk) {
+export async function getStreamingResponse(userMessage: string,
+    onChunk: StreamChunkCallback): Promise<void> {
   try {
     const stream = await openai?.chat?.completions?.create({
       model: 'gpt-4o',
@@ -343,21 +365,63 @@ export async function getStreamingResponse(userMessage, onChunk) {
     }
   } catch (error) {
     console.error('Error in streaming response:', error);
-    throw new Error(`Failed to get streaming response: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Failed to get streaming response: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Generates structured chat completion for specific data formats
+ * @param prompt - The prompt for structured completion
+ * @param schema - Expected response schema
+ * @returns Structured response data
+ */
+export async function getStructuredChatCompletion<T>(
+    prompt: string,
+    schema: Record<string, string>
+): Promise<T> {
+  try {
+    const response = await openai?.chat?.completions?.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful AI assistant. Provide structured responses in the requested format.'
+        },
+        {
+          role: 'user',
+          content: `${prompt}\n\nPlease respond with a JSON object containing: ${JSON.stringify(
+              schema)}`
+        }
+      ],
+      response_format: {type: 'json_object'},
+      temperature: 0.7,
+    });
+
+    return JSON.parse(response?.choices?.[0]?.message?.content || '{}') as T;
+  } catch (error) {
+    console.error('Error in structured chat completion:', error);
+    throw new Error(`Failed to get structured completion: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
   }
 }
 
 /**
  * Generates a complete director's treatment document content
- * @param {string} brandName - Name of the brand
- * @param {object} companyData - Company analysis data
- * @param {object} storyData - Story outline data
- * @param {object} visualConcepts - Visual concepts data
- * @param {array} assets - Generated visual assets
- * @returns {Promise<object>} Complete treatment data
+ * @param brandName - Name of the brand
+ * @param companyData - Company analysis data
+ * @param storyData - Story outline data
+ * @param visualConcepts - Visual concepts data
+ * @param assets - Generated visual assets
+ * @returns Complete treatment data
  */
-export async function generateTreatmentDocument(brandName, companyData, storyData, visualConcepts,
-    assets) {
+export async function generateTreatmentDocument(
+    brandName: string,
+    companyData: CompanyAnalysis,
+    storyData: StoryOutline,
+    visualConcepts: VisualConcepts,
+    assets: VisualAsset[]
+): Promise<TreatmentDocument> {
   try {
     const response = await openai?.chat?.completions?.create({
       model: 'gpt-4o',
@@ -409,7 +473,8 @@ export async function generateTreatmentDocument(brandName, companyData, storyDat
       temperature: 0.6,
     });
 
-    const treatmentContent = JSON.parse(response?.choices?.[0]?.message?.content);
+    const treatmentContent = JSON.parse(
+        response?.choices?.[0]?.message?.content || '{}') as TreatmentDocument;
 
     return {
       ...treatmentContent,
@@ -426,7 +491,8 @@ export async function generateTreatmentDocument(brandName, companyData, storyDat
     };
   } catch (error) {
     console.error('Error generating treatment document:', error);
-    throw new Error(`Failed to generate treatment document: ${error?.message || 'Unknown error'}`);
+    throw new Error(`Failed to generate treatment document: ${error instanceof Error ? error.message
+        : 'Unknown error'}`);
   }
 }
 
@@ -436,5 +502,6 @@ export default {
   generateVisualConcepts,
   generateVisualAssets,
   getStreamingResponse,
+  getStructuredChatCompletion,
   generateTreatmentDocument
 };

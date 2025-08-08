@@ -1,4 +1,11 @@
-import openaiService from './openaiService.js';
+import openaiService from './openaiService';
+import type {
+  ChatContext,
+  FeedbackResponse,
+  Message,
+  StreamChunkCallback,
+  Suggestion
+} from '../types/interfaces';
 
 /**
  * Chat Service for handling conversational interactions
@@ -6,23 +13,21 @@ import openaiService from './openaiService.js';
  */
 
 class ChatService {
-  constructor() {
-    this.conversationHistory = [];
-  }
+  private conversationHistory: Message[] = [];
 
   /**
    * Adds a message to the conversation history
-   * @param {string} role - Message role ('user' or 'assistant')
-   * @param {string} content - Message content
+   * @param role - Message role ('user' or 'assistant')
+   * @param content - Message content
    */
-  addMessage(role, content) {
+  addMessage(role: 'user' | 'assistant', content: string): void {
     this.conversationHistory?.push({
       role,
       content,
       timestamp: new Date()
     });
 
-    // Keep only last 10 messages to prevent token limit issues
+    // Keep only the last 10 messages to prevent token limit issues
     if (this.conversationHistory?.length > 10) {
       this.conversationHistory = this.conversationHistory?.slice(-10);
     }
@@ -30,21 +35,25 @@ class ChatService {
 
   /**
    * Processes user input and generates streaming response
-   * @param {string} userInput - User's message
-   * @param {Function} onChunk - Callback for streaming response chunks
-   * @param {object} context - Additional context for the conversation
-   * @returns {Promise<string>} Complete response
+   * @param userInput - User's message
+   * @param onChunk - Callback for streaming response chunks
+   * @param context - Additional context for the conversation
+   * @returns Complete response
    */
-  async processUserInput(userInput, onChunk, context = {}) {
+  async processUserInput(
+      userInput: string,
+      onChunk: StreamChunkCallback,
+      context: ChatContext = {}
+  ): Promise<string> {
     try {
       // Add user message to history
       this.addMessage('user', userInput);
 
       // Build context-aware system prompt
-      let systemPrompt = this.buildSystemPrompt(context);
+      const systemPrompt = this.buildSystemPrompt(context);
 
       // Prepare messages for API
-      const messages = [
+      const messages: Message[] = [
         {role: 'system', content: systemPrompt},
         ...this.conversationHistory?.map(msg => ({
           role: msg?.role,
@@ -57,7 +66,7 @@ class ChatService {
       // Stream response
       await openaiService?.getStreamingResponse(
           userInput,
-          (chunk) => {
+          (chunk: string) => {
             completeResponse += chunk;
             onChunk?.(chunk);
           }
@@ -69,16 +78,17 @@ class ChatService {
       return completeResponse;
     } catch (error) {
       console.error('Chat service error:', error);
-      throw new Error(`Chat processing failed: ${error?.message || 'Unknown error'}`);
+      throw new Error(
+          `Chat processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Builds system prompt based on current context
-   * @param {object} context - Conversation context
-   * @returns {string} System prompt
+   * @param context - Conversation context
+   * @returns System prompt
    */
-  buildSystemPrompt(context) {
+  private buildSystemPrompt(context: ChatContext): string {
     let systemPrompt = `You are an expert creative director and brand strategist for CinematicBrand Director. 
 You help users create professional director's treatments for cinematic marketing videos.
 
@@ -123,13 +133,13 @@ Always provide professional, actionable advice that would be valuable for video 
 
   /**
    * Processes feedback and suggestions
-   * @param {string} feedback - User feedback
-   * @param {object} currentData - Current step data
-   * @returns {Promise<object>} Refined suggestions
+   * @param feedback - User feedback
+   * @param currentData - Current step data
+   * @returns Refined suggestions
    */
-  async processFeedback(feedback, currentData) {
+  async processFeedback(feedback: string, currentData: any): Promise<FeedbackResponse> {
     try {
-      return await openaiService?.getStructuredChatCompletion(
+      return await openaiService?.getStructuredChatCompletion<FeedbackResponse>(
           `Based on this user feedback: "${feedback}"
          
          Current data: ${JSON.stringify(currentData)}
@@ -143,37 +153,40 @@ Always provide professional, actionable advice that would be valuable for video 
       );
     } catch (error) {
       console.error('Feedback processing error:', error);
-      throw new Error(`Feedback processing failed: ${error?.message || 'Unknown error'}`);
+      throw new Error(`Feedback processing failed: ${error instanceof Error ? error.message
+          : 'Unknown error'}`);
     }
   }
 
   /**
    * Clears conversation history
    */
-  clearHistory() {
+  clearHistory(): void {
     this.conversationHistory = [];
   }
 
   /**
    * Gets conversation history
-   * @returns {array} Conversation history
+   * @returns Conversation history
    */
-  getHistory() {
+  getHistory(): Message[] {
     return [...this.conversationHistory];
   }
 
   /**
    * Generates suggestions based on current context
-   * @param {object} context - Current context
-   * @returns {Promise<array>} Array of suggestions
+   * @param context - Current context
+   * @returns Array of suggestions
    */
-  async generateSuggestions(context) {
+  async generateSuggestions(context: ChatContext): Promise<Suggestion[]> {
     try {
       const prompt = `Based on the current context, suggest 3-5 helpful questions or actions the user might want to take next:
       
       Context: ${JSON.stringify(context)}`;
 
-      const response = await openaiService?.getStructuredChatCompletion(prompt, {
+      const response = await openaiService?.getStructuredChatCompletion<{
+        suggestions: Suggestion[]
+      }>(prompt, {
         suggestions: 'array of suggestion objects with text and action properties'
       });
 
