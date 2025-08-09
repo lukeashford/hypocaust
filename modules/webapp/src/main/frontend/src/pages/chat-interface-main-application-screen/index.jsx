@@ -10,28 +10,36 @@ import AssetPreview from './components/AssetPreview';
 import WelcomeScreen from './components/WelcomeScreen';
 import Icon from '../../components/AppIcon';
 import aiAgentService from '../../services/aiAgentService';
+import {useChatState} from '../../hooks/useChatState';
 
 const ChatInterface = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
-  // Core state
-  const [messages, setMessages] = useState([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [mode, setMode] = useState('interactive'); // 'interactive' or 'oneshot'
-  const [showWelcome, setShowWelcome] = useState(true);
+  // Chat state from custom hook
+  const {
+    messages,
+    isProcessing,
+    error,
+    showWelcome,
+    generatedAssets,
+    finalTreatment,
+    processData,
+    setIsProcessing,
+    setError,
+    setShowWelcome,
+    setGeneratedAssets,
+    setFinalTreatment,
+    setProcessData,
+    addMessage
+  } = useChatState();
 
-  // AI Agent state
+  // Other component state (not extracted)
+  const [mode, setMode] = useState('interactive'); // 'interactive' or 'oneshot'
   const [currentStep, setCurrentStep] = useState(1);
   const [agentStatus, setAgentStatus] = useState('idle');
   const [showInteractivePrompt, setShowInteractivePrompt] = useState(false);
   const [currentStepData, setCurrentStepData] = useState(null);
-  const [error, setError] = useState(null);
-
-  // Generated content state
-  const [generatedAssets, setGeneratedAssets] = useState([]);
-  const [finalTreatment, setFinalTreatment] = useState(null);
-  const [processData, setProcessData] = useState(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -122,23 +130,6 @@ const ChatInterface = () => {
         setAgentStatus('completed');
         break;
     }
-  };
-
-  const addMessage = (content, isUser = false, timestamp = null, isTyping = false, data = null,
-      storyContent = null, treatmentData = null) => {
-    const newMessage = {
-      id: Date.now() + Math.random(),
-      content,
-      isUser,
-      timestamp: timestamp || new Date(),
-      isTyping,
-      data,
-      storyContent,
-      treatmentData,
-      assets: data && Array.isArray(data) ? data : null
-    };
-
-    setMessages(prev => [...prev, newMessage]);
   };
 
   const handleSendMessage = async (message) => {
