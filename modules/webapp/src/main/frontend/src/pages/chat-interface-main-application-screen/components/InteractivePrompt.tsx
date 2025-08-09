@@ -2,17 +2,39 @@ import React, {useState} from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const InteractivePrompt = ({
+type StepType = 'research' | 'story' | 'characters' | 'visuals';
+
+interface StepData {
+  summary?: string;
+  keyPoints?: string[];
+}
+
+interface StepInfo {
+  title: string;
+  icon: string;
+  description: string;
+  color: string;
+}
+
+interface InteractivePromptProps {
+  step?: StepType;
+  data?: StepData | string | null;
+  onContinue?: (() => void) | null;
+  onFeedback?: ((feedback: string) => void) | null;
+  onRegenerate?: (() => void) | null;
+}
+
+const InteractivePrompt: React.FC<InteractivePromptProps> = ({
   step = 'research',
   data = null,
   onContinue = null,
   onFeedback = null,
   onRegenerate = null
 }) => {
-  const [feedbackText, setFeedbackText] = useState('');
-  const [showFeedbackInput, setShowFeedbackInput] = useState(false);
+  const [feedbackText, setFeedbackText] = useState<string>('');
+  const [showFeedbackInput, setShowFeedbackInput] = useState<boolean>(false);
 
-  const getStepInfo = () => {
+  const getStepInfo = (): StepInfo => {
     switch (step) {
       case 'research':
         return {
@@ -188,7 +210,7 @@ const InteractivePrompt = ({
             <Button
                 variant="default"
                 size="default"
-                onClick={onContinue}
+                onClick={onContinue ?? undefined}
                 iconName="ArrowRight"
                 iconPosition="right"
                 className="bg-accent hover:bg-accent/90"

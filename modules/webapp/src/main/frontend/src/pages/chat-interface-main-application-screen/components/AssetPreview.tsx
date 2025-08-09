@@ -3,16 +3,32 @@ import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
-const AssetPreview = ({
+interface AssetType {
+  type: 'image' | 'video' | 'document';
+  url?: string;
+  title?: string;
+  description?: string;
+  pages?: number;
+  duration?: string;
+}
+
+interface AssetPreviewProps {
+  assets?: AssetType[];
+  onAssetClick?: ((asset: AssetType, index: number) => void) | null;
+  onDownload?: ((assets: AssetType[]) => void) | null;
+  className?: string;
+}
+
+const AssetPreview: React.FC<AssetPreviewProps> = ({
   assets = [],
   onAssetClick = null,
   onDownload = null,
   className = ""
 }) => {
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAsset, setSelectedAsset] = useState<AssetType | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
 
-  const handleAssetClick = (asset, index) => {
+  const handleAssetClick = (asset: AssetType, index: number) => {
     setSelectedAsset(asset);
     setCurrentIndex(index);
     if (onAssetClick) {
@@ -21,26 +37,26 @@ const AssetPreview = ({
   };
 
   const handlePrevious = () => {
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : assets?.length - 1;
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : assets.length - 1;
     setCurrentIndex(newIndex);
-    setSelectedAsset(assets?.[newIndex]);
+    setSelectedAsset(assets[newIndex]);
   };
 
   const handleNext = () => {
-    const newIndex = currentIndex < assets?.length - 1 ? currentIndex + 1 : 0;
+    const newIndex = currentIndex < assets.length - 1 ? currentIndex + 1 : 0;
     setCurrentIndex(newIndex);
-    setSelectedAsset(assets?.[newIndex]);
+    setSelectedAsset(assets[newIndex]);
   };
 
   const closeModal = () => {
     setSelectedAsset(null);
   };
 
-  if (!assets || assets?.length === 0) {
+  if (!assets || assets.length === 0) {
     return null;
   }
 
-  const renderAssetThumbnail = (asset, index) => {
+  const renderAssetThumbnail = (asset: AssetType, index: number) => {
     const commonClasses = "relative group cursor-pointer rounded-lg overflow-hidden border border-border hover:border-accent/50 transition-all duration-200 hover:shadow-warm-md";
 
     switch (asset?.type) {
@@ -120,7 +136,7 @@ const AssetPreview = ({
             <div className="flex items-center space-x-2">
               <Icon name="Image" size={18} color="var(--color-accent)"/>
               <h3 className="text-sm font-heading font-semibold text-foreground">
-                Generated Assets ({assets?.length})
+                Generated Assets ({assets.length})
               </h3>
             </div>
 
@@ -140,16 +156,16 @@ const AssetPreview = ({
 
           {/* Asset Grid */}
           <div className={`grid gap-3 ${
-              assets?.length === 1
+              assets.length === 1
                   ? 'grid-cols-1'
-                  : assets?.length === 2
+                  : assets.length === 2
                       ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'
           }`}>
-            {assets?.map((asset, index) => renderAssetThumbnail(asset, index))}
+            {assets.map((asset, index) => renderAssetThumbnail(asset, index))}
           </div>
 
           {/* Asset Count */}
-          {assets?.length > 6 && (
+          {assets.length > 6 && (
               <div className="text-center">
                 <Button
                     variant="ghost"
@@ -157,7 +173,7 @@ const AssetPreview = ({
                     iconName="MoreHorizontal"
                     className="text-muted-foreground hover:text-foreground"
                 >
-                  View All {assets?.length} Assets
+                  View All {assets.length} Assets
                 </Button>
               </div>
           )}
@@ -184,7 +200,7 @@ const AssetPreview = ({
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {assets?.length > 1 && (
+                    {assets.length > 1 && (
                         <>
                           <Button
                               variant="ghost"
@@ -194,7 +210,7 @@ const AssetPreview = ({
                               className="w-8 h-8"
                           />
                           <span className="text-sm text-muted-foreground font-mono">
-                      {currentIndex + 1} / {assets?.length}
+                      {currentIndex + 1} / {assets.length}
                     </span>
                           <Button
                               variant="ghost"

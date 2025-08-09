@@ -2,14 +2,32 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 
-const ChatMessage = ({
+interface Asset {
+  type: 'image' | 'story' | 'pdf';
+  url?: string;
+  title?: string;
+  description?: string;
+  content?: string;
+  size?: string;
+  pages?: number;
+}
+
+interface ChatMessageProps {
+  message: React.ReactNode;
+  isUser?: boolean;
+  timestamp?: string | null;
+  isTyping?: boolean;
+  assets?: Asset[] | null;
+}
+
+const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   isUser = false,
   timestamp = null,
   isTyping = false,
   assets = null
 }) => {
-  const formatTimestamp = (date) => {
+  const formatTimestamp = (date: string | null): string => {
     if (!date) {
       return '';
     }

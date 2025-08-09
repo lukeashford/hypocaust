@@ -1,14 +1,22 @@
 import React from 'react';
 import Icon from '../AppIcon';
 
-const ProgressIndicator = ({
+interface ProgressIndicatorProps {
+  currentStep?: number;
+  totalSteps?: number;
+  agentStatus?: string;
+  onCancel?: (() => void) | null;
+  stepLabels?: string[];
+}
+
+const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   currentStep = 1,
   totalSteps = 4,
   agentStatus = 'idle',
   onCancel = null,
   stepLabels = ['Research', 'Analysis', 'Generation', 'Finalization']
 }) => {
-  const getStepStatus = (stepIndex) => {
+  const getStepStatus = (stepIndex: number): 'completed' | 'active' | 'pending' => {
     if (stepIndex < currentStep - 1) {
       return 'completed';
     }
@@ -18,7 +26,7 @@ const ProgressIndicator = ({
     return 'pending';
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: 'completed' | 'active' | 'pending') => {
     switch (status) {
       case 'completed':
         return <Icon name="Check" size={16} color="var(--color-success)" strokeWidth={2.5}/>;
@@ -32,7 +40,7 @@ const ProgressIndicator = ({
     }
   };
 
-  const getStatusMessage = () => {
+  const getStatusMessage = (): string => {
     switch (agentStatus) {
       case 'researching':
         return 'Analyzing company and market data...';
