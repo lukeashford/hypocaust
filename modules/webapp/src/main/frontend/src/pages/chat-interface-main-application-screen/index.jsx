@@ -9,8 +9,8 @@ import InteractivePrompt from './components/InteractivePrompt';
 import AssetPreview from './components/AssetPreview';
 import WelcomeScreen from './components/WelcomeScreen';
 import Icon from '../../components/AppIcon';
-import aiAgentService from '../../services/aiAgentService';
 import {useChatState} from '../../hooks/useChatState';
+import {useAIAgent} from '../../hooks/useAIAgent';
 
 const ChatInterface = () => {
   const navigate = useNavigate();
@@ -35,126 +35,38 @@ const ChatInterface = () => {
   } = useChatState();
 
   // Other component state (not extracted)
-  const [mode, setMode] = useState('interactive'); // 'interactive' or 'oneshot'
-  const [currentStep, setCurrentStep] = useState(1);
-  const [agentStatus, setAgentStatus] = useState('idle');
-  const [showInteractivePrompt, setShowInteractivePrompt] = useState(false);
-  const [currentStepData, setCurrentStepData] = useState(null);
+  const [mode, setMode] = useState(/** @type {GenerationMode} */('interactive')); // 'interactive'
+                                                                                  // or 'oneshot'
+
+  // AI Agent state and callbacks from custom hook
+  const {
+    currentStep,
+    agentStatus,
+    currentStepData,
+    showInteractivePrompt,
+    handleSendMessage,
+    handleInteractiveContinue,
+    handleInteractiveFeedback,
+    handleInteractiveRegenerate
+  } = useAIAgent({
+    mode,
+    addMessage,
+    setIsProcessing,
+    setError,
+    setShowWelcome,
+    setGeneratedAssets,
+    setFinalTreatment,
+    setProcessData
+  });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef?.current?.scrollIntoView({behavior: 'smooth'});
   }, [messages]);
 
-  // Setup AI Agent callbacks
-  useEffect(() => {
-    aiAgentService?.setCallbacks({
-      onProgress: (status, step, total) => {
-        setAgentStatus(status);
-        setCurrentStep(step);
-        setIsProcessing(true);
-        setError(null);
-      },
-      onStepComplete: (step, type, data) => {
-        handleStepComplete(step, type, data);
-      },
-      onError: (error, step) => {
-        console.error('AI Agent Error:', error);
-        setError(error?.message || 'An error occurred during generation');
-        setIsProcessing(false);
-        setAgentStatus('idle');
-        addMessage(`Error in step ${step}: ${error?.message || 'Unknown error occurred'}`, false);
-      },
-      onComplete: (completeData) => {
-        setProcessData(completeData);
-        setIsProcessing(false);
-        setAgentStatus('completed');
-      }
-    });
-  }, []);
-
-  const handleStepComplete = (step, type, data) => {
-    switch (type) {
-      case 'research':
-        addMessage(`I've completed the research for your brand. Here's what I found:`, false, null,
-            false, data);
-        if (mode === 'interactive') {
-          setShowInteractivePrompt(true);
-          setCurrentStepData(data);
-          setIsProcessing(false);
-        }
-        break;
-
-      case 'story':
-        const storyContent = `${data?.title}\n\n${data?.concept}\n\n${data?.storyOutline}`;
-        addMessage("I've created a cinematic story outline for your brand:", false, null, false,
-            null, storyContent);
-        if (mode === 'interactive') {
-          setShowInteractivePrompt(true);
-          setCurrentStepData({summary: data?.concept, content: storyContent});
-          setIsProcessing(false);
-        }
-        break;
-
-      case 'visuals':
-        setGeneratedAssets(data?.assets || []);
-        addMessage("Visual assets and concepts have been generated:", false, null, false,
-            data?.assets);
-        if (mode === 'interactive') {
-          setShowInteractivePrompt(true);
-          setCurrentStepData({
-            summary: "High-quality visual assets for video production",
-            keyPoints: [
-              `${data?.visualConcepts?.characters?.length || 0} character designs created`,
-              `${data?.assets?.length || 0} AI-generated images produced`,
-              `Color palette and lighting specifications defined`
-            ]
-          });
-          setIsProcessing(false);
-        }
-        break;
-
-      case 'final':
-        const treatmentData = {
-          title: data?.title || "Director's Treatment",
-          pages: data?.documentMetadata?.pages || 12,
-          size: data?.documentMetadata?.size || "2.4 MB",
-          timestamp: "Just now",
-          fullData: data
-        };
-
-        setFinalTreatment(treatmentData);
-        addMessage("Your complete director's treatment is ready for download!", false, null, false,
-            null, null, treatmentData);
-        setIsProcessing(false);
-        setAgentStatus('completed');
-        break;
-    }
-  };
-
-  const handleSendMessage = async (message) => {
-    if (showWelcome) {
-      setShowWelcome(false);
-    }
-
-    // Add user message
-    addMessage(message, true);
-
-    // Reset error state
-    setError(null);
-
-    try {
-      // Start AI processing
-      await aiAgentService?.generateTreatment(message, mode);
-    } catch (error) {
-      console.error('Generation error:', error);
-      setError(error?.message || 'Failed to generate treatment');
-      addMessage(`Sorry, I encountered an error: ${error?.message || 'Unknown error'}`, false);
-      setIsProcessing(false);
-      setAgentStatus('idle');
-    }
-  };
-
+  /**
+   * @param {GenerationMode} newMode
+   */
   const handleModeChange = (newMode) => {
     setMode(newMode);
   };
@@ -166,60 +78,12 @@ const ChatInterface = () => {
     }
   };
 
+  /**
+   * @param {GenerationMode} selectedMode
+   */
   const handleModeSelect = (selectedMode) => {
     setMode(selectedMode);
     setShowWelcome(false);
-  };
-
-  const handleInteractiveContinue = async () => {
-    try {
-      setShowInteractivePrompt(false);
-      const result = await aiAgentService?.continueToNextStep();
-
-      if (result?.complete) {
-        // Final step completed
-        setProcessData(result?.data);
-      }
-    } catch (error) {
-      console.error('Continue error:', error);
-      setError(error?.message || 'Failed to continue to next step');
-      addMessage(`Error continuing: ${error?.message || 'Unknown error'}`, false);
-      setIsProcessing(false);
-    }
-  };
-
-  const handleInteractiveFeedback = async (feedback) => {
-    addMessage(feedback, true);
-    addMessage(
-        "Thank you for the feedback! I'll incorporate your suggestions and continue with the next step.",
-        false);
-
-    try {
-      const result = await aiAgentService?.continueToNextStep(feedback);
-
-      if (result?.complete) {
-        setProcessData(result?.data);
-      }
-    } catch (error) {
-      console.error('Feedback error:', error);
-      setError(error?.message || 'Failed to apply feedback');
-      addMessage(`Error applying feedback: ${error?.message || 'Unknown error'}`, false);
-      setIsProcessing(false);
-    }
-  };
-
-  const handleInteractiveRegenerate = async () => {
-    addMessage("Regenerating this step with fresh creative direction...", false);
-    setShowInteractivePrompt(false);
-
-    try {
-      await aiAgentService?.regenerateStep(currentStep);
-    } catch (error) {
-      console.error('Regenerate error:', error);
-      setError(error?.message || 'Failed to regenerate step');
-      addMessage(`Error regenerating: ${error?.message || 'Unknown error'}`, false);
-      setIsProcessing(false);
-    }
   };
 
   const handleDownloadTreatment = (format = 'pdf') => {
