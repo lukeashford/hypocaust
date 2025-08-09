@@ -3,17 +3,27 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 
-const MessageInput = ({
+type GenerationMode = 'interactive' | 'oneshot';
+
+interface MessageInputProps {
+  onSendMessage: (message: string) => void;
+  isProcessing?: boolean;
+  mode?: GenerationMode;
+  onModeChange?: ((mode: GenerationMode) => void) | null;
+  placeholder?: string;
+}
+
+const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
   isProcessing = false,
   mode = 'interactive',
   onModeChange = null,
   placeholder = "Enter your brand name to get started..."
 }) => {
-  const [message, setMessage] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
-  const inputRef = useRef(null);
-  const textareaRef = useRef(null);
+  const [message, setMessage] = useState<string>('');
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isExpanded && textareaRef?.current) {
@@ -23,7 +33,7 @@ const MessageInput = ({
     }
   }, [isExpanded]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
     e?.preventDefault();
     if (message?.trim() && !isProcessing) {
       onSendMessage(message?.trim());
@@ -32,15 +42,23 @@ const MessageInput = ({
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e?.key === 'Enter' && !e?.shiftKey) {
       e?.preventDefault();
-      handleSubmit(e);
+      handleSubmit(e as any);
     }
   };
 
-  const toggleExpanded = () => {
+  const toggleExpanded = (): void => {
     setIsExpanded(!isExpanded);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setMessage(e?.target?.value);
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    setMessage(e?.target?.value);
   };
 
   return (
@@ -85,7 +103,7 @@ const MessageInput = ({
                           type="text"
                           placeholder={placeholder}
                           value={message}
-                          onChange={(e) => setMessage(e?.target?.value)}
+                          onChange={handleInputChange}
                           disabled={isProcessing}
                           className="pr-20"
                       />
@@ -132,7 +150,7 @@ const MessageInput = ({
                         ref={textareaRef}
                         placeholder={`Enter your brand name and any additional context:\n\nExample:\n- Brand: "TechFlow Solutions"\n- Industry: Software Development\n- Target Audience: Enterprise clients\n- Key Message: Innovation and reliability`}
                         value={message}
-                        onChange={(e) => setMessage(e?.target?.value)}
+                        onChange={handleTextareaChange}
                         onKeyDown={handleKeyDown}
                         disabled={isProcessing}
                         rows={6}

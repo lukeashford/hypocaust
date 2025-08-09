@@ -6,7 +6,7 @@ import NotFound from "pages/NotFound";
 import ChatInterface from './pages/chat-interface-main-application-screen';
 import PDFPreviewAndDownloadScreen from './pages/pdf-preview-and-download-screen';
 
-const Routes = () => {
+const Routes: React.FC = () => {
   return (
       <BrowserRouter>
         <ErrorBoundary>

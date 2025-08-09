@@ -1,7 +1,17 @@
 import React from "react";
-import {cn} from "../../utils/cn";
+import {cn} from "utils/cn";
 
-const Input = React.forwardRef(({
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  className?: string;
+  type?: string;
+  label?: string;
+  description?: string;
+  error?: string;
+  required?: boolean;
+  id?: string;
+}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   className,
   type = "text",
   label,

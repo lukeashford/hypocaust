@@ -1,12 +1,11 @@
 import React from 'react';
 import {useNavigate} from 'react-router-dom';
 import Button from 'components/ui/Button';
-import Icon from 'components/AppIcon';
 
-const NotFound = () => {
+const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleGoHome = () => {
+  const handleGoHome = (): void => {
     navigate('/');
   };
 
@@ -26,8 +25,8 @@ const NotFound = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-                variant="primary"
-                icon={<Icon name="ArrowLeft"/>}
+                variant="default"
+                iconName="ArrowLeft"
                 iconPosition="left"
                 onClick={() => window.history?.back()}
             >
@@ -36,7 +35,7 @@ const NotFound = () => {
 
             <Button
                 variant="outline"
-                icon={<Icon name="Home"/>}
+                iconName="Home"
                 iconPosition="left"
                 onClick={handleGoHome}
             >

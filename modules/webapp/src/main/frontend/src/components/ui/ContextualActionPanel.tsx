@@ -2,7 +2,35 @@ import React, {useState} from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const ContextualActionPanel = ({
+interface PdfData {
+  size?: string;
+  pages?: string | number;
+  timestamp?: string;
+}
+
+interface DownloadOption {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+interface ShareOption {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+interface ContextualActionPanelProps {
+  pdfData?: PdfData | null;
+  onDownload?: ((format?: string) => void) | null;
+  onShare?: ((method: string) => void) | null;
+  onRegenerate?: (() => void) | null;
+  isVisible?: boolean;
+  className?: string;
+}
+
+const ContextualActionPanel: React.FC<ContextualActionPanelProps> = ({
   pdfData = null,
   onDownload = null,
   onShare = null,
@@ -10,31 +38,31 @@ const ContextualActionPanel = ({
   isVisible = true,
   className = ""
 }) => {
-  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
-  const [_downloadFormat, setDownloadFormat] = useState('pdf');
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState<boolean>(false);
+  const [_downloadFormat, setDownloadFormat] = useState<string>('pdf');
 
-  const handleDownload = (format = 'pdf') => {
+  const handleDownload = (format: string = 'pdf'): void => {
     if (onDownload) {
       onDownload(format);
     }
     setDownloadFormat(format);
   };
 
-  const handleShare = (method) => {
+  const handleShare = (method: string): void => {
     if (onShare) {
       onShare(method);
     }
     setIsShareMenuOpen(false);
   };
 
-  const shareOptions = [
+  const shareOptions: ShareOption[] = [
     {id: 'email', label: 'Email', icon: 'Mail'},
     {id: 'link', label: 'Copy Link', icon: 'Link'},
     {id: 'slack', label: 'Slack', icon: 'MessageSquare'},
     {id: 'teams', label: 'Teams', icon: 'Users'}
   ];
 
-  const downloadOptions = [
+  const downloadOptions: DownloadOption[] = [
     {
       id: 'pdf',
       label: 'PDF Document',
@@ -144,7 +172,7 @@ const ContextualActionPanel = ({
                 variant="ghost"
                 size="default"
                 fullWidth
-                onClick={onRegenerate}
+                onClick={onRegenerate ?? undefined}
                 iconName="RefreshCw"
                 iconPosition="left"
                 className="text-muted-foreground hover:text-foreground"

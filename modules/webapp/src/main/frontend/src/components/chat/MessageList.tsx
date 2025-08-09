@@ -240,7 +240,7 @@ const MessageList: React.FC<MessageListProps> = ({
             <div className="mt-6">
               <InteractivePrompt
                   step={currentStep === 1 ? 'research' : currentStep === 2 ? 'story'
-                      : currentStep === 3 ? 'visuals' : 'final'}
+                      : currentStep === 3 ? 'characters' : 'visuals'}
                   data={currentStepData}
                   onContinue={onInteractiveContinue}
                   onFeedback={onInteractiveFeedback}

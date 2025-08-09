@@ -1,8 +1,23 @@
 import React from "react";
 import {Check, Minus} from "lucide-react";
-import {cn} from "../../utils/cn";
+import {cn} from "utils/cn.ts";
 
-const Checkbox = React.forwardRef(({
+type CheckboxSize = "sm" | "default" | "lg";
+
+interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  className?: string;
+  id?: string;
+  checked?: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  required?: boolean;
+  label?: string;
+  description?: string;
+  error?: string;
+  size?: CheckboxSize;
+}
+
+const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(({
   className,
   id,
   checked,
@@ -19,7 +34,7 @@ const Checkbox = React.forwardRef(({
   const checkboxId = id || `checkbox-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
   // Size variants
-  const sizeClasses = {
+  const sizeClasses: Record<CheckboxSize, string> = {
     sm: "h-4 w-4",
     default: "h-4 w-4",
     lg: "h-5 w-5"
@@ -93,7 +108,17 @@ const Checkbox = React.forwardRef(({
 Checkbox.displayName = "Checkbox";
 
 // Checkbox Group component
-const CheckboxGroup = React.forwardRef(({
+interface CheckboxGroupProps extends React.FieldsetHTMLAttributes<HTMLFieldSetElement> {
+  className?: string;
+  children: React.ReactNode;
+  label?: string;
+  description?: string;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(({
   className,
   children,
   label,

@@ -3,12 +3,28 @@ import {useLocation, useNavigate} from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const Header = ({user = null, onNavigate = null}) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+interface User {
+  name?: string;
+  email?: string;
+}
+
+interface NavigationItem {
+  label: string;
+  path: string;
+  icon: string;
+}
+
+interface HeaderProps {
+  user?: User | null;
+  onNavigate?: ((path: string) => void) | null;
+}
+
+const Header: React.FC<HeaderProps> = ({user = null, onNavigate = null}) => {
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleNavigation = (path) => {
+  const handleNavigation = (path: string): void => {
     if (onNavigate) {
       onNavigate(path);
     } else {
@@ -17,7 +33,7 @@ const Header = ({user = null, onNavigate = null}) => {
     setIsMenuOpen(false);
   };
 
-  const navigationItems = [
+  const navigationItems: NavigationItem[] = [
     {
       label: 'Treatment Generator',
       path: '/chat-interface-main-application-screen',
@@ -30,9 +46,9 @@ const Header = ({user = null, onNavigate = null}) => {
     }
   ];
 
-  const isCurrentPath = (path) => location.pathname === path;
+  const isCurrentPath = (path: string): boolean => location.pathname === path;
 
-  const Logo = () => (
+  const Logo: React.FC = () => (
       <div
           className="flex items-center cursor-pointer group transition-all duration-300"
           onClick={() => handleNavigation('/chat-interface-main-application-screen')}
@@ -57,7 +73,7 @@ const Header = ({user = null, onNavigate = null}) => {
       </div>
   );
 
-  const UserMenu = () => (
+  const UserMenu: React.FC = () => (
       <div className="relative">
         <Button
             variant="ghost"
@@ -113,48 +129,82 @@ const Header = ({user = null, onNavigate = null}) => {
       </div>
   );
 
-  const MobileMenu = () => (
-      <div className="lg:hidden">
+  const NavigationItems: React.FC = () => (
+      <div className="hidden md:flex items-center space-x-6">
+        {navigationItems.map((item) => (
+            <button
+                key={item.path}
+                onClick={() => handleNavigation(item.path)}
+                className={`flex items-center space-x-2 px-3 py-2 text-sm font-light transition-all duration-300 ${
+                    isCurrentPath(item.path)
+                        ? 'text-accent bg-accent/10 border border-accent/20'
+                        : 'text-foreground hover:text-accent hover:bg-muted/30 border border-transparent'
+                }`}
+            >
+              <Icon name={item.icon} size={16} strokeWidth={1.5}/>
+              <span>{item.label}</span>
+            </button>
+        ))}
+      </div>
+  );
+
+  const MobileMenu: React.FC = () => (
+      <div className="md:hidden">
         <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2"
             iconName="Menu"
             iconSize={20}
-            className="font-light"
         />
 
         {isMenuOpen && (
             <div
-                className="absolute top-full left-0 right-0 bg-card border-b border-border shadow-warm-lg z-50 animate-slide-up">
-              <div className="p-4 space-y-2">
-                {navigationItems?.map((item) => (
+                className="absolute top-full left-0 right-0 bg-card border-b border-border shadow-warm-lg z-50 animate-slide-down">
+              <div className="px-4 py-4 space-y-2">
+                {navigationItems.map((item) => (
                     <button
-                        key={item?.path}
-                        onClick={() => handleNavigation(item?.path)}
-                        className={`w-full flex items-center space-x-3 px-4 py-3 text-left transition-all duration-300 border font-light ${
-                            isCurrentPath(item?.path)
-                                ? 'bg-muted/20 text-foreground border-foreground/20'
-                                : 'text-foreground hover:bg-muted/30 border-transparent hover:border-border'
+                        key={item.path}
+                        onClick={() => handleNavigation(item.path)}
+                        className={`w-full flex items-center space-x-3 px-3 py-3 text-sm font-light transition-colors duration-300 ${
+                            isCurrentPath(item.path)
+                                ? 'text-accent bg-accent/10'
+                                : 'text-foreground hover:text-accent hover:bg-muted/30'
                         }`}
                     >
-                      <Icon name={item?.icon} size={18} strokeWidth={1.5}/>
-                      <span className="font-light">{item?.label}</span>
+                      <Icon name={item.icon} size={18} strokeWidth={1.5}/>
+                      <span>{item.label}</span>
                     </button>
                 ))}
 
                 <div className="border-t border-border pt-4 mt-4">
-                  <div className="flex items-center space-x-3 px-4 py-2">
-                    <Icon name="User" size={18} strokeWidth={1.5}/>
-                    <div>
-                      <p className="text-sm font-light text-foreground">
-                        {user?.name || 'Creative Professional'}
-                      </p>
-                      <p className="text-xs text-muted-foreground font-light">
-                        {user?.email || 'user@example.com'}
-                      </p>
-                    </div>
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-light text-foreground">
+                      {user?.name || 'Creative Professional'}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-light">
+                      {user?.email || 'user@example.com'}
+                    </p>
                   </div>
+
+                  <button
+                      className="w-full flex items-center space-x-3 px-3 py-3 text-sm text-foreground hover:bg-muted/30 transition-colors duration-300 font-light">
+                    <Icon name="Settings" size={18} strokeWidth={1.5}/>
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                      className="w-full flex items-center space-x-3 px-3 py-3 text-sm text-foreground hover:bg-muted/30 transition-colors duration-300 font-light">
+                    <Icon name="HelpCircle" size={18} strokeWidth={1.5}/>
+                    <span>Help & Support</span>
+                  </button>
+
+                  <button
+                      className="w-full flex items-center space-x-3 px-3 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-300 font-light">
+                    <Icon name="LogOut" size={18} strokeWidth={1.5}/>
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -163,55 +213,21 @@ const Header = ({user = null, onNavigate = null}) => {
   );
 
   return (
-      <>
-        <header
-            className="fixed top-0 left-0 right-0 z-[1000] nolan-backdrop border-b border-border">
-          <div className="px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <Logo/>
-
-              {/* Desktop Navigation */}
-              <nav className="hidden lg:flex items-center space-x-1">
-                {navigationItems?.map((item) => (
-                    <Button
-                        key={item?.path}
-                        variant={isCurrentPath(item?.path) ? "outline" : "ghost"}
-                        size="sm"
-                        onClick={() => handleNavigation(item?.path)}
-                        className={`flex items-center space-x-2 transition-all duration-300 font-light ${
-                            isCurrentPath(item?.path)
-                                ? 'bg-muted/20 border-foreground/20'
-                                : 'hover:bg-muted/20 border-transparent'
-                        }`}
-                        iconName={item?.icon}
-                        iconPosition="left"
-                        iconSize={16}
-                    >
-                      {item?.label}
-                    </Button>
-                ))}
-              </nav>
-
-              {/* Desktop User Menu */}
-              <div className="hidden lg:block">
-                <UserMenu/>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <MobileMenu/>
-            </div>
+      <header className="h-16 bg-card border-b border-border sticky top-0 z-40">
+        <div className="flex items-center justify-between h-full px-4 lg:px-6">
+          <div className="flex items-center space-x-8">
+            <Logo/>
+            <NavigationItems/>
           </div>
-        </header>
-        {/* Click outside to close menu */}
-        {isMenuOpen && (
-            <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
-                onClick={() => setIsMenuOpen(false)}
-            />
-        )}
-        {/* Spacer for fixed header */}
-        <div className="h-16"/>
-      </>
+
+          <div className="flex items-center space-x-4">
+            <div className="hidden md:block">
+              <UserMenu/>
+            </div>
+            <MobileMenu/>
+          </div>
+        </div>
+      </header>
   );
 };
 

@@ -1,11 +1,38 @@
-// components/ui/Select.jsx - Shadcn style Select
 import React, {useState} from "react";
 import {Check, ChevronDown, Search, X} from "lucide-react";
-import {cn} from "../../utils/cn";
+import {cn} from "utils/cn";
 import Button from "./Button";
 import Input from "./Input";
 
-const Select = React.forwardRef(({
+interface SelectOption {
+  value: string | number;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+}
+
+interface SelectProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'value' | 'defaultValue'> {
+  className?: string;
+  options?: SelectOption[];
+  value?: string | number | (string | number)[];
+  defaultValue?: string | number | (string | number)[];
+  placeholder?: string;
+  multiple?: boolean;
+  disabled?: boolean;
+  required?: boolean;
+  label?: string;
+  description?: string;
+  error?: string;
+  searchable?: boolean;
+  clearable?: boolean;
+  loading?: boolean;
+  id?: string;
+  name?: string;
+  onChange?: (value: string | number | (string | number)[]) => void;
+  onOpenChange?: (isOpen: boolean) => void;
+}
+
+const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
   className,
   options = [],
   value,
@@ -26,8 +53,8 @@ const Select = React.forwardRef(({
   onOpenChange,
   ...props
 }, ref) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Generate unique ID if not provided
   const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
@@ -42,13 +69,14 @@ const Select = React.forwardRef(({
       : options;
 
   // Get selected option(s) for display
-  const getSelectedDisplay = () => {
+  const getSelectedDisplay = (): string => {
     if (!value) {
       return placeholder;
     }
 
     if (multiple) {
-      const selectedOptions = options?.filter(opt => value?.includes(opt?.value));
+      const selectedOptions = options?.filter(
+          opt => Array.isArray(value) && value.includes(opt?.value));
       if (selectedOptions?.length === 0) {
         return placeholder;
       }
@@ -62,7 +90,7 @@ const Select = React.forwardRef(({
     return selectedOption ? selectedOption?.label : placeholder;
   };
 
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     if (!disabled) {
       const newIsOpen = !isOpen;
       setIsOpen(newIsOpen);
@@ -73,9 +101,9 @@ const Select = React.forwardRef(({
     }
   };
 
-  const handleOptionSelect = (option) => {
+  const handleOptionSelect = (option: SelectOption): void => {
     if (multiple) {
-      const newValue = value || [];
+      const newValue = (value as (string | number)[]) || [];
       const updatedValue = newValue?.includes(option?.value)
           ? newValue?.filter(v => v !== option?.value)
           : [...newValue, option?.value];
@@ -87,23 +115,24 @@ const Select = React.forwardRef(({
     }
   };
 
-  const handleClear = (e) => {
+  const handleClear = (e: React.MouseEvent): void => {
     e?.stopPropagation();
     onChange?.(multiple ? [] : '');
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(e?.target?.value);
   };
 
-  const isSelected = (optionValue) => {
+  const isSelected = (optionValue: string | number): boolean => {
     if (multiple) {
-      return value?.includes(optionValue) || false;
+      return Array.isArray(value) ? value.includes(optionValue) : false;
     }
     return value === optionValue;
   };
 
-  const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
+  const hasValue = multiple ? Array.isArray(value) && value.length > 0 : value !== undefined
+      && value !== '';
 
   return (
       <div className={cn("relative", className)}>
@@ -165,7 +194,7 @@ const Select = React.forwardRef(({
           {/* Hidden native select for form submission */}
           <select
               name={name}
-              value={value || ''}
+              value={Array.isArray(value) ? '' : (value || '')}
               onChange={() => {
               }} // Controlled by our custom logic
               className="sr-only"

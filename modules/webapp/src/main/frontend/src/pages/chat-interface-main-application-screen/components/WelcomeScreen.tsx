@@ -2,8 +2,24 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const WelcomeScreen = ({onGetStarted = null, onModeSelect = null}) => {
-  const features = [
+interface Feature {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+type GenerationMode = 'interactive' | 'oneshot';
+
+interface WelcomeScreenProps {
+  onGetStarted?: ((brandName?: string | null) => void) | null;
+  onModeSelect?: ((mode: GenerationMode) => void) | null;
+}
+
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
+  onGetStarted = null,
+  onModeSelect = null
+}) => {
+  const features: Feature[] = [
     {
       icon: 'Search',
       title: 'AI Company Research',
@@ -36,7 +52,7 @@ const WelcomeScreen = ({onGetStarted = null, onModeSelect = null}) => {
     }
   ];
 
-  const exampleBrands = [
+  const exampleBrands: string[] = [
     "TechFlow Solutions",
     "Artisan Coffee Co.",
     "EcoGreen Innovations",

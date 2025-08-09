@@ -1,7 +1,7 @@
 import React from 'react';
 import {Slot} from "@radix-ui/react-slot";
 import {cva, VariantProps} from "class-variance-authority";
-import {cn} from "../../utils/cn";
+import {cn} from "utils/cn";
 import Icon from '../AppIcon';
 
 const buttonVariants = cva(
