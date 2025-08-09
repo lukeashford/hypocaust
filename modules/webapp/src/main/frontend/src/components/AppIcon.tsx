@@ -2,15 +2,25 @@ import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import {HelpCircle} from 'lucide-react';
 
-function Icon({
+interface IconProps {
+  name: string;
+  size?: number;
+  color?: string;
+  className?: string;
+  strokeWidth?: number;
+
+  [key: string]: any;
+}
+
+const Icon: React.FC<IconProps> = ({
   name,
   size = 24,
   color = "currentColor",
   className = "",
   strokeWidth = 2,
   ...props
-}) {
-  const IconComponent = LucideIcons?.[name];
+}) => {
+  const IconComponent = (LucideIcons as any)[name];
 
   if (!IconComponent) {
     return <HelpCircle size={size} color="gray" strokeWidth={strokeWidth}
@@ -24,6 +34,6 @@ function Icon({
       className={className}
       {...props}
   />;
-}
+};
 
 export default Icon;

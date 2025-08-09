@@ -8,7 +8,7 @@ import MessageInput from './components/MessageInput';
 import InteractivePrompt from './components/InteractivePrompt';
 import AssetPreview from './components/AssetPreview';
 import WelcomeScreen from './components/WelcomeScreen';
-import Icon from '../../components/AppIcon';
+import ChatErrorDisplay from '../../components/chat/ChatErrorDisplay';
 import {useChatState} from '../../hooks/useChatState';
 import {useAIAgent} from '../../hooks/useAIAgent';
 import {useScrollToBottom} from '../../hooks/useScrollToBottom';
@@ -257,18 +257,7 @@ const ChatInterface = () => {
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto">
                     <div className="max-w-4xl mx-auto px-4 py-6">
-                      {/* Error Display */}
-                      {error && (
-                          <div
-                              className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                              <Icon name="AlertCircle" size={16} color="var(--color-destructive)"/>
-                              <h4 className="text-sm font-medium text-destructive">Generation
-                                Error</h4>
-                            </div>
-                            <p className="text-sm text-destructive/80 mt-1">{error}</p>
-                          </div>
-                      )}
+                      <ChatErrorDisplay error={error}/>
 
                       {/* Progress Indicator */}
                       {(isProcessing || agentStatus !== 'idle') && (
