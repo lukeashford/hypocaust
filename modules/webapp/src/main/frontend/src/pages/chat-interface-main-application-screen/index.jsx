@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import ProgressIndicator from '../../components/ui/ProgressIndicator';
@@ -11,10 +11,10 @@ import WelcomeScreen from './components/WelcomeScreen';
 import Icon from '../../components/AppIcon';
 import {useChatState} from '../../hooks/useChatState';
 import {useAIAgent} from '../../hooks/useAIAgent';
+import {useScrollToBottom} from '../../hooks/useScrollToBottom';
 
 const ChatInterface = () => {
   const navigate = useNavigate();
-  const messagesEndRef = useRef(null);
 
   // Chat state from custom hook
   const {
@@ -60,9 +60,7 @@ const ChatInterface = () => {
   });
 
   // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef?.current?.scrollIntoView({behavior: 'smooth'});
-  }, [messages]);
+  const {messagesEndRef} = useScrollToBottom([messages]);
 
   /**
    * @param {GenerationMode} newMode
