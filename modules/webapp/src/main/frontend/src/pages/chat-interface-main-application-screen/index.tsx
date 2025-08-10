@@ -10,6 +10,7 @@ import ProgressSection from 'components/chat/ProgressSection';
 import {useChatState} from 'hooks/useChatState';
 import {useAIAgent} from 'hooks/useAIAgent';
 import {useScrollToBottom} from 'hooks/useScrollToBottom';
+import {createTreatmentHandlers} from 'utils/treatmentUtils';
 
 type GenerationMode = 'interactive' | 'oneshot';
 
@@ -77,22 +78,14 @@ const ChatInterface: React.FC = () => {
     setShowWelcome(false);
   };
 
-  const handleDownloadTreatment = (format = 'pdf') => {
-    addMessage(`Treatment downloaded as ${format?.toUpperCase()} successfully!`, false);
-  };
-
-  const handleShareTreatment = (method: string) => {
-    addMessage(`Treatment shared via ${method} successfully!`, false);
-  };
-
-  const handleViewPDF = () => {
-    navigate('/pdf-preview-and-download-screen', {
-      state: {
-        treatmentData: processData?.finalTreatment || finalTreatment?.fullData,
-        assets: generatedAssets
-      }
-    });
-  };
+  // Create treatment handlers using the utility function
+  const {handleDownloadTreatment, handleShareTreatment, handleViewPDF} = createTreatmentHandlers(
+      navigate,
+      addMessage,
+      processData,
+      finalTreatment,
+      generatedAssets
+  );
 
   return (
       <div className="min-h-screen bg-background">
