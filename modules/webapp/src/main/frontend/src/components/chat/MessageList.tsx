@@ -1,35 +1,15 @@
 import React from 'react';
-import Icon from '../AppIcon';
 import ChatMessage from '../../pages/chat-interface-main-application-screen/components/ChatMessage';
-import AssetPreview
-  from '../../pages/chat-interface-main-application-screen/components/AssetPreview';
 import InteractivePrompt
   from '../../pages/chat-interface-main-application-screen/components/InteractivePrompt';
-
-interface MessageData {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: string;
-  isTyping?: boolean;
-  treatmentData?: {
-    title: string;
-    pages: number;
-    size: string;
-  };
-  storyContent?: string;
-  assets?: any[];
-  data?: {
-    summary?: string;
-    keyPoints?: string[];
-    brandPersonality?: string;
-    targetAudience?: string;
-    visualStyle?: string;
-  };
-}
+import {ChatMessage as ChatMessageType} from '../../hooks/useChatState';
+import TreatmentMessage from './message-types/TreatmentMessage';
+import StoryMessage from './message-types/StoryMessage';
+import AssetsMessage from './message-types/AssetsMessage';
+import DataMessage from './message-types/DataMessage';
 
 interface MessageListProps {
-  messages: MessageData[];
+  messages: ChatMessageType[];
   showInteractivePrompt: boolean;
   currentStep: number;
   currentStepData: any;
@@ -59,126 +39,46 @@ const MessageList: React.FC<MessageListProps> = ({
   messagesEndRef
 }) => {
 
-  const renderMessageContent = (message: MessageData) => {
-    if (message?.treatmentData) {
+  const renderMessageContent = (message: ChatMessageType) => {
+    if (message.treatmentData) {
       return (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-foreground">{message?.content}</p>
-            <div className="bg-success/10 border border-success/20 rounded-lg p-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <Icon name="FileText" size={20} color="var(--color-success)"/>
-                <div>
-                  <h4 className="text-sm font-semibold text-success">{message?.treatmentData?.title}</h4>
-                  <p className="text-xs text-success/80">{message?.treatmentData?.pages} pages
-                    • {message?.treatmentData?.size}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                    onClick={onViewPDF}
-                    className="flex items-center space-x-2 px-3 py-2 bg-success text-success-foreground rounded-md text-sm font-medium hover:bg-success/90 transition-colors duration-200"
-                >
-                  <Icon name="Eye" size={16}/>
-                  <span>Preview PDF</span>
-                </button>
-
-                <button
-                    onClick={() => onDownloadTreatment('pdf')}
-                    className="flex items-center space-x-2 px-3 py-2 bg-accent text-accent-foreground rounded-md text-sm font-medium hover:bg-accent/90 transition-colors duration-200"
-                >
-                  <Icon name="Download" size={16}/>
-                  <span>Download</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <TreatmentMessage
+              content={message.content}
+              treatmentData={message.treatmentData}
+              onViewPDF={onViewPDF}
+              onDownloadTreatment={onDownloadTreatment}
+          />
       );
     }
 
-    if (message?.storyContent) {
+    if (message.storyContent) {
       return (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-foreground">{message?.content}</p>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Icon name="BookOpen" size={16} color="var(--color-accent)"/>
-                <h4 className="text-sm font-semibold text-foreground">Cinematic Story Outline</h4>
-              </div>
-              <div
-                  className="text-sm text-muted-foreground font-mono whitespace-pre-line leading-relaxed max-h-96 overflow-y-auto">
-                {message?.storyContent}
-              </div>
-            </div>
-          </div>
+          <StoryMessage
+              content={message.content}
+              storyContent={message.storyContent}
+          />
       );
     }
 
-    if (message?.assets) {
+    if (message.assets) {
       return (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-foreground">{message?.content}</p>
-            <AssetPreview
-                assets={message?.assets}
-                onAssetClick={(asset) => console.log('Asset clicked:', asset)}
-                onDownload={(assets) => console.log('Download assets:', assets)}
-            />
-          </div>
+          <AssetsMessage
+              content={message.content}
+              assets={message.assets}
+          />
       );
     }
 
-    if (message?.data && typeof message?.data === 'object') {
+    if (message.data && typeof message.data === 'object') {
       return (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-foreground">{message?.content}</p>
-            <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
-              <div className="space-y-3">
-                {message?.data?.summary && (
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground mb-1">Summary:</h4>
-                      <p className="text-sm text-muted-foreground">{message?.data?.summary}</p>
-                    </div>
-                )}
-                {message?.data?.keyPoints && (
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground mb-2">Key Points:</h4>
-                      <ul className="space-y-1">
-                        {message?.data?.keyPoints?.map((point, index) => (
-                            <li key={index}
-                                className="flex items-start space-x-2 text-sm text-muted-foreground">
-                              <Icon name="ChevronRight" size={14} className="mt-0.5 flex-shrink-0"/>
-                              <span>{point}</span>
-                            </li>
-                        ))}
-                      </ul>
-                    </div>
-                )}
-                {message?.data?.brandPersonality && (
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground mb-1">Brand
-                        Personality:</h4>
-                      <p className="text-sm text-muted-foreground">{message?.data?.brandPersonality}</p>
-                    </div>
-                )}
-                {message?.data?.targetAudience && (
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground mb-1">Target Audience:</h4>
-                      <p className="text-sm text-muted-foreground">{message?.data?.targetAudience}</p>
-                    </div>
-                )}
-                {message?.data?.visualStyle && (
-                    <div>
-                      <h4 className="text-sm font-medium text-foreground mb-1">Visual Style:</h4>
-                      <p className="text-sm text-muted-foreground">{message?.data?.visualStyle}</p>
-                    </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <DataMessage
+              content={message.content}
+              data={message.data}
+          />
       );
     }
 
-    return message?.content;
+    return message.content;
   };
 
   return (
@@ -188,7 +88,7 @@ const MessageList: React.FC<MessageListProps> = ({
                 key={message?.id}
                 message={renderMessageContent(message)}
                 isUser={message?.isUser}
-                timestamp={message?.timestamp}
+                timestamp={message?.timestamp ? message.timestamp.toISOString() : null}
                 isTyping={message?.isTyping}
             />
         ))}

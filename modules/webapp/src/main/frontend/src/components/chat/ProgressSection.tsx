@@ -1,5 +1,6 @@
-import React from 'react';
+import React, {Dispatch, SetStateAction} from 'react';
 import ProgressIndicator from '../ui/ProgressIndicator';
+import {AgentStatus} from "hooks/useAIAgent.ts";
 
 interface ProgressSectionProps {
   isProcessing: boolean;
@@ -9,7 +10,7 @@ interface ProgressSectionProps {
   stepLabels: string[];
   aiAgentService?: any;
   setIsProcessing: (processing: boolean) => void;
-  setAgentStatus: (status: string) => void;
+  setAgentStatus: Dispatch<SetStateAction<AgentStatus>>;
   addMessage: (content: string, isUser: boolean) => void;
 }
 

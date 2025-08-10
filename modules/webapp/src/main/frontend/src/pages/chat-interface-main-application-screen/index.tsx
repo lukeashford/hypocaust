@@ -26,6 +26,7 @@ const ChatInterface: React.FC = () => {
     generatedAssets,
     finalTreatment,
     processData,
+    setMessages,
     setIsProcessing,
     setError,
     setShowWelcome,
@@ -44,6 +45,8 @@ const ChatInterface: React.FC = () => {
     agentStatus,
     currentStepData,
     showInteractivePrompt,
+    setCurrentStep,
+    setAgentStatus,
     handleSendMessage,
     handleInteractiveContinue,
     handleInteractiveFeedback,
@@ -113,8 +116,7 @@ const ChatInterface: React.FC = () => {
                           stepLabels={['Research', 'Story Creation', 'Visual Assets',
                             'Final Treatment']}
                           setIsProcessing={setIsProcessing}
-                          setAgentStatus={() => {
-                          }} // This will be handled by useAIAgent hook
+                          setAgentStatus={setAgentStatus}
                           addMessage={addMessage}
                       />
 

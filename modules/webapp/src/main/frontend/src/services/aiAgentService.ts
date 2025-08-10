@@ -2,7 +2,6 @@ import openaiService from './openaiService';
 import type {
   CompanyAnalysis,
   GenerationMode,
-  GenerationOptions,
   GenerationProcess,
   ProcessCallbacks,
   ProcessData,
@@ -45,13 +44,11 @@ class AIAgentService {
    * Starts the treatment generation process
    * @param brandName - Name of the brand to analyze
    * @param mode - Generation mode ('interactive' or 'oneshot')
-   * @param options - Additional options for generation
    * @returns Complete treatment data
    */
   async generateTreatment(
       brandName: string,
       mode: GenerationMode = 'interactive',
-      options: GenerationOptions = {}
   ): Promise<StepResponse | ProcessData> {
     try {
       this.currentProcess = {
@@ -94,30 +91,27 @@ class AIAgentService {
       throw new Error('No active generation process');
     }
 
-    try {
-      const {currentStep} = this.currentProcess;
+    const {currentStep} = this.currentProcess;
 
-      // Apply feedback if provided
-      if (feedback) {
-        await this.applyFeedback(currentStep, feedback);
-      }
+    // Apply feedback if provided
+    if (feedback) {
+      await this.applyFeedback(currentStep, feedback);
+    }
 
-      switch (currentStep) {
-        case 1:
-          await this.executeStep2_StoryGeneration();
-          return {step: 2, data: this.currentProcess?.data};
-        case 2:
-          await this.executeStep3_VisualGeneration();
-          return {step: 3, data: this.currentProcess?.data};
-        case 3:
-          await this.executeStep4_FinalTreatment();
-          return {step: 4, data: this.currentProcess?.data, complete: true};
-        default:
-          throw new Error('Invalid step progression');
-      }
-    } catch (error) {
-      this.stepCallbacks?.onError?.(error as Error, this.currentProcess?.currentStep || 1);
-      throw error;
+    switch (currentStep) {
+      case 1:
+        await this.executeStep2_StoryGeneration();
+        return {step: 2, data: this.currentProcess?.data};
+      case 2:
+        await this.executeStep3_VisualGeneration();
+        return {step: 3, data: this.currentProcess?.data};
+      case 3:
+        await this.executeStep4_FinalTreatment();
+        return {step: 4, data: this.currentProcess?.data, complete: true};
+      default:
+        const error = new Error(`Invalid step for continueToNextStep: ${currentStep}`);
+        this.stepCallbacks?.onError?.(error, this.currentProcess?.currentStep || 1);
+        throw error;
     }
   }
 
