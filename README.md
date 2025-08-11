@@ -105,17 +105,45 @@ The Machine includes a React frontend that is built and served by the Spring Boo
 - **React Router** for client-side routing
 - **Axios** for API communication with the Spring Boot backend
 
+**Automatic API Specification Generation:**
+
+The frontend automatically pulls and generates TypeScript types from the backend's OpenAPI
+specification:
+
+- **OpenAPI Integration**: Backend exposes API specification at `/api-docs`
+- **Type Generation**: Uses `openapi-typescript` to generate TypeScript types
+- **Typed API Client**: Uses `openapi-fetch` for fully typed API calls
+- **Build Integration**: API types are generated automatically during builds
+- **Development Workflow**: Fresh API types generated on development startup
+
+**Usage:**
+
+```bash
+# Generate API types manually (requires running backend)
+./gradlew generateApiTypes
+
+# Start development with fresh API types
+./gradlew devWithApi
+
+# Build with latest API types
+./gradlew build
+```
+
 **TypeScript Service Layer:**
 
 The frontend features a fully TypeScript-converted service layer with comprehensive type safety:
 
-- **AI Agent Service** (`aiAgentService.ts`): Orchestrates the complete treatment generation process with typed callbacks and error handling
-- **Chat Service** (`chatService.ts`): Handles conversational interactions with streaming responses and context management  
-- **OpenAI Service** (`openaiService.ts`): Manages AI-powered brand research, story generation, and visual asset creation
-- **Type Interfaces** (`types/interfaces.ts`): Comprehensive TypeScript interfaces defining all data structures:
+- **AI Agent Service** (`aiAgentService.ts`): Orchestrates the complete treatment generation process
+  with typed callbacks and error handling
+- **Chat Service** (`chatService.ts`): Handles conversational interactions with streaming responses
+  and context management
+- **OpenAI Service** (`openaiService.ts`): Manages AI-powered brand research, story generation, and
+  visual asset creation
+- **Type Interfaces** (`types/interfaces.ts`): Comprehensive TypeScript interfaces defining all data
+  structures:
   - Message objects and chat contexts
   - Company analysis and brand data
-  - Story outlines and visual concepts  
+  - Story outlines and visual concepts
   - Treatment documents and asset structures
   - Process management and callback types
 

@@ -2,6 +2,14 @@ spring:
   application:
     name: the_machine
 
+# OpenAPI configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  packages-to-scan: com.example
+
 openai:
   api-key: ${OPENAI_API_KEY}
 
@@ -27,3 +35,28 @@ logging:
     dev.langchain4j.service.AiServiceExecutor: TRACE
     dev.langchain4j.internal: TRACE
     dev.langchain4j.model: TRACE
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  application:
+    name: the_machine
+
+openai:
+  api-key: test-key
+
+google:
+  custom:
+    api-key: test-key
+    csi: test-csi
+
+app:
+  chat-model: openai
+  search-engine: google
+  candidate-discovery: web-search
+  content-retriever: optimized
+  extractor: readability
+  embedding: local
+  topK: 10

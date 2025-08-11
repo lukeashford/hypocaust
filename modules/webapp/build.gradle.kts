@@ -1,6 +1,6 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.5.0"
+  id("org.springframework.boot") version "3.5.1"
   id("io.spring.dependency-management") version "1.1.7"
   id("com.github.node-gradle.node") version "7.0.2"
 }
@@ -38,15 +38,21 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-web")
 
+  // OpenAPI documentation
+  implementation(platform("org.springdoc:springdoc-openapi-bom:2.8.9"))
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui")
+
+  // Force newer commons-lang3 to override vulnerable transitive dependency
+  implementation("org.apache.commons:commons-lang3:3.18.0")
+
   // LangChain4j dependencies
-  implementation(platform("dev.langchain4j:langchain4j-bom:1.1.0"))
   implementation("dev.langchain4j:langchain4j")
 
   // Lombok for reducing boilerplate code
-  compileOnly("org.projectlombok:lombok:1.18.30")
-  annotationProcessor("org.projectlombok:lombok:1.18.30")
-  testCompileOnly("org.projectlombok:lombok:1.18.30")
-  testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  annotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testCompileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testAnnotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
 
   // Test dependencies
   testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -55,6 +61,21 @@ dependencies {
 
 tasks.withType<Test> {
   useJUnitPlatform()
+}
+
+// API type generation task
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("generateApiTypes") {
+  group = "frontend"
+  description =
+    "Generate TypeScript types from OpenAPI specification (requires running backend server)"
+  dependsOn("npmInstall")
+
+  workingDir.set(file("src/main/frontend"))
+  args.set(listOf("run", "generate:api-types"))
+
+  inputs.property("api-endpoint", "http://localhost:8080/api-docs")
+  outputs.file("src/main/frontend/src/generated/api.ts")
+  outputs.cacheIf { true }
 }
 
 // Frontend build tasks using Node.js plugin

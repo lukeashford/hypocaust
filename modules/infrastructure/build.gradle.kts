@@ -20,27 +20,19 @@ repositories {
   mavenCentral()
 }
 
-extra["springBootVersion"] = "3.5.0"
-
 dependencies {
   // Spring Boot dependencies (without starter)
   implementation("org.springframework.boot:spring-boot-starter")
 
   // Lombok for reducing boilerplate code
-  compileOnly("org.projectlombok:lombok:1.18.30")
-  annotationProcessor("org.projectlombok:lombok:1.18.30")
-  testCompileOnly("org.projectlombok:lombok:1.18.30")
-  testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  annotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testCompileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testAnnotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
 
   // Test dependencies
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-dependencyManagement {
-  imports {
-    mavenBom("org.springframework.boot:spring-boot-dependencies:${extra["springBootVersion"]}")
-  }
 }
 
 tasks.withType<Test> {

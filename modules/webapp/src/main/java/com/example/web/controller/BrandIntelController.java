@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for the Hello World LangChain agent. Provides endpoints to interact with the
- * agent.
+ * REST controller for brand intelligence analysis. Provides endpoints to analyze and retrieve
+ * brand information using AI-powered insights.
  */
 @RestController
 @RequestMapping("/api/langchain")
@@ -21,13 +21,13 @@ public class BrandIntelController {
   }
 
   /**
-   * Endpoint to get a greeting from the LangChain agent.
+   * Endpoint to analyze a brand using AI-powered intelligence.
    *
-   * @param name The name to greet (optional, defaults to "World")
-   * @return A greeting message from the agent
+   * @param name The brand name to analyze (optional, defaults to "Nike")
+   * @return Brand analysis results from the intelligence service
    */
   @GetMapping("/brand")
-  public String getGreeting(@RequestParam(defaultValue = "Nike") String name) {
+  public String analyzeBrand(@RequestParam(defaultValue = "Nike") String name) {
     return brandIntelService.analyzeBrand(name);
   }
 }
