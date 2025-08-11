@@ -2,12 +2,24 @@ import React from 'react';
 import {useNavigate} from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 
-const BreadcrumbNavigation = ({
+interface BreadcrumbItem {
+  label: string;
+  path: string | null;
+  icon: string;
+  isClickable: boolean;
+  isCurrent?: boolean;
+}
+
+interface BreadcrumbNavigationProps {
+  className?: string;
+}
+
+const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   className = ""
 }) => {
   const navigate = useNavigate();
 
-  const breadcrumbItems = [
+  const breadcrumbItems: BreadcrumbItem[] = [
     {
       label: "Home",
       path: "/chat-interface-main-application-screen",
@@ -35,7 +47,7 @@ const BreadcrumbNavigation = ({
     }
   ];
 
-  const handleNavigation = (path) => {
+  const handleNavigation = (path: string | null): void => {
     if (path) {
       navigate(path);
     }

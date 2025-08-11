@@ -8,30 +8,84 @@ import FeedbackSection from './components/FeedbackSection';
 import BreadcrumbNavigation from './components/BreadcrumbNavigation';
 import Icon from '../../components/AppIcon';
 
-const PDFPreviewAndDownloadScreen = () => {
+interface User {
+  name: string;
+  email: string;
+}
+
+interface TreatmentContent {
+  title?: string;
+  executiveSummary?: string;
+  creativeStrategy?: string;
+  storyBreakdown?: string;
+  visualDirection?: string;
+  productionNotes?: string;
+  brandName?: string;
+  generatedAt?: string;
+  documentMetadata?: {
+    size?: string;
+    pages?: number;
+  };
+}
+
+interface Asset {
+  id?: string;
+  name?: string;
+  url?: string;
+  type?: string;
+}
+
+interface PDFData {
+  brandName?: string;
+  generatedAt: string;
+  mode: string;
+  pdfUrl?: string | null;
+  size: string;
+  pages: number;
+  fullContent: TreatmentContent | null;
+  assets: Asset[];
+}
+
+interface LocationState {
+  treatmentData?: TreatmentContent;
+  assets?: Asset[];
+}
+
+interface ShareMethod {
+  [key: string]: string;
+}
+
+interface FeedbackData {
+  rating?: number;
+  comments?: string;
+  category?: string;
+}
+
+const PDFPreviewAndDownloadScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [pdfData, setPdfData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [pdfData, setPdfData] = useState<PDFData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Mock user data
-  const mockUser = {
+  const mockUser: User = {
     name: "Creative Professional",
     email: "user@example.com"
   };
 
   useEffect(() => {
     // Get treatment data from navigation state or use mock data
-    const loadPdfData = async () => {
-      const treatmentData = location?.state?.treatmentData;
-      const assets = location?.state?.assets;
+    const loadPdfData = async (): Promise<void> => {
+      const state = location?.state as LocationState | undefined;
+      const treatmentData = state?.treatmentData;
+      const assets = state?.assets;
 
       if (treatmentData) {
         // Use real treatment data
         setPdfData({
           brandName: treatmentData?.brandName,
-          generatedAt: treatmentData?.generatedAt,
+          generatedAt: treatmentData?.generatedAt || new Date().toISOString(),
           mode: "Interactive",
           pdfUrl: null, // PDF URL would be generated from treatment content
           size: treatmentData?.documentMetadata?.size || "2.4 MB",
@@ -59,7 +113,7 @@ const PDFPreviewAndDownloadScreen = () => {
     loadPdfData();
   }, [location?.state]);
 
-  const handleDownload = async (format = 'pdf') => {
+  const handleDownload = async (format: string = 'pdf'): Promise<void> => {
     setIsDownloading(true);
 
     try {
@@ -126,16 +180,16 @@ Generated on: ${new Date(pdfData?.generatedAt)?.toLocaleDateString()}
     }
   };
 
-  const handleGenerateNew = () => {
+  const handleGenerateNew = (): void => {
     navigate('/chat-interface-main-application-screen');
   };
 
-  const handleShare = (method) => {
+  const handleShare = (method: string): void => {
     // Mock share functionality
     console.log(`Sharing via ${method}`);
 
     // Show success message (in real app, would integrate with actual sharing services)
-    const messages = {
+    const messages: ShareMethod = {
       email: 'Email sharing link copied to clipboard',
       link: 'Shareable link copied to clipboard',
       slack: 'Shared to Slack workspace',
@@ -146,16 +200,16 @@ Generated on: ${new Date(pdfData?.generatedAt)?.toLocaleDateString()}
     alert(messages?.[method] || 'Shared successfully');
   };
 
-  const handleSubmitFeedback = (feedbackData) => {
+  const handleSubmitFeedback = (feedbackData: FeedbackData): void => {
     console.log('Feedback submitted:', feedbackData);
     // In real app, would send to analytics/feedback service
   };
 
-  const handleNavigation = (path) => {
+  const handleNavigation = (path: string): void => {
     navigate(path);
   };
 
-  const handleFullscreen = () => {
+  const handleFullscreen = (): void => {
     // Handle fullscreen PDF viewer
     console.log('Toggle fullscreen PDF viewer');
   };

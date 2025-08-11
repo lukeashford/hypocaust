@@ -1,14 +1,42 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
 
-const PDFViewer = ({
+interface TreatmentContent {
+  title?: string;
+  executiveSummary?: string;
+  creativeStrategy?: string;
+  storyBreakdown?: string;
+  visualDirection?: string;
+  productionNotes?: string;
+  castingNotes?: string;
+  locationRequirements?: string;
+  technicalSpecifications?: string;
+  budgetConsiderations?: string;
+  timeline?: string;
+  postProductionNotes?: string;
+  brandName?: string;
+  generatedAt?: string;
+  documentMetadata?: {
+    size?: string;
+    pages?: number;
+  };
+}
+
+interface PDFViewerProps {
+  treatmentContent?: TreatmentContent | null;
+  isLoading?: boolean;
+  onFullscreen?: (() => void) | null;
+  className?: string;
+}
+
+const PDFViewer: React.FC<PDFViewerProps> = ({
   treatmentContent = null,
   isLoading = false,
   onFullscreen = null,
   className = ""
 }) => {
 
-  const renderTreatmentContent = () => {
+  const renderTreatmentContent = (): React.ReactElement => {
     if (!treatmentContent) {
       return (
           <div className="space-y-6">
@@ -183,7 +211,7 @@ const PDFViewer = ({
 
           <div className="flex items-center space-x-2">
             <button
-                onClick={onFullscreen}
+                onClick={onFullscreen || undefined}
                 className="p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-md hover:bg-muted/50"
                 title="Fullscreen"
             >

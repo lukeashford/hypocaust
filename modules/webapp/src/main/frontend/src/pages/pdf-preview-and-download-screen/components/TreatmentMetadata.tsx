@@ -1,12 +1,58 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
 
-const TreatmentMetadata = ({
+interface TreatmentElements {
+  scenes: number;
+  characters: number;
+  locations: number;
+  products: number;
+}
+
+interface TreatmentStyle {
+  tone: string;
+  aesthetic: string;
+  colorPalette: string;
+}
+
+interface TreatmentData {
+  brandName?: string;
+  generatedAt?: string;
+  mode?: string;
+  duration?: string;
+  pages?: number;
+  fileSize?: string;
+  size?: string;
+  elements?: TreatmentElements;
+  style?: TreatmentStyle;
+  targetAudience?: string;
+  keyMessages?: string[];
+  fullContent?: any;
+  assets?: any[];
+}
+
+interface TreatmentMetadataProps {
+  treatmentData?: TreatmentData | null;
+  className?: string;
+}
+
+interface MetadataSectionProps {
+  title: string;
+  children: React.ReactNode;
+  icon: string;
+}
+
+interface InfoRowProps {
+  label: string;
+  value: string | number | undefined;
+  icon?: string | null;
+}
+
+const TreatmentMetadata: React.FC<TreatmentMetadataProps> = ({
   treatmentData = null,
   className = ""
 }) => {
   // Mock treatment data
-  const mockData = treatmentData || {
+  const mockData: TreatmentData = treatmentData || {
     brandName: "TechFlow Solutions",
     generatedAt: "2025-01-07T20:36:26.637Z",
     mode: "Interactive",
@@ -32,7 +78,10 @@ const TreatmentMetadata = ({
     ]
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) {
+      return 'Unknown';
+    }
     const date = new Date(dateString);
     return date?.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -43,7 +92,7 @@ const TreatmentMetadata = ({
     });
   };
 
-  const MetadataSection = ({title, children, icon}) => (
+  const MetadataSection: React.FC<MetadataSectionProps> = ({title, children, icon}) => (
       <div className="space-y-3">
         <div className="flex items-center space-x-2">
           <Icon name={icon} size={16} color="var(--color-accent)"/>
@@ -57,7 +106,7 @@ const TreatmentMetadata = ({
       </div>
   );
 
-  const InfoRow = ({label, value, icon = null}) => (
+  const InfoRow: React.FC<InfoRowProps> = ({label, value, icon = null}) => (
       <div className="flex items-center justify-between py-1">
         <div className="flex items-center space-x-2">
           {icon && <Icon name={icon} size={14} className="text-muted-foreground"/>}
@@ -121,7 +170,7 @@ const TreatmentMetadata = ({
             />
             <InfoRow
                 label="File Size"
-                value={mockData?.fileSize}
+                value={mockData?.fileSize || mockData?.size}
                 icon="HardDrive"
             />
             <InfoRow

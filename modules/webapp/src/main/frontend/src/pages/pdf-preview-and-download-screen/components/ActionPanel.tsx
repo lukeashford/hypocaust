@@ -2,38 +2,60 @@ import React, {useState} from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const ActionPanel = ({
+interface ShareOption {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+interface DownloadFormat {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+interface ActionPanelProps {
+  onDownload?: ((format?: string) => void) | null;
+  onGenerateNew?: (() => void) | null;
+  onShare?: ((method: string) => void) | null;
+  isDownloading?: boolean;
+  className?: string;
+}
+
+const ActionPanel: React.FC<ActionPanelProps> = ({
   onDownload = null,
   onGenerateNew = null,
   onShare = null,
   isDownloading = false,
   className = ""
 }) => {
-  const [shareMenuOpen, setShareMenuOpen] = useState(false);
-  const [_downloadFormat, setDownloadFormat] = useState('pdf');
+  const [shareMenuOpen, setShareMenuOpen] = useState<boolean>(false);
+  const [_downloadFormat, setDownloadFormat] = useState<string>('pdf');
 
-  const handleDownload = (format = 'pdf') => {
+  const handleDownload = (format: string = 'pdf'): void => {
     if (onDownload) {
       onDownload(format);
     }
     setDownloadFormat(format);
   };
 
-  const handleShare = (method) => {
+  const handleShare = (method: string): void => {
     if (onShare) {
       onShare(method);
     }
     setShareMenuOpen(false);
   };
 
-  const shareOptions = [
+  const shareOptions: ShareOption[] = [
     {id: 'email', label: 'Email', icon: 'Mail', description: 'Send via email'},
     {id: 'link', label: 'Copy Link', icon: 'Link', description: 'Copy shareable link'},
     {id: 'slack', label: 'Slack', icon: 'MessageSquare', description: 'Share to Slack'},
     {id: 'teams', label: 'Teams', icon: 'Users', description: 'Share to Microsoft Teams'}
   ];
 
-  const downloadFormats = [
+  const downloadFormats: DownloadFormat[] = [
     {
       id: 'pdf',
       label: 'PDF Document',
@@ -65,7 +87,7 @@ const ActionPanel = ({
             <Button
                 variant="outline"
                 size="default"
-                onClick={onGenerateNew}
+                onClick={onGenerateNew || undefined}
                 iconName="Plus"
                 iconPosition="left"
                 className="text-sm"

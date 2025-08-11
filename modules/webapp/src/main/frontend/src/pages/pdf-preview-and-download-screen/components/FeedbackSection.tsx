@@ -3,18 +3,40 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 
-const FeedbackSection = ({
+interface FeedbackCategory {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+interface FeedbackData {
+  rating: number;
+  feedback: string;
+  categories: string[];
+  timestamp: string;
+}
+
+interface FeedbackSectionProps {
+  onSubmitFeedback?: ((feedbackData: FeedbackData) => void) | null;
+  className?: string;
+}
+
+interface RatingLabels {
+  [key: number]: string;
+}
+
+const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   onSubmitFeedback = null,
   className = ""
 }) => {
-  const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [feedback, setFeedback] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [hoveredRating, setHoveredRating] = useState<number>(0);
+  const [feedback, setFeedback] = useState<string>('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-  const feedbackCategories = [
+  const feedbackCategories: FeedbackCategory[] = [
     {id: 'accuracy', label: 'Brand Accuracy', icon: 'Target'},
     {id: 'creativity', label: 'Creative Quality', icon: 'Lightbulb'},
     {id: 'formatting', label: 'Document Format', icon: 'FileText'},
@@ -22,11 +44,11 @@ const FeedbackSection = ({
     {id: 'usability', label: 'Ease of Use', icon: 'Smile'}
   ];
 
-  const handleRatingClick = (value) => {
+  const handleRatingClick = (value: number): void => {
     setRating(value);
   };
 
-  const handleCategoryToggle = (categoryId) => {
+  const handleCategoryToggle = (categoryId: string): void => {
     setSelectedCategories(prev =>
         prev?.includes(categoryId)
             ? prev?.filter(id => id !== categoryId)
@@ -34,7 +56,7 @@ const FeedbackSection = ({
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<void> => {
     if (rating === 0) {
       return;
     }
@@ -65,8 +87,8 @@ const FeedbackSection = ({
     }, 3000);
   };
 
-  const getRatingLabel = (value) => {
-    const labels = {
+  const getRatingLabel = (value: number): string => {
+    const labels: RatingLabels = {
       1: 'Poor',
       2: 'Fair',
       3: 'Good',
@@ -189,7 +211,7 @@ const FeedbackSection = ({
                 type="text"
                 placeholder="Share any specific feedback or suggestions..."
                 value={feedback}
-                onChange={(e) => setFeedback(e?.target?.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeedback(e?.target?.value)}
                 description="Your feedback helps us improve the AI treatment generation"
                 className="min-h-[80px] resize-none"
             />
