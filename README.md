@@ -147,6 +147,19 @@ The frontend features a fully TypeScript-converted service layer with comprehens
   - Treatment documents and asset structures
   - Process management and callback types
 
+**Java Record DTOs** (`com.example.web.dto`): Clean, type-safe Java record DTOs with proper JSON
+serialization:
+
+- **CompanyAnalysisDto**: Company analysis with brand personality, target audience, and visual style
+- **StoryOutlineDto**: Story concepts with scenes, tone, and duration
+- **VisualConceptsDto**: Visual design concepts including characters, color palette, and set design
+- **TreatmentDocumentDto**: Complete treatment documents with metadata and production notes
+- **Supporting DTOs**: SceneDto, CharacterDto, SetDesignDto, ImagePromptDto, VisualAssetDto,
+  DocumentMetadataDto
+- **Type-Safe Enums**: AssetCategory, AssetType, GenerationMode, MessageRole for union types
+- Clean implementation with minimal Jackson annotations (@JsonInclude only) for seamless JSON
+  serialization
+
 **Build Integration:**
 
 - Frontend source code is located in `modules/webapp/src/main/frontend/`
