@@ -1,6 +1,6 @@
 package com.example.web.controller;
 
-import com.example.dto.CompanyAnalysisDto;
+import com.example.api.dto.CompanyAnalysisDto;
 import com.example.web.service.BrandIntelService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

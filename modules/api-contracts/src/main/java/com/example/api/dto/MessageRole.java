@@ -1,4 +1,4 @@
-package com.example.web.dto;
+package com.example.api.dto;
 
 /**
  * Enum representing message roles in chat conversations Matches TypeScript union type: 'user' |

@@ -1,6 +1,6 @@
 package com.example.web;
 
-import com.example.dto.CompanyAnalysisDto;
+import com.example.api.dto.CompanyAnalysisDto;
 import com.example.web.service.BrandIntelService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;

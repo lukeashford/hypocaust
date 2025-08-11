@@ -1,6 +1,6 @@
 package com.example.node;
 
-import com.example.dto.CompanyAnalysisDto;
+import com.example.api.dto.CompanyAnalysisDto;
 import com.example.exception.BrandAnalysisParsingException;
 import com.example.graph.RetrievalState;
 import com.fasterxml.jackson.core.JsonProcessingException;

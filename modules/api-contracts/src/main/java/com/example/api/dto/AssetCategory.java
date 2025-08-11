@@ -1,4 +1,4 @@
-package com.example.web.dto;
+package com.example.api.dto;
 
 /**
  * Enum representing asset categories for visual assets and image prompts Matches TypeScript union

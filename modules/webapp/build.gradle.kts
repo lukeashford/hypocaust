@@ -32,6 +32,7 @@ repositories {
 
 dependencies {
   // Module dependencies
+  implementation(project(":modules:api-contracts"))
   implementation(project(":modules:ai-graph"))
 
   // Spring Boot dependencies

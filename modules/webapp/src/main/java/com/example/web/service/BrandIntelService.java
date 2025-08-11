@@ -1,6 +1,6 @@
 package com.example.web.service;
 
-import com.example.dto.CompanyAnalysisDto;
+import com.example.api.dto.CompanyAnalysisDto;
 import com.example.graph.RetrievalState;
 import java.util.List;
 import java.util.Map;

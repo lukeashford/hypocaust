@@ -22,6 +22,7 @@ repositories {
 
 dependencies {
   // Module dependencies
+  api(project(":modules:api-contracts"))
   implementation(project(":modules:infrastructure"))
 
   // Spring Boot dependencies (without starter)

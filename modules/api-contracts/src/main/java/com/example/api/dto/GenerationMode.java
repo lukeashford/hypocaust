@@ -1,4 +1,4 @@
-package com.example.web.dto;
+package com.example.api.dto;
 
 /**
  * Enum representing generation modes for AI processes Matches TypeScript union type: 'interactive'
