@@ -12,6 +12,13 @@ export interface ChatMessage {
   storyContent?: string | null;
   treatmentData?: TreatmentData | null;
   assets?: VisualAsset[] | null;
+  errorData?: ErrorData | null;
+}
+
+// Error data interface for error messages
+export interface ErrorData {
+  message: string;
+  timestamp: string;
 }
 
 // Treatment data interface for download functionality
@@ -51,7 +58,8 @@ export interface UseChatStateReturn {
       isTyping?: boolean,
       data?: any,
       storyContent?: string | null,
-      treatmentData?: TreatmentData | null
+      treatmentData?: TreatmentData | null,
+      errorData?: ErrorData | null
   ) => void;
 }
 
@@ -81,7 +89,8 @@ export const useChatState = (): UseChatStateReturn => {
       isTyping: boolean = false,
       data: any = null,
       storyContent: string | null = null,
-      treatmentData: TreatmentData | null = null
+      treatmentData: TreatmentData | null = null,
+      errorData: ErrorData | null = null
   ): void => {
     const newMessage: ChatMessage = {
       id: Date.now() + Math.random(),
@@ -92,7 +101,8 @@ export const useChatState = (): UseChatStateReturn => {
       data,
       storyContent,
       treatmentData,
-      assets: data && Array.isArray(data) ? data : null
+      assets: data && Array.isArray(data) ? data : null,
+      errorData
     };
 
     setMessages(prev => [...prev, newMessage]);

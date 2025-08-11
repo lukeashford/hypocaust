@@ -7,6 +7,7 @@ import TreatmentMessage from './message-types/TreatmentMessage';
 import StoryMessage from './message-types/StoryMessage';
 import AssetsMessage from './message-types/AssetsMessage';
 import DataMessage from './message-types/DataMessage';
+import ErrorMessage from './message-types/ErrorMessage';
 
 interface MessageListProps {
   messages: ChatMessageType[];
@@ -40,6 +41,15 @@ const MessageList: React.FC<MessageListProps> = ({
 }) => {
 
   const renderMessageContent = (message: ChatMessageType) => {
+    if (message.errorData) {
+      return (
+          <ErrorMessage
+              content={message.content}
+              errorData={message.errorData}
+          />
+      );
+    }
+
     if (message.treatmentData) {
       return (
           <TreatmentMessage

@@ -19,6 +19,7 @@ videos. It:
 - **Full-Stack Integration**: React frontend served by Spring Boot
 - **Spring Boot and Spring AI**: Backend powered by Spring ecosystem
 - **LangChain Agent**: Interactive AI assistance with advanced reasoning
+- **Centralized Error Handling**: Consistent user experience with detailed developer logging
 
 ## Architecture and Best Practices
 
@@ -91,6 +92,68 @@ This approach allows for:
 - Clear separation of concerns
 - Simplified testing with mock components
 - Flexible runtime configuration
+
+### Centralized Error Handling
+
+The Machine implements a comprehensive centralized error handling system that provides consistent
+user experience while maintaining detailed logging for developers:
+
+**Architecture Components:**
+
+```java
+// User-facing error response
+public record StandardErrorResponseDto(
+        String message,
+        String timestamp,
+        String requestId
+    ) {
+
+}
+
+// Business exception with context
+public class BrandAnalysisException extends RuntimeException {
+
+  private final String companyName;
+  private final String errorCode;
+  // Constructor and getters...
+}
+
+// Global exception handler
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+  @ExceptionHandler(BrandAnalysisException.class)
+  public StandardErrorResponseDto handleBrandAnalysisException(
+      BrandAnalysisException ex, HttpServletRequest request) {
+
+    // Detailed logging for developers
+    log.error("Brand analysis failed [RequestId: {}] [Company: {}] [ErrorCode: {}]: {}",
+        requestId, ex.getCompanyName(), ex.getErrorCode(), ex.getMessage(), ex);
+
+    // User-friendly response
+    return new StandardErrorResponseDto(
+        "An error occurred. Please try again. If the error persists, contact the developer.",
+        Instant.now().toString(),
+        requestId
+    );
+  }
+}
+```
+
+**Benefits:**
+
+- **For Users**: Consistent, professional error messages that don't expose internal system details
+- **For Developers**: Detailed logging with request IDs, error codes, and full context for debugging
+- **For Frontend**: Predictable error response structure that integrates seamlessly with
+  auto-generated API clients
+- **For Support**: Request IDs enable easy error tracking and correlation
+
+**Error Flow:**
+
+1. Service layer throws business exceptions with context (company name, error codes)
+2. GlobalExceptionHandler catches exceptions and logs detailed information
+3. Users receive standardized, user-friendly error messages
+4. Frontend can style error messages consistently with the application's brand
 
 ### Frontend Integration
 

@@ -1,4 +1,4 @@
-package com.example.exception;
+package com.example.api.exception;
 
 /**
  * Custom exception thrown when JSON parsing fails during brand analysis. This exception indicates

@@ -1,10 +1,11 @@
 package com.example.web.service;
 
 import com.example.api.dto.CompanyAnalysisDto;
+import com.example.api.exception.BrandAnalysisException;
 import com.example.graph.RetrievalState;
-import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.springframework.stereotype.Service;
 
@@ -31,31 +32,33 @@ public class BrandIntelService {
    */
   public CompanyAnalysisDto analyzeBrand(String company) {
     try {
-      var finalStateOpt = graph.invoke(Map.of(RetrievalState.BRAND_NAME, company));
-      if (finalStateOpt.isPresent()) {
-        var finalState = finalStateOpt.get();
-        return finalState.<CompanyAnalysisDto>value(RetrievalState.ANALYSIS_KEY)
-            .orElse(createDefaultAnalysis(company, "No analysis data available"));
-      }
-      return createDefaultAnalysis(company, "Analysis invocation failed");
-    } catch (Exception e) {
-      log.error("Error analyzing brand: {}", company, e);
-      return createDefaultAnalysis(company, "Error occurred during analysis: " + e.getMessage());
-    }
-  }
+      val finalStateOpt = graph.invoke(Map.of(RetrievalState.BRAND_NAME, company));
 
-  /**
-   * Creates a default CompanyAnalysisDto when analysis fails
-   */
-  private CompanyAnalysisDto createDefaultAnalysis(String company, String reason) {
-    return new CompanyAnalysisDto(
-        "Analysis unavailable for " + company + ". Reason: " + reason,
-        List.of("Unable to retrieve analysis data", "Please try again later"),
-        "Brand personality analysis unavailable",
-        "Target audience analysis unavailable",
-        "Visual style analysis unavailable",
-        List.of("Key messages unavailable"),
-        List.of("Competitive advantages unavailable")
-    );
+      if (finalStateOpt.isPresent()) {
+        val finalState = finalStateOpt.get();
+        return finalState.<CompanyAnalysisDto>value(RetrievalState.ANALYSIS_KEY)
+            .orElseThrow(() -> new BrandAnalysisException(
+                company,
+                "No analysis data available",
+                "NO_DATA_AVAILABLE"
+            ));
+      }
+
+      throw new BrandAnalysisException(
+          company,
+          "Analysis invocation failed - no result returned",
+          "INVOCATION_FAILED"
+      );
+    } catch (BrandAnalysisException e) {
+      // Re-throw business exceptions as-is
+      throw e;
+    } catch (Exception e) {
+      throw new BrandAnalysisException(
+          company,
+          "Unexpected error during brand analysis",
+          "UNEXPECTED_ERROR",
+          e
+      );
+    }
   }
 }

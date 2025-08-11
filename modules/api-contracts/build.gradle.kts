@@ -22,4 +22,10 @@ repositories {
 dependencies {
   // Jackson for JSON serialization
   implementation("com.fasterxml.jackson.core:jackson-annotations")
+
+  // Lombok for reducing boilerplate code
+  compileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  annotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testCompileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
+  testAnnotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
 }

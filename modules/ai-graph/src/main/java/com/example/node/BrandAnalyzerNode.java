@@ -1,7 +1,7 @@
 package com.example.node;
 
 import com.example.api.dto.CompanyAnalysisDto;
-import com.example.exception.BrandAnalysisParsingException;
+import com.example.api.exception.BrandAnalysisParsingException;
 import com.example.graph.RetrievalState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
