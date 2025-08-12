@@ -1,6 +1,7 @@
 package com.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -14,6 +15,6 @@ public record StoryOutlineDto(
     List<SceneDto> keyScenes,
     String tone,
     String duration
-) {
+) implements Serializable {
 
 }

@@ -23,6 +23,8 @@ dependencies {
   // Jackson for JSON serialization
   implementation("com.fasterxml.jackson.core:jackson-annotations")
 
+  implementation("jakarta.validation:jakarta.validation-api")
+
   // Lombok for reducing boilerplate code
   compileOnly("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")
   annotationProcessor("org.projectlombok:lombok:${rootProject.extra["lombokVersion"]}")

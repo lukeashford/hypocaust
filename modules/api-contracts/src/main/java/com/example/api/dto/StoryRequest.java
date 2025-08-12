@@ -4,15 +4,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.Serializable;
 
 /**
- * DTO representing a visual asset (image)
+ * DTO representing a story generation request
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record VisualAssetDto(
-    String type,
-    String url,
-    String title,
-    String description,
-    String category
+public record StoryRequest(
+    String brandName,
+    CompanyAnalysisDto companyData
 ) implements Serializable {
 
 }

@@ -215,6 +215,7 @@ serialization:
 
 - **CompanyAnalysisDto**: Company analysis with brand personality, target audience, and visual style
 - **StoryOutlineDto**: Story concepts with scenes, tone, and duration
+- **StoryRequest**: Request DTO for story generation containing brand name and company analysis data
 - **VisualConceptsDto**: Visual design concepts including characters, color palette, and set design
 - **TreatmentDocumentDto**: Complete treatment documents with metadata and production notes
 - **Supporting DTOs**: SceneDto, CharacterDto, SetDesignDto, ImagePromptDto, VisualAssetDto,
@@ -267,7 +268,22 @@ export GOOGLE_CUSTOM_CSI=your_google_custom_search_engine_id_here
 
 3. **Test the API directly**:
    ```bash
+   # Analyze a brand
    curl "http://localhost:8080/api/langchain/brand?name=Nike"
+   
+   # Generate a story outline (requires company analysis data)
+   curl -X POST "http://localhost:8080/api/langchain/story" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "brandName": "Nike",
+       "companyData": {
+         "summary": "Nike is a leading athletic brand focused on innovation and performance",
+         "brandPersonality": "Bold, inspiring, performance-driven",
+         "targetAudience": "Athletes and fitness enthusiasts",
+         "visualStyle": "Dynamic, energetic, modern",
+         "keyMessages": ["Just Do It", "Innovation in athletics"]
+       }
+     }'
    ```
 
 ### Development

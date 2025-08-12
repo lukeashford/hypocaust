@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.infrastructure.config.HttpClientConfiguration;
 import com.example.tool.fetch.PageCacheConfiguration;
 import com.example.tool.fetch.PageFetcher;
+import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,7 +35,7 @@ class PageFetcherTest {
 
   @Test
   void testRobotsTxtParsingWithSpecificUserAgent() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: Googlebot
         Disallow: /
         
@@ -48,7 +49,7 @@ class PageFetcherTest {
 
   @Test
   void testRobotsTxtParsingWithSpecificUserAgentDisallowed() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: the_machine
         Disallow: /
         
@@ -56,35 +57,35 @@ class PageFetcherTest {
         Allow: /
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertFalse(result, "Should disallow the_machine when specifically disallowed");
   }
 
   @Test
   void testRobotsTxtParsingWithWildcardDisallow() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: *
         Disallow: /
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertFalse(result, "Should disallow when wildcard disallows all");
   }
 
   @Test
   void testRobotsTxtParsingWithWildcardAllow() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: *
         Allow: /
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertTrue(result, "Should allow when wildcard allows all");
   }
 
   @Test
   void testRobotsTxtParsingWithMixedRules() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: Googlebot
         Disallow: /
         
@@ -95,21 +96,21 @@ class PageFetcherTest {
         Allow: /
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertTrue(result, "Should allow the_machine despite wildcard disallow");
   }
 
   @Test
   void testRobotsTxtParsingWithEmptyContent() throws Exception {
-    String robotsTxt = "";
+    val robotsTxt = "";
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertTrue(result, "Should allow when robots.txt is empty");
   }
 
   @Test
   void testRobotsTxtParsingWithNoRelevantRules() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         User-agent: Googlebot
         Disallow: /private/
         
@@ -117,13 +118,13 @@ class PageFetcherTest {
         Disallow: /admin/
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertTrue(result, "Should allow when no relevant rules found");
   }
 
   @Test
   void testRobotsTxtParsingWithCommentsAndWhitespace() throws Exception {
-    String robotsTxt = """
+    val robotsTxt = """
         # This is a comment
         User-agent: the_machine
         # Another comment
@@ -132,7 +133,7 @@ class PageFetcherTest {
         # Final comment
         """;
 
-    boolean result = invokeParseRobotsTxt(robotsTxt);
+    val result = invokeParseRobotsTxt(robotsTxt);
     assertFalse(result, "Should handle comments and whitespace correctly");
   }
 

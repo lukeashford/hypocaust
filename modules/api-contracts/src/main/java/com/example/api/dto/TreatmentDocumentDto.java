@@ -1,9 +1,10 @@
 package com.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 
 /**
- * DTO representing treatment document data
+ * DTO representing a complete treatment document
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record TreatmentDocumentDto(
@@ -23,6 +24,6 @@ public record TreatmentDocumentDto(
     String generatedAt,
     Integer totalAssets,
     DocumentMetadataDto documentMetadata
-) {
+) implements Serializable {
 
 }

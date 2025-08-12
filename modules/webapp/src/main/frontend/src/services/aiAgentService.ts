@@ -1,17 +1,20 @@
-import openaiService from './openaiService';
 import type {
-  CompanyAnalysis,
   GenerationMode,
   GenerationProcess,
   ProcessCallbacks,
   ProcessData,
   ProcessStatus,
-  StepResponse,
-  StoryOutline,
-  TreatmentDocument,
-  VisualAsset,
-  VisualConcepts
+  StepResponse
 } from '../types/interfaces';
+import {
+  BrandIntelControllerService,
+  CompanyAnalysisDto,
+  StandardErrorResponseDto,
+  StoryOutlineDto,
+  TreatmentDocumentDto,
+  VisualAssetDto,
+  VisualConceptsDto
+} from "@/generated";
 
 /**
  * AI Agent Service for orchestrating the complete treatment generation process
@@ -125,7 +128,9 @@ class AIAgentService {
     }
 
     try {
-      const companyData: CompanyAnalysis = await openaiService?.analyzeCompany(brandName);
+      const companyData: CompanyAnalysisDto = await BrandIntelControllerService.analyzeBrand({
+        name: brandName
+      });
 
       if (this.currentProcess) {
         this.currentProcess.data.companyAnalysis = companyData;
@@ -135,9 +140,23 @@ class AIAgentService {
       this.stepCallbacks?.onStepComplete?.(1, 'research', companyData);
     } catch (error) {
       console.error('Step 1 error:', error);
-      throw new Error(
-          `Company research failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // Handle OpenAPI generated errors that match GlobalExceptionHandler
+      const errorMessage = this.extractErrorMessage(error);
+      throw new Error(`Company research failed: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Extract error message from API responses that match backend GlobalExceptionHandler format
+   */
+  private extractErrorMessage(error: any): string {
+    // Handle OpenAPI generated errors
+    if (error?.body && typeof error.body === 'object') {
+      const errorResponse = error.body as StandardErrorResponseDto;
+      return errorResponse.message || 'Backend error occurred';
+    }
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 
   /**
@@ -155,8 +174,12 @@ class AIAgentService {
         throw new Error('Missing required data for story generation');
       }
 
-      const storyData: StoryOutline = await openaiService?.generateStoryOutline(brandName,
-          companyAnalysis);
+      const storyData: StoryOutlineDto = await BrandIntelControllerService.generateStory({
+        requestBody: {
+          brandName,
+          companyData: companyAnalysis
+        }
+      });
 
       if (this.currentProcess) {
         this.currentProcess.data.storyOutline = storyData;
@@ -165,8 +188,10 @@ class AIAgentService {
       this.stepCallbacks?.onStepComplete?.(2, 'story', storyData);
     } catch (error) {
       console.error('Step 2 error:', error);
-      throw new Error(
-          `Story generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // Handle OpenAPI generated errors that match GlobalExceptionHandler
+      const errorMessage = this.extractErrorMessage(error);
+      throw new Error(`Story generation failed: ${errorMessage}`);
     }
   }
 
@@ -186,22 +211,27 @@ class AIAgentService {
       }
 
       // Generate visual concepts
-      const visualConcepts: VisualConcepts = await openaiService?.generateVisualConcepts(
-          brandName,
-          storyOutline,
-          companyAnalysis
-      );
+      const visualConcepts: VisualConceptsDto = await BrandIntelControllerService.generateVisualConcepts(
+          {
+            requestBody: {
+              brandName,
+              storyData: storyOutline,
+              companyData: companyAnalysis
+            }
+          });
 
       if (this.currentProcess) {
         this.currentProcess.data.visualConcepts = visualConcepts;
       }
 
       // Generate visual assets
-      const assets: VisualAsset[] = await openaiService?.generateVisualAssets(
+      const assets: VisualAssetDto[] = await BrandIntelControllerService.generateVisualAssets({
+        requestBody: {
           brandName,
           visualConcepts,
-          storyOutline
-      );
+          storyData: storyOutline
+        }
+      });
 
       if (this.currentProcess) {
         this.currentProcess.data.assets = assets;
@@ -210,8 +240,10 @@ class AIAgentService {
       this.stepCallbacks?.onStepComplete?.(3, 'visuals', {visualConcepts, assets});
     } catch (error) {
       console.error('Step 3 error:', error);
-      throw new Error(
-          `Visual generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // Handle OpenAPI generated errors that match GlobalExceptionHandler
+      const errorMessage = this.extractErrorMessage(error);
+      throw new Error(`Visual generation failed: ${errorMessage}`);
     }
   }
 
@@ -237,13 +269,16 @@ class AIAgentService {
         throw new Error('Missing required data for treatment generation');
       }
 
-      const treatmentDocument: TreatmentDocument = await openaiService?.generateTreatmentDocument(
-          brandName,
-          companyAnalysis,
-          storyOutline,
-          visualConcepts,
-          assets
-      );
+      const treatmentDocument: TreatmentDocumentDto = await BrandIntelControllerService.generateTreatmentDocument(
+          {
+            requestBody: {
+              brandName,
+              companyData: companyAnalysis,
+              storyData: storyOutline,
+              visualConcepts,
+              assets
+            }
+          });
 
       if (this.currentProcess) {
         this.currentProcess.data.finalTreatment = treatmentDocument;
@@ -253,8 +288,10 @@ class AIAgentService {
       this.stepCallbacks?.onComplete?.(this.currentProcess?.data);
     } catch (error) {
       console.error('Step 4 error:', error);
-      throw new Error(`Final treatment generation failed: ${error instanceof Error ? error.message
-          : 'Unknown error'}`);
+
+      // Handle OpenAPI generated errors that match GlobalExceptionHandler
+      const errorMessage = this.extractErrorMessage(error);
+      throw new Error(`Final treatment generation failed: ${errorMessage}`);
     }
   }
 
@@ -281,10 +318,10 @@ class AIAgentService {
    * @param step - Step to regenerate
    * @returns Regenerated step data
    */
-  async regenerateStep(step: number): Promise<CompanyAnalysis | StoryOutline | {
-    visualConcepts: VisualConcepts;
-    assets: VisualAsset[]
-  } | TreatmentDocument> {
+  async regenerateStep(step: number): Promise<CompanyAnalysisDto | StoryOutlineDto | {
+    visualConcepts: VisualConceptsDto;
+    assets: VisualAssetDto[]
+  } | TreatmentDocumentDto> {
     if (this.currentProcess) {
       this.currentProcess.currentStep = step;
     }

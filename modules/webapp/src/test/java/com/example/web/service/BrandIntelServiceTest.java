@@ -12,6 +12,7 @@ import com.example.graph.RetrievalState;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.val;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,12 +31,25 @@ class BrandIntelServiceTest {
   @Mock
   private CompiledGraph<RetrievalState> stateGraph;
 
+  @Mock
+  private StoryGenerationService storyService;
+
+  @Mock
+  private VisualConceptsService visualConceptsService;
+
+  @Mock
+  private VisualAssetsService visualAssetsService;
+
+  @Mock
+  private TreatmentService treatmentService;
+
   private BrandIntelService brandIntelService;
 
   @BeforeEach
   void setUp() {
-    // Create the service with the mocked StateGraph
-    brandIntelService = new BrandIntelService(stateGraph);
+    // Create the service with the mocked dependencies
+    brandIntelService = new BrandIntelService(stateGraph, storyService, visualConceptsService,
+        visualAssetsService, treatmentService);
   }
 
   @Test
@@ -47,8 +61,8 @@ class BrandIntelServiceTest {
   @Test
   void analyzeBrand_SuccessfulAnalysis_ReturnsDto() {
     // Arrange
-    String companyName = "TestCompany";
-    CompanyAnalysisDto expectedDto = new CompanyAnalysisDto(
+    val companyName = "TestCompany";
+    val expectedDto = new CompanyAnalysisDto(
         "Test summary",
         List.of("Point 1", "Point 2"),
         "Brand personality",
@@ -59,12 +73,12 @@ class BrandIntelServiceTest {
     );
 
     Map<String, Object> stateData = Map.of(RetrievalState.ANALYSIS_KEY, expectedDto);
-    RetrievalState mockState = new RetrievalState(stateData);
+    val mockState = new RetrievalState(stateData);
 
-    when(stateGraph.invoke(any(Map.class))).thenReturn(Optional.of(mockState));
+    when(stateGraph.invoke(any())).thenReturn(Optional.of(mockState));
 
     // Act
-    CompanyAnalysisDto result = brandIntelService.analyzeBrand(companyName);
+    val result = brandIntelService.analyzeBrand(companyName);
 
     // Assert
     assertNotNull(result);
@@ -74,15 +88,15 @@ class BrandIntelServiceTest {
   @Test
   void analyzeBrand_NoDataAvailable_ThrowsBrandAnalysisException() {
     // Arrange
-    String companyName = "TestCompany";
+    val companyName = "TestCompany";
     // Create state without ANALYSIS_KEY to simulate no data available
     Map<String, Object> stateData = Map.of();
-    RetrievalState mockState = new RetrievalState(stateData);
+    val mockState = new RetrievalState(stateData);
 
-    when(stateGraph.invoke(any(Map.class))).thenReturn(Optional.of(mockState));
+    when(stateGraph.invoke(any())).thenReturn(Optional.of(mockState));
 
     // Act & Assert
-    BrandAnalysisException exception = assertThrows(
+    val exception = assertThrows(
         BrandAnalysisException.class,
         () -> brandIntelService.analyzeBrand(companyName)
     );
@@ -95,12 +109,12 @@ class BrandIntelServiceTest {
   @Test
   void analyzeBrand_InvocationFailed_ThrowsBrandAnalysisException() {
     // Arrange
-    String companyName = "TestCompany";
+    val companyName = "TestCompany";
 
-    when(stateGraph.invoke(any(Map.class))).thenReturn(Optional.empty());
+    when(stateGraph.invoke(any())).thenReturn(Optional.empty());
 
     // Act & Assert
-    BrandAnalysisException exception = assertThrows(
+    val exception = assertThrows(
         BrandAnalysisException.class,
         () -> brandIntelService.analyzeBrand(companyName)
     );
@@ -113,13 +127,13 @@ class BrandIntelServiceTest {
   @Test
   void analyzeBrand_UnexpectedError_ThrowsBrandAnalysisException() {
     // Arrange
-    String companyName = "TestCompany";
-    RuntimeException cause = new RuntimeException("Unexpected database error");
+    val companyName = "TestCompany";
+    val cause = new RuntimeException("Unexpected database error");
 
-    when(stateGraph.invoke(any(Map.class))).thenThrow(cause);
+    when(stateGraph.invoke(any())).thenThrow(cause);
 
     // Act & Assert
-    BrandAnalysisException exception = assertThrows(
+    val exception = assertThrows(
         BrandAnalysisException.class,
         () -> brandIntelService.analyzeBrand(companyName)
     );

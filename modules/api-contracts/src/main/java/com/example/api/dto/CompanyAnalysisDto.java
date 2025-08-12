@@ -1,6 +1,7 @@
 package com.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -15,6 +16,6 @@ public record CompanyAnalysisDto(
     String visualStyle,
     List<String> keyMessages,
     List<String> competitiveAdvantages
-) {
+) implements Serializable {
 
 }

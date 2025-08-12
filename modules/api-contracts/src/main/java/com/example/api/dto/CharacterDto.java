@@ -1,6 +1,7 @@
 package com.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 
 /**
  * DTO representing a character in visual concepts
@@ -11,6 +12,6 @@ public record CharacterDto(
     String description,
     String costume,
     String visualNotes
-) {
+) implements Serializable {
 
 }

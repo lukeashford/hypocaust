@@ -27,17 +27,6 @@ export interface Suggestion {
   action: string;
 }
 
-// Company Analysis Interfaces
-export interface CompanyAnalysis {
-  summary: string;
-  keyPoints: string[];
-  brandPersonality: string;
-  targetAudience: string;
-  visualStyle: string;
-  keyMessages?: string[];
-  competitiveAdvantages?: string[];
-}
-
 // Story and Scene Interfaces
 export interface Scene {
   sceneNumber: number;
@@ -119,14 +108,22 @@ export interface TreatmentDocument {
   documentMetadata?: DocumentMetadata;
 }
 
+import type {
+  CompanyAnalysisDto,
+  StoryOutlineDto,
+  TreatmentDocumentDto,
+  VisualAssetDto,
+  VisualConceptsDto
+} from '@/generated';
+
 // AI Agent Process Interfaces
 export interface ProcessData {
   brandName?: string;
-  companyAnalysis?: CompanyAnalysis;
-  storyOutline?: StoryOutline;
-  visualConcepts?: VisualConcepts;
-  assets?: VisualAsset[];
-  finalTreatment?: TreatmentDocument;
+  companyAnalysis?: CompanyAnalysisDto;
+  storyOutline?: StoryOutlineDto;
+  visualConcepts?: VisualConceptsDto;
+  assets?: VisualAssetDto[];
+  finalTreatment?: TreatmentDocumentDto;
 }
 
 export interface GenerationProcess {

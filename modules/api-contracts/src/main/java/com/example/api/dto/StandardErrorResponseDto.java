@@ -1,6 +1,7 @@
 package com.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 
 /**
  * Standard error response DTO for user-facing error messages. This provides a consistent,
@@ -10,6 +11,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public record StandardErrorResponseDto(
     String message,
     String timestamp
-) {
+) implements Serializable {
 
 }
