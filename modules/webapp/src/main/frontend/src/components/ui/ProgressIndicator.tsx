@@ -70,8 +70,8 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <Icon name="Zap" size={18} color="var(--color-accent)"/>
-            <h3 className="text-sm font-heading font-semibold text-foreground">
+            <Icon name="Zap" size={18} color="var(--color-golden-primary)"/>
+            <h3 className="text-sm font-heading font-semibold golden-accent">
               AI Treatment Generation
             </h3>
           </div>
@@ -159,7 +159,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
-                  className="bg-gradient-to-r from-accent to-accent/80 h-2 rounded-full transition-all duration-500 ease-out"
+                  className="golden-gradient h-2 rounded-full transition-all duration-500 ease-out"
                   style={{width: `${(currentStep / totalSteps) * 100}%`}}
               />
             </div>

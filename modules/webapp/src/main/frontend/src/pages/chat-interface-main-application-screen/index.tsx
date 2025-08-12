@@ -103,11 +103,10 @@ const ChatInterface: React.FC = () => {
                 />
             ) : (
                 <>
-                  {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto">
-                    <div className="max-w-4xl mx-auto px-4 py-6">
+                  {/* Fixed Progress Section at Top */}
+                  <div className="flex-shrink-0 bg-background border-b border-border">
+                    <div className="max-w-4xl mx-auto px-4 py-4">
                       <ChatErrorDisplay error={error}/>
-
                       <ProgressSection
                           isProcessing={isProcessing}
                           agentStatus={agentStatus}
@@ -119,7 +118,12 @@ const ChatInterface: React.FC = () => {
                           setAgentStatus={setAgentStatus}
                           addMessage={addMessage}
                       />
+                    </div>
+                  </div>
 
+                  {/* Scrollable Messages Area */}
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto px-4 py-6">
                       <MessageList
                           messages={messages}
                           showInteractivePrompt={showInteractivePrompt}
@@ -140,16 +144,18 @@ const ChatInterface: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Message Input */}
-                  <MessageInput
-                      onSendMessage={handleSendMessage}
-                      isProcessing={isProcessing}
-                      mode={mode}
-                      onModeChange={handleModeChange}
-                      placeholder={messages?.length === 0
-                          ? "Enter your brand name to get started..."
-                          : "Ask questions or provide feedback..."}
-                  />
+                  {/* Fixed Message Input at Bottom */}
+                  <div className="flex-shrink-0">
+                    <MessageInput
+                        onSendMessage={handleSendMessage}
+                        isProcessing={isProcessing}
+                        mode={mode}
+                        onModeChange={handleModeChange}
+                        placeholder={messages?.length === 0
+                            ? "Enter your brand name to get started..."
+                            : "Ask questions or provide feedback..."}
+                    />
+                  </div>
                 </>
             )}
           </div>

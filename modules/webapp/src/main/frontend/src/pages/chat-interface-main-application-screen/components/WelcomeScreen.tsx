@@ -67,8 +67,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <div className="flex items-center justify-center mb-8">
             <div className="relative">
               <div
-                  className="w-20 h-20 bg-muted border border-border flex items-center justify-center shadow-warm-lg">
-                <Icon name="Film" size={40} color="var(--color-foreground)" strokeWidth={1.5}/>
+                  className="w-20 h-20 bg-muted border golden-border flex items-center justify-center shadow-warm-lg">
+                <Icon name="Film" size={40} color="var(--color-golden-primary)" strokeWidth={1.5}/>
               </div>
             </div>
           </div>
@@ -85,15 +85,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
           <div className="flex items-center justify-center space-x-8 mb-10">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground font-light">
-              <div className="w-2 h-2 bg-foreground"></div>
+              <div className="w-2 h-2 golden-bg"></div>
               <span>Industry Standard</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground font-light">
-              <div className="w-2 h-2 bg-foreground"></div>
+              <div className="w-2 h-2 golden-bg"></div>
               <span>AI-Powered</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground font-light">
-              <div className="w-2 h-2 bg-foreground"></div>
+              <div className="w-2 h-2 golden-bg"></div>
               <span>Instant Download</span>
             </div>
           </div>
@@ -102,12 +102,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {/* Mode Selection */}
         <div className="grid md:grid-cols-2 gap-8 mb-16">
           <div
-              className="bg-card border border-border p-8 hover:border-foreground/30 transition-all duration-300 hover:shadow-warm-md group cursor-pointer"
+              className="bg-card border border-border p-8 golden-hover transition-all duration-300 hover:shadow-warm-md group cursor-pointer"
               onClick={() => onModeSelect && onModeSelect('interactive')}>
             <div className="flex items-center space-x-4 mb-6">
               <div
-                  className="w-12 h-12 bg-muted border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors duration-300">
-                <Icon name="MessageCircle" size={24} color="var(--color-foreground)"
+                  className="w-12 h-12 bg-muted border golden-border flex items-center justify-center transition-colors duration-300">
+                <Icon name="MessageCircle" size={24} color="var(--color-golden-primary)"
                       strokeWidth={1.5}/>
               </div>
               <h3 className="text-xl font-light text-foreground">Interactive Mode</h3>
@@ -124,12 +124,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </div>
 
           <div
-              className="bg-card border border-border p-8 hover:border-foreground/30 transition-all duration-300 hover:shadow-warm-md group cursor-pointer"
+              className="bg-card border border-border p-8 golden-hover transition-all duration-300 hover:shadow-warm-md group cursor-pointer"
               onClick={() => onModeSelect && onModeSelect('oneshot')}>
             <div className="flex items-center space-x-4 mb-6">
               <div
-                  className="w-12 h-12 bg-muted border border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors duration-300">
-                <Icon name="Zap" size={24} color="var(--color-foreground)" strokeWidth={1.5}/>
+                  className="w-12 h-12 bg-muted border golden-border flex items-center justify-center transition-colors duration-300">
+                <Icon name="Zap" size={24} color="var(--color-golden-primary)" strokeWidth={1.5}/>
               </div>
               <h3 className="text-xl font-light text-foreground">One-Shot Mode</h3>
             </div>

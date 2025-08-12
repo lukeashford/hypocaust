@@ -24,10 +24,15 @@
     --color-accent-foreground: #ffffff; /* Pure white for clarity */
     --color-destructive: #cc4444; /* Muted red for errors */
     --color-destructive-foreground: #ffffff; /* White text */
-    --color-success: #4a5a4a; /* Muted green for success */
-    --color-success-foreground: #ffffff; /* White text */
-    --color-warning: #6a5a3a; /* Muted amber for warnings */
-    --color-warning-foreground: #ffffff; /* White text */
+    --color-success: #b8860b; /* Dark golden for success */
+    --color-success-foreground: #0a0a0a; /* Dark text for better contrast */
+    --color-warning: #daa520; /* Bright golden for warnings */
+    --color-warning-foreground: #0a0a0a; /* Dark text for better contrast */
+
+    /* Golden accent colors for futuristic details */
+    --color-golden-primary: #ffd700; /* Bright gold for highlights */
+    --color-golden-secondary: #b8860b; /* Dark gold for secondary elements */
+    --color-golden-muted: #8b7355; /* Muted gold for subtle accents */
     --color-error: #cc4444; /* Consistent with destructive */
     --color-error-foreground: #ffffff; /* White text */
 
@@ -191,5 +196,31 @@
   .nolan-backdrop {
     backdrop-filter: blur(20px) saturate(180%);
     background-color: rgba(18, 18, 18, 0.9);
+  }
+
+  /* Golden accent utilities for futuristic design */
+  .golden-accent {
+    color: var(--color-golden-primary);
+  }
+
+  .golden-border {
+    border-color: var(--color-golden-secondary);
+  }
+
+  .golden-bg {
+    background-color: var(--color-golden-secondary);
+  }
+
+  .golden-muted {
+    color: var(--color-golden-muted);
+  }
+
+  .golden-gradient {
+    background: linear-gradient(135deg, var(--color-golden-secondary) 0%, var(--color-golden-primary) 100%);
+  }
+
+  .golden-hover:hover {
+    border-color: var(--color-golden-primary);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
   }
 }

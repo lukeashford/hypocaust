@@ -56,8 +56,8 @@ const Header: React.FC<HeaderProps> = ({user = null, onNavigate = null}) => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <div
-                className="w-10 h-10 bg-muted border border-border flex items-center justify-center group-hover:border-foreground/30 transition-all duration-300">
-              <Icon name="Film" size={20} color="var(--color-foreground)" strokeWidth={1.5}/>
+                className="w-10 h-10 bg-muted border golden-border flex items-center justify-center golden-hover transition-all duration-300">
+              <Icon name="Film" size={20} color="var(--color-golden-primary)" strokeWidth={1.5}/>
             </div>
           </div>
           <div className="flex flex-col">

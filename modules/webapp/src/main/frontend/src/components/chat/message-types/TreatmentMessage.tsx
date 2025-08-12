@@ -18,12 +18,12 @@ const TreatmentMessage: React.FC<TreatmentMessageProps> = ({
   return (
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-foreground">{content}</p>
-        <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+        <div className="bg-success/10 border golden-border rounded-lg p-4">
           <div className="flex items-center space-x-3 mb-3">
-            <Icon name="FileText" size={20} color="var(--color-success)"/>
+            <Icon name="FileText" size={20} color="var(--color-golden-primary)"/>
             <div>
-              <h4 className="text-sm font-semibold text-success">{treatmentData.title}</h4>
-              <p className="text-xs text-success/80">{treatmentData.pages} pages
+              <h4 className="text-sm font-semibold golden-accent">{treatmentData.title}</h4>
+              <p className="text-xs golden-muted">{treatmentData.pages} pages
                 • {treatmentData.size}</p>
             </div>
           </div>
