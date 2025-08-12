@@ -8,17 +8,20 @@ import com.example.web.constants.DefaultValues;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for generating visual assets based on visual concepts and story data Note: This is a mock
- * implementation. In production, this would integrate with image generation APIs like DALL-E.
+ * Service for generating visual assets based on visual concepts and story data using OpenAI DALL-E
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class VisualAssetsService {
+
+  private final OpenAiImageService openAiImageService;
 
   /**
    * Generates visual assets based on visual concepts and story data
@@ -38,16 +41,16 @@ public class VisualAssetsService {
       val assets = new ArrayList<VisualAssetDto>();
 
       // Generate character assets based on visual concepts
-      generateCharacterAssets(brandName, visualConcepts, assets);
+      generateCharacterAssets(visualConcepts, assets);
 
       // Generate set design assets
-      generateSetDesignAssets(brandName, visualConcepts, assets);
+      generateSetDesignAssets(visualConcepts, assets);
 
       // Generate product-focused asset
       generateProductAsset(brandName, assets);
 
       // Generate scene assets based on story data
-      generateSceneAssets(brandName, storyData, assets);
+      generateSceneAssets(storyData, assets);
 
       log.info("Generated {} visual assets for brand: {}", assets.size(), brandName);
       return assets;
@@ -57,7 +60,7 @@ public class VisualAssetsService {
     }
   }
 
-  private void generateCharacterAssets(String brandName, VisualConceptsDto visualConcepts,
+  private void generateCharacterAssets(VisualConceptsDto visualConcepts,
       List<VisualAssetDto> assets) {
     if (visualConcepts == null) {
       return;
@@ -73,19 +76,33 @@ public class VisualAssetsService {
       val lightingStyle = Objects.requireNonNullElse(visualConcepts.lightingStyle(),
           DefaultValues.UNKNOWN);
 
-      assets.add(new VisualAssetDto(
-          "image",
-          "https://placeholder.com/character-" + brandName.toLowerCase().replaceAll("\\s+", "-")
-              + ".jpg",
-          "Character: " + name,
-          String.format("Professional commercial photography of %s, %s, %s", description, costume,
-              lightingStyle),
-          "character"
-      ));
+      try {
+        val prompt = String.format(
+            "Professional commercial photography of %s, %s, %s, high-end commercial aesthetic, cinematic lighting, 4K resolution",
+            description, costume, lightingStyle);
+
+        log.info("Generating character image for: {}", name);
+        val imageUrl = openAiImageService.generateImage(prompt);
+
+        assets.add(new VisualAssetDto(
+            "image",
+            imageUrl,
+            "Character: " + name,
+            prompt,
+            "character"
+        ));
+
+        // Add delay to avoid rate limits
+        Thread.sleep(1000);
+
+      } catch (Exception e) {
+        log.error("Failed to generate character image for {}: {}", name, e.getMessage());
+        // Continue with other images even if one fails - don't add asset if generation fails
+      }
     }
   }
 
-  private void generateSetDesignAssets(String brandName, VisualConceptsDto visualConcepts,
+  private void generateSetDesignAssets(VisualConceptsDto visualConcepts,
       List<VisualAssetDto> assets) {
     if (visualConcepts == null) {
       return;
@@ -99,31 +116,64 @@ public class VisualAssetsService {
       val lightingStyle = Objects.requireNonNullElse(visualConcepts.lightingStyle(),
           DefaultValues.UNKNOWN);
 
-      assets.add(new VisualAssetDto(
-          "image",
-          "https://placeholder.com/set-" + brandName.toLowerCase().replaceAll("\\s+", "-")
-              + ".jpg",
-          "Set: " + location,
-          String.format("%s, %s, commercial photography style", description, lightingStyle),
-          "set"
-      ));
+      val colorPalette = visualConcepts.colorPalette();
+      val colorScheme = colorPalette != null && !colorPalette.isEmpty()
+          ? String.join(" and ", colorPalette) + " color scheme"
+          : "professional color scheme";
+
+      try {
+        val prompt = String.format(
+            "%s, %s, commercial photography style, professional lighting setup, %s, cinematic composition",
+            description, lightingStyle, colorScheme);
+
+        log.info("Generating set design image for: {}", location);
+        val imageUrl = openAiImageService.generateImage(prompt);
+
+        assets.add(new VisualAssetDto(
+            "image",
+            imageUrl,
+            "Set: " + location,
+            prompt,
+            "set"
+        ));
+
+        // Add delay to avoid rate limits
+        Thread.sleep(1000);
+
+      } catch (Exception e) {
+        log.error("Failed to generate set design image for {}: {}", location, e.getMessage());
+        // Continue with other images even if one fails - don't add asset if generation fails
+      }
     }
   }
 
   private void generateProductAsset(String brandName, List<VisualAssetDto> assets) {
-    assets.add(new VisualAssetDto(
-        "image",
-        "https://placeholder.com/product-" + brandName.toLowerCase().replaceAll("\\s+", "-")
-            + ".jpg",
-        "Product: " + brandName,
-        String.format(
-            "Professional product photography for %s, clean modern aesthetic, commercial lighting",
-            brandName),
-        "product"
-    ));
+    try {
+      val prompt = String.format(
+          "Professional product photography for %s, clean modern aesthetic, commercial lighting, high-end brand presentation, minimalist composition",
+          brandName);
+
+      log.info("Generating product image for: {}", brandName);
+      val imageUrl = openAiImageService.generateImage(prompt);
+
+      assets.add(new VisualAssetDto(
+          "image",
+          imageUrl,
+          "Product: " + brandName,
+          prompt,
+          "product"
+      ));
+
+      // Add delay to avoid rate limits
+      Thread.sleep(1000);
+
+    } catch (Exception e) {
+      log.error("Failed to generate product image for {}: {}", brandName, e.getMessage());
+      // Continue with other images even if one fails - don't add asset if generation fails
+    }
   }
 
-  private void generateSceneAssets(String brandName, StoryOutlineDto storyData,
+  private void generateSceneAssets(StoryOutlineDto storyData,
       List<VisualAssetDto> assets) {
     if (storyData == null) {
       return;
@@ -134,17 +184,31 @@ public class VisualAssetsService {
       val keyScene = keyScenes.getFirst();
       val location = Objects.requireNonNullElse(keyScene.location(), DefaultValues.UNKNOWN);
       val description = Objects.requireNonNullElse(keyScene.description(), DefaultValues.UNKNOWN);
+      val visualNotes = Objects.requireNonNullElse(keyScene.visualNotes(), "professional lighting");
 
-      assets.add(new VisualAssetDto(
-          "image",
-          "https://placeholder.com/scene-" + brandName.toLowerCase().replaceAll("\\s+", "-")
-              + ".jpg",
-          "Scene: " + location,
-          String.format(
-              "Cinematic still from commercial video: %s, professional commercial cinematography",
-              description),
-          "scene"
-      ));
+      try {
+        val prompt = String.format(
+            "Cinematic still from commercial video: %s, %s, professional commercial cinematography, high production value",
+            description, visualNotes);
+
+        log.info("Generating scene image for: {}", location);
+        val imageUrl = openAiImageService.generateImage(prompt);
+
+        assets.add(new VisualAssetDto(
+            "image",
+            imageUrl,
+            "Scene: " + location,
+            prompt,
+            "scene"
+        ));
+
+        // Add delay to avoid rate limits
+        Thread.sleep(1000);
+
+      } catch (Exception e) {
+        log.error("Failed to generate scene image for {}: {}", location, e.getMessage());
+        // Continue with other images even if one fails - don't add asset if generation fails
+      }
     }
   }
 }

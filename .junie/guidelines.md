@@ -16,15 +16,8 @@
 ## Spring Best Practices
 
 - Use a layered architecture with clear separation of concerns
-- Create interfaces for all components that might have multiple implementations
 - Implement dependency injection through constructor injection
 - Use Spring profiles to make components swappable
-- Follow this pattern for new components:
-  1. Define an interface in its own package (e.g., `search/SearchEngine.java`)
-  2. Create implementations with `@Component` and `@Profile` annotations
-  3. Inject dependencies through constructor parameters
-  4. Configure active profiles in `application.yml`
-- Create provider interfaces for external services to allow easy mocking in tests
 - Keep service classes focused on orchestration rather than implementation details
 
 ## Testing
