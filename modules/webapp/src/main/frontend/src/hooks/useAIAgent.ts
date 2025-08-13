@@ -87,7 +87,7 @@ export const useAIAgent = (dependencies: UseAIAgentDependencies): UseAIAgentRetu
   } = dependencies;
 
   // AI Agent state
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(0);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const [showInteractivePrompt, setShowInteractivePrompt] = useState<boolean>(false);
   const [currentStepData, setCurrentStepData] = useState<StepData | null>(null);
@@ -243,10 +243,16 @@ export const useAIAgent = (dependencies: UseAIAgentDependencies): UseAIAgentRetu
   // Setup AI Agent callbacks
   useEffect(() => {
     const callbacks: ProcessCallbacks = {
-      onProgress: (_status: string, step: number) => {
-        setAgentStatus('processing');
-        setCurrentStep(step);
-        setIsProcessing(true);
+      onProgress: (status: string, step: number) => {
+        if (step >= 4) {
+          // Completion state
+          setAgentStatus('completed');
+          setCurrentStep(4);  // Set to totalSteps for 100% progress
+        } else {
+          setAgentStatus('processing');
+          setCurrentStep(step);
+        }
+        setIsProcessing(step < 4);  // Stop processing when complete
         setError(null);
       },
       onStepComplete: (step: number, type: string, data: any) => {

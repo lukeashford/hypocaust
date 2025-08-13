@@ -62,8 +62,11 @@ const ChatInterface: React.FC = () => {
     setProcessData
   });
 
-  // Auto-scroll to bottom when new messages arrive
-  const {messagesEndRef} = useScrollToBottom([messages]);
+  // Auto-scroll to bottom when new messages arrive with bottom offset for fixed input
+  const {messagesEndRef} = useScrollToBottom([messages], {
+    behavior: 'smooth',
+    bottomOffset: 140 // Account for fixed bottom MessageInput component
+  });
 
   const handleModeChange = (newMode: GenerationMode) => {
     setMode(newMode);
@@ -93,36 +96,39 @@ const ChatInterface: React.FC = () => {
   return (
       <div className="min-h-screen bg-background">
         <Header/>
-        <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
-          {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col">
-            {showWelcome ? (
-                <WelcomeScreen
-                    onGetStarted={handleGetStarted}
-                    onModeSelect={handleModeSelect}
-                />
-            ) : (
-                <>
-                  {/* Fixed Progress Section at Top */}
-                  <div className="flex-shrink-0 bg-background border-b border-border">
-                    <div className="max-w-4xl mx-auto px-4 py-4">
-                      <ChatErrorDisplay error={error}/>
-                      <ProgressSection
-                          isProcessing={isProcessing}
-                          agentStatus={agentStatus}
-                          currentStep={currentStep}
-                          totalSteps={4}
-                          stepLabels={['Research', 'Story Creation', 'Visual Assets',
-                            'Final Treatment']}
-                          setIsProcessing={setIsProcessing}
-                          setAgentStatus={setAgentStatus}
-                          addMessage={addMessage}
-                      />
-                    </div>
-                  </div>
 
-                  {/* Scrollable Messages Area */}
-                  <div className="flex-1 overflow-y-auto">
+        {showWelcome ? (
+            <div className="min-h-[calc(100vh-4rem)]">
+              <WelcomeScreen
+                  onGetStarted={handleGetStarted}
+                  onModeSelect={handleModeSelect}
+              />
+            </div>
+        ) : (
+            <>
+              {/* Fixed Progress Section at Top - Fixed to viewport */}
+              <div
+                  className="fixed top-16 left-0 right-0 z-30 bg-background border-b border-border">
+                <div className="max-w-4xl mx-auto px-4 py-4">
+                  <ChatErrorDisplay error={error}/>
+                  <ProgressSection
+                      isProcessing={isProcessing}
+                      agentStatus={agentStatus}
+                      currentStep={currentStep}
+                      totalSteps={4}
+                      stepLabels={['Research', 'Story Creation', 'Visual Assets',
+                        'Final Treatment']}
+                      setIsProcessing={setIsProcessing}
+                      setAgentStatus={setAgentStatus}
+                      addMessage={addMessage}
+                  />
+                </div>
+              </div>
+
+              {/* Scrollable Messages Area - Account for fixed elements */}
+              <div className="pt-[120px] pb-32 min-h-[calc(100vh-4rem)]">
+                <div className="flex flex-col lg:flex-row">
+                  <div className="flex-1">
                     <div className="max-w-4xl mx-auto px-4 py-6">
                       <MessageList
                           messages={messages}
@@ -144,45 +150,45 @@ const ChatInterface: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Fixed Message Input at Bottom */}
-                  <div className="flex-shrink-0">
-                    <MessageInput
-                        onSendMessage={handleSendMessage}
-                        isProcessing={isProcessing}
-                        mode={mode}
-                        onModeChange={handleModeChange}
-                        placeholder={messages?.length === 0
-                            ? "Enter your brand name to get started..."
-                            : "Ask questions or provide feedback..."}
-                    />
-                  </div>
-                </>
-            )}
-          </div>
-
-          {/* Sidebar - Action Panel */}
-          {finalTreatment && (
-              <div className="lg:w-80 border-l border-border bg-background/50">
-                <div className="p-4">
-                  <ContextualActionPanel
-                      pdfData={finalTreatment}
-                      onDownload={handleDownloadTreatment}
-                      onShare={handleShareTreatment}
-                      onRegenerate={() => {
-                        setFinalTreatment(null);
-                        setMessages([]);
-                        setCurrentStep(1);
-                        setAgentStatus('idle');
-                        setGeneratedAssets([]);
-                        setProcessData(null);
-                        addMessage("Starting fresh treatment generation...", false);
-                      }}
-                      isVisible={true}
-                  />
+                  {/* Sidebar - Action Panel */}
+                  {finalTreatment && (
+                      <div className="lg:w-80 border-l border-border bg-background/50">
+                        <div className="p-4">
+                          <ContextualActionPanel
+                              pdfData={finalTreatment}
+                              onDownload={handleDownloadTreatment}
+                              onShare={handleShareTreatment}
+                              onRegenerate={() => {
+                                setFinalTreatment(null);
+                                setMessages([]);
+                                setCurrentStep(1);
+                                setAgentStatus('idle');
+                                setGeneratedAssets([]);
+                                setProcessData(null);
+                                addMessage("Starting fresh treatment generation...", false);
+                              }}
+                              isVisible={true}
+                          />
+                        </div>
+                      </div>
+                  )}
                 </div>
               </div>
-          )}
-        </div>
+
+              {/* Fixed Message Input at Bottom - Fixed to viewport */}
+              <div className="fixed bottom-0 left-0 right-0 z-30">
+                <MessageInput
+                    onSendMessage={handleSendMessage}
+                    isProcessing={isProcessing}
+                    mode={mode}
+                    onModeChange={handleModeChange}
+                    placeholder={messages?.length === 0
+                        ? "Enter your brand name to get started..."
+                        : "Ask questions or provide feedback..."}
+                />
+              </div>
+            </>
+        )}
       </div>
   );
 };

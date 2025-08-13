@@ -10,17 +10,17 @@ interface ProgressIndicatorProps {
 }
 
 const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
-  currentStep = 1,
+  currentStep = 0,
   totalSteps = 4,
   agentStatus = 'idle',
   onCancel = null,
   stepLabels = ['Research', 'Analysis', 'Generation', 'Finalization']
 }) => {
   const getStepStatus = (stepIndex: number): 'completed' | 'active' | 'pending' => {
-    if (stepIndex < currentStep - 1) {
+    if (stepIndex < currentStep) {
       return 'completed';
     }
-    if (stepIndex === currentStep - 1) {
+    if (stepIndex === currentStep) {
       return 'active';
     }
     return 'pending';
@@ -86,40 +86,25 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
               </button>
           )}
         </div>
-        {/* Progress Steps */}
-        <div className="space-y-3 mb-4">
+        {/* Progress Steps - Horizontal Layout */}
+        <div className="flex items-center justify-between mb-3">
           {stepLabels?.map((label, index) => {
             const status = getStepStatus(index);
             return (
-                <div key={index} className="flex items-center space-x-3">
+                <div key={index} className="flex items-center space-x-2 flex-1">
                   <div className="flex-shrink-0">
                     {getStatusIcon(status)}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                  <span className={`text-sm font-medium ${
-                      status === 'completed'
-                          ? 'text-success'
-                          : status === 'active' ? 'text-accent' : 'text-muted-foreground'
-                  }`}>
-                    {label}
-                  </span>
-
-                      {status === 'completed' && (
-                          <span className="text-xs text-success font-mono">
-                      ✓ Complete
+                    <span className={`text-xs font-medium ${
+                        status === 'completed'
+                            ? 'text-muted-foreground'
+                            : status === 'active' ? 'text-accent' : 'text-muted-foreground'
+                    }`}>
+                      {label}
                     </span>
-                      )}
 
-                      {status === 'active' && (
-                          <span className="text-xs text-accent font-mono animate-pulse">
-                      Processing...
-                    </span>
-                      )}
-                    </div>
-
-                    {/* Progress bar for active step */}
                     {status === 'active' && (
                         <div className="mt-1 w-full bg-muted rounded-full h-1">
                           <div className="bg-accent h-1 rounded-full animate-pulse"
@@ -127,6 +112,11 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                         </div>
                     )}
                   </div>
+
+                  {/* Connector line between steps */}
+                  {index < stepLabels.length - 1 && (
+                      <div className="flex-shrink-0 w-8 h-px bg-border mx-2"/>
+                  )}
                 </div>
             );
           })}
@@ -155,12 +145,15 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
               <span>Overall Progress</span>
-              <span>{Math.round((currentStep / totalSteps) * 100)}%</span>
+              <span>{currentStep >= totalSteps ? 100 : Math.round(
+                  (currentStep / totalSteps) * 100)}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
                   className="golden-gradient h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{width: `${(currentStep / totalSteps) * 100}%`}}
+                  style={{
+                    width: `${currentStep >= totalSteps ? 100 : (currentStep / totalSteps) * 100}%`
+                  }}
               />
             </div>
           </div>
@@ -169,7 +162,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         {isActive && (
             <div className="mt-3 text-center">
               <p className="text-xs text-muted-foreground font-mono">
-                Estimated time remaining: {Math.max(1, totalSteps - currentStep)} minutes
+                Estimated time remaining: {Math.max(0, totalSteps - currentStep)} minutes
               </p>
             </div>
         )}

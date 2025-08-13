@@ -10,6 +10,7 @@ export interface UseScrollToBottomOptions {
   behavior?: ScrollBehavior;
   block?: ScrollLogicalPosition;
   inline?: ScrollLogicalPosition;
+  bottomOffset?: number; // Offset from bottom to account for fixed elements
 }
 
 /**
@@ -40,16 +41,33 @@ export const useScrollToBottom = (
   const {
     behavior = 'smooth',
     block = 'nearest',
-    inline = 'nearest'
+    inline = 'nearest',
+    bottomOffset = 0
   } = options;
 
   // Auto-scroll to bottom when dependencies change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior,
-      block,
-      inline
-    });
+    if (messagesEndRef.current) {
+      // If bottomOffset is provided, use custom scroll positioning
+      if (bottomOffset > 0) {
+        const element = messagesEndRef.current;
+        const elementRect = element.getBoundingClientRect();
+        const targetPosition = window.pageYOffset + elementRect.top - window.innerHeight
+            + bottomOffset;
+
+        window.scrollTo({
+          top: Math.max(0, targetPosition),
+          behavior: behavior as ScrollBehavior
+        });
+      } else {
+        // Fallback to standard scrollIntoView for backward compatibility
+        messagesEndRef.current.scrollIntoView({
+          behavior,
+          block,
+          inline
+        });
+      }
+    }
   }, dependencies);
 
   return {

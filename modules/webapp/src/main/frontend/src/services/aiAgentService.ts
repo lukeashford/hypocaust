@@ -58,18 +58,18 @@ class AIAgentService {
         brandName,
         mode,
         startTime: Date.now(),
-        currentStep: 1,
+        currentStep: 0,
         totalSteps: 4,
         data: {}
       };
 
-      this.stepCallbacks?.onProgress?.('starting', 1, 4);
+      this.stepCallbacks?.onProgress?.('starting', 0, 4);
 
       // Step 1: Company Research
       await this.executeStep1_CompanyResearch(brandName);
 
       if (mode === 'interactive') {
-        return {step: 1, data: this.currentProcess?.data};
+        return {step: 0, data: this.currentProcess?.data};
       }
 
       // Continue with remaining steps for one-shot mode
@@ -102,18 +102,18 @@ class AIAgentService {
     }
 
     switch (currentStep) {
-      case 1:
+      case 0:
         await this.executeStep2_StoryGeneration();
+        return {step: 1, data: this.currentProcess?.data};
+      case 1:
+        await this.executeStep3_VisualGeneration();
         return {step: 2, data: this.currentProcess?.data};
       case 2:
-        await this.executeStep3_VisualGeneration();
-        return {step: 3, data: this.currentProcess?.data};
-      case 3:
         await this.executeStep4_FinalTreatment();
-        return {step: 4, data: this.currentProcess?.data, complete: true};
+        return {step: 3, data: this.currentProcess?.data, complete: true};
       default:
         const error = new Error(`Invalid step for continueToNextStep: ${currentStep}`);
-        this.stepCallbacks?.onError?.(error, this.currentProcess?.currentStep || 1);
+        this.stepCallbacks?.onError?.(error, this.currentProcess?.currentStep || 0);
         throw error;
     }
   }
@@ -122,9 +122,9 @@ class AIAgentService {
    * Step 1: Company Research and Analysis
    */
   private async executeStep1_CompanyResearch(brandName: string): Promise<void> {
-    this.stepCallbacks?.onProgress?.('researching', 1, 4);
+    this.stepCallbacks?.onProgress?.('researching', 0, 4);
     if (this.currentProcess) {
-      this.currentProcess.currentStep = 1;
+      this.currentProcess.currentStep = 0;
     }
 
     try {
@@ -137,7 +137,7 @@ class AIAgentService {
         this.currentProcess.data.brandName = brandName;
       }
 
-      this.stepCallbacks?.onStepComplete?.(1, 'research', companyData);
+      this.stepCallbacks?.onStepComplete?.(0, 'research', companyData);
     } catch (error) {
       console.error('Step 1 error:', error);
 
@@ -163,9 +163,9 @@ class AIAgentService {
    * Step 2: Story Outline Generation
    */
   private async executeStep2_StoryGeneration(): Promise<void> {
-    this.stepCallbacks?.onProgress?.('analyzing', 2, 4);
+    this.stepCallbacks?.onProgress?.('analyzing', 1, 4);
     if (this.currentProcess) {
-      this.currentProcess.currentStep = 2;
+      this.currentProcess.currentStep = 1;
     }
 
     try {
@@ -185,7 +185,7 @@ class AIAgentService {
         this.currentProcess.data.storyOutline = storyData;
       }
 
-      this.stepCallbacks?.onStepComplete?.(2, 'story', storyData);
+      this.stepCallbacks?.onStepComplete?.(1, 'story', storyData);
     } catch (error) {
       console.error('Step 2 error:', error);
 
@@ -199,9 +199,9 @@ class AIAgentService {
    * Step 3: Visual Concepts and Asset Generation
    */
   private async executeStep3_VisualGeneration(): Promise<void> {
-    this.stepCallbacks?.onProgress?.('generating', 3, 4);
+    this.stepCallbacks?.onProgress?.('generating', 2, 4);
     if (this.currentProcess) {
-      this.currentProcess.currentStep = 3;
+      this.currentProcess.currentStep = 2;
     }
 
     try {
@@ -237,7 +237,7 @@ class AIAgentService {
         this.currentProcess.data.assets = assets;
       }
 
-      this.stepCallbacks?.onStepComplete?.(3, 'visuals', {visualConcepts, assets});
+      this.stepCallbacks?.onStepComplete?.(2, 'visuals', {visualConcepts, assets});
     } catch (error) {
       console.error('Step 3 error:', error);
 
@@ -251,9 +251,9 @@ class AIAgentService {
    * Step 4: Final Treatment Document Generation
    */
   private async executeStep4_FinalTreatment(): Promise<void> {
-    this.stepCallbacks?.onProgress?.('finalizing', 4, 4);
+    this.stepCallbacks?.onProgress?.('finalizing', 3, 4);
     if (this.currentProcess) {
-      this.currentProcess.currentStep = 4;
+      this.currentProcess.currentStep = 3;
     }
 
     try {
@@ -284,7 +284,9 @@ class AIAgentService {
         this.currentProcess.data.finalTreatment = treatmentDocument;
       }
 
-      this.stepCallbacks?.onStepComplete?.(4, 'final', treatmentDocument);
+      this.stepCallbacks?.onStepComplete?.(3, 'final', treatmentDocument);
+      // Add completion progress after onComplete
+      this.stepCallbacks?.onProgress?.('completed', 4, 4);
       this.stepCallbacks?.onComplete?.(this.currentProcess?.data);
     } catch (error) {
       console.error('Step 4 error:', error);

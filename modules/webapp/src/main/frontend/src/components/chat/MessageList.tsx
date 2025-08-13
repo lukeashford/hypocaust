@@ -117,7 +117,7 @@ const MessageList: React.FC<MessageListProps> = ({
             </div>
         )}
 
-        <div ref={messagesEndRef}/>
+        <div ref={messagesEndRef} className="h-32"/>
       </div>
   );
 };
