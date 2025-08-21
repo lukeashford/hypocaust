@@ -1,0 +1,16 @@
+# This configmap contains environment variables for the local development.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: the_machine-dev
+data:
+  TERM: "xterm"
+
+  #postgres
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "the_machine"
+
+  #pgadmin
+  PGADMIN_DEFAULT_EMAIL: "pgadmin@imp-ag.de"
+  PGADMIN_DEFAULT_PASSWORD: "postgres"
