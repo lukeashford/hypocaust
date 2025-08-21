@@ -54,7 +54,7 @@ class ContentBlockTest {
 
     // Debug: Print actual types and values
     for (int i = 0; i < deserializedBlocks.size(); i++) {
-      ContentBlock block = deserializedBlocks.get(i);
+      val block = deserializedBlocks.get(i);
       System.out.println(
           "[DEBUG_LOG] Block " + i + ": " + block.getClass().getSimpleName() + " = " + block);
     }
@@ -69,25 +69,25 @@ class ContentBlockTest {
 
     // Verify content - using instanceof checks, no need to test type() method
     // since if instanceof works, the type() method will return the correct constant
-    TextContent textContent = (TextContent) deserializedBlocks.get(0);
+    val textContent = (TextContent) deserializedBlocks.get(0);
     assertEquals("Hello, world!", textContent.text());
 
-    MarkdownContent markdownContent = (MarkdownContent) deserializedBlocks.get(1);
+    val markdownContent = (MarkdownContent) deserializedBlocks.get(1);
     assertEquals("## Header\n\nSome **bold** text", markdownContent.markdown());
 
-    ToolCallContent toolCallContent = (ToolCallContent) deserializedBlocks.get(2);
+    val toolCallContent = (ToolCallContent) deserializedBlocks.get(2);
     assertEquals("search", toolCallContent.name());
     assertEquals("test query", toolCallContent.arguments().get("query").asText());
 
-    ToolResultContent toolResultContent = (ToolResultContent) deserializedBlocks.get(3);
+    val toolResultContent = (ToolResultContent) deserializedBlocks.get(3);
     assertEquals("search", toolResultContent.name());
     assertEquals("call-123", toolResultContent.callId());
     assertEquals("success", toolResultContent.result().get("status").asText());
 
-    ImageRef imageRef = (ImageRef) deserializedBlocks.get(4);
+    val imageRef = (ImageRef) deserializedBlocks.get(4);
     assertEquals(imageAssetId, imageRef.assetId());
 
-    FileRef fileRef = (FileRef) deserializedBlocks.get(5);
+    val fileRef = (FileRef) deserializedBlocks.get(5);
     assertEquals(fileAssetId, fileRef.assetId());
     assertEquals("document.pdf", fileRef.filename());
     assertEquals("application/pdf", fileRef.mime());

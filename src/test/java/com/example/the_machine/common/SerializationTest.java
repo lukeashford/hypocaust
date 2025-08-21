@@ -114,12 +114,9 @@ class SerializationTest {
 
     // Verify instant serialization (Jackson adds type info as arrays)
     val timestampNode = node.get("timestamp");
-    String timestampStr;
-    if (timestampNode.isArray()) {
-      timestampStr = timestampNode.get(1).asText();
-    } else {
-      timestampStr = timestampNode.asText();
-    }
+    val timestampStr = timestampNode.isArray()
+        ? timestampNode.get(1).asText()
+        : timestampNode.asText();
     assertTrue(timestampStr.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z"),
         "Timestamp should be ISO-8601 format");
 

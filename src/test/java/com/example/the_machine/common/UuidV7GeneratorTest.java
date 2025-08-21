@@ -5,21 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.Test;
 
 class UuidV7GeneratorTest {
 
   @Test
   void newId_returnsUniqueUUIDs() {
-    UuidV7Generator generator = new UuidV7Generator();
-    Set<UUID> generatedIds = new HashSet<>();
-    int numberOfIds = 10000;
+    val generator = new UuidV7Generator();
+    val generatedIds = new HashSet<UUID>();
+    val numberOfIds = 10000;
 
     // Generate a large number of UUIDs
     for (int i = 0; i < numberOfIds; i++) {
-      UUID id = generator.newId();
+      val id = generator.newId();
 
       // Verify the ID is not null
       assertNotNull(id);
@@ -38,17 +38,17 @@ class UuidV7GeneratorTest {
 
   @Test
   void newId_returnsValidUUIDs() {
-    UuidV7Generator generator = new UuidV7Generator();
+    val generator = new UuidV7Generator();
 
     // Generate several UUIDs and verify they are valid
     for (int i = 0; i < 100; i++) {
-      UUID id = generator.newId();
+      val id = generator.newId();
 
       // Verify the UUID is not null
       assertNotNull(id);
 
       // Verify the UUID string format is valid
-      String uuidString = id.toString();
+      val uuidString = id.toString();
       assertNotNull(uuidString);
       assertEquals(36, uuidString.length(), "UUID string length should be 36 characters");
       assertTrue(uuidString.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),
