@@ -22,8 +22,12 @@ extra["springAiVersion"] = "1.0.0"
 dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-web")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.springframework.ai:spring-ai-starter-model-openai")
-
+  implementation("org.postgresql:postgresql")
+  implementation("org.flywaydb:flyway-core")
+  implementation("org.flywaydb:flyway-database-postgresql")
+  
   // Lombok for reducing boilerplate code
   compileOnly("org.projectlombok:lombok:1.18.30")
   annotationProcessor("org.projectlombok:lombok:1.18.30")
