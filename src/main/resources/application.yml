@@ -12,6 +12,7 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+    open-in-view: false
   jackson:
     default-property-inclusion: non_null
     serialization:
