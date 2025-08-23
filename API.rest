@@ -1,3 +1,9 @@
 ### Health Check
 GET http://localhost:8080/actuator/health
 Accept: application/json
+
+### Create new thread
+POST http://localhost:8080/threads
+
+### Get thread view dto
+GET http://localhost:8080/threads/0198d5b6-f95a-70b9-9bcc-b3a174912d7c
