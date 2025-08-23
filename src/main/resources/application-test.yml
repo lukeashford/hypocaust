@@ -1,10 +1,18 @@
 spring:
+  datasource:
+    url: jdbc:tc:postgresql:15:///test_db
+    username: test
+    password: test
   jpa:
     hibernate:
       ddl-auto: create-drop
+    show-sql: false  # Reduce log noise
   sql:
     init:
       mode: always
+  ai:
+    openai:
+      api-key: test-key  # Mock API key for testing
 
 management:
   endpoints:
@@ -19,3 +27,5 @@ logging:
   level:
     com.example.the_machine: DEBUG
     org.springframework.test: DEBUG
+    org.testcontainers: INFO
+    org.hibernate.SQL: INFO

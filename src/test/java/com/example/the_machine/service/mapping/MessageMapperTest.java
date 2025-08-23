@@ -70,9 +70,6 @@ class MessageMapperTest {
 
     // Test null DTO
     assertNull(messageMapper.toEntity(null));
-
-    // Enum null handling is now automatic through MapStruct
-    // No explicit tests needed as MapStruct handles null enum conversion
   }
 
   @Test

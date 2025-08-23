@@ -1,7 +1,7 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.5.0"
-  id("io.spring.dependency-management") version "1.1.7"
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.dependency.management)
 }
 
 group = "com.example"
@@ -17,35 +17,32 @@ repositories {
   mavenCentral()
 }
 
-extra["springAiVersion"] = "1.0.0"
-
 dependencies {
-  implementation("org.springframework.boot:spring-boot-starter-actuator")
-  implementation("org.springframework.boot:spring-boot-starter-web")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-  implementation("org.springframework.ai:spring-ai-starter-model-openai")
-  implementation("org.postgresql:postgresql")
-  implementation("org.flywaydb:flyway-core")
-  implementation("org.flywaydb:flyway-database-postgresql")
+  // Core Spring Boot functionality (BOM managed)
+  implementation(libs.bundles.spring.boot.core)
+  implementation(libs.postgresql)
+  implementation(libs.bundles.flyway)
 
-  // Lombok for reducing boilerplate code
-  compileOnly("org.projectlombok:lombok:1.18.30")
-  annotationProcessor("org.projectlombok:lombok:1.18.30")
-  testCompileOnly("org.projectlombok:lombok:1.18.30")
-  testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+  // Spring AI (BOM managed)
+  implementation(libs.spring.ai.starter.model.openai)
 
-  // MapStruct for entity-DTO mapping
-  implementation("org.mapstruct:mapstruct:1.5.5.Final")
-  annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
-  testAnnotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
+  // Annotation processing tools (explicitly versioned)
+  compileOnly(libs.lombok)
+  implementation(libs.mapstruct)
+  annotationProcessor(libs.lombok)
+  annotationProcessor(libs.mapstruct.processor)
+  testCompileOnly(libs.lombok)
+  testAnnotationProcessor(libs.lombok)
+  testAnnotationProcessor(libs.mapstruct.processor)
 
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  // Testing dependencies (BOM managed)
+  testImplementation(libs.bundles.testing.core)
+  testImplementation(libs.bundles.testing.containers)
 }
 
 dependencyManagement {
   imports {
-    mavenBom("org.springframework.ai:spring-ai-bom:${extra["springAiVersion"]}")
+    mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
   }
 }
 

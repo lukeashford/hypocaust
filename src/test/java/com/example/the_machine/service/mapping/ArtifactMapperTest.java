@@ -95,9 +95,6 @@ class ArtifactMapperTest {
 
     // Test null DTO
     assertNull(artifactMapper.toEntity(null));
-
-    // Enum null handling is now automatic through MapStruct
-    // No explicit tests needed as MapStruct handles null enum conversion
   }
 
   private ArtifactEntity createTestArtifactEntity() {
