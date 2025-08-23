@@ -22,3 +22,12 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+
+app:
+  sse:
+    heartbeat:
+      interval-seconds: 20
+    connection:
+      timeout-millis: 0              # 0 = no timeout
+    shutdown:
+      grace-period-seconds: 5

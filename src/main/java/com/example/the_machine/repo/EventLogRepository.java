@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface EventLogRepository extends JpaRepository<EventLogEntity, UUID> {
 
   List<EventLogEntity> findByThreadIdAndIdGreaterThanOrderById(UUID threadId, UUID id);
+
+  boolean existsByIdAndThreadId(UUID id, UUID threadId);
 }

@@ -1,11 +1,11 @@
 package com.example.the_machine.dto;
 
+import com.example.the_machine.domain.EventType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 
 public record EventEnvelope(
-    String type,
-    // run.created|run.updated|message.delta|message.completed|artifact.created|error
+    EventType type,
     UUID threadId,
     UUID runId,
     UUID messageId,

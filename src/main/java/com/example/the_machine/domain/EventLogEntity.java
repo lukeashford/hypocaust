@@ -49,16 +49,4 @@ public class EventLogEntity {
 
   private String dedupeKey;
 
-  @Getter
-  @AllArgsConstructor
-  public enum EventType {
-    RUN_CREATED("run.created"),
-    RUN_UPDATED("run.updated"),
-    MESSAGE_DELTA("message.delta"),
-    MESSAGE_COMPLETED("message.completed"),
-    ARTIFACT_CREATED("artifact.created"),
-    ERROR("error");
-
-    private final String value;
-  }
 }
