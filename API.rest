@@ -2,8 +2,67 @@
 GET http://localhost:8080/actuator/health
 Accept: application/json
 
-### Create new thread
+### 1. Create new thread (same as before)
 POST http://localhost:8080/threads
+Content-Type: application/json
 
-### Get thread view dto
-GET http://localhost:8080/threads/0198d5b6-f95a-70b9-9bcc-b3a174912d7c
+> {%
+  client.global.set("threadId", response.body.id);
+%}
+
+### 2. Start SSE connection (same as before)
+#curl -N -H "Accept: text/event-stream"
+GET http://localhost:8080/threads/{{threadId}}/events
+
+
+### 3. Send message with instruction (NEW - replaces direct run call)
+POST http://localhost:8080/threads/{{threadId}}/messages
+Content-Type: application/json
+
+{
+  "author": "USER",
+  "content": [
+    {
+      "type": "text",
+      "text": "Analyze a brand and design a marketing pitch."
+    }
+  ]
+}
+
+### 4. Wait for processing, then get thread view
+GET http://localhost:8080/threads/{{threadId}}
+
+> {%
+  client.global.set("artifactPath", response.body.artifacts[0].url);
+%}
+
+### 5. Get an artifact
+GET http://localhost:8080/{{artifactPath}}
+
+### 6. Send follow-up message (replaces second run call)
+POST http://localhost:8080/threads/{{threadId}}/messages
+Content-Type: application/json
+
+{
+  "author": "USER",
+  "content": [
+    {
+      "type": "text",
+      "text": "Apple"
+    }
+  ]
+}
+
+### 7. Send revision request (replaces third run call)
+POST http://localhost:8080/threads/{{threadId}}/messages
+Content-Type: application/json
+
+{
+  "author": "USER",
+  "content": [
+    {
+      "type": "text",
+      "text": "Make the main character a girl."
+    }
+  ]
+}

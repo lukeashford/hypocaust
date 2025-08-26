@@ -24,6 +24,8 @@ spring:
       api-key: ${OPENAI_API_KEY}
 
 app:
+  data:
+    base-path: ${DATA_PATH:./data}
   sse:
     heartbeat:
       interval-seconds: 20
@@ -31,3 +33,15 @@ app:
       timeout-millis: 0              # 0 = no timeout
     shutdown:
       grace-period-seconds: 5
+
+  executor:
+    run:
+      thread-pool:
+        core-threads: 2
+        max-threads: 5
+      task-queue:
+        max-capacity: 10
+      idle-thread:
+        keep-alive-seconds: 60
+      shutdown:
+        grace-period-seconds: 5

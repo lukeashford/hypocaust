@@ -26,12 +26,12 @@ class MessageMapperTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void testEntityToDTO() {
+  void testEntityToDto() {
     // Given
     val entity = createTestMessageEntity();
 
     // When
-    val dto = messageMapper.toDTO(entity);
+    val dto = messageMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -45,9 +45,9 @@ class MessageMapperTest {
   }
 
   @Test
-  void testDTOToEntity() {
+  void testDtoToEntity() {
     // Given
-    val dto = createTestMessageDTO();
+    val dto = createTestMessageDto();
 
     // When
     val entity = messageMapper.toEntity(dto);
@@ -66,7 +66,7 @@ class MessageMapperTest {
   @Test
   void testNullHandling() {
     // Test null entity
-    assertNull(messageMapper.toDTO(null));
+    assertNull(messageMapper.toDto(null));
 
     // Test null DTO
     assertNull(messageMapper.toEntity(null));
@@ -78,7 +78,7 @@ class MessageMapperTest {
     val entity = createTestMessageEntity();
 
     // When - convert DTO→Entity→DTO
-    val dto = messageMapper.toDTO(entity);
+    val dto = messageMapper.toDto(entity);
     val roundTripEntity = messageMapper.toEntity(dto);
 
     // Then - JSON fields should be preserved
@@ -110,7 +110,7 @@ class MessageMapperTest {
     }
   }
 
-  private MessageDTO createTestMessageDTO() {
+  private MessageDTO createTestMessageDto() {
     return new MessageDTO(
         UUID.randomUUID(),
         UUID.randomUUID(),

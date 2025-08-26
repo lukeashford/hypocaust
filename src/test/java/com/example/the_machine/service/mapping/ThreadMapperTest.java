@@ -20,12 +20,12 @@ class ThreadMapperTest {
   private ThreadMapper threadMapper;
 
   @Test
-  void testEntityToDTO() {
+  void testEntityToDto() {
     // Given
     val entity = createTestThreadEntity();
 
     // When
-    val dto = threadMapper.toDTO(entity);
+    val dto = threadMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -38,7 +38,7 @@ class ThreadMapperTest {
   @Test
   void testDTOToEntity() {
     // Given
-    val dto = createTestThreadDTO();
+    val dto = createTestThreadDto();
 
     // When
     val entity = threadMapper.toEntity(dto);
@@ -54,7 +54,7 @@ class ThreadMapperTest {
   @Test
   void testNullHandling() {
     // Test null entity
-    assertNull(threadMapper.toDTO(null));
+    assertNull(threadMapper.toDto(null));
 
     // Test null DTO
     assertNull(threadMapper.toEntity(null));
@@ -70,7 +70,7 @@ class ThreadMapperTest {
         .lastActivityAt(Instant.now())
         .build();
 
-    val dto = threadMapper.toDTO(entity);
+    val dto = threadMapper.toDto(entity);
 
     assertNotNull(dto);
     assertEquals(entity.getId(), dto.id());
@@ -89,7 +89,7 @@ class ThreadMapperTest {
         .build();
   }
 
-  private ThreadDTO createTestThreadDTO() {
+  private ThreadDTO createTestThreadDto() {
     return new ThreadDTO(
         UUID.randomUUID(),
         "Test DTO Thread",

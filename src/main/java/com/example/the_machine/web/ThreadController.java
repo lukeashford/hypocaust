@@ -1,5 +1,6 @@
 package com.example.the_machine.web;
 
+import com.example.the_machine.common.Routes;
 import com.example.the_machine.dto.ThreadDTO;
 import com.example.the_machine.dto.ThreadViewDTO;
 import com.example.the_machine.service.ThreadService;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/threads")
+@RequestMapping(Routes.THREADS)
 @RequiredArgsConstructor
 public class ThreadController {
 

@@ -23,6 +23,9 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor
 public class AssistantEntity {
 
+  public static final UUID DEFAULT_ASSISTANT_ID = UUID.fromString(
+      "00000000-0000-0000-0000-000000000001");
+
   @Id
   private UUID id;
 

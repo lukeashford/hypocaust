@@ -1,5 +1,6 @@
 package com.example.the_machine.web;
 
+import com.example.the_machine.common.Routes;
 import com.example.the_machine.service.events.EventService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class EventController {
 
   private final EventService eventService;
 
-  @GetMapping(value = "/threads/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  @GetMapping(value = Routes.THREAD_EVENTS, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter getEvents(
       @PathVariable UUID id,
       @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {

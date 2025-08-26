@@ -21,9 +21,9 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "run")
 @Getter
 @Setter
-@Builder
+@Builder(access = lombok.AccessLevel.PACKAGE)
 @NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor(access = lombok.AccessLevel.PACKAGE)
 public class RunEntity {
 
   @Id

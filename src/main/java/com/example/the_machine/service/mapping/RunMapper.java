@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 public interface RunMapper {
 
   @Mapping(source = "usageJson", target = "usage")
-  RunDTO toDTO(RunEntity entity);
+  RunDTO toDto(RunEntity entity);
 
   @Mapping(source = "usage", target = "usageJson")
   RunEntity toEntity(RunDTO dto);

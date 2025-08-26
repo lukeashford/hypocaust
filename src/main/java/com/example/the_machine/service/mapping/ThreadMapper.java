@@ -7,7 +7,7 @@ import org.mapstruct.Mapper;
 @Mapper(config = GlobalMapperConfig.class)
 public interface ThreadMapper {
 
-  ThreadDTO toDTO(ThreadEntity entity);
+  ThreadDTO toDto(ThreadEntity entity);
 
   ThreadEntity toEntity(ThreadDTO dto);
 }

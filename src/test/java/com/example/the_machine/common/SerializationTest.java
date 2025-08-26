@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.the_machine.dto.ArtifactStatus;
+import com.example.the_machine.domain.ArtifactEntity;
 import com.example.the_machine.dto.AuthorType;
 import com.example.the_machine.dto.RunStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,11 +31,12 @@ class SerializationTest {
     assertEquals("\"ASSISTANT\"", authorTypeJson);
     System.out.println("[DEBUG_LOG] AuthorType.ASSISTANT serialized as: " + authorTypeJson);
 
-    // Test ArtifactStatus enum
-    val artifactStatus = ArtifactStatus.PENDING;
+    // Test ArtifactEntity.Status enum
+    val artifactStatus = ArtifactEntity.Status.PENDING;
     val artifactStatusJson = objectMapper.writeValueAsString(artifactStatus);
     assertEquals("\"PENDING\"", artifactStatusJson);
-    System.out.println("[DEBUG_LOG] ArtifactStatus.PENDING serialized as: " + artifactStatusJson);
+    System.out.println(
+        "[DEBUG_LOG] ArtifactEntity.Status.PENDING serialized as: " + artifactStatusJson);
 
     // Test that all enums follow UPPER_SNAKE_CASE pattern
     for (RunStatus status : RunStatus.values()) {

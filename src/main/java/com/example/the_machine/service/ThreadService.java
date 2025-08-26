@@ -15,6 +15,7 @@ import com.example.the_machine.service.mapping.ThreadMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,37 +35,37 @@ public class ThreadService {
 
   @Transactional
   public ThreadDTO createThread() {
-    var now = Instant.now();
-    var thread = ThreadEntity.builder()
+    val now = Instant.now();
+    val thread = ThreadEntity.builder()
         .id(idGenerator.newId())
         .createdAt(now)
         .lastActivityAt(now)
         .build();
 
-    var savedThread = threadRepository.save(thread);
-    return threadMapper.toDTO(savedThread);
+    val savedThread = threadRepository.save(thread);
+    return threadMapper.toDto(savedThread);
   }
 
   @Transactional(readOnly = true)
   public ThreadViewDTO getThreadView(UUID threadId) {
-    var thread = threadRepository.findById(threadId)
+    val thread = threadRepository.findById(threadId)
         .orElseThrow(() -> new RuntimeException("Thread not found: " + threadId));
 
-    var threadDto = threadMapper.toDTO(thread);
+    val threadDto = threadMapper.toDto(thread);
 
-    var messages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
-    var messageDtos = messages.stream()
-        .map(messageMapper::toDTO)
+    val messages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
+    val messageDtos = messages.stream()
+        .map(messageMapper::toDto)
         .toList();
 
-    var artifacts = artifactRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
-    var artifactDtos = artifacts.stream()
-        .map(artifactMapper::toDTO)
+    val artifacts = artifactRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
+    val artifactDtos = artifacts.stream()
+        .map(artifactMapper::toDto)
         .toList();
 
     var latestRun = runRepository.findTopByThreadIdOrderByStartedAtDesc(threadId);
     var latestRunDto = latestRun
-        .map(runMapper::toDTO)
+        .map(runMapper::toDto)
         .orElse(null);
 
     return new ThreadViewDTO(threadDto, messageDtos, artifactDtos, latestRunDto);

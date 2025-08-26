@@ -3,8 +3,6 @@ package com.example.the_machine.domain;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -36,7 +34,6 @@ public class EventLogEntity {
 
   private UUID messageId;
 
-  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private EventType eventType;
 

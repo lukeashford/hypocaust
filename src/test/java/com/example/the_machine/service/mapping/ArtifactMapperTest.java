@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import com.example.the_machine.common.Routes;
 import com.example.the_machine.domain.ArtifactEntity;
 import com.example.the_machine.dto.ArtifactDTO;
-import com.example.the_machine.dto.ArtifactKind;
-import com.example.the_machine.dto.ArtifactStage;
-import com.example.the_machine.dto.ArtifactStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,33 +25,33 @@ class ArtifactMapperTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void testEntityToDTO() {
+  void testEntityToDto() {
     // Given
     val entity = createTestArtifactEntity();
 
     // When
-    val dto = artifactMapper.toDTO(entity);
+    val dto = artifactMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
     assertEquals(entity.getId(), dto.id());
     assertEquals(entity.getThreadId(), dto.threadId());
     assertEquals(entity.getRunId(), dto.runId());
-    assertEquals(ArtifactKind.IMAGE, dto.kind());
-    assertEquals(ArtifactStage.IMAGES, dto.stage());
-    assertEquals(ArtifactStatus.DONE, dto.status());
+    assertEquals(ArtifactEntity.Kind.IMAGE, dto.kind());
+    assertEquals(ArtifactEntity.Stage.IMAGES, dto.stage());
+    assertEquals(ArtifactEntity.Status.DONE, dto.status());
     assertEquals(entity.getTitle(), dto.title());
-    assertEquals(entity.getSummary(), dto.summary());
     assertEquals(entity.getMime(), dto.mime());
-    assertNull(dto.url()); // Should be null as per requirements
+    assertEquals(Routes.ARTIFACTS + "/" + entity.getId(),
+        dto.url()); // URL should be filled when storageKey exists
     assertEquals(entity.getCreatedAt(), dto.createdAt());
-    assertEquals(entity.getSupersedesId(), dto.supersedesId());
+    assertEquals(entity.getSupersededById(), dto.supersededById());
   }
 
   @Test
   void testDTOToEntity() {
     // Given
-    val dto = createTestArtifactDTO();
+    val dto = createTestArtifactDto();
 
     // When
     val entity = artifactMapper.toEntity(dto);
@@ -67,31 +65,41 @@ class ArtifactMapperTest {
     assertEquals(ArtifactEntity.Stage.ANALYSIS, entity.getStage());
     assertEquals(ArtifactEntity.Status.PENDING, entity.getStatus());
     assertEquals(dto.title(), entity.getTitle());
-    assertEquals(dto.summary(), entity.getSummary());
     assertEquals(dto.mime(), entity.getMime());
     assertEquals(dto.createdAt(), entity.getCreatedAt());
-    assertEquals(dto.supersedesId(), entity.getSupersedesId());
+    assertEquals(dto.supersededById(), entity.getSupersededById());
     // storageKey should be ignored/null when mapping from DTO
     assertNull(entity.getStorageKey());
   }
 
   @Test
-  void testUrlAlwaysNull() {
-    // Given - entity with various states
+  void testUrlGeneration() {
+    // Given - entity with storageKey
     val entity = createTestArtifactEntity();
     entity.setStorageKey("some-storage-key");
 
     // When
-    val dto = artifactMapper.toDTO(entity);
+    val dto = artifactMapper.toDto(entity);
 
     // Then
-    assertNull(dto.url()); // Should always be null regardless of entity state
+    assertEquals("/artifacts/" + entity.getId(),
+        dto.url()); // Should generate URL when storageKey exists
+
+    // Given - entity without storageKey
+    val entityWithoutStorageKey = createTestArtifactEntity();
+    entityWithoutStorageKey.setStorageKey(null);
+
+    // When
+    val dtoWithoutUrl = artifactMapper.toDto(entityWithoutStorageKey);
+
+    // Then
+    assertNull(dtoWithoutUrl.url()); // Should be null when no storageKey
   }
 
   @Test
   void testNullHandling() {
     // Test null entity
-    assertNull(artifactMapper.toDTO(null));
+    assertNull(artifactMapper.toDto(null));
 
     // Test null DTO
     assertNull(artifactMapper.toEntity(null));
@@ -107,14 +115,13 @@ class ArtifactMapperTest {
           .stage(ArtifactEntity.Stage.IMAGES)
           .status(ArtifactEntity.Status.DONE)
           .title("Test Image")
-          .summary("A test image artifact")
           .mime("image/png")
           .storageKey("test-storage-key")
           // Use fixed timestamp in UTC to ensure consistent round-trip conversion
           .createdAt(Instant.parse("2024-01-01T10:00:00Z"))
-          .supersedesId(UUID.randomUUID())
-          .inlineJson(objectMapper.readTree("{}"))
-          .metaJson(objectMapper.readTree("{\"width\": 100, \"height\": 100}"))
+          .supersededById(UUID.randomUUID())
+          .content(objectMapper.readTree("{}"))
+          .metadata(objectMapper.readTree("{\"width\": 100, \"height\": 100}"))
           .build();
     } catch (Exception e) {
       // Fallback without JSON for testing
@@ -126,29 +133,27 @@ class ArtifactMapperTest {
           .stage(ArtifactEntity.Stage.IMAGES)
           .status(ArtifactEntity.Status.DONE)
           .title("Test Image")
-          .summary("A test image artifact")
           .mime("image/png")
           .storageKey("test-storage-key")
           .createdAt(Instant.parse("2024-01-01T10:00:00Z"))
-          .supersedesId(UUID.randomUUID())
+          .supersededById(UUID.randomUUID())
           .build();
     }
   }
 
-  private ArtifactDTO createTestArtifactDTO() {
+  private ArtifactDTO createTestArtifactDto() {
     return new ArtifactDTO(
         UUID.randomUUID(),
         UUID.randomUUID(),
         UUID.randomUUID(),
-        ArtifactKind.STRUCTURED_JSON,
-        ArtifactStage.ANALYSIS,
-        ArtifactStatus.PENDING,
+        ArtifactEntity.Kind.STRUCTURED_JSON,
+        ArtifactEntity.Stage.ANALYSIS,
+        ArtifactEntity.Status.PENDING,
         "Test JSON",
-        "A test JSON artifact",
         "application/json",
         null, // url should always be null
-        null, // inlineJson
-        null, // meta
+        null, // content
+        null, // metadata
         Instant.now(),
         UUID.randomUUID()
     );

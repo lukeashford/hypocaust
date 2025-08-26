@@ -38,3 +38,6 @@ out/
 
 ### Postgres ###
 /podman/volumes/postgres
+
+### Local data directory ###
+/data/

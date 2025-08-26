@@ -26,12 +26,12 @@ class RunMapperTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void testEntityToDTO() {
+  void testEntityToDto() {
     // Given
     val entity = createTestRunEntity();
 
     // When
-    val dto = runMapper.toDTO(entity);
+    val dto = runMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -47,9 +47,9 @@ class RunMapperTest {
   }
 
   @Test
-  void testDTOToEntity() {
+  void testDtoToEntity() {
     // Given
-    val dto = createTestRunDTO();
+    val dto = createTestRunDto();
 
     // When
     val entity = runMapper.toEntity(dto);
@@ -70,7 +70,7 @@ class RunMapperTest {
   @Test
   void testNullHandling() {
     // Test null entity
-    assertNull(runMapper.toDTO(null));
+    assertNull(runMapper.toDto(null));
 
     // Test null DTO
     assertNull(runMapper.toEntity(null));
@@ -82,21 +82,20 @@ class RunMapperTest {
   @Test
   void testOptionalFields() {
     // Test entity with null optional fields
-    val entity = RunEntity.builder()
-        .id(UUID.randomUUID())
-        .threadId(UUID.randomUUID())
-        .assistantId(UUID.randomUUID())
-        .status(RunEntity.Status.QUEUED)
-        .kind(RunEntity.Kind.FULL)
-        // Leave optional fields null
-        .reason(null)
-        .startedAt(null)
-        .completedAt(null)
-        .usageJson(null)
-        .error(null)
-        .build();
+    val entity = new RunEntity();
+    entity.setId(UUID.randomUUID());
+    entity.setThreadId(UUID.randomUUID());
+    entity.setAssistantId(UUID.randomUUID());
+    entity.setStatus(RunEntity.Status.QUEUED);
+    entity.setKind(RunEntity.Kind.FULL);
+    // Leave optional fields null
+    entity.setReason(null);
+    entity.setStartedAt(null);
+    entity.setCompletedAt(null);
+    entity.setUsageJson(null);
+    entity.setError(null);
 
-    val dto = runMapper.toDTO(entity);
+    val dto = runMapper.toDto(entity);
 
     assertNotNull(dto);
     assertEquals(entity.getId(), dto.id());
@@ -113,36 +112,36 @@ class RunMapperTest {
 
   private RunEntity createTestRunEntity() {
     try {
-      return RunEntity.builder()
-          .id(UUID.randomUUID())
-          .threadId(UUID.randomUUID())
-          .assistantId(UUID.randomUUID())
-          .status(RunEntity.Status.RUNNING)
-          .kind(RunEntity.Kind.FULL)
-          .reason("Test run")
-          // Use fixed timestamps in UTC to ensure consistent round-trip conversion
-          .startedAt(Instant.parse("2024-01-01T10:00:00Z"))
-          .completedAt(Instant.parse("2024-01-01T11:00:00Z"))
-          .error("Test error")
-          .usageJson(objectMapper.readTree("{\"inputTokens\": 100, \"outputTokens\": 50}"))
-          .build();
+      val entity = new RunEntity();
+      entity.setId(UUID.randomUUID());
+      entity.setThreadId(UUID.randomUUID());
+      entity.setAssistantId(UUID.randomUUID());
+      entity.setStatus(RunEntity.Status.RUNNING);
+      entity.setKind(RunEntity.Kind.FULL);
+      entity.setReason("Test run");
+      // Use fixed timestamps in UTC to ensure consistent round-trip conversion
+      entity.setStartedAt(Instant.parse("2024-01-01T10:00:00Z"));
+      entity.setCompletedAt(Instant.parse("2024-01-01T11:00:00Z"));
+      entity.setError("Test error");
+      entity.setUsageJson(objectMapper.readTree("{\"inputTokens\": 100, \"outputTokens\": 50}"));
+      return entity;
     } catch (Exception e) {
       // Fallback without JSON for testing
-      return RunEntity.builder()
-          .id(UUID.randomUUID())
-          .threadId(UUID.randomUUID())
-          .assistantId(UUID.randomUUID())
-          .status(RunEntity.Status.RUNNING)
-          .kind(RunEntity.Kind.FULL)
-          .reason("Test run")
-          .startedAt(Instant.parse("2024-01-01T10:00:00Z"))
-          .completedAt(Instant.parse("2024-01-01T11:00:00Z"))
-          .error("Test error")
-          .build();
+      val entity = new RunEntity();
+      entity.setId(UUID.randomUUID());
+      entity.setThreadId(UUID.randomUUID());
+      entity.setAssistantId(UUID.randomUUID());
+      entity.setStatus(RunEntity.Status.RUNNING);
+      entity.setKind(RunEntity.Kind.FULL);
+      entity.setReason("Test run");
+      entity.setStartedAt(Instant.parse("2024-01-01T10:00:00Z"));
+      entity.setCompletedAt(Instant.parse("2024-01-01T11:00:00Z"));
+      entity.setError("Test error");
+      return entity;
     }
   }
 
-  private RunDTO createTestRunDTO() {
+  private RunDTO createTestRunDto() {
     return new RunDTO(
         UUID.randomUUID(),
         UUID.randomUUID(),
