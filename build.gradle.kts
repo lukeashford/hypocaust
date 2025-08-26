@@ -17,6 +17,8 @@ repositories {
   mavenCentral()
 }
 
+val mockitoAgent by configurations.creating { isTransitive = false }
+
 dependencies {
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
@@ -36,8 +38,10 @@ dependencies {
   testAnnotationProcessor(libs.mapstruct.processor)
 
   // Testing dependencies (BOM managed)
+  testImplementation(libs.mockito.core)
   testImplementation(libs.bundles.testing.core)
   testImplementation(libs.bundles.testing.containers)
+  mockitoAgent(libs.mockito.core)
 }
 
 dependencyManagement {
@@ -46,8 +50,13 @@ dependencyManagement {
   }
 }
 
-tasks.withType<Test> {
+tasks.withType<Test>().configureEach {
   useJUnitPlatform()
+  // Load Mockito as a javaagent; also silence the CDS warning seen with agents
+  jvmArgs(
+    "-javaagent:${configurations["mockitoAgent"].asPath}",
+    "-Xshare:off"
+  )
 }
 
 // Podman development tasks

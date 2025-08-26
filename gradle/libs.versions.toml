@@ -18,10 +18,11 @@ postgresql = { module = "org.postgresql:postgresql" }
 flyway-core = { module = "org.flywaydb:flyway-core" }
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
-
-# TestContainers BOM managed
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+
+# Mockito (BOM managed)
+mockito-core = { module = "org.mockito:mockito-core" }
 
 # Spring AI BOM managed
 spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
@@ -39,7 +40,7 @@ spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "
 flyway = ["flyway-core", "flyway-database-postgresql"]
 
 # Testing infrastructure
-testing-core = ["spring-boot-starter-test", "junit-platform-launcher"]
+testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]
 testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
 
 [plugins]
