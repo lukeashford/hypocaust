@@ -55,26 +55,14 @@ class BaseResultFactoryTest {
   }
 
   @Test
-  void testOperatorResultErrorEnforcesOkFalse() {
-    System.out.println("[DEBUG_LOG] Testing OperatorResult.error() enforces ok=false");
-
-    var result = OperatorResult.error("Operation failed");
-    assertFalse(result.isOk(), "OperatorResult.error() should set ok=false");
-    assertEquals("Operation failed", result.getMessage());
-    assertEquals("ERROR", result.getCode());
-
-    System.out.println("[DEBUG_LOG] OperatorResult error methods correctly enforce ok=false");
-  }
-
-  @Test
   void testOperatorResultFailureEnforcesOkFalse() {
     System.out.println("[DEBUG_LOG] Testing OperatorResult.failure() enforces ok=false");
 
-    var result = OperatorResult.failure("TestOp", "1.0", "CUSTOM_ERROR",
+    var result = OperatorResult.failure("TestOp", "1.0", OperatorResultCode.EXECUTION_FAILED,
         "Custom failure message", Map.of());
     assertFalse(result.isOk(), "OperatorResult.failure() should set ok=false");
     assertEquals("Custom failure message", result.getMessage());
-    assertEquals("CUSTOM_ERROR", result.getCode());
+    assertEquals(OperatorResultCode.EXECUTION_FAILED, result.getCode());
 
     System.out.println("[DEBUG_LOG] OperatorResult failure methods correctly enforce ok=false");
   }
@@ -93,11 +81,13 @@ class BaseResultFactoryTest {
 
     // All failure/error methods should result in ok=false
     assertFalse(ValidationResult.error("test").isOk());
-    assertFalse(OperatorResult.error("test").isOk());
-    assertFalse(OperatorResult.failure("op", "1.0", "ERR", "test", Map.of()).isOk());
+    assertFalse(
+        OperatorResult.failure("op", "1.0", OperatorResultCode.EXECUTION_FAILED, "test", Map.of())
+            .isOk());
     assertFalse(OperatorResult.validationFailure("op", "1.0", "test").isOk());
     assertFalse(
-        OperatorResult.exception("op", "1.0", new RuntimeException("test"), Map.of()).isOk());
+        OperatorResult.failure("op", "1.0", OperatorResultCode.UNEXPECTED_ERROR, "test", Map.of())
+            .isOk());
 
     System.out.println(
         "[DEBUG_LOG] Success/failure contract is consistently enforced across all factory methods");

@@ -23,7 +23,7 @@ class OperatorResultTest {
     val result = OperatorResult.success("TestOp", "1.0", inputs, outputs);
 
     assertTrue(result.isOk());
-    assertEquals(OperatorResultCode.SUCCESS.getValue(), result.getCode());
+    assertEquals(OperatorResultCode.SUCCESS, result.getCode());
     assertEquals("Operation completed successfully", result.getMessage());
     assertEquals("TestOp", result.getOperatorName());
     assertEquals("1.0", result.getOperatorVersion());
@@ -40,7 +40,7 @@ class OperatorResultTest {
     val result = OperatorResult.success("TestOp", "1.0", "Custom success", inputs, outputs);
 
     assertTrue(result.isOk());
-    assertEquals(OperatorResultCode.SUCCESS.getValue(), result.getCode());
+    assertEquals(OperatorResultCode.SUCCESS, result.getCode());
     assertEquals("Custom success", result.getMessage());
     assertEquals("TestOp", result.getOperatorName());
     assertEquals("1.0", result.getOperatorVersion());
@@ -50,11 +50,11 @@ class OperatorResultTest {
   void testFailureFactory() {
     Map<String, Object> inputs = Map.of("param1", "value1");
 
-    val result = OperatorResult.failure("TestOp", "1.0", "INVALID_INPUT",
+    val result = OperatorResult.failure("TestOp", "1.0", OperatorResultCode.VALIDATION_ERROR,
         "Parameter validation failed", inputs);
 
     assertFalse(result.isOk());
-    assertEquals("INVALID_INPUT", result.getCode());
+    assertEquals(OperatorResultCode.VALIDATION_ERROR, result.getCode());
     assertEquals("Parameter validation failed", result.getMessage());
     assertEquals("TestOp", result.getOperatorName());
     assertEquals("1.0", result.getOperatorVersion());
@@ -68,37 +68,10 @@ class OperatorResultTest {
         "Required parameter 'name' is missing");
 
     assertFalse(result.isOk());
-    assertEquals(OperatorResultCode.VALIDATION_ERROR.getValue(), result.getCode());
+    assertEquals(OperatorResultCode.VALIDATION_ERROR, result.getCode());
     assertEquals("Required parameter 'name' is missing", result.getMessage());
     assertEquals("TestOp", result.getOperatorName());
     assertEquals("1.0", result.getOperatorVersion());
-  }
-
-  @Test
-  void testExceptionFactory() {
-    val exception = new RuntimeException("Something went wrong");
-    Map<String, Object> inputs = Map.of("param1", "value1");
-
-    val result = OperatorResult.exception("TestOp", "1.0", exception, inputs);
-
-    assertFalse(result.isOk());
-    assertEquals(OperatorResultCode.EXCEPTION.getValue(), result.getCode());
-    assertEquals("Something went wrong", result.getMessage());
-    assertEquals("TestOp", result.getOperatorName());
-    assertEquals("1.0", result.getOperatorVersion());
-    assertEquals(inputs, result.getNormalizedInputs());
-  }
-
-  @Test
-  void testExceptionFactoryWithNullMessage() {
-    val exception = new RuntimeException();
-    Map<String, Object> inputs = Map.of("param1", "value1");
-
-    val result = OperatorResult.exception("TestOp", "1.0", exception, inputs);
-
-    assertFalse(result.isOk());
-    assertEquals(OperatorResultCode.EXCEPTION.getValue(), result.getCode());
-    assertEquals("RuntimeException", result.getMessage());
   }
 
   @Test
@@ -176,11 +149,11 @@ class OperatorResultTest {
 
   @Test
   void testCustomCodeViaFailureMethod() {
-    val result = OperatorResult.failure("CustomOp", "3.0", "CUSTOM_SUCCESS",
+    val result = OperatorResult.failure("CustomOp", "3.0", OperatorResultCode.EXECUTION_FAILED,
         "Custom operation completed", Map.of());
 
     assertFalse(result.isOk()); // failure method creates failed results
-    assertEquals("CUSTOM_SUCCESS", result.getCode());
+    assertEquals(OperatorResultCode.EXECUTION_FAILED, result.getCode());
     assertEquals("Custom operation completed", result.getMessage());
     assertEquals("CustomOp", result.getOperatorName());
     assertEquals("3.0", result.getOperatorVersion());

@@ -3,7 +3,6 @@ package com.example.the_machine.service;
 import com.example.the_machine.domain.EventType;
 import com.example.the_machine.domain.RunEntity;
 import com.example.the_machine.domain.RunFactory;
-import com.example.the_machine.domain.ThreadEntity;
 import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.dto.EventEnvelopeDto;
 import com.example.the_machine.dto.RunDto;
@@ -111,8 +110,6 @@ public class RunService {
     try {
       // Fetch managed entities
       val run = runFactory.findManagedRun(runId);
-      val thread = threadRepository.findById(threadId)
-          .orElseThrow(() -> new IllegalStateException("Thread not found: " + threadId));
 
       // Transition to RUNNING
       run.setStatus(RunEntity.Status.RUNNING);
@@ -138,11 +135,12 @@ public class RunService {
           threadMapper,
           eventPublisher,
           objectMapper,
-          artifactService
+          artifactService,
+          RunPolicy.defaultPolicy()
       );
 
       // Simple planner logic
-      val executionType = determineExecutionType(run, thread);
+      val executionType = determineExecutionType(run);
 
       switch (executionType) {
         case PLAN_CLARIFY -> assistantEngine.executePlanAskClarify(context);
@@ -178,10 +176,9 @@ public class RunService {
    * complex message checking.
    *
    * @param run the current run
-   * @param thread the thread
    * @return the execution type
    */
-  private ExecutionType determineExecutionType(RunEntity run, ThreadEntity thread) {
+  private ExecutionType determineExecutionType(RunEntity run) {
     // Check if reason indicates partial revision
     if (run.getReason() != null && run.getReason().startsWith("user_revision:")) {
       return ExecutionType.PARTIAL_REVISION;
@@ -197,11 +194,6 @@ public class RunService {
 
     // For new conversations, start with plan+maybe clarify
     return ExecutionType.PLAN_CLARIFY;
-  }
-
-  private UUID getDefaultAssistantId() {
-    // For now, return a fixed UUID. In real implementation, this would come from configuration
-    return UUID.fromString("00000000-0000-0000-0000-000000000001");
   }
 
   private enum ExecutionType {

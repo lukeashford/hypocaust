@@ -18,7 +18,7 @@ public class OperatorResult extends BaseResult {
   /**
    * Status/error code (e.g., "SUCCESS", "VALIDATION_ERROR", "TIMEOUT", "API_ERROR").
    */
-  private final String code;
+  private final OperatorResultCode code;
 
   /**
    * The input parameters after validation and normalization.
@@ -59,7 +59,7 @@ public class OperatorResult extends BaseResult {
   /**
    * Private constructor for builder pattern.
    */
-  private OperatorResult(boolean ok, String message, String code,
+  private OperatorResult(boolean ok, String message, OperatorResultCode code,
       Map<String, Object> normalizedInputs,
       Map<String, Object> outputs, Map<String, Object> metrics,
       List<JsonNode> remediationPatches, String operatorName, String operatorVersion,
@@ -82,7 +82,7 @@ public class OperatorResult extends BaseResult {
    */
   public static OperatorResult success() {
     return createSuccess("Operation completed successfully", (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS.getValue(),
+        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS,
             new HashMap<>(), new HashMap<>(), new HashMap<>(), List.of(), null, null, 1));
   }
 
@@ -94,19 +94,7 @@ public class OperatorResult extends BaseResult {
    */
   public static OperatorResult success(String message) {
     return createSuccess(message, (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS.getValue(),
-            new HashMap<>(), new HashMap<>(), new HashMap<>(), List.of(), null, null, 1));
-  }
-
-  /**
-   * Factory method for error results from BaseResult.
-   *
-   * @param message error message
-   * @return a failed OperatorResult
-   */
-  public static OperatorResult error(String message) {
-    return createFailure(message, (ok, msg) ->
-        new OperatorResult(ok, msg, "ERROR",
+        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS,
             new HashMap<>(), new HashMap<>(), new HashMap<>(), List.of(), null, null, 1));
   }
 
@@ -126,7 +114,7 @@ public class OperatorResult extends BaseResult {
       Map<String, Object> outputs
   ) {
     return createSuccess("Operation completed successfully", (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS.getValue(),
+        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS,
             normalizedInputs, outputs, new HashMap<>(), List.of(), operatorName, operatorVersion,
             1));
   }
@@ -149,17 +137,17 @@ public class OperatorResult extends BaseResult {
       Map<String, Object> outputs
   ) {
     return createSuccess(message, (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS.getValue(),
+        new OperatorResult(ok, msg, OperatorResultCode.SUCCESS,
             normalizedInputs, outputs, new HashMap<>(), List.of(), operatorName, operatorVersion,
             1));
   }
 
   /**
-   * Factory method for failed operation results.
+   * Factory method for failed operation results with enum code.
    *
    * @param operatorName name of the operator
    * @param operatorVersion version of the operator
-   * @param code error code
+   * @param code error code enum
    * @param message error message
    * @param normalizedInputs the normalized input parameters (may be partial)
    * @return a failed OperatorResult
@@ -167,7 +155,7 @@ public class OperatorResult extends BaseResult {
   public static OperatorResult failure(
       String operatorName,
       String operatorVersion,
-      String code, String message,
+      OperatorResultCode code, String message,
       Map<String, Object> normalizedInputs
   ) {
     return createFailure(message, (ok, msg) ->
@@ -190,31 +178,8 @@ public class OperatorResult extends BaseResult {
       String validationMessage
   ) {
     return createFailure(validationMessage, (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.VALIDATION_ERROR.getValue(),
+        new OperatorResult(ok, msg, OperatorResultCode.VALIDATION_ERROR,
             new HashMap<>(), new HashMap<>(), new HashMap<>(), List.of(), operatorName,
-            operatorVersion, 1));
-  }
-
-  /**
-   * Factory method for exception-based failures.
-   *
-   * @param operatorName name of the operator
-   * @param operatorVersion version of the operator
-   * @param exception the exception that caused the failure
-   * @param normalizedInputs the normalized input parameters
-   * @return a failed OperatorResult
-   */
-  public static OperatorResult exception(
-      String operatorName,
-      String operatorVersion,
-      Exception exception,
-      Map<String, Object> normalizedInputs
-  ) {
-    String message = exception.getMessage() != null ? exception.getMessage()
-        : exception.getClass().getSimpleName();
-    return createFailure(message, (ok, msg) ->
-        new OperatorResult(ok, msg, OperatorResultCode.EXCEPTION.getValue(),
-            normalizedInputs, new HashMap<>(), new HashMap<>(), List.of(), operatorName,
             operatorVersion, 1));
   }
 

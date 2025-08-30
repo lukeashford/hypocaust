@@ -24,9 +24,23 @@ import lombok.val;
 public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
                          ThreadRepository threadRepository, RunMapper runMapper,
                          ThreadMapper threadMapper, EventPublisher eventPublisher,
-                         ObjectMapper objectMapper, ArtifactService artifactService) {
+                         ObjectMapper objectMapper, ArtifactService artifactService,
+                         RunPolicy policy) {
 
   // Helper methods
+
+  /**
+   * Checks if the current operation is within budget limits.
+   *
+   * @throws IllegalStateException if budget limits are exceeded
+   */
+  public void checkBudgets() {
+    // In a real implementation, this would check actual resource usage
+    // For now, we'll implement a simple check
+    log.debug("Checking budgets - maxCostUsd: {}, maxDepth: {}, maxNodes: {}",
+        policy.maxCostUsd(), policy.maxDepth(), policy.maxNodes());
+    // Budget checking logic would go here - for demo purposes, always passes
+  }
 
   /**
    * Converts an object to JsonNode.

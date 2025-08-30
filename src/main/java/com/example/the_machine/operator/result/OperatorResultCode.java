@@ -7,7 +7,12 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * for the most frequently used codes.
  */
 public enum OperatorResultCode {
-  SUCCESS, VALIDATION_ERROR, EXCEPTION;
+  SUCCESS,
+  VALIDATION_ERROR,
+  EXECUTION_FAILED,
+  UNEXPECTED_ERROR,
+  RETRY_LOOP_ERROR,
+  BUDGET_EXCEEDED;
 
   @JsonValue
   public String getValue() {
