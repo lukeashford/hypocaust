@@ -3,7 +3,7 @@ package com.example.the_machine.dto;
 import java.time.Instant;
 import java.util.UUID;
 
-public record ThreadDTO(
+public record ThreadDto(
     UUID id,
     String title,
     Instant createdAt,

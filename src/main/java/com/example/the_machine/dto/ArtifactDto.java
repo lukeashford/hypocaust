@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 
-public record ArtifactDTO(
+public record ArtifactDto(
     UUID id,
     UUID threadId,
     UUID runId,

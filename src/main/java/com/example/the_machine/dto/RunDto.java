@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 
-public record RunDTO(
+public record RunDto(
     UUID id,
     UUID threadId,
     UUID assistantId,

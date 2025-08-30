@@ -4,9 +4,9 @@ import com.example.the_machine.domain.EventType;
 import com.example.the_machine.domain.RunEntity;
 import com.example.the_machine.domain.RunFactory;
 import com.example.the_machine.domain.ThreadEntity;
-import com.example.the_machine.dto.CreateRunRequest;
-import com.example.the_machine.dto.EventEnvelope;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.CreateRunRequestDto;
+import com.example.the_machine.dto.EventEnvelopeDto;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
 import com.example.the_machine.service.events.EventPublisher;
@@ -53,7 +53,7 @@ public class RunService {
    * @return the created run DTO
    */
   @Transactional
-  public RunDTO createRun(CreateRunRequest request) {
+  public RunDto createRun(CreateRunRequestDto request) {
     log.info("Creating run for thread: {}", request.threadId());
 
     // Load thread
@@ -71,7 +71,7 @@ public class RunService {
     val runDto = runMapper.toDto(runFactory.findManagedRun(runId));
 
     // Log run creation event
-    val envelope = new EventEnvelope(
+    val envelope = new EventEnvelopeDto(
         EventType.RUN_CREATED,
         thread.getId(),
         runId,
@@ -119,7 +119,7 @@ public class RunService {
       run.setStartedAt(Instant.now());
       runRepository.save(run);
 
-      val envelope = new EventEnvelope(
+      val envelope = new EventEnvelopeDto(
           EventType.RUN_UPDATED,
           threadId,
           runId,
@@ -162,7 +162,7 @@ public class RunService {
       run.setCompletedAt(Instant.now());
       runRepository.save(run);
 
-      val errorEnvelope = new EventEnvelope(
+      val errorEnvelope = new EventEnvelopeDto(
           EventType.RUN_UPDATED,
           threadId,
           runId,

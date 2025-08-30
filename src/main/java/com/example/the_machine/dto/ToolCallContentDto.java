@@ -2,10 +2,10 @@ package com.example.the_machine.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-public record ToolCallContent(
+public record ToolCallContentDto(
     String name,
     JsonNode arguments
-) implements ContentBlock {
+) implements ContentBlockDto {
 
   @Override
   public String type() {

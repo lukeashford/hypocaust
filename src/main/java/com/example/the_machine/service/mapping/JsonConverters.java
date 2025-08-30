@@ -1,6 +1,6 @@
 package com.example.the_machine.service.mapping;
 
-import com.example.the_machine.dto.ContentBlock;
+import com.example.the_machine.dto.ContentBlockDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JsonConverters {
 
-  private static final TypeReference<List<ContentBlock>> BLOCK_LIST = new TypeReference<>() {
+  private static final TypeReference<List<ContentBlockDto>> BLOCK_LIST = new TypeReference<>() {
   };
   private final ObjectMapper om;
 
@@ -22,7 +22,7 @@ public class JsonConverters {
   }
 
   @Named("blocksFromJson")
-  public List<ContentBlock> blocksFromJson(JsonNode node) {
+  public List<ContentBlockDto> blocksFromJson(JsonNode node) {
     if (node == null || node.isNull()) {
       return List.of(); // DB NULL or JSON null => empty list in DTO
     }
@@ -33,7 +33,7 @@ public class JsonConverters {
   }
 
   @Named("blocksToJson")
-  public JsonNode blocksToJson(List<ContentBlock> blocks) {
+  public JsonNode blocksToJson(List<ContentBlockDto> blocks) {
     if (blocks == null) {
       return null;
     }

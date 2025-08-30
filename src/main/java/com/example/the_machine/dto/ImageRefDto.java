@@ -2,9 +2,9 @@ package com.example.the_machine.dto;
 
 import java.util.UUID;
 
-public record ImageRef(
+public record ImageRefDto(
     UUID assetId
-) implements ContentBlock {
+) implements ContentBlockDto {
 
   @Override
   public String type() {

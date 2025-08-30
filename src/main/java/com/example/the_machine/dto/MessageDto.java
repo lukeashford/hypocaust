@@ -4,12 +4,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public record MessageDTO(
+public record MessageDto(
     UUID id,
     UUID threadId,
     AuthorType author,
     Instant createdAt,
-    List<ContentBlock> content,
+    List<ContentBlockDto> content,
     List<UUID> attachments
 ) {
 

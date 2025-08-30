@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.the_machine.domain.MessageEntity;
 import com.example.the_machine.dto.AuthorType;
-import com.example.the_machine.dto.MessageDTO;
+import com.example.the_machine.dto.MessageDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -110,8 +110,8 @@ class MessageMapperTest {
     }
   }
 
-  private MessageDTO createTestMessageDto() {
-    return new MessageDTO(
+  private MessageDto createTestMessageDto() {
+    return new MessageDto(
         UUID.randomUUID(),
         UUID.randomUUID(),
         AuthorType.ASSISTANT,

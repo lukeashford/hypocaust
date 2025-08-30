@@ -2,8 +2,8 @@ package com.example.the_machine.service;
 
 import com.example.the_machine.common.IdGenerator;
 import com.example.the_machine.domain.ThreadEntity;
-import com.example.the_machine.dto.ThreadDTO;
-import com.example.the_machine.dto.ThreadViewDTO;
+import com.example.the_machine.dto.ThreadDto;
+import com.example.the_machine.dto.ThreadViewDto;
 import com.example.the_machine.repo.ArtifactRepository;
 import com.example.the_machine.repo.MessageRepository;
 import com.example.the_machine.repo.RunRepository;
@@ -34,7 +34,7 @@ public class ThreadService {
   private final RunMapper runMapper;
 
   @Transactional
-  public ThreadDTO createThread() {
+  public ThreadDto createThread() {
     val now = Instant.now();
     val thread = ThreadEntity.builder()
         .id(idGenerator.newId())
@@ -47,7 +47,7 @@ public class ThreadService {
   }
 
   @Transactional(readOnly = true)
-  public ThreadViewDTO getThreadView(UUID threadId) {
+  public ThreadViewDto getThreadView(UUID threadId) {
     val thread = threadRepository.findById(threadId)
         .orElseThrow(() -> new RuntimeException("Thread not found: " + threadId));
 
@@ -68,6 +68,6 @@ public class ThreadService {
         .map(runMapper::toDto)
         .orElse(null);
 
-    return new ThreadViewDTO(threadDto, messageDtos, artifactDtos, latestRunDto);
+    return new ThreadViewDto(threadDto, messageDtos, artifactDtos, latestRunDto);
   }
 }

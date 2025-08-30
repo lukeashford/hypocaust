@@ -1,9 +1,9 @@
 package com.example.the_machine.service;
 
 import com.example.the_machine.domain.MessageEntity;
-import com.example.the_machine.dto.CreateRunRequest;
-import com.example.the_machine.dto.MessageCreateRequest;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.CreateRunRequestDto;
+import com.example.the_machine.dto.MessageCreateRequestDto;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.repo.MessageRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -34,14 +34,14 @@ public class MessageService {
    * @return the created run DTO
    */
   @Transactional
-  public RunDTO processMessage(UUID threadId, MessageCreateRequest request) {
+  public RunDto processMessage(UUID threadId, MessageCreateRequestDto request) {
     log.info("Processing message for thread: {}", threadId);
 
     // Create and persist user message
     createUserMessage(threadId, request);
 
     // Create run request using record constructor
-    val runRequest = new CreateRunRequest(threadId, null, request);
+    val runRequest = new CreateRunRequestDto(threadId, null, request);
 
     // Trigger run execution
     val runDto = runService.createRun(runRequest);
@@ -57,7 +57,7 @@ public class MessageService {
    * @param request the message creation request
    * @return the created message entity
    */
-  private MessageEntity createUserMessage(UUID threadId, MessageCreateRequest request) {
+  private MessageEntity createUserMessage(UUID threadId, MessageCreateRequestDto request) {
     // Convert AuthorType to MessageEntity.Author
     val author = MessageEntity.Author.valueOf(request.author().name());
 

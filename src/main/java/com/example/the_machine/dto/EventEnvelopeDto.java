@@ -4,7 +4,7 @@ import com.example.the_machine.domain.EventType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 
-public record EventEnvelope(
+public record EventEnvelopeDto(
     EventType type,
     UUID threadId,
     UUID runId,

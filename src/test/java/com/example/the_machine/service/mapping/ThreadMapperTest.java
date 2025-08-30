@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.the_machine.domain.ThreadEntity;
-import com.example.the_machine.dto.ThreadDTO;
+import com.example.the_machine.dto.ThreadDto;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.val;
@@ -89,8 +89,8 @@ class ThreadMapperTest {
         .build();
   }
 
-  private ThreadDTO createTestThreadDto() {
-    return new ThreadDTO(
+  private ThreadDto createTestThreadDto() {
+    return new ThreadDto(
         UUID.randomUUID(),
         "Test DTO Thread",
         Instant.now().minusSeconds(86400), // 1 day ago

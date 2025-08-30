@@ -2,11 +2,11 @@ package com.example.the_machine.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-public record ToolResultContent(
+public record ToolResultContentDto(
     String name,
     JsonNode result,
     String callId
-) implements ContentBlock {
+) implements ContentBlockDto {
 
   @Override
   public String type() {

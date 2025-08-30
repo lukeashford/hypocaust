@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.example.the_machine.dto.ContentBlock;
-import com.example.the_machine.dto.MarkdownContent;
-import com.example.the_machine.dto.TextContent;
+import com.example.the_machine.dto.ContentBlockDto;
+import com.example.the_machine.dto.MarkdownContentDto;
+import com.example.the_machine.dto.TextContentDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
@@ -27,9 +27,9 @@ class JsonConvertersTest {
   @Test
   void testContentBlockRoundTrip() throws Exception {
     // Given - list of different content block types
-    List<ContentBlock> original = List.of(
-        new TextContent("Hello World"),
-        new MarkdownContent("# Title\n\nSome content")
+    List<ContentBlockDto> original = List.of(
+        new TextContentDto("Hello World"),
+        new MarkdownContentDto("# Title\n\nSome content")
     );
 
     // When - convert to JSON and back
@@ -89,7 +89,7 @@ class JsonConvertersTest {
   @Test
   void testEmptyListHandling() {
     // Test empty list -> [] JSON -> empty list
-    List<ContentBlock> emptyBlocks = List.of();
+    List<ContentBlockDto> emptyBlocks = List.of();
     val blocksJson = jsonConverters.blocksToJson(emptyBlocks);
     val blocksRoundTrip = jsonConverters.blocksFromJson(blocksJson);
 

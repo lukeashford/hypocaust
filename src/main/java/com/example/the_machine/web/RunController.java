@@ -1,8 +1,8 @@
 package com.example.the_machine.web;
 
 import com.example.the_machine.common.Routes;
-import com.example.the_machine.dto.CreateRunRequest;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.CreateRunRequestDto;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.service.RunService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class RunController {
    * @return the created run DTO
    */
   @PostMapping(Routes.RUNS)
-  public ResponseEntity<RunDTO> createRun(@RequestBody CreateRunRequest request) {
+  public ResponseEntity<RunDto> createRun(@RequestBody CreateRunRequestDto request) {
     log.info("Creating run for thread: {}", request.threadId());
     val run = runService.createRun(request);
     return ResponseEntity.ok(run);

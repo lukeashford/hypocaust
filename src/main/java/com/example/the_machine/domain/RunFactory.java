@@ -2,7 +2,7 @@ package com.example.the_machine.domain;
 
 import static com.example.the_machine.domain.AssistantEntity.DEFAULT_ASSISTANT_ID;
 
-import com.example.the_machine.dto.CreateRunRequest;
+import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.repo.RunRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class RunFactory {
    * @param threadId the thread ID for the run
    * @return the UUID of the created and saved run
    */
-  public UUID createAndSaveRun(CreateRunRequest request, UUID threadId) {
+  public UUID createAndSaveRun(CreateRunRequestDto request, UUID threadId) {
     val run = RunEntity.builder()
         .id(UUID.randomUUID())
         .threadId(threadId)

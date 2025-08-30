@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.the_machine.common.Routes;
 import com.example.the_machine.domain.ArtifactEntity;
-import com.example.the_machine.dto.ArtifactDTO;
+import com.example.the_machine.dto.ArtifactDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -141,8 +141,8 @@ class ArtifactMapperTest {
     }
   }
 
-  private ArtifactDTO createTestArtifactDto() {
-    return new ArtifactDTO(
+  private ArtifactDto createTestArtifactDto() {
+    return new ArtifactDto(
         UUID.randomUUID(),
         UUID.randomUUID(),
         UUID.randomUUID(),

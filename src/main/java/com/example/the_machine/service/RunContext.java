@@ -3,7 +3,7 @@ package com.example.the_machine.service;
 import com.example.the_machine.domain.ArtifactEntity;
 import com.example.the_machine.domain.EventType;
 import com.example.the_machine.domain.RunEntity.Status;
-import com.example.the_machine.dto.EventEnvelope;
+import com.example.the_machine.dto.EventEnvelopeDto;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
 import com.example.the_machine.service.events.EventPublisher;
@@ -52,7 +52,7 @@ public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
    */
   public void emitMessage(UUID messageId, Object messageData, boolean completed) {
     val eventType = completed ? EventType.MESSAGE_COMPLETED : EventType.MESSAGE_DELTA;
-    val envelope = new EventEnvelope(
+    val envelope = new EventEnvelopeDto(
         eventType,
         threadId,
         runId,
@@ -134,7 +134,7 @@ public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
     // Save the managed entity (no merge issues)
     runRepository.save(managedRun);
 
-    val envelope = new EventEnvelope(
+    val envelope = new EventEnvelopeDto(
         EventType.RUN_UPDATED,
         threadId,
         managedRun.getId(),

@@ -2,7 +2,7 @@ package com.example.the_machine.service.mapping;
 
 import com.example.the_machine.common.Routes;
 import com.example.the_machine.domain.ArtifactEntity;
-import com.example.the_machine.dto.ArtifactDTO;
+import com.example.the_machine.dto.ArtifactDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -10,7 +10,7 @@ import org.mapstruct.Mapping;
 public interface ArtifactMapper {
 
   @Mapping(target = "url", expression = "java(buildUrl(entity))")
-  ArtifactDTO toDto(ArtifactEntity entity);
+  ArtifactDto toDto(ArtifactEntity entity);
 
   default String buildUrl(ArtifactEntity entity) {
     if (entity.getStorageKey() != null && !entity.getStorageKey().trim().isEmpty()) {
@@ -20,5 +20,5 @@ public interface ArtifactMapper {
   }
 
   @Mapping(target = "storageKey", ignore = true)
-  ArtifactEntity toEntity(ArtifactDTO dto);
+  ArtifactEntity toEntity(ArtifactDto dto);
 }

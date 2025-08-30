@@ -1,8 +1,8 @@
 package com.example.the_machine.web;
 
 import com.example.the_machine.common.Routes;
-import com.example.the_machine.dto.MessageCreateRequest;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.MessageCreateRequestDto;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.service.MessageService;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
@@ -33,9 +33,9 @@ public class MessageController {
    * @return the created run DTO
    */
   @PostMapping(Routes.THREAD_MESSAGES)
-  public ResponseEntity<RunDTO> processMessage(
+  public ResponseEntity<RunDto> processMessage(
       @PathVariable UUID threadId,
-      @RequestBody MessageCreateRequest request) {
+      @RequestBody MessageCreateRequestDto request) {
 
     log.info("Processing message for thread: {}", threadId);
 

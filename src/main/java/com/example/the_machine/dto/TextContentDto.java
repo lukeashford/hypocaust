@@ -1,8 +1,8 @@
 package com.example.the_machine.dto;
 
-public record TextContent(
+public record TextContentDto(
     String text
-) implements ContentBlock {
+) implements ContentBlockDto {
 
   @Override
   public String type() {

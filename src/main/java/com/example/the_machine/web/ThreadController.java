@@ -1,8 +1,8 @@
 package com.example.the_machine.web;
 
 import com.example.the_machine.common.Routes;
-import com.example.the_machine.dto.ThreadDTO;
-import com.example.the_machine.dto.ThreadViewDTO;
+import com.example.the_machine.dto.ThreadDto;
+import com.example.the_machine.dto.ThreadViewDto;
 import com.example.the_machine.service.ThreadService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +22,12 @@ public class ThreadController {
   private final ThreadService threadService;
 
   @PostMapping
-  public ResponseEntity<ThreadDTO> createThread() {
+  public ResponseEntity<ThreadDto> createThread() {
     return ResponseEntity.status(HttpStatus.CREATED).body(threadService.createThread());
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<ThreadViewDTO> getThread(@PathVariable UUID id) {
+  public ResponseEntity<ThreadViewDto> getThread(@PathVariable UUID id) {
     return ResponseEntity.ok(threadService.getThreadView(id));
   }
 }

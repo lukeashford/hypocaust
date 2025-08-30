@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.example.the_machine.domain.RunEntity;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.dto.RunKind;
 import com.example.the_machine.dto.RunStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -141,8 +141,8 @@ class RunMapperTest {
     }
   }
 
-  private RunDTO createTestRunDto() {
-    return new RunDTO(
+  private RunDto createTestRunDto() {
+    return new RunDto(
         UUID.randomUUID(),
         UUID.randomUUID(),
         UUID.randomUUID(),

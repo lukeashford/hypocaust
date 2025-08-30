@@ -12,10 +12,10 @@ import com.example.the_machine.domain.RunEntity;
 import com.example.the_machine.domain.RunFactory;
 import com.example.the_machine.domain.ThreadEntity;
 import com.example.the_machine.dto.AuthorType;
-import com.example.the_machine.dto.CreateRunRequest;
-import com.example.the_machine.dto.EventEnvelope;
-import com.example.the_machine.dto.MessageCreateRequest;
-import com.example.the_machine.dto.RunDTO;
+import com.example.the_machine.dto.CreateRunRequestDto;
+import com.example.the_machine.dto.EventEnvelopeDto;
+import com.example.the_machine.dto.MessageCreateRequestDto;
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.dto.RunKind;
 import com.example.the_machine.dto.RunStatus;
 import com.example.the_machine.repo.RunRepository;
@@ -78,7 +78,7 @@ class RunServiceTest {
   private UUID assistantId;
   private ThreadEntity thread;
   private RunEntity savedRun;
-  private RunDTO runDTO;
+  private RunDto runDTO;
   private JsonNode mockJsonNode;
 
   @BeforeEach
@@ -100,7 +100,7 @@ class RunServiceTest {
     savedRun.setStatus(RunEntity.Status.QUEUED);
     savedRun.setKind(RunEntity.Kind.FULL);
 
-    runDTO = new RunDTO(
+    runDTO = new RunDto(
         savedRun.getId(),
         savedRun.getThreadId(),
         savedRun.getAssistantId(),
@@ -119,37 +119,37 @@ class RunServiceTest {
   @Test
   void createRun_WithValidRequest_CreatesRunAndLogsEvent() {
     // Given
-    MessageCreateRequest messageInput = new MessageCreateRequest(AuthorType.USER, null, null);
-    CreateRunRequest request = new CreateRunRequest(threadId, assistantId, messageInput);
+    MessageCreateRequestDto messageInput = new MessageCreateRequestDto(AuthorType.USER, null, null);
+    CreateRunRequestDto request = new CreateRunRequestDto(threadId, assistantId, messageInput);
 
     when(threadRepository.findById(threadId)).thenReturn(Optional.of(thread));
-    when(runFactory.createAndSaveRun(any(CreateRunRequest.class), eq(threadId))).thenReturn(
+    when(runFactory.createAndSaveRun(any(CreateRunRequestDto.class), eq(threadId))).thenReturn(
         savedRun.getId());
     when(runFactory.findManagedRun(savedRun.getId())).thenReturn(savedRun);
     when(runMapper.toDto(savedRun)).thenReturn(runDTO);
     when(objectMapper.valueToTree(runDTO)).thenReturn(mockJsonNode);
 
     // When
-    RunDTO result = runService.createRun(request);
+    RunDto result = runService.createRun(request);
 
     // Then
     assertThat(result).isEqualTo(runDTO);
 
     // Verify run entity was created through factory
-    ArgumentCaptor<CreateRunRequest> requestCaptor = ArgumentCaptor.forClass(
-        CreateRunRequest.class);
+    ArgumentCaptor<CreateRunRequestDto> requestCaptor = ArgumentCaptor.forClass(
+        CreateRunRequestDto.class);
     verify(runFactory).createAndSaveRun(requestCaptor.capture(), eq(threadId));
     verify(runFactory).findManagedRun(savedRun.getId());
 
-    CreateRunRequest capturedRequest = requestCaptor.getValue();
+    CreateRunRequestDto capturedRequest = requestCaptor.getValue();
     assertThat(capturedRequest.threadId()).isEqualTo(threadId);
     assertThat(capturedRequest.assistantId()).isEqualTo(assistantId);
 
     // Verify event was logged
-    ArgumentCaptor<EventEnvelope> eventCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
+    ArgumentCaptor<EventEnvelopeDto> eventCaptor = ArgumentCaptor.forClass(EventEnvelopeDto.class);
     verify(eventPublisher).publishAndStore(eq(threadId), eventCaptor.capture(), eq(null));
 
-    EventEnvelope capturedEvent = eventCaptor.getValue();
+    EventEnvelopeDto capturedEvent = eventCaptor.getValue();
     assertThat(capturedEvent.type()).isEqualTo(EventType.RUN_CREATED);
     assertThat(capturedEvent.threadId()).isEqualTo(threadId);
     assertThat(capturedEvent.runId()).isEqualTo(savedRun.getId());
@@ -163,22 +163,22 @@ class RunServiceTest {
   @Test
   void createRun_WithoutInput_CreatesRunSuccessfully() {
     // Given
-    CreateRunRequest request = new CreateRunRequest(threadId, assistantId, null);
+    CreateRunRequestDto request = new CreateRunRequestDto(threadId, assistantId, null);
 
     when(threadRepository.findById(threadId)).thenReturn(Optional.of(thread));
-    when(runFactory.createAndSaveRun(any(CreateRunRequest.class), eq(threadId))).thenReturn(
+    when(runFactory.createAndSaveRun(any(CreateRunRequestDto.class), eq(threadId))).thenReturn(
         savedRun.getId());
     when(runFactory.findManagedRun(savedRun.getId())).thenReturn(savedRun);
     when(runMapper.toDto(savedRun)).thenReturn(runDTO);
     when(objectMapper.valueToTree(runDTO)).thenReturn(mockJsonNode);
 
     // When
-    RunDTO result = runService.createRun(request);
+    RunDto result = runService.createRun(request);
 
     // Then
     assertThat(result).isEqualTo(runDTO);
-    verify(runFactory).createAndSaveRun(any(CreateRunRequest.class), eq(threadId));
-    verify(eventPublisher).publishAndStore(eq(threadId), any(EventEnvelope.class), eq(null));
+    verify(runFactory).createAndSaveRun(any(CreateRunRequestDto.class), eq(threadId));
+    verify(eventPublisher).publishAndStore(eq(threadId), any(EventEnvelopeDto.class), eq(null));
     verify(applicationEventPublisher).publishEvent(
         any(com.example.the_machine.service.events.RunCreatedEvent.class));
   }
@@ -186,10 +186,10 @@ class RunServiceTest {
   @Test
   void createRun_WithNullAssistantId_UsesDefaultAssistant() {
     // Given
-    CreateRunRequest request = new CreateRunRequest(threadId, null, null);
+    CreateRunRequestDto request = new CreateRunRequestDto(threadId, null, null);
 
     when(threadRepository.findById(threadId)).thenReturn(Optional.of(thread));
-    when(runFactory.createAndSaveRun(any(CreateRunRequest.class), eq(threadId))).thenReturn(
+    when(runFactory.createAndSaveRun(any(CreateRunRequestDto.class), eq(threadId))).thenReturn(
         savedRun.getId());
     when(runFactory.findManagedRun(savedRun.getId())).thenReturn(savedRun);
     when(runMapper.toDto(savedRun)).thenReturn(runDTO);
@@ -199,11 +199,11 @@ class RunServiceTest {
     runService.createRun(request);
 
     // Then
-    ArgumentCaptor<CreateRunRequest> requestCaptor = ArgumentCaptor.forClass(
-        CreateRunRequest.class);
+    ArgumentCaptor<CreateRunRequestDto> requestCaptor = ArgumentCaptor.forClass(
+        CreateRunRequestDto.class);
     verify(runFactory).createAndSaveRun(requestCaptor.capture(), eq(threadId));
 
-    CreateRunRequest capturedRequest = requestCaptor.getValue();
+    CreateRunRequestDto capturedRequest = requestCaptor.getValue();
     assertThat(capturedRequest.assistantId()).isNull(); // Factory handles default assignment
   }
 
@@ -211,7 +211,7 @@ class RunServiceTest {
   void createRun_WithInvalidThreadId_ThrowsException() {
     // Given
     UUID invalidThreadId = UUID.randomUUID();
-    CreateRunRequest request = new CreateRunRequest(invalidThreadId, assistantId, null);
+    CreateRunRequestDto request = new CreateRunRequestDto(invalidThreadId, assistantId, null);
 
     when(threadRepository.findById(invalidThreadId)).thenReturn(Optional.empty());
 
@@ -224,10 +224,10 @@ class RunServiceTest {
   @Test
   void createRun_SetsCorrectRunDefaults() {
     // Given
-    CreateRunRequest request = new CreateRunRequest(threadId, assistantId, null);
+    CreateRunRequestDto request = new CreateRunRequestDto(threadId, assistantId, null);
 
     when(threadRepository.findById(threadId)).thenReturn(Optional.of(thread));
-    when(runFactory.createAndSaveRun(any(CreateRunRequest.class), eq(threadId))).thenReturn(
+    when(runFactory.createAndSaveRun(any(CreateRunRequestDto.class), eq(threadId))).thenReturn(
         savedRun.getId());
     when(runFactory.findManagedRun(savedRun.getId())).thenReturn(savedRun);
     when(runMapper.toDto(savedRun)).thenReturn(runDTO);
@@ -237,11 +237,11 @@ class RunServiceTest {
     runService.createRun(request);
 
     // Then
-    ArgumentCaptor<CreateRunRequest> requestCaptor = ArgumentCaptor.forClass(
-        CreateRunRequest.class);
+    ArgumentCaptor<CreateRunRequestDto> requestCaptor = ArgumentCaptor.forClass(
+        CreateRunRequestDto.class);
     verify(runFactory).createAndSaveRun(requestCaptor.capture(), eq(threadId));
 
-    CreateRunRequest capturedRequest = requestCaptor.getValue();
+    CreateRunRequestDto capturedRequest = requestCaptor.getValue();
     assertThat(capturedRequest.threadId()).isEqualTo(threadId);
     assertThat(capturedRequest.assistantId()).isEqualTo(assistantId);
     // Factory handles setting correct defaults (QUEUED, FULL, ID generation)
