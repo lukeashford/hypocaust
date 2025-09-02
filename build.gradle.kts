@@ -26,7 +26,8 @@ dependencies {
   implementation(libs.bundles.flyway)
 
   // Spring AI (BOM managed)
-  implementation(libs.spring.ai.starter.model.openai)
+  implementation(libs.spring.ai.openai)
+  implementation(libs.spring.ai.anthropic)
 
   // Annotation processing tools (explicitly versioned)
   compileOnly(libs.lombok)

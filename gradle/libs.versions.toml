@@ -25,7 +25,8 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 mockito-core = { module = "org.mockito:mockito-core" }
 
 # Spring AI BOM managed
-spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
+spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
+spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic" }
 
 # Explicitly versioned dependencies
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
