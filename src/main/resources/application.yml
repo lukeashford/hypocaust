@@ -22,29 +22,32 @@ spring:
 
 app:
   llm:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      models:
-        gpt4o:
-          model: gpt-4o
-          temperature: 0.2
-          maxTokens: 128000          # input context max
-        gpt4omini:
-          model: gpt-4o-mini
-          temperature: 0.3
-          maxTokens: 128000          # input context max
-        o3:
-          model: o3                  # or "o3-pro" if you use that variant
-          temperature: null          # reasoning models ignore temperature
-          maxTokens: 200000          # input context max (output max ~100k)
-    anthropic:
-      api-key: ${ANTHROPIC_API_KEY}
-      models:
-        sonnet4:
-          # Prefer the dated ID when possible:
-          model: claude-sonnet-4-20250514
-          temperature: 0.2
-          maxTokens: 1000000
+    platforms:
+      openai:
+        api-key: ${OPENAI_API_KEY:"openai-api-key"}
+        models:
+          o3:
+            params:
+              model: o3
+              maxCompletionTokens: 100000
+              reasoningEffort: high
+          gpt4o:
+            params:
+              model: gpt-4o
+              temperature: 0.2
+          4o-mini:
+            params:
+              model: gpt-4o-mini
+              temperature: 0.3
+      anthropic:
+        api-key: ${ANTHROPIC_API_KEY:"anthropic-api-key"}
+  #        models:
+  #          sonnet4:
+  #            params:
+  #              # Prefer the dated ID when possible:
+  #              model: claude-sonnet-4-20250514
+  #              temperature: 0.2
+  #              maxTokens: 200000
   data:
     base-path: ${DATA_PATH:./data}
   sse:

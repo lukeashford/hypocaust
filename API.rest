@@ -1,5 +1,9 @@
-### Health Check
+### App Health Check
 GET http://localhost:8080/actuator/health
+Accept: application/json
+
+### Model Health Check
+GET http://localhost:8080/api/diagnostics/models/health
 Accept: application/json
 
 ### 1. Create new thread (same as before)

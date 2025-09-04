@@ -10,9 +10,14 @@ spring:
   sql:
     init:
       mode: always
-  ai:
-    openai:
-      api-key: test-key  # Mock API key for testing
+
+app:
+  llm:
+    platforms:
+      anthropic:
+        api-key: test-anthropic-key  # Mock API key for testing
+      openai:
+        api-key: test-openai-key     # Mock API key for testing
 
 management:
   endpoints:

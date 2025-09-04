@@ -5,21 +5,25 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/**
- * Unified configuration for all LLM providers. Replaces individual provider properties classes to
- * eliminate duplication.
- */
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.llm")
-public class LlmConfiguration {
+public class ModelConfig {
 
-  private Map<String, ProviderConfig> providers = Map.of();
+  private String defaultModel;
+
+  private Map<String, ModelPlatformConfig> platforms = Map.of();
 
   @Data
-  public static class ProviderConfig {
+  public static class ModelPlatformConfig {
 
     private String apiKey;
     private Map<String, ModelProps> models = Map.of();
+
+    @Data
+    public static class ModelProps {
+
+      private Map<String, String> params;
+    }
   }
 }

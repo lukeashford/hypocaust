@@ -1,73 +1,81 @@
 package com.example.the_machine.models;
 
-import lombok.RequiredArgsConstructor;
-import lombok.val;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.stereotype.Service;
-
 import jakarta.annotation.PostConstruct;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.stereotype.Component;
 
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
 public class ModelRegistry {
 
-    private final List<ModelProvider> providers;
+  private final ModelConfig config;
+  private final List<ModelPlatform> platforms;
 
-    private Map<String, ChatModel> models;
+  private Map<String, ChatModel> models;
 
-    @PostConstruct
-    void initializeModels() {
-        models = createModelRegistry();
-        log.info("Initialized {} models: {}", models.size(), models.keySet());
-    }
+  @PostConstruct
+  public void init() {
+    models = config.getPlatforms().entrySet().stream()
+        .flatMap(platformEntry -> {
+          val platformName = platformEntry.getKey();
+          val platformConfig = platformEntry.getValue();
+          val platform = findPlatform(platformName);
+          val builder = platform.getGenericBuilder();
 
-    private Map<String, ChatModel> getModels() {
-        return models;
-    }
+          return platformConfig.getModels().entrySet().stream()
+              .map(modelEntry -> {
+                val modelName = modelEntry.getKey();
+                val modelProps = modelEntry.getValue();
+//                val builder = findBuilderOrDefault(platform, modelName);
+                ChatModel chatModel;
+                try {
+                  chatModel = builder.from(modelProps.getParams());
+                } catch (NoSuchMethodException | InvocationTargetException |
+                         IllegalAccessException e) {
+                  throw new RuntimeException(e);
+                }
 
-    private Map<String, ChatModel> createModelRegistry() {
-        return providers.stream()
-                .flatMap(provider -> provider.createModels().entrySet().stream()
-                        .map(entry -> Map.entry(
-                                provider.getProviderName() + ":" + entry.getKey(),
-                                entry.getValue()
-                        )))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
+                return Map.entry(platformName + ":" + modelName, chatModel);
+              });
+        })
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    public ChatModel getModel(String providerAndModel) {
-        if (providerAndModel == null || !providerAndModel.contains(":")) {
-            throw new IllegalArgumentException(
-                "Invalid model format. Expected 'provider:model', got '" + providerAndModel + "'"
-            );
-        }
-        
-        val model = getModels().get(providerAndModel);
-        if (model == null) {
-            throw new ModelNotFoundException(
-                "Model not found: " + providerAndModel + ". Available models: " + listAvailableModels()
-            );
-        }
-        return model;
-    }
+    // Log initial model registry state
+    log.info("Model registry initialized with {} models: {}", models.size(), models.keySet());
+//    if (!models.containsKey(config.getDefaultModel())) {
+//      throw new IllegalStateException("Default model not found: " + config.getDefaultModel());
+//    }
+  }
 
-    public ChatModel getModel(String provider, String model) {
-        if (provider == null || provider.trim().isEmpty()) {
-            throw new IllegalArgumentException("Provider cannot be null or empty");
-        }
-        if (model == null || model.trim().isEmpty()) {
-            throw new IllegalArgumentException("Model cannot be null or empty");
-        }
-        return getModel(provider + ":" + model);
-    }
+  public ChatModel get(String name) {
+    return models.get(name);
+  }
 
-    public Set<String> listAvailableModels() {
-        return getModels().keySet();
-    }
+  public ChatModel getDefault() {
+    return get(config.getDefaultModel());
+  }
+
+  public Set<String> listAvailableModels() {
+    return models.keySet();
+  }
+
+  private ModelPlatform findPlatform(String name) {
+    return platforms.stream()
+        .filter(p -> p.getName().equals(name))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("Platform not found: " + name));
+  }
+
+  private ModelBuilder findBuilderOrDefault(ModelPlatform platform, String modelName) {
+    return platform.getBuilderOrDefault(modelName);
+  }
 }
