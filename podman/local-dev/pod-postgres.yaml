@@ -9,7 +9,7 @@ spec:
         path: ${HOSTPATH}/podman/volumes/postgres
   containers:
     - name: postgres
-      image: docker.io/library/postgres:17.2
+      image: pgvector/pgvector:pg17
       envFrom:
         - configMapRef:
             name: the_machine-dev

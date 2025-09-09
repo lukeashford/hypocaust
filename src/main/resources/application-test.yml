@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:tc:postgresql:15:///test_db
+    url: jdbc:tc:pgvector:pg16:///test_db
     username: test
     password: test
   jpa:
@@ -13,11 +13,10 @@ spring:
 
 app:
   llm:
-    platforms:
-      anthropic:
-        api-key: test-anthropic-key  # Mock API key for testing
-      openai:
-        api-key: test-openai-key     # Mock API key for testing
+    openai:
+      api-key: test-openai-key     # Mock API key for testing
+    anthropic:
+      api-key: test-anthropic-key  # Mock API key for testing
 
 management:
   endpoints:

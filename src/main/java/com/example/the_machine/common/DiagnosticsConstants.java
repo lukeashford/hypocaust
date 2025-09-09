@@ -13,7 +13,7 @@ public final class DiagnosticsConstants {
   public static final String DATABASE_HEALTH_ENDPOINT = "/database/health";
 
   // Health Check Messages
-  public static final String HEALTH_CHECK_PROMPT = "Please respond with exactly: 'I'm alive'";
+  public static final String HEALTH_CHECK_PROMPT = "Please respond with exactly: I'm alive";
   public static final String EXPECTED_RESPONSE = "I'm alive";
   public static final String SYSTEM_MESSAGE = "You are a health check assistant. Respond exactly as requested.";
 

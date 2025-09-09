@@ -1,0 +1,24 @@
+package com.example.the_machine.models;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.ai.anthropic.api.AnthropicApi;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@RequiredArgsConstructor
+public class ApiConfiguration {
+
+  private final ModelProperties modelProperties;
+
+  @Bean
+  public AnthropicApi anthropicApi() {
+    return AnthropicApi.builder().apiKey(modelProperties.getAnthropic().getApiKey()).build();
+  }
+
+  @Bean
+  public OpenAiApi openAiApi() {
+    return OpenAiApi.builder().apiKey(modelProperties.getOpenAi().getApiKey()).build();
+  }
+}

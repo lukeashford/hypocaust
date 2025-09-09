@@ -1,0 +1,46 @@
+package com.example.the_machine.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+/**
+ * JPA entity representing operator embeddings stored in the database for semantic search. Each
+ * embedding corresponds to an operator's description and metadata converted to a vector
+ * representation for similarity-based retrieval.
+ */
+@Entity
+@Table(name = "operator_embeddings")
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class OperatorEmbedding {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(name = "operator_name", unique = true, nullable = false)
+  private String operatorName;
+
+  @Column(name = "embedding", nullable = false, columnDefinition = "vector(1536)")
+  @JdbcTypeCode(SqlTypes.ARRAY)
+  private float[] embedding;
+
+  @Column(nullable = false, length = 64)
+  private String hash;
+
+  @Column(insertable = false, updatable = false)
+  private LocalDateTime createdAt;
+}

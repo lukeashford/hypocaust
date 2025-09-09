@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -250,6 +251,24 @@ public class ToolSpec {
     }
 
     return schema;
+  }
+
+  /**
+   * Returns the set of input parameter names for capability matching.
+   */
+  public Set<String> getInputKeys() {
+    return inputs.stream()
+        .map(ParamSpec::getName)
+        .collect(Collectors.toSet());
+  }
+
+  /**
+   * Returns the set of output parameter names for capability matching.
+   */
+  public Set<String> getOutputKeys() {
+    return outputs.stream()
+        .map(ParamSpec::getName)
+        .collect(Collectors.toSet());
   }
 
   /**
