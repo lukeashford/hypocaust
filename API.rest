@@ -6,7 +6,7 @@ Accept: application/json
 GET http://localhost:8080/api/diagnostics/models/health
 Accept: application/json
 
-### 1. Create new thread (same as before)
+### 1. Create new thread
 POST http://localhost:8080/threads
 Content-Type: application/json
 
@@ -14,12 +14,12 @@ Content-Type: application/json
   client.global.set("threadId", response.body.id);
 %}
 
-### 2. Start SSE connection (same as before)
+### 2. Start SSE connection
 #curl -N -H "Accept: text/event-stream"
 GET http://localhost:8080/threads/{{threadId}}/events
 
 
-### 3. Send message with instruction (NEW - replaces direct run call)
+### 3. Send message with instruction
 POST http://localhost:8080/threads/{{threadId}}/messages
 Content-Type: application/json
 
@@ -43,7 +43,7 @@ GET http://localhost:8080/threads/{{threadId}}
 ### 5. Get an artifact
 GET http://localhost:8080/{{artifactPath}}
 
-### 6. Send follow-up message (replaces second run call)
+### 6. Send follow-up message
 POST http://localhost:8080/threads/{{threadId}}/messages
 Content-Type: application/json
 
@@ -57,7 +57,7 @@ Content-Type: application/json
   ]
 }
 
-### 7. Send revision request (replaces third run call)
+### 7. Send revision request
 POST http://localhost:8080/threads/{{threadId}}/messages
 Content-Type: application/json
 

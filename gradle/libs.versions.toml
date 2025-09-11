@@ -2,10 +2,13 @@
 # Spring versions
 spring-boot = "3.5.0"
 spring-ai = "1.0.0"
+kotlin = "1.9.25"
+kotlinx-serialization = "1.6.3"
 
 # Explicitly versioned dependencies
 lombok = "1.18.34"
 mapstruct = "1.6.0"
+kotlin-logging = "3.0.5"
 
 [libraries]
 # Spring Boot BOM managed (no version needed, managed by BOM)
@@ -33,6 +36,11 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 
+# Kotlin-specific libraries
+kotlin-logging = { module = "io.github.microutils:kotlin-logging-jvm", version.ref = "kotlin-logging" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
 [bundles]
 # Core Spring Boot functionality
 spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "spring-boot-starter-data-jpa"]
@@ -44,7 +52,14 @@ flyway = ["flyway-core", "flyway-database-postgresql"]
 testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]
 testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
 
+# Kotlin essentials
+kotlin-core = ["kotlin-logging", "kotlin-reflect"]
+
 [plugins]
 # Plugin versions for reference
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.7" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

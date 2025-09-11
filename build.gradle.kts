@@ -1,5 +1,8 @@
 plugins {
-  java
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.kapt)
+  alias(libs.plugins.kotlin.spring)
+  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.dependency.management)
 }
@@ -7,9 +10,10 @@ plugins {
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 
-java {
-  toolchain {
-    languageVersion.set(JavaLanguageVersion.of(21))
+kotlin {
+  jvmToolchain(21)
+  compilerOptions {
+    freeCompilerArgs.add("-Xjsr305=strict")
   }
 }
 
@@ -20,6 +24,12 @@ repositories {
 val mockitoAgent by configurations.creating { isTransitive = false }
 
 dependencies {
+  // Kotlin essentials
+  implementation(libs.bundles.kotlin.core)
+
+  // Kotlin Serialization
+  implementation(libs.kotlinx.serialization.json)
+
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
   implementation(libs.postgresql)
@@ -29,14 +39,12 @@ dependencies {
   implementation(libs.spring.ai.openai)
   implementation(libs.spring.ai.anthropic)
 
-  // Annotation processing tools (explicitly versioned)
-  compileOnly(libs.lombok)
+  // Annotation processing tools
   implementation(libs.mapstruct)
-  annotationProcessor(libs.lombok)
-  annotationProcessor(libs.mapstruct.processor)
-  testCompileOnly(libs.lombok)
-  testAnnotationProcessor(libs.lombok)
-  testAnnotationProcessor(libs.mapstruct.processor)
+  kapt(libs.mapstruct.processor)
+
+  // Lombok for test files
+  testImplementation(libs.lombok)
 
   // Testing dependencies (BOM managed)
   testImplementation(libs.mockito.core)
