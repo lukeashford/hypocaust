@@ -10,7 +10,6 @@ import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 import java.util.*
 
 private val log = KotlinLogging.logger {}
@@ -61,16 +60,14 @@ class MessageService(
     val author = MessageEntity.Author.valueOf(request.author.name)
 
     // Convert content to JsonElement
-    val contentJson: JsonElement? = jsonConverters.blocksToJson(request.content)
+    val contentJson: JsonElement = jsonConverters.blocksToJson(request.content)
     val attachmentsJson: JsonElement? = jsonConverters.uuidsToJson(request.attachments)
 
     val message = MessageEntity(
-      id = UUID.randomUUID(),
       threadId = threadId,
       author = author,
       contentJson = contentJson,
-      attachmentsJson = attachmentsJson,
-      createdAt = Instant.now()
+      attachmentsJson = attachmentsJson
     )
 
     return messageRepository.save(message)

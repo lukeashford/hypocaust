@@ -1,9 +1,9 @@
 package com.example.the_machine.operator
 
 import com.example.the_machine.service.RunContext
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import mu.KotlinLogging
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
@@ -15,9 +15,7 @@ import org.springframework.stereotype.Component
  */
 @Component
 @Order(0)
-class HeuristicRemediator(
-  private val objectMapper: ObjectMapper
-) : Remediator {
+class HeuristicRemediator : Remediator {
 
   companion object {
 
@@ -29,8 +27,8 @@ class HeuristicRemediator(
     normalizedInputs: Map<String, Any>,
     exception: Exception,
     remediationHints: String?
-  ): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  ): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
     val exceptionMessage = exception.message?.lowercase() ?: ""
 
     log.debug("HeuristicRemediator attempting remediation for exception: {}", exception.message)
@@ -59,8 +57,8 @@ class HeuristicRemediator(
     return patches
   }
 
-  private fun adjustTimeouts(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun adjustTimeouts(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     inputs.forEach { (key, value) ->
       if (key.lowercase().contains("timeout") && value is Number) {
@@ -76,15 +74,15 @@ class HeuristicRemediator(
     return patches
   }
 
-  private fun addBackoff(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun addBackoff(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     // Add or increase retry delay
     if (!inputs.containsKey("retryDelayMs")) {
-      val patch = objectMapper.createObjectNode().apply {
+      val patch = buildJsonObject {
         put("op", "add")
         put("path", "/retryDelayMs")
-        set<JsonNode>("value", objectMapper.valueToTree(1000))
+        put("value", 1000)
       }
       patches.add(patch)
       log.debug("Adding retryDelayMs: 1000")
@@ -100,8 +98,8 @@ class HeuristicRemediator(
     return patches
   }
 
-  private fun clampValues(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun clampValues(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     inputs.forEach { (key, value) ->
       if (value is Number) {
@@ -124,8 +122,8 @@ class HeuristicRemediator(
     return patches
   }
 
-  private fun switchModel(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun switchModel(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     val currentModel = inputs["model"] as? String
     if (currentModel != null) {
@@ -152,11 +150,16 @@ class HeuristicRemediator(
     }
   }
 
-  private fun createReplacePatch(path: String, value: Any): ObjectNode {
-    return objectMapper.createObjectNode().apply {
+  private fun createReplacePatch(path: String, value: Any): JsonElement {
+    return buildJsonObject {
       put("op", "replace")
       put("path", path)
-      set<JsonNode>("value", objectMapper.valueToTree(value))
+      when (value) {
+        is String -> put("value", value)
+        is Number -> put("value", value)
+        is Boolean -> put("value", value)
+        else -> put("value", value.toString())
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 package com.example.the_machine.operator.result
 
-import com.fasterxml.jackson.databind.JsonNode
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Result type for operator execution operations. Extends BaseResult with operator-specific
@@ -28,7 +28,7 @@ class OperatorResult private constructor(
   /**
    * Remediation patches that may be applied to fix issues.
    */
-  remediationPatches: List<JsonNode>?,
+  remediationPatches: List<JsonElement>?,
   /**
    * Name of the operator that produced this result.
    */
@@ -46,7 +46,7 @@ class OperatorResult private constructor(
   val normalizedInputs: Map<String, Any> = normalizedInputs ?: emptyMap()
   val outputs: Map<String, Any> = outputs ?: emptyMap()
   val metrics: Map<String, Any> = metrics ?: emptyMap()
-  val remediationPatches: List<JsonNode> = remediationPatches ?: emptyList()
+  val remediationPatches: List<JsonElement> = remediationPatches ?: emptyList()
 
   companion object {
 
@@ -203,7 +203,7 @@ class OperatorResult private constructor(
   /**
    * Returns a copy of this result with remediation patches.
    */
-  fun withRemediationPatches(patches: List<JsonNode>): OperatorResult = OperatorResult(
+  fun withRemediationPatches(patches: List<JsonElement>): OperatorResult = OperatorResult(
     ok = ok,
     message = message,
     code = code,

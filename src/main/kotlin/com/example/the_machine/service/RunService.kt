@@ -1,8 +1,9 @@
 package com.example.the_machine.service
 
+import com.example.the_machine.common.KotlinSerializationConfig
+import com.example.the_machine.domain.AssistantEntity
 import com.example.the_machine.domain.EventType
 import com.example.the_machine.domain.RunEntity
-import com.example.the_machine.domain.RunFactory
 import com.example.the_machine.dto.CreateRunRequestDto
 import com.example.the_machine.dto.EventEnvelopeDto
 import com.example.the_machine.dto.RunDto
@@ -12,7 +13,7 @@ import com.example.the_machine.service.events.EventPublisher
 import com.example.the_machine.service.events.RunCreatedEvent
 import com.example.the_machine.service.mapping.RunMapper
 import com.example.the_machine.service.mapping.ThreadMapper
-import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.serialization.json.encodeToJsonElement
 import mu.KotlinLogging
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -35,10 +36,8 @@ class RunService(
   private val runMapper: RunMapper,
   private val threadMapper: ThreadMapper,
   private val eventPublisher: EventPublisher,
-  private val objectMapper: ObjectMapper,
   private val runExecutorService: ExecutorService,
   private val assistantEngine: AssistantEngine,
-  private val runFactory: RunFactory,
   private val applicationEventPublisher: ApplicationEventPublisher,
   private val artifactService: ArtifactService
 ) {
@@ -63,24 +62,31 @@ class RunService(
       log.debug { "User input provided for run" }
     }
 
-    // Create run entity using factory
-    val runId = runFactory.createAndSaveRun(request, request.threadId)
-    val runDto = runMapper.toDto(runFactory.findManagedRun(runId))
+    // Create run entity directly
+    val run = RunEntity(
+      threadId = request.threadId,
+      assistantId = request.assistantId ?: AssistantEntity.DEFAULT_ASSISTANT_ID,
+      status = RunEntity.Status.QUEUED,
+      kind = RunEntity.Kind.FULL,
+    )
+
+    val savedRun = runRepository.save<RunEntity>(run)
+    val runDto = runMapper.toDto(savedRun)
 
     // Log run creation event
     val envelope = EventEnvelopeDto(
       EventType.RUN_CREATED,
-      thread.id!!,
-      runId,
+      thread.id,
+      savedRun.id,
       null,
-      objectMapper.valueToTree(runDto)
+      KotlinSerializationConfig.staticJson.encodeToJsonElement(runDto)
     )
     eventPublisher.publishAndStore(thread.id, envelope, null)
 
     // Publish event for async execution after transaction commit
-    applicationEventPublisher.publishEvent(RunCreatedEvent(runId, thread.id))
+    applicationEventPublisher.publishEvent(RunCreatedEvent(savedRun.id, thread.id))
 
-    log.info { "Run created and queued: $runId" }
+    log.info { "Run created and queued: ${savedRun.id}" }
     return runDto
   }
 
@@ -106,8 +112,9 @@ class RunService(
     log.info { "Starting execution of run: $runId" }
 
     try {
-      // Fetch managed entities
-      val currentRun = runFactory.findManagedRun(runId)
+      // Always fetch fresh managed entity by ID
+      val currentRun = runRepository.findById(runId)
+        .orElseThrow { IllegalStateException("Run not found: $runId") }
 
       // Transition to RUNNING
       val updatedRun = currentRun.copy(
@@ -121,7 +128,7 @@ class RunService(
         threadId,
         runId,
         null,
-        objectMapper.valueToTree(runMapper.toDto(run))
+        KotlinSerializationConfig.staticJson.encodeToJsonElement(runMapper.toDto(run))
       )
       eventPublisher.publishAndStore(threadId, envelope, null)
 
@@ -134,7 +141,6 @@ class RunService(
         runMapper,
         threadMapper,
         eventPublisher,
-        objectMapper,
         artifactService,
         RunPolicy.defaultPolicy()
       )
@@ -156,8 +162,10 @@ class RunService(
     } catch (e: Exception) {
       log.error(e) { "Run execution failed: $runId" }
 
-      // Fetch managed run for error update
-      val currentRun = runFactory.findManagedRun(runId)
+      // Always fetch fresh managed entity by ID for error handling
+      val currentRun = runRepository.findById(runId)
+        .orElseThrow { IllegalStateException("Run not found: $runId") }
+
       val failedRun = currentRun.copy(
         status = RunEntity.Status.FAILED,
         error = e.message,
@@ -170,7 +178,7 @@ class RunService(
         threadId,
         runId,
         null,
-        objectMapper.valueToTree(runMapper.toDto(run))
+        KotlinSerializationConfig.staticJson.encodeToJsonElement(runMapper.toDto(run))
       )
       eventPublisher.publishAndStore(threadId, errorEnvelope, null)
     }

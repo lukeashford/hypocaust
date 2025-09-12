@@ -1,9 +1,7 @@
 package com.example.the_machine.operator
 
 import com.example.the_machine.operator.result.ValidationResult
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.serialization.json.*
 
 /**
  * Specification for a tool/operator including inputs, outputs, validation rules, and metadata.
@@ -19,11 +17,6 @@ data class ToolSpec(
   val metadata: Map<String, Any> = emptyMap()
 ) {
 
-  companion object {
-
-    private val OBJECT_MAPPER = ObjectMapper()
-
-  }
 
   /**
    * Validates input parameters against the specification.
@@ -154,86 +147,96 @@ data class ToolSpec(
   /**
    * Generates JSON Schema representation of this tool specification.
    *
-   * @return JSON Schema as JsonNode
+   * @return JSON Schema as JsonElement
    */
-  fun toJsonSchema(): JsonNode {
-    val schema = OBJECT_MAPPER.createObjectNode()
+  fun toJsonSchema(): JsonElement {
+    return buildJsonObject {
+      // Basic schema metadata
+      put("\$schema", "http://json-schema.org/draft-07/schema#")
+      put("type", "object")
+      put("title", name)
+      description?.let { put("description", it) }
 
-    // Basic schema metadata
-    schema.put("\$schema", "http://json-schema.org/draft-07/schema#")
-    schema.put("type", "object")
-    schema.put("title", name)
-    description?.let { schema.put("description", it) }
+      // Add tool metadata
+      put("tool", buildJsonObject {
+        put("name", name)
+        put("version", version)
+        description?.let { put("description", it) }
 
-    // Add tool metadata
-    val toolInfo = schema.putObject("tool")
-    toolInfo.put("name", name)
-    toolInfo.put("version", version)
-    description?.let { toolInfo.put("description", it) }
-
-    // Add custom metadata
-    if (metadata.isNotEmpty()) {
-      val metadataNode = toolInfo.putObject("metadata")
-      metadata.forEach { (key, value) ->
-        metadataNode.set<JsonNode>(key, OBJECT_MAPPER.valueToTree(value))
-      }
-    }
-
-    // Input parameters schema
-    if (inputs.isNotEmpty()) {
-      val inputsSchema = schema.putObject("inputs")
-      inputsSchema.put("type", "object")
-
-      val properties = inputsSchema.putObject("properties")
-      val required = inputsSchema.putArray("required")
-
-      for (paramSpec in inputs) {
-        val paramSchema = createParameterSchema(paramSpec)
-        properties.set<JsonNode>(paramSpec.name, paramSchema)
-
-        if (paramSpec.required) {
-          required.add(paramSpec.name)
+        // Add custom metadata
+        if (metadata.isNotEmpty()) {
+          put("metadata", buildJsonObject {
+            metadata.forEach { (key, value) ->
+              when (value) {
+                is String -> put(key, value)
+                is Number -> put(key, value)
+                is Boolean -> put(key, value)
+                else -> put(key, value.toString())
+              }
+            }
+          })
         }
-      }
+      })
 
-      // Add XOR groups as anyOf constraints
-      if (xorGroups.isNotEmpty()) {
-        val anyOf = inputsSchema.putArray("anyOf")
-        for (xorGroup in xorGroups) {
-          val xorSchema = OBJECT_MAPPER.createObjectNode()
-          val oneOf = xorSchema.putArray("oneOf")
+      // Input parameters schema
+      if (inputs.isNotEmpty()) {
+        put("inputs", buildJsonObject {
+          put("type", "object")
 
-          for (paramName in xorGroup) {
-            val paramRequired = OBJECT_MAPPER.createObjectNode()
-            val requiredArray = paramRequired.putArray("required")
-            requiredArray.add(paramName)
-            oneOf.add(paramRequired)
+          put("properties", buildJsonObject {
+            for (paramSpec in inputs) {
+              put(paramSpec.name, createParameterSchema(paramSpec))
+            }
+          })
+
+          val requiredParams = inputs.filter { it.required }.map { it.name }
+          if (requiredParams.isNotEmpty()) {
+            put("required", buildJsonArray {
+              requiredParams.forEach { add(it) }
+            })
           }
 
-          anyOf.add(xorSchema)
-        }
+          // Add XOR groups as anyOf constraints
+          if (xorGroups.isNotEmpty()) {
+            put("anyOf", buildJsonArray {
+              for (xorGroup in xorGroups) {
+                add(buildJsonObject {
+                  put("oneOf", buildJsonArray {
+                    for (paramName in xorGroup) {
+                      add(buildJsonObject {
+                        put("required", buildJsonArray {
+                          add(paramName)
+                        })
+                      })
+                    }
+                  })
+                })
+              }
+            })
+          }
+        })
+      }
+
+      // Output parameters schema
+      if (outputs.isNotEmpty()) {
+        put("outputs", buildJsonObject {
+          put("type", "object")
+
+          put("properties", buildJsonObject {
+            for (paramSpec in outputs) {
+              put(paramSpec.name, createParameterSchema(paramSpec))
+            }
+          })
+
+          val requiredParams = outputs.filter { it.required }.map { it.name }
+          if (requiredParams.isNotEmpty()) {
+            put("required", buildJsonArray {
+              requiredParams.forEach { add(it) }
+            })
+          }
+        })
       }
     }
-
-    // Output parameters schema
-    if (outputs.isNotEmpty()) {
-      val outputsSchema = schema.putObject("outputs")
-      outputsSchema.put("type", "object")
-
-      val properties = outputsSchema.putObject("properties")
-      val required = outputsSchema.putArray("required")
-
-      for (paramSpec in outputs) {
-        val paramSchema = createParameterSchema(paramSpec)
-        properties.set<JsonNode>(paramSpec.name, paramSchema)
-
-        if (paramSpec.required) {
-          required.add(paramSpec.name)
-        }
-      }
-    }
-
-    return schema
   }
 
   /**
@@ -249,52 +252,80 @@ data class ToolSpec(
   /**
    * Creates a JSON Schema for a single parameter.
    */
-  private fun createParameterSchema(paramSpec: ParamSpec<*>): ObjectNode {
-    val paramSchema = OBJECT_MAPPER.createObjectNode()
+  private fun createParameterSchema(paramSpec: ParamSpec<*>): JsonElement = buildJsonObject {
     val rawClass = paramSpec.type.rawClass
 
-    // Determine JSON Schema type
-    when {
-      String::class.java == rawClass -> paramSchema.put("type", "string")
-      Int::class.javaObjectType == rawClass || Long::class.javaObjectType == rawClass ->
-        paramSchema.put("type", "integer")
+    put("type", getJsonSchemaType(rawClass))
 
-      Double::class.javaObjectType == rawClass || Float::class.javaObjectType == rawClass ->
-        paramSchema.put("type", "number")
+    // Add numeric constraints  
+    paramSpec.min?.let { put("minimum", formatNumericValue(it, rawClass)) }
+    paramSpec.max?.let { put("maximum", formatNumericValue(it, rawClass)) }
 
-      Boolean::class.javaObjectType == rawClass -> paramSchema.put("type", "boolean")
-      List::class.java.isAssignableFrom(rawClass) -> paramSchema.put("type", "array")
-      Map::class.java.isAssignableFrom(rawClass) -> paramSchema.put("type", "object")
-      else -> paramSchema.put("type", "object")
+    // Add string constraints
+    paramSpec.regex?.let { put("pattern", it) }
+
+    // Add enum constraints
+    if (!paramSpec.enumValues.isNullOrEmpty()) {
+      put("enum", buildJsonArray {
+        paramSpec.enumValues.forEach { enumValue ->
+          when (enumValue) {
+            is String -> add(enumValue)
+            is Number -> add(enumValue)
+            is Boolean -> add(enumValue)
+            else -> add(enumValue.toString())
+          }
+        }
+      })
     }
 
-    // Add constraints
-    paramSpec.min?.let { paramSchema.put("minimum", it.toDouble()) }
-    paramSpec.max?.let { paramSchema.put("maximum", it.toDouble()) }
-    paramSpec.regex?.let { paramSchema.put("pattern", it) }
-
-    if (!paramSpec.enumValues.isNullOrEmpty()) {
-      val enumArray = paramSchema.putArray("enum")
-      for (enumValue in paramSpec.enumValues) {
-        enumArray.add(OBJECT_MAPPER.valueToTree(enumValue) as JsonNode)
+    // Add default value
+    paramSpec.defaultValue?.let { defaultValue ->
+      when (defaultValue) {
+        is String -> put("default", defaultValue)
+        is Number -> put("default", defaultValue)
+        is Boolean -> put("default", defaultValue)
+        else -> put("default", defaultValue.toString())
       }
     }
 
-    paramSpec.defaultValue?.let {
-      paramSchema.set<JsonNode>("default", OBJECT_MAPPER.valueToTree(it))
-    }
-
-    paramSpec.doc?.let { paramSchema.put("description", it) }
+    // Add documentation
+    paramSpec.doc?.let { put("description", it) }
 
     // Add custom properties
-    if (paramSpec.secret) {
-      paramSchema.put("secret", true)
-    }
-    if (paramSpec.adjustable) {
-      paramSchema.put("adjustable", true)
-    }
-
-    return paramSchema
+    if (paramSpec.secret) put("secret", true)
+    if (paramSpec.adjustable) put("adjustable", true)
   }
+
+  private fun getJsonSchemaType(rawClass: Class<*>): String = when {
+    rawClass == String::class.java -> "string"
+    isIntegerType(rawClass) -> "integer"
+    isFloatingPointType(rawClass) -> "number"
+    isBooleanType(rawClass) -> "boolean"
+    List::class.java.isAssignableFrom(rawClass) -> "array"
+    Map::class.java.isAssignableFrom(rawClass) -> "object"
+    else -> "object"
+  }
+
+  private fun formatNumericValue(value: Number, rawClass: Class<*>): Number =
+    if (isIntegerType(rawClass)) value.toLong() else value.toDouble()
+
+  private fun isIntegerType(rawClass: Class<*>): Boolean =
+    rawClass in setOf(
+      Int::class.java,
+      Int::class.javaObjectType,
+      Long::class.java,
+      Long::class.javaObjectType
+    )
+
+  private fun isFloatingPointType(rawClass: Class<*>): Boolean =
+    rawClass in setOf(
+      Double::class.java,
+      Double::class.javaObjectType,
+      Float::class.java,
+      Float::class.javaObjectType
+    )
+
+  private fun isBooleanType(rawClass: Class<*>): Boolean =
+    rawClass in setOf(Boolean::class.java, Boolean::class.javaObjectType)
 
 }

@@ -1,10 +1,11 @@
 package com.example.the_machine.domain
 
-import com.fasterxml.jackson.databind.JsonNode
+import com.example.the_machine.common.JsonElementConverter
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
-import jakarta.persistence.Id
 import jakarta.persistence.Table
+import kotlinx.serialization.json.JsonElement
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.util.*
@@ -12,21 +13,19 @@ import java.util.*
 @Entity
 @Table(name = "assistant")
 data class AssistantEntity(
-  @Id
-  val id: UUID? = null,
+  @Column(nullable = false)
+  val name: String,
+
+  val systemPrompt: String = "You are a helpful assistant.",
 
   @Column(nullable = false)
-  val name: String? = null,
-
-  val systemPrompt: String? = null,
-
-  @Column(nullable = false)
-  val model: String? = null,
+  val model: String,
 
   @Column(nullable = false, columnDefinition = "jsonb")
   @JdbcTypeCode(SqlTypes.JSON)
-  val paramsJson: JsonNode? = null
-) {
+  @Convert(converter = JsonElementConverter::class)
+  val paramsJson: JsonElement
+) : BaseEntity() {
 
   companion object {
 

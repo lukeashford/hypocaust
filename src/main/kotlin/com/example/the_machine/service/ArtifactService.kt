@@ -1,13 +1,11 @@
 package com.example.the_machine.service
 
-import com.example.the_machine.common.IdGenerator
 import com.example.the_machine.domain.ArtifactEntity
 import com.example.the_machine.repo.ArtifactRepository
-import com.fasterxml.jackson.databind.JsonNode
+import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 import java.util.*
 
 private val log = KotlinLogging.logger {}
@@ -18,7 +16,6 @@ private val log = KotlinLogging.logger {}
 @Service
 class ArtifactService(
   private val artifactRepository: ArtifactRepository,
-  private val idGenerator: IdGenerator
 ) {
 
   // Direct artifact creation methods
@@ -46,7 +43,6 @@ class ArtifactService(
     log.debug { "Creating artifact: kind=$kind, stage=$stage, title=$title" }
 
     val artifact = ArtifactEntity(
-      id = idGenerator.newId(),
       threadId = threadId,
       runId = runId,
       kind = kind,
@@ -54,7 +50,6 @@ class ArtifactService(
       status = ArtifactEntity.Status.PENDING,
       title = title,
       mime = mime,
-      createdAt = Instant.now()
     )
 
     val saved = artifactRepository.save(artifact)
@@ -69,7 +64,7 @@ class ArtifactService(
    * @param content the content to set
    */
   @Transactional
-  fun setContent(artifactId: UUID, content: JsonNode) {
+  fun setContent(artifactId: UUID, content: JsonElement) {
     val artifact = artifactRepository.findById(artifactId)
       .orElseThrow { IllegalArgumentException("Artifact not found: $artifactId") }
 
@@ -111,11 +106,13 @@ class ArtifactService(
    * @param metadata the metadata to set
    */
   @Transactional
-  fun setMetadata(artifactId: UUID, metadata: JsonNode) {
+  fun setMetadata(artifactId: UUID, metadata: JsonElement) {
     val artifact = artifactRepository.findById(artifactId)
       .orElseThrow { IllegalArgumentException("Artifact not found: $artifactId") }
 
-    val updatedArtifact = artifact.copy(metadata = metadata)
+    val updatedArtifact = artifact.copy(
+      metadata = metadata
+    )
     artifactRepository.save(updatedArtifact)
 
     log.debug { "Metadata set for artifact: $artifactId" }

@@ -2,14 +2,12 @@ package com.example.the_machine.operator
 
 import com.example.the_machine.operator.result.OperatorResult
 import com.example.the_machine.service.RunContext
-import com.fasterxml.jackson.databind.ObjectMapper
-
 /**
  * Operator that responds to text in the tone and style of Angela Merkel. Provides responses in her
  * characteristic diplomatic, measured, and thoughtful communication style. Currently uses mock
  * responses but designed to be enhanced with actual AI model integration.
  */
-class AngelaMerkelOperator : BaseOperator(ObjectMapper(), emptyList()) {
+class AngelaMerkelOperator : BaseOperator(emptyList()) {
 
   private val toolSpec: ToolSpec = ToolSpec(
     name = "text.angela_merkel_response",

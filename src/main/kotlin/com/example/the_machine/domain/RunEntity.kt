@@ -1,7 +1,8 @@
 package com.example.the_machine.domain
 
-import com.fasterxml.jackson.databind.JsonNode
+import com.example.the_machine.common.JsonElementConverter
 import jakarta.persistence.*
+import kotlinx.serialization.json.JsonElement
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
@@ -10,22 +11,19 @@ import java.util.*
 @Entity
 @Table(name = "run")
 data class RunEntity(
-  @Id
-  val id: UUID? = null,
+  @Column(nullable = false)
+  val threadId: UUID,
 
   @Column(nullable = false)
-  val threadId: UUID? = null,
-
-  @Column(nullable = false)
-  val assistantId: UUID? = null,
+  val assistantId: UUID,
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  val status: Status? = null,
+  val status: Status,
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  val kind: Kind? = null,
+  val kind: Kind,
 
   val reason: String? = null,
 
@@ -35,10 +33,11 @@ data class RunEntity(
 
   @Column(columnDefinition = "jsonb")
   @JdbcTypeCode(SqlTypes.JSON)
-  val usageJson: JsonNode? = null,
+  @Convert(converter = JsonElementConverter::class)
+  val usageJson: JsonElement? = null,
 
   val error: String? = null
-) {
+) : BaseEntity() {
 
   enum class Status {
     QUEUED, RUNNING, REQUIRES_ACTION, COMPLETED, FAILED, CANCELLED

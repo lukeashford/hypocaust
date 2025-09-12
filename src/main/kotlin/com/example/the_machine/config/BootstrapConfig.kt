@@ -1,10 +1,8 @@
 package com.example.the_machine.config
 
-import com.example.the_machine.common.IdGenerator
+import com.example.the_machine.common.KotlinSerializationConfig
 import com.example.the_machine.domain.AssistantEntity
 import com.example.the_machine.repo.AssistantRepository
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import mu.KotlinLogging
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Configuration
@@ -13,9 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Configuration
 class BootstrapConfig(
-  private val assistantRepository: AssistantRepository,
-  private val idGenerator: IdGenerator,
-  private val objectMapper: ObjectMapper
+  private val assistantRepository: AssistantRepository
 ) {
 
   private val log = KotlinLogging.logger {}
@@ -27,25 +23,21 @@ class BootstrapConfig(
       log.info { "No assistants found, creating default assistant" }
 
       try {
-        val paramsJson: JsonNode = objectMapper.readTree(
-          """
+        val jsonString = """
                     {
                       "temperature": 0.4,
                       "maxOutputTokens": 2048
                     }
                     """.trimIndent()
-        )
 
         val defaultAssistant = AssistantEntity(
-          id = idGenerator.newId(),
           name = "Default Assistant",
-          systemPrompt = null,
           model = "anthropic/claude-3.7",
-          paramsJson = paramsJson
+          paramsJson = KotlinSerializationConfig.staticJson.parseToJsonElement(jsonString)
         )
 
-        assistantRepository.save(defaultAssistant)
-        log.info { "Created default assistant with ID: ${defaultAssistant.id}" }
+        val savedAssistant = assistantRepository.save<AssistantEntity>(defaultAssistant)
+        log.info { "Created default assistant with ID: ${savedAssistant.id}" }
       } catch (e: Exception) {
         log.error(e) { "Failed to create default assistant" }
         throw RuntimeException("Failed to bootstrap default assistant", e)

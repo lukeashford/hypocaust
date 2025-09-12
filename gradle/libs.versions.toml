@@ -2,13 +2,14 @@
 # Spring versions
 spring-boot = "3.5.0"
 spring-ai = "1.0.0"
-kotlin = "1.9.25"
+kotlin = "2.2.20"
 kotlinx-serialization = "1.6.3"
 
 # Explicitly versioned dependencies
 lombok = "1.18.34"
 mapstruct = "1.6.0"
 kotlin-logging = "3.0.5"
+mockk = "1.13.8"
 
 [libraries]
 # Spring Boot BOM managed (no version needed, managed by BOM)
@@ -24,8 +25,8 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 
-# Mockito (BOM managed)
-mockito-core = { module = "org.mockito:mockito-core" }
+# MockK
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 # Spring AI BOM managed
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
@@ -49,7 +50,7 @@ spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "
 flyway = ["flyway-core", "flyway-database-postgresql"]
 
 # Testing infrastructure
-testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]
+testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockk"]
 testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
 
 # Kotlin essentials
@@ -63,3 +64,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

@@ -1,7 +1,7 @@
 package com.example.the_machine.dto
 
 import com.example.the_machine.domain.EventType
-import com.fasterxml.jackson.databind.JsonNode
+import kotlinx.serialization.json.JsonElement
 import java.util.*
 
 data class EventEnvelopeDto(
@@ -9,5 +9,5 @@ data class EventEnvelopeDto(
   val threadId: UUID,
   val runId: UUID?,
   val messageId: UUID?,
-  val data: JsonNode
+  val data: JsonElement
 )

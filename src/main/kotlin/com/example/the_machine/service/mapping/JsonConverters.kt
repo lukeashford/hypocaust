@@ -1,8 +1,12 @@
 package com.example.the_machine.service.mapping
 
+import com.example.the_machine.common.UUIDSerializer
 import com.example.the_machine.dto.content.ContentBlockDto
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import org.mapstruct.Named
 import org.springframework.stereotype.Component
 import java.util.*
@@ -22,12 +26,8 @@ class JsonConverters(private val json: Json) {
   }
 
   @Named("blocksToJson")
-  fun blocksToJson(blocks: List<ContentBlockDto>?): JsonElement? {
-    return if (blocks == null) {
-      null
-    } else {
-      json.encodeToJsonElement(ListSerializer(ContentBlockDto.serializer()), blocks)
-    }
+  fun blocksToJson(blocks: List<ContentBlockDto>): JsonElement {
+    return json.encodeToJsonElement(ListSerializer(ContentBlockDto.serializer()), blocks)
   }
 
   @Named("uuidsFromJson")
@@ -38,12 +38,8 @@ class JsonConverters(private val json: Json) {
     if (element !is JsonArray) {
       throw IllegalArgumentException("attachments_json must be a JSON array")
     }
-    val out = mutableListOf<UUID>()
-    element.forEach { jsonElement ->
-      val uuidString = (jsonElement as JsonPrimitive).content
-      out.add(UUID.fromString(uuidString))
-    }
-    return out
+    // Use configured UUIDSerializer
+    return json.decodeFromJsonElement(ListSerializer(UUIDSerializer), element)
   }
 
   @Named("uuidsToJson")
@@ -51,7 +47,8 @@ class JsonConverters(private val json: Json) {
     return if (ids == null) {
       null
     } else {
-      JsonArray(ids.map { JsonPrimitive(it.toString()) })
+      // Use configured UUIDSerializer
+      json.encodeToJsonElement(ListSerializer(UUIDSerializer), ids)
     }
   }
 }

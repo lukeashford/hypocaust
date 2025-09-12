@@ -6,6 +6,6 @@ import java.util.*
 data class ThreadDto(
   val id: UUID,
   val title: String,
-  val createdAt: Instant,
-  val lastActivityAt: Instant
+  val lastActivityAt: Instant,
+  val createdAt: Instant?
 )

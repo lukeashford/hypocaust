@@ -1,7 +1,7 @@
 package com.example.the_machine.operator
 
 import com.example.the_machine.service.RunContext
-import com.fasterxml.jackson.databind.JsonNode
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Interface for auto-remediation of operator failures. Implementations can propose adjustments to
@@ -24,7 +24,7 @@ interface Remediator {
     normalizedInputs: Map<String, Any>,
     exception: Exception,
     remediationHints: String?
-  ): List<JsonNode>
+  ): List<JsonElement>
 
   /**
    * Returns the name/type of this remediator for logging and debugging.

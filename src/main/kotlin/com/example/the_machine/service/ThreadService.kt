@@ -1,6 +1,5 @@
 package com.example.the_machine.service
 
-import com.example.the_machine.common.IdGenerator
 import com.example.the_machine.domain.ThreadEntity
 import com.example.the_machine.dto.ThreadDto
 import com.example.the_machine.dto.ThreadViewDto
@@ -23,7 +22,6 @@ class ThreadService(
   private val messageRepository: MessageRepository,
   private val artifactRepository: ArtifactRepository,
   private val runRepository: RunRepository,
-  private val idGenerator: IdGenerator,
   private val threadMapper: ThreadMapper,
   private val messageMapper: MessageMapper,
   private val artifactMapper: ArtifactMapper,
@@ -34,8 +32,6 @@ class ThreadService(
   fun createThread(): ThreadDto {
     val now = Instant.now()
     val thread = ThreadEntity(
-      id = idGenerator.newId(),
-      createdAt = now,
       lastActivityAt = now
     )
 

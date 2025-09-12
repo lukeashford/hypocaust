@@ -1,10 +1,13 @@
 package com.example.the_machine.operator
 
+import com.example.the_machine.common.KotlinSerializationConfig
 import com.example.the_machine.operator.result.OperatorResult
 import com.example.the_machine.operator.result.OperatorResultCode
 import com.example.the_machine.service.RunContext
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
 import java.time.Instant
 
@@ -14,7 +17,6 @@ import java.time.Instant
  * should extend this class and implement doExecute().
  */
 abstract class BaseOperator(
-  private val objectMapper: ObjectMapper,
   private val remediators: List<Remediator>
 ) : Operator {
 
@@ -86,7 +88,7 @@ abstract class BaseOperator(
     operatorVersion: String,
     startTime: Instant
   ): OperatorResult {
-    val allPatches = mutableListOf<JsonNode>()
+    val allPatches = mutableListOf<JsonElement>()
     val currentInputs = HashMap(normalizedInputs)
     val maxTries = ctx.policy.maxTriesPerOp
 
@@ -187,7 +189,7 @@ abstract class BaseOperator(
     normalizedInputs: Map<String, Any>,
     exception: Exception,
     remediatorIndex: Int
-  ): List<JsonNode> {
+  ): List<JsonElement> {
     if (remediators.isEmpty() || remediatorIndex >= remediators.size) {
       return emptyList()
     }
@@ -229,17 +231,23 @@ abstract class BaseOperator(
    * Applies simple JSON patches to input map in-place. Supports "replace", "add", and "remove"
    * operations.
    */
-  private fun applyPatches(inputs: MutableMap<String, Any>, patches: List<JsonNode>) {
+  private fun applyPatches(inputs: MutableMap<String, Any>, patches: List<JsonElement>) {
     try {
       // Apply each patch directly to the input map
       for (patchNode in patches) {
-        if (!patchNode.has("op") || !patchNode.has("path")) {
+        val patchObj = patchNode.jsonObject
+        if (!patchObj.containsKey("op") || !patchObj.containsKey("path")) {
           log.warn("Invalid patch format, skipping: {}", patchNode)
           continue
         }
 
-        val operation = patchNode.get("op").asText()
-        val path = patchNode.get("path").asText()
+        val operation = patchObj["op"]?.jsonPrimitive?.content
+        val path = patchObj["path"]?.jsonPrimitive?.content
+
+        if (operation == null || path == null) {
+          log.warn("Invalid patch operation or path, skipping: {}", patchNode)
+          continue
+        }
 
         // Simple path handling - only support root level fields for now
         if (!path.startsWith("/") || path.indexOf("/", 1) != -1) {
@@ -251,8 +259,10 @@ abstract class BaseOperator(
 
         when (operation) {
           "replace", "add" -> {
-            if (patchNode.has("value")) {
-              val value = objectMapper.convertValue(patchNode.get("value"), Any::class.java)
+            val valueElement = patchObj["value"]
+            if (valueElement != null) {
+              val value =
+                KotlinSerializationConfig.staticJson.decodeFromJsonElement<Any>(valueElement)
               inputs[fieldName] = value
               log.debug("Applied {} patch: {} = {}", operation, fieldName, value)
             }
@@ -328,6 +338,6 @@ abstract class BaseOperator(
       inputs: Map<String, Any>,
       exception: Exception,
       hints: String?
-    ): List<JsonNode>
+    ): List<JsonElement>
   }
 }

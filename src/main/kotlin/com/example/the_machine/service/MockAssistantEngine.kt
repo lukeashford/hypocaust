@@ -2,6 +2,10 @@ package com.example.the_machine.service
 
 import com.example.the_machine.domain.ArtifactEntity
 import com.example.the_machine.domain.RunEntity
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -17,7 +21,7 @@ private val log = KotlinLogging.logger {}
  */
 @Service
 class MockAssistantEngine(
-  @Value("\${app.data.base-path:./data}")
+  @Value($$"${app.data.base-path:./data}")
   private val dataBasePath: String
 ) : AssistantEngine {
 
@@ -36,12 +40,15 @@ class MockAssistantEngine(
         "application/json"
       )
 
-      val planContent = mapOf(
-        "content" to "I need to create a marketing pitch. Could you please specify which brand you'd like me to analyze?",
-        "status" to "awaiting_input"
-      )
+      val planContent = buildJsonObject {
+        put(
+          "content",
+          "I need to create a marketing pitch. Could you please specify which brand you'd like me to analyze?"
+        )
+        put("status", "awaiting_input")
+      }
 
-      ctx.setArtifactContent(planArtifact.id!!, ctx.objectMapper.valueToTree(planContent))
+      ctx.setArtifactContent(planArtifact.id, planContent)
 
       // Simulate assistant asking for clarification
       Thread.sleep(500)
@@ -81,21 +88,18 @@ class MockAssistantEngine(
         "application/json"
       )
 
-      val analysisContent = mapOf(
-        "brand" to "Apple",
-        "key_points" to arrayOf(
-          "Innovation",
-          "Premium quality",
-          "User experience",
-          "Brand loyalty"
-        ),
-        "target_audience" to "Tech-savvy consumers, premium market"
-      )
+      val analysisContent = buildJsonObject {
+        put("brand", "Apple")
+        put("key_points", buildJsonArray {
+          add(JsonPrimitive("Innovation"))
+          add(JsonPrimitive("Premium quality"))
+          add(JsonPrimitive("User experience"))
+          add(JsonPrimitive("Brand loyalty"))
+        })
+        put("target_audience", "Tech-savvy consumers, premium market")
+      }
 
-      ctx.setArtifactContent(
-        analysisArtifact.id!!,
-        ctx.objectMapper.valueToTree(analysisContent)
-      )
+      ctx.setArtifactContent(analysisArtifact.id, analysisContent)
 
       // Script generation
       Thread.sleep(2000)
@@ -106,12 +110,15 @@ class MockAssistantEngine(
         "text/plain"
       )
 
-      val scriptContent = mapOf(
-        "content" to "Revolutionary. Intuitive. Premium. Apple doesn't just create products - we craft experiences that transform how people connect with technology...",
-        "duration" to "30 seconds"
-      )
+      val scriptContent = buildJsonObject {
+        put(
+          "content",
+          "Revolutionary. Intuitive. Premium. Apple doesn't just create products - we craft experiences that transform how people connect with technology..."
+        )
+        put("duration", "30 seconds")
+      }
 
-      ctx.setArtifactContent(scriptArtifact.id!!, ctx.objectMapper.valueToTree(scriptContent))
+      ctx.setArtifactContent(scriptArtifact.id, scriptContent)
 
       // Image generation simulation
       Thread.sleep(3000)
@@ -123,7 +130,7 @@ class MockAssistantEngine(
           "Marketing Visual ${i + 1}",
           "image/png"
         )
-        ctx.setArtifactFile(imageArtifact.id!!, imageFiles[i], "image/png")
+        ctx.setArtifactFile(imageArtifact.id, imageFiles[i], "image/png")
         Thread.sleep(500) // Simulate streaming
       }
 
@@ -154,7 +161,7 @@ class MockAssistantEngine(
           "Updated Marketing Visual ${i + 1}",
           "image/png"
         )
-        ctx.setArtifactFile(revisedImageArtifact.id!!, revisedImageFiles[i], "image/png")
+        ctx.setArtifactFile(revisedImageArtifact.id, revisedImageFiles[i], "image/png")
         Thread.sleep(500)
       }
 
@@ -168,11 +175,13 @@ class MockAssistantEngine(
         "application/pdf"
       )
 
-      ctx.setArtifactFile(deckArtifact.id!!, deckFile, "application/pdf")
+      ctx.setArtifactFile(deckArtifact.id, deckFile, "application/pdf")
 
       // Set metadata with page count
-      val deckMetadata = mapOf("pages" to 12)
-      ctx.setArtifactMetadata(deckArtifact.id, ctx.objectMapper.valueToTree(deckMetadata))
+      val deckMetadata = buildJsonObject {
+        put("pages", 12)
+      }
+      ctx.setArtifactMetadata(deckArtifact.id, deckMetadata)
 
       ctx.updateRunStatus(RunEntity.Status.COMPLETED)
       log.info { "Partial revision execution completed for run: ${ctx.runId}" }

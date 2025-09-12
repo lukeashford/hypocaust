@@ -1,5 +1,6 @@
 package com.example.the_machine.service
 
+import com.example.the_machine.common.KotlinSerializationConfig
 import com.example.the_machine.domain.ArtifactEntity
 import com.example.the_machine.domain.EventType
 import com.example.the_machine.domain.RunEntity.Status
@@ -9,8 +10,7 @@ import com.example.the_machine.repo.ThreadRepository
 import com.example.the_machine.service.events.EventPublisher
 import com.example.the_machine.service.mapping.RunMapper
 import com.example.the_machine.service.mapping.ThreadMapper
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.*
@@ -29,7 +29,6 @@ data class RunContext(
   val runMapper: RunMapper,
   val threadMapper: ThreadMapper,
   val eventPublisher: EventPublisher,
-  val objectMapper: ObjectMapper,
   val artifactService: ArtifactService,
   val policy: RunPolicy
 ) {
@@ -52,16 +51,23 @@ data class RunContext(
   }
 
   /**
-   * Converts an object to JsonNode.
+   * Converts an object to JsonElement.
    *
    * @param data the object to convert
-   * @return JsonNode representation
+   * @return JsonElement representation
    */
-  private fun toJsonNode(data: Any): JsonNode {
+  private fun toJsonElement(data: Any): JsonElement {
     return try {
-      objectMapper.valueToTree(data)
+      // Convert to JSON string first, then parse to JsonElement
+      val jsonString = when (data) {
+        is String -> "\"$data\""
+        is Number -> data.toString()
+        is Boolean -> data.toString()
+        else -> "\"$data\""
+      }
+      KotlinSerializationConfig.staticJson.parseToJsonElement(jsonString)
     } catch (e: Exception) {
-      logger.error("Failed to convert object to JsonNode: {}", data.javaClass.simpleName, e)
+      logger.error("Failed to convert object to JsonElement: {}", data.javaClass.simpleName, e)
       throw RuntimeException("JSON serialization failed", e)
     }
   }
@@ -80,7 +86,7 @@ data class RunContext(
       threadId,
       runId,
       messageId,
-      toJsonNode(messageData)
+      toJsonElement(messageData)
     )
     eventPublisher.publishAndStore(threadId, envelope, null)
   }
@@ -109,7 +115,7 @@ data class RunContext(
    * @param artifactId the artifact ID
    * @param content the content to set
    */
-  fun setArtifactContent(artifactId: UUID, content: JsonNode) {
+  fun setArtifactContent(artifactId: UUID, content: JsonElement) {
     artifactService.setContent(artifactId, content)
   }
 
@@ -130,7 +136,7 @@ data class RunContext(
    * @param artifactId the artifact ID
    * @param metadata the metadata to set
    */
-  fun setArtifactMetadata(artifactId: UUID, metadata: JsonNode) {
+  fun setArtifactMetadata(artifactId: UUID, metadata: JsonElement) {
     artifactService.setMetadata(artifactId, metadata)
   }
 
@@ -160,7 +166,7 @@ data class RunContext(
       threadId,
       managedRun.id,
       null,
-      toJsonNode(runMapper.toDto(managedRun))
+      toJsonElement(runMapper.toDto(managedRun))
     )
     eventPublisher.publishAndStore(threadId, envelope, null)
   }

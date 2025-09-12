@@ -13,7 +13,7 @@ import java.util.*
  * Provides methods to store and retrieve operator embeddings for semantic search.
  */
 @Repository
-interface OperatorEmbeddingRepository : JpaRepository<OperatorEmbedding, Long> {
+interface OperatorEmbeddingRepository : JpaRepository<OperatorEmbedding, UUID> {
 
   /**
    * Finds an operator embedding by its exact operator name.

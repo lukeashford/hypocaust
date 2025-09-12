@@ -52,27 +52,31 @@ object InstantSerializer : KSerializer<Instant> {
 class KotlinSerializationConfig : WebMvcConfigurer {
 
   @Bean
-  fun kotlinJson(): Json = Json {
-    // Global snake_case naming strategy
-    namingStrategy = JsonNamingStrategy.SnakeCase
-    // Ignore unknown properties (equivalent to FAIL_ON_UNKNOWN_PROPERTIES = false)
-    ignoreUnknownKeys = true
-    // Allow null values
-    explicitNulls = false
-    // Pretty printing for development (can be disabled for production)
-    prettyPrint = false
-    // Handle polymorphic serialization if needed
-    classDiscriminator = "#type"
-
-    // Add contextual serializers for common types
-    serializersModule = SerializersModule {
-      contextual(UUIDSerializer)
-      contextual(InstantSerializer)
-    }
-  }
+  fun kotlinJson(): Json = staticJson
 
   override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>>) {
     converters.add(KotlinSerializationJsonHttpMessageConverter(kotlinJson()))
     super.configureMessageConverters(converters)
+  }
+
+  companion object {
+
+    /**
+     * Static Json instance for entities and places where DI isn't available.
+     * Uses the same configuration as the Spring bean.
+     */
+    @JvmStatic
+    val staticJson: Json = Json {
+      namingStrategy = JsonNamingStrategy.SnakeCase
+      ignoreUnknownKeys = true
+      explicitNulls = false
+      prettyPrint = false
+      classDiscriminator = "#type"
+
+      serializersModule = SerializersModule {
+        contextual(UUIDSerializer)
+        contextual(InstantSerializer)
+      }
+    }
   }
 }

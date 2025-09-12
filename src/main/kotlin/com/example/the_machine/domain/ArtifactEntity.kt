@@ -1,26 +1,18 @@
 package com.example.the_machine.domain
 
-import com.fasterxml.jackson.databind.JsonNode
+import com.example.the_machine.common.JsonElementConverter
 import jakarta.persistence.*
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
-import java.time.Instant
+import kotlinx.serialization.json.JsonElement
 import java.util.*
 
 @Entity
 @Table(name = "artifact")
 data class ArtifactEntity(
   /**
-   * Unique identifier for this artifact
-   */
-  @Id
-  val id: UUID? = null,
-
-  /**
    * The thread this artifact belongs to - required for all artifacts
    */
   @Column(nullable = false)
-  val threadId: UUID? = null,
+  val threadId: UUID,
 
   /**
    * The run that generated this artifact - optional for user-uploaded artifacts
@@ -34,7 +26,7 @@ data class ArtifactEntity(
    */
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  val kind: Kind? = null,
+  val kind: Kind,
 
   /**
    * The workflow stage this artifact represents - PLAN: Initial planning and strategy artifacts -
@@ -43,7 +35,7 @@ data class ArtifactEntity(
    */
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  val stage: Stage? = null,
+  val stage: Stage,
 
   /**
    * Current processing status of the artifact - PENDING: Queued for generation - RUNNING: Currently
@@ -51,7 +43,7 @@ data class ArtifactEntity(
    */
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  val status: Status? = null,
+  val status: Status,
 
   /**
    * Human-readable title or description of the artifact
@@ -74,8 +66,8 @@ data class ArtifactEntity(
    */
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "jsonb")
-  @JdbcTypeCode(SqlTypes.JSON)
-  val content: JsonNode? = null,
+  @Convert(converter = JsonElementConverter::class)
+  val content: JsonElement? = null,
 
   /**
    * Technical metadata about the artifact Examples: image dimensions, video duration, file size,
@@ -83,20 +75,14 @@ data class ArtifactEntity(
    */
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "jsonb")
-  @JdbcTypeCode(SqlTypes.JSON)
-  val metadata: JsonNode? = null,
-
-  /**
-   * When this artifact was created
-   */
-  @Column(nullable = false)
-  val createdAt: Instant? = null,
+  @Convert(converter = JsonElementConverter::class)
+  val metadata: JsonElement? = null,
 
   /**
    * ID of the artifact that this one superseded/replaced, if any
    */
   val supersededById: UUID? = null
-) {
+) : BaseEntity() {
 
   enum class Kind {
     STRUCTURED_JSON, IMAGE, PDF, AUDIO, VIDEO

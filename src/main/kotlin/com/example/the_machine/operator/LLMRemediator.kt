@@ -1,9 +1,9 @@
 package com.example.the_machine.operator
 
 import com.example.the_machine.service.RunContext
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import mu.KotlinLogging
 import org.springframework.stereotype.Component
 
@@ -13,9 +13,7 @@ import org.springframework.stereotype.Component
  * implementation that could integrate with actual LLM services.
  */
 @Component
-class LLMRemediator(
-  private val objectMapper: ObjectMapper
-) : Remediator {
+class LLMRemediator : Remediator {
 
   companion object {
 
@@ -27,8 +25,8 @@ class LLMRemediator(
     normalizedInputs: Map<String, Any>,
     exception: Exception,
     remediationHints: String?
-  ): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  ): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     log.debug("LLMRemediator attempting remediation for exception: {}", exception.message)
 
@@ -47,8 +45,8 @@ class LLMRemediator(
     inputs: Map<String, Any>,
     exception: Exception,
     hints: String?
-  ): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  ): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
     val errorMessage = exception.message?.lowercase() ?: ""
 
     // Simulate LLM reasoning for complex parameter adjustments
@@ -73,8 +71,8 @@ class LLMRemediator(
     return patches
   }
 
-  private fun reduceContextLength(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun reduceContextLength(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     // Reduce max tokens if present
     inputs["maxTokens"]?.let { value ->
@@ -103,8 +101,8 @@ class LLMRemediator(
     return patches
   }
 
-  private fun fixFormatIssues(inputs: Map<String, Any>, hints: String?): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun fixFormatIssues(inputs: Map<String, Any>, hints: String?): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     // Use hints to guide format corrections
     if (hints?.contains("json") == true && inputs.containsKey("responseFormat")) {
@@ -125,8 +123,8 @@ class LLMRemediator(
     return patches
   }
 
-  private fun adjustPermissionParams(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun adjustPermissionParams(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     // Remove or adjust parameters that might cause permission issues
     if (inputs.containsKey("systemMessage")) {
@@ -146,8 +144,8 @@ class LLMRemediator(
     return patches
   }
 
-  private fun optimizeResourceUsage(inputs: Map<String, Any>): List<JsonNode> {
-    val patches = mutableListOf<JsonNode>()
+  private fun optimizeResourceUsage(inputs: Map<String, Any>): List<JsonElement> {
+    val patches = mutableListOf<JsonElement>()
 
     // Reduce resource-intensive parameters
     inputs["temperature"]?.let { value ->
@@ -169,16 +167,21 @@ class LLMRemediator(
     return patches
   }
 
-  private fun createReplacePatch(path: String, value: Any): ObjectNode {
-    return objectMapper.createObjectNode().apply {
+  private fun createReplacePatch(path: String, value: Any): JsonElement {
+    return buildJsonObject {
       put("op", "replace")
       put("path", path)
-      set<JsonNode>("value", objectMapper.valueToTree(value))
+      when (value) {
+        is String -> put("value", value)
+        is Number -> put("value", value)
+        is Boolean -> put("value", value)
+        else -> put("value", value.toString())
+      }
     }
   }
 
-  private fun createRemovePatch(path: String): ObjectNode {
-    return objectMapper.createObjectNode().apply {
+  private fun createRemovePatch(path: String): JsonElement {
+    return buildJsonObject {
       put("op", "remove")
       put("path", path)
     }

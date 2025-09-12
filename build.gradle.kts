@@ -3,6 +3,7 @@ plugins {
   alias(libs.plugins.kotlin.kapt)
   alias(libs.plugins.kotlin.spring)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.kotlin.jpa)
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.dependency.management)
 }
@@ -14,14 +15,13 @@ kotlin {
   jvmToolchain(21)
   compilerOptions {
     freeCompilerArgs.add("-Xjsr305=strict")
+    freeCompilerArgs.add("-Xannotation-default-target=param-property")
   }
 }
 
 repositories {
   mavenCentral()
 }
-
-val mockitoAgent by configurations.creating { isTransitive = false }
 
 dependencies {
   // Kotlin essentials
@@ -31,13 +31,28 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
 
   // Core Spring Boot functionality (BOM managed)
-  implementation(libs.bundles.spring.boot.core)
+  implementation(libs.bundles.spring.boot.core) {
+    exclude(group = "com.fasterxml.jackson.core")
+    exclude(group = "com.fasterxml.jackson.datatype")
+    exclude(group = "com.fasterxml.jackson.module")
+    exclude(group = "com.fasterxml.jackson.dataformat")
+  }
   implementation(libs.postgresql)
   implementation(libs.bundles.flyway)
 
   // Spring AI (BOM managed)
-  implementation(libs.spring.ai.openai)
-  implementation(libs.spring.ai.anthropic)
+  implementation(libs.spring.ai.openai) {
+    exclude(group = "com.fasterxml.jackson.core")
+    exclude(group = "com.fasterxml.jackson.datatype")
+    exclude(group = "com.fasterxml.jackson.module")
+    exclude(group = "com.fasterxml.jackson.dataformat")
+  }
+  implementation(libs.spring.ai.anthropic) {
+    exclude(group = "com.fasterxml.jackson.core")
+    exclude(group = "com.fasterxml.jackson.datatype")
+    exclude(group = "com.fasterxml.jackson.module")
+    exclude(group = "com.fasterxml.jackson.dataformat")
+  }
 
   // Annotation processing tools
   implementation(libs.mapstruct)
@@ -47,10 +62,9 @@ dependencies {
   testImplementation(libs.lombok)
 
   // Testing dependencies (BOM managed)
-  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockk)
   testImplementation(libs.bundles.testing.core)
   testImplementation(libs.bundles.testing.containers)
-  mockitoAgent(libs.mockito.core)
 }
 
 dependencyManagement {
@@ -61,11 +75,6 @@ dependencyManagement {
 
 tasks.withType<Test>().configureEach {
   useJUnitPlatform()
-  // Load Mockito as a javaagent; also silence the CDS warning seen with agents
-  jvmArgs(
-    "-javaagent:${configurations["mockitoAgent"].asPath}",
-    "-Xshare:off"
-  )
 }
 
 // Podman development tasks
