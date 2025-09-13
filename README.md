@@ -284,10 +284,10 @@ drift early.
 
 ### Immutable-First Design
 
-- **Kotlin-style `val`** + **Lombok `val`** throughout Java codebase
+- **Lombok `val`** throughout Java codebase for immutable local variables
 - **Builder patterns** over setters for object construction
 - **`@RequiredArgsConstructor`** for clean dependency injection
-- **Java records** + **Kotlin `@JvmRecord`** for DTOs
+- **Java records** for DTOs
 
 ### Clean Architecture Patterns
 
