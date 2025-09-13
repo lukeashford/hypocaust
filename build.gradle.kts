@@ -31,28 +31,16 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
 
   // Core Spring Boot functionality (BOM managed)
-  implementation(libs.bundles.spring.boot.core) {
-    exclude(group = "com.fasterxml.jackson.core")
-    exclude(group = "com.fasterxml.jackson.datatype")
-    exclude(group = "com.fasterxml.jackson.module")
-    exclude(group = "com.fasterxml.jackson.dataformat")
-  }
+  implementation(libs.bundles.spring.boot.core)
   implementation(libs.postgresql)
   implementation(libs.bundles.flyway)
 
+  // UUID generators
+  implementation(libs.java.uuid.generator)
+
   // Spring AI (BOM managed)
-  implementation(libs.spring.ai.openai) {
-    exclude(group = "com.fasterxml.jackson.core")
-    exclude(group = "com.fasterxml.jackson.datatype")
-    exclude(group = "com.fasterxml.jackson.module")
-    exclude(group = "com.fasterxml.jackson.dataformat")
-  }
-  implementation(libs.spring.ai.anthropic) {
-    exclude(group = "com.fasterxml.jackson.core")
-    exclude(group = "com.fasterxml.jackson.datatype")
-    exclude(group = "com.fasterxml.jackson.module")
-    exclude(group = "com.fasterxml.jackson.dataformat")
-  }
+  implementation(libs.spring.ai.openai)
+  implementation(libs.spring.ai.anthropic)
 
   // Annotation processing tools
   implementation(libs.mapstruct)
