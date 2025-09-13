@@ -2,7 +2,6 @@ package com.example.the_machine.operator.result;
 
 import java.util.List;
 import lombok.Getter;
-import lombok.val;
 
 /**
  * Result type specifically for validation operations. Extends BaseResult with validation-specific
@@ -109,7 +108,7 @@ public class ValidationResult extends BaseResult {
 
   @Override
   public String toString() {
-    val sb = new StringBuilder();
+    final var sb = new StringBuilder();
     sb.append("ValidationResult{ok=")
         .append(isOk())
         .append(", message='")

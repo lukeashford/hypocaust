@@ -15,7 +15,6 @@ import com.example.the_machine.service.EmbeddingService;
 import com.example.the_machine.service.HashCalculationService;
 import java.util.List;
 import java.util.Optional;
-import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,7 +75,7 @@ class SemanticSearchOperatorRegistryTest {
     registry.getOperatorsByName().put(operatorName, mockOperator);
 
     // When
-    val result = registry.get(operatorName);
+    final var result = registry.get(operatorName);
 
     // Then
     assertThat(result).isPresent();
@@ -86,7 +85,7 @@ class SemanticSearchOperatorRegistryTest {
   @Test
   void testGetOperatorByNameNotFound() {
     // When
-    val result = registry.get("non-existent-operator");
+    final var result = registry.get("non-existent-operator");
 
     // Then
     assertThat(result).isEmpty();
@@ -95,8 +94,8 @@ class SemanticSearchOperatorRegistryTest {
   @Test
   void testSearchByTaskDescription() {
     // Given
-    val taskDescription = "process some text";
-    val operatorEmbedding = OperatorEmbedding.builder()
+    final var taskDescription = "process some text";
+    final var operatorEmbedding = OperatorEmbedding.builder()
         .operatorName(operatorName)
         .embedding(testEmbedding)
         .build();
@@ -107,7 +106,7 @@ class SemanticSearchOperatorRegistryTest {
         .thenReturn(List.of(operatorEmbedding));
 
     // When
-    val results = registry.searchByTask(taskDescription);
+    final var results = registry.searchByTask(taskDescription);
 
     // Then
     assertThat(results).hasSize(1);
@@ -120,8 +119,8 @@ class SemanticSearchOperatorRegistryTest {
   @Test
   void testSearchByTaskDescriptionWithMaxResults() {
     // Given
-    val taskDescription = "process some text";
-    val operatorEmbedding = OperatorEmbedding.builder()
+    final var taskDescription = "process some text";
+    final var operatorEmbedding = OperatorEmbedding.builder()
         .operatorName(operatorName)
         .embedding(testEmbedding)
         .build();
@@ -132,7 +131,7 @@ class SemanticSearchOperatorRegistryTest {
         .thenReturn(List.of(operatorEmbedding));
 
     // When
-    val results = registry.searchByTask(taskDescription);
+    final var results = registry.searchByTask(taskDescription);
 
     // Then
     assertThat(results).hasSize(1);
@@ -144,12 +143,12 @@ class SemanticSearchOperatorRegistryTest {
   @Test
   void testSearchByTaskHandlesException() {
     // Given
-    val taskDescription = "process some text";
+    final var taskDescription = "process some text";
     when(embeddingService.generateEmbedding(taskDescription))
         .thenThrow(new RuntimeException("Embedding service unavailable"));
 
     // When
-    val results = registry.searchByTask(taskDescription);
+    final var results = registry.searchByTask(taskDescription);
 
     // Then
     assertThat(results).isEmpty();
@@ -158,7 +157,7 @@ class SemanticSearchOperatorRegistryTest {
   @Test
   void testCreateEmbeddingText() {
     // Given - using package-private method for testing
-    val embeddingText = registry.createEmbeddingTextForTesting(mockToolSpec);
+    final var embeddingText = registry.createEmbeddingTextForTesting(mockToolSpec);
 
     // Then - check individual components since Set order is not guaranteed
     assertThat(embeddingText)

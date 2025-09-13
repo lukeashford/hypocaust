@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -41,7 +40,7 @@ public class SseHub {
   private int shutdownTimeout;
 
   public SseEmitter subscribe(UUID threadId, @Nullable UUID lastId) {
-    val emitter = new SseEmitter(emitterTimeout);
+    final var emitter = new SseEmitter(emitterTimeout);
 
     // Replay events if lastId is provided
     if (lastId != null) {
@@ -69,14 +68,14 @@ public class SseHub {
   }
 
   public void broadcast(UUID threadId, UUID id, EventType eventType, Object payload) {
-    val emitters = threadEmitters.get(threadId);
+    final var emitters = threadEmitters.get(threadId);
     if (emitters == null || emitters.isEmpty()) {
       return;
     }
 
-    val failedEmitters = new CopyOnWriteArrayList<SseEmitter>();
+    final var failedEmitters = new CopyOnWriteArrayList<SseEmitter>();
 
-    for (val emitter : emitters) {
+    for (final var emitter : emitters) {
       try {
         sendEvent(emitter, id, eventType.getValue(), payload);
       } catch (IOException e) {
@@ -87,15 +86,16 @@ public class SseHub {
     }
 
     // Remove failed emitters
-    for (val failedEmitter : failedEmitters) {
+    for (final var failedEmitter : failedEmitters) {
       removeEmitter(threadId, failedEmitter);
     }
   }
 
   private void replayEvents(SseEmitter emitter, UUID threadId, UUID lastId) {
     try {
-      val events = eventLogRepository.findByThreadIdAndIdGreaterThanOrderById(threadId, lastId);
-      for (val event : events) {
+      final var events = eventLogRepository.findByThreadIdAndIdGreaterThanOrderById(threadId,
+          lastId);
+      for (final var event : events) {
         sendEvent(emitter, event.getId(), event.getEventType().getValue(), event.getPayload());
       }
     } catch (IOException e) {
@@ -108,7 +108,7 @@ public class SseHub {
   }
 
   private void removeEmitter(UUID threadId, SseEmitter emitter) {
-    val emitters = threadEmitters.get(threadId);
+    final var emitters = threadEmitters.get(threadId);
     if (emitters != null) {
       emitters.remove(emitter);
       if (emitters.isEmpty()) {
@@ -119,7 +119,7 @@ public class SseHub {
   }
 
   private void startHeartbeat(SseEmitter emitter) {
-    val task = heartbeatExecutor.scheduleAtFixedRate(() -> {
+    final var task = heartbeatExecutor.scheduleAtFixedRate(() -> {
       try {
         emitter.send(SseEmitter.event().comment("heartbeat"));
       } catch (Exception e) {
@@ -132,7 +132,7 @@ public class SseHub {
 
   private void sendEvent(SseEmitter emitter, UUID id, String eventType, Object payload)
       throws IOException {
-    val sseEventBuilder = SseEmitter.event()
+    final var sseEventBuilder = SseEmitter.event()
         .id(id.toString())
         .name(eventType)
         .data(payload);
@@ -140,7 +140,7 @@ public class SseHub {
   }
 
   private void cancelHeartbeat(SseEmitter emitter) {
-    val task = heartbeatTasks.remove(emitter);
+    final var task = heartbeatTasks.remove(emitter);
     if (task != null) {
       task.cancel(false);
     }

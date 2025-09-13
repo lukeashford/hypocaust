@@ -5,7 +5,6 @@ import com.example.the_machine.models.enums.AnthropicChatModelSpec;
 import com.example.the_machine.models.enums.OpenAiChatModelSpec;
 import com.example.the_machine.models.enums.OpenAiEmbeddingModelSpec;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.document.MetadataMode;
@@ -28,7 +27,7 @@ public class ModelFactory {
       throw new ModelException("No OpenAI chat configuration found");
     }
 
-    val options = modelProperties.getOpenAi().getChat().get(model);
+    final var options = modelProperties.getOpenAi().getChat().get(model);
     if (options == null) {
       throw new ModelException("No chat model configuration found for " + model);
     }
@@ -46,7 +45,7 @@ public class ModelFactory {
       throw new ModelException("No OpenAI embedding configuration found");
     }
 
-    val options = modelProperties.getOpenAi().getEmbedding().get(model);
+    final var options = modelProperties.getOpenAi().getEmbedding().get(model);
     if (options == null) {
       throw new ModelException("No embedding model configuration found for " + model);
     }
@@ -62,7 +61,7 @@ public class ModelFactory {
       throw new ModelException("No Anthropic chat configuration found");
     }
 
-    val options = modelProperties.getAnthropic().getChat().get(model);
+    final var options = modelProperties.getAnthropic().getChat().get(model);
     if (options == null) {
       throw new ModelException("No chat model configuration found for " + model);
     }

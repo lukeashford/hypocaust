@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,7 +26,6 @@ public class LLMRemediator implements Remediator {
   @Override
   public List<JsonNode> remediate(RunContext ctx, Map<String, Object> normalizedInputs,
       Exception exception, String remediationHints) {
-    val patches = new ArrayList<JsonNode>();
 
     log.debug("LLMRemediator attempting remediation for exception: {}", exception.getMessage());
 
@@ -36,7 +34,8 @@ public class LLMRemediator implements Remediator {
     //  propose JSON patches constrained to adjustable fields."
 
     // For now, we'll implement some rule-based logic that simulates LLM reasoning
-    patches.addAll(analyzeAndRemediate(normalizedInputs, exception, remediationHints));
+    final var patches = new ArrayList<JsonNode>(
+        analyzeAndRemediate(normalizedInputs, exception, remediationHints));
 
     log.debug("LLMRemediator generated {} patches", patches.size());
     return patches;
@@ -44,8 +43,8 @@ public class LLMRemediator implements Remediator {
 
   private List<JsonNode> analyzeAndRemediate(Map<String, Object> inputs, Exception exception,
       String hints) {
-    val patches = new ArrayList<JsonNode>();
-    val errorMessage = exception.getMessage().toLowerCase();
+    final var patches = new ArrayList<JsonNode>();
+    final var errorMessage = exception.getMessage().toLowerCase();
 
     // Simulate LLM reasoning for complex parameter adjustments
     if (errorMessage.contains("context length") || errorMessage.contains("too long")) {
@@ -68,24 +67,24 @@ public class LLMRemediator implements Remediator {
   }
 
   private List<JsonNode> reduceContextLength(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     // Reduce max tokens if present
     if (inputs.containsKey("maxTokens") && inputs.get("maxTokens") instanceof Number) {
-      val currentMax = ((Number) inputs.get("maxTokens")).intValue();
-      val reducedMax = Math.max(100, currentMax / 2);
+      final var currentMax = ((Number) inputs.get("maxTokens")).intValue();
+      final var reducedMax = Math.max(100, currentMax / 2);
 
-      val patch = createReplacePatch("/maxTokens", reducedMax);
+      final var patch = createReplacePatch("/maxTokens", reducedMax);
       patches.add(patch);
       log.debug("LLM analysis: Reducing maxTokens from {} to {}", currentMax, reducedMax);
     }
 
     // Adjust context window parameters
     if (inputs.containsKey("contextSize") && inputs.get("contextSize") instanceof Number) {
-      val currentSize = ((Number) inputs.get("contextSize")).intValue();
-      val reducedSize = Math.max(1024, currentSize * 3 / 4);
+      final var currentSize = ((Number) inputs.get("contextSize")).intValue();
+      final var reducedSize = Math.max(1024, currentSize * 3 / 4);
 
-      val patch = createReplacePatch("/contextSize", reducedSize);
+      final var patch = createReplacePatch("/contextSize", reducedSize);
       patches.add(patch);
       log.debug("LLM analysis: Reducing contextSize from {} to {}", currentSize, reducedSize);
     }
@@ -94,12 +93,12 @@ public class LLMRemediator implements Remediator {
   }
 
   private List<JsonNode> fixFormatIssues(Map<String, Object> inputs, String hints) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     // Use hints to guide format corrections
     if (hints != null && hints.contains("json")) {
       if (inputs.containsKey("responseFormat")) {
-        val patch = createReplacePatch("/responseFormat", "json_object");
+        final var patch = createReplacePatch("/responseFormat", "json_object");
         patches.add(patch);
         log.debug("LLM analysis: Setting responseFormat to json_object based on hints");
       }
@@ -107,7 +106,7 @@ public class LLMRemediator implements Remediator {
 
     // Fix common formatting parameters
     if (inputs.containsKey("format") && !(inputs.get("format") instanceof String)) {
-      val patch = createReplacePatch("/format", "text");
+      final var patch = createReplacePatch("/format", "text");
       patches.add(patch);
       log.debug("LLM analysis: Correcting format parameter type");
     }
@@ -116,11 +115,11 @@ public class LLMRemediator implements Remediator {
   }
 
   private List<JsonNode> adjustPermissionParams(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     // Remove or adjust parameters that might cause permission issues
     if (inputs.containsKey("systemMessage")) {
-      val patch = createRemovePatch("/systemMessage");
+      final var patch = createRemovePatch("/systemMessage");
       patches.add(patch);
       log.debug("LLM analysis: Removing systemMessage due to permission issues");
     }
@@ -128,7 +127,7 @@ public class LLMRemediator implements Remediator {
     // Switch to more permissive model if available
     if (inputs.containsKey("model") && inputs.get("model") instanceof String currentModel) {
       if (currentModel.contains("restricted") || currentModel.contains("private")) {
-        val patch = createReplacePatch("/model", "gpt-3.5-turbo");
+        final var patch = createReplacePatch("/model", "gpt-3.5-turbo");
         patches.add(patch);
         log.debug("LLM analysis: Switching to more accessible model");
       }
@@ -138,22 +137,22 @@ public class LLMRemediator implements Remediator {
   }
 
   private List<JsonNode> optimizeResourceUsage(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     // Reduce resource-intensive parameters
     if (inputs.containsKey("temperature") && inputs.get("temperature") instanceof Number) {
-      val currentTemp = ((Number) inputs.get("temperature")).doubleValue();
+      final var currentTemp = ((Number) inputs.get("temperature")).doubleValue();
       if (currentTemp > 1.0) {
-        val patch = createReplacePatch("/temperature", 0.7);
+        final var patch = createReplacePatch("/temperature", 0.7);
         patches.add(patch);
         log.debug("LLM analysis: Reducing temperature to optimize resources");
       }
     }
 
     if (inputs.containsKey("numCompletions") && inputs.get("numCompletions") instanceof Number) {
-      val currentNum = ((Number) inputs.get("numCompletions")).intValue();
+      final var currentNum = ((Number) inputs.get("numCompletions")).intValue();
       if (currentNum > 1) {
-        val patch = createReplacePatch("/numCompletions", 1);
+        final var patch = createReplacePatch("/numCompletions", 1);
         patches.add(patch);
         log.debug("LLM analysis: Reducing numCompletions to save resources");
       }
@@ -163,7 +162,7 @@ public class LLMRemediator implements Remediator {
   }
 
   private ObjectNode createReplacePatch(String path, Object value) {
-    val patch = objectMapper.createObjectNode();
+    final var patch = objectMapper.createObjectNode();
     patch.put("op", "replace");
     patch.put("path", path);
     patch.set("value", objectMapper.valueToTree(value));
@@ -171,7 +170,7 @@ public class LLMRemediator implements Remediator {
   }
 
   private ObjectNode createRemovePatch(String path) {
-    val patch = objectMapper.createObjectNode();
+    final var patch = objectMapper.createObjectNode();
     patch.put("op", "remove");
     patch.put("path", path);
     return patch;

@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -34,7 +33,7 @@ public class ModelRegistry {
   }
 
   private void registerModelsFromConfiguration() {
-    val beanFactory = ((ConfigurableApplicationContext) applicationContext).getBeanFactory();
+    final var beanFactory = ((ConfigurableApplicationContext) applicationContext).getBeanFactory();
 
     // Register OpenAI chat models
     if (modelProperties.getOpenAi() != null && modelProperties.getOpenAi().getChat() != null) {
@@ -59,8 +58,8 @@ public class ModelRegistry {
   private void registerOpenAiChatModel(ConfigurableListableBeanFactory beanFactory,
       OpenAiChatModelSpec modelSpec) {
     try {
-      val model = modelFactory.createOpenAiChatModel(modelSpec);
-      val modelName = modelSpec.getModelName();
+      final var model = modelFactory.createOpenAiChatModel(modelSpec);
+      final var modelName = modelSpec.getModelName();
       beanFactory.registerSingleton(modelName, model);
       log.info("Registered OpenAI chat model bean: {}", modelName);
     } catch (ModelException e) {
@@ -71,8 +70,8 @@ public class ModelRegistry {
   private void registerOpenAiEmbeddingModel(ConfigurableListableBeanFactory beanFactory,
       OpenAiEmbeddingModelSpec modelSpec) {
     try {
-      val model = modelFactory.createOpenAiEmbeddingModel(modelSpec);
-      val modelName = modelSpec.getModelName();
+      final var model = modelFactory.createOpenAiEmbeddingModel(modelSpec);
+      final var modelName = modelSpec.getModelName();
       beanFactory.registerSingleton(modelName, model);
       log.info("Registered OpenAI embedding model bean: {}", modelName);
     } catch (ModelException e) {
@@ -83,8 +82,8 @@ public class ModelRegistry {
   private void registerAnthropicChatModel(ConfigurableListableBeanFactory beanFactory,
       AnthropicChatModelSpec modelSpec) {
     try {
-      val model = modelFactory.createAnthropicChatModel(modelSpec);
-      val modelName = modelSpec.getModelName();
+      final var model = modelFactory.createAnthropicChatModel(modelSpec);
+      final var modelName = modelSpec.getModelName();
       beanFactory.registerSingleton(modelName, model);
       log.info("Registered Anthropic chat model bean: {}", modelName);
     } catch (ModelException e) {
@@ -97,7 +96,7 @@ public class ModelRegistry {
   }
 
   public Set<String> listAvailableModels() {
-    val beanFactory = ((ConfigurableApplicationContext) applicationContext).getBeanFactory();
+    final var beanFactory = ((ConfigurableApplicationContext) applicationContext).getBeanFactory();
     return Arrays.stream(beanFactory.getBeanNamesForType(ChatModel.class))
         .collect(java.util.stream.Collectors.toSet());
   }

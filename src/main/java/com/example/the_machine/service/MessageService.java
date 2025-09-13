@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +40,10 @@ public class MessageService {
     createUserMessage(threadId, request);
 
     // Create run request using record constructor
-    val runRequest = new CreateRunRequestDto(threadId, null, request);
+    final var runRequest = new CreateRunRequestDto(threadId, null, request);
 
     // Trigger run execution
-    val runDto = runService.createRun(runRequest);
+    final var runDto = runService.createRun(runRequest);
 
     log.info("Message processed and run created: {} for thread: {}", runDto.id(), threadId);
     return runDto;
@@ -55,18 +54,17 @@ public class MessageService {
    *
    * @param threadId the thread ID
    * @param request the message creation request
-   * @return the created message entity
    */
-  private MessageEntity createUserMessage(UUID threadId, MessageCreateRequestDto request) {
+  private void createUserMessage(UUID threadId, MessageCreateRequestDto request) {
     // Convert AuthorType to MessageEntity.Author
-    val author = MessageEntity.Author.valueOf(request.author().name());
+    final var author = MessageEntity.Author.valueOf(request.author().name());
 
     // Convert content to JsonNode
-    val contentJson = objectMapper.valueToTree(request.content());
-    val attachmentsJson = request.attachments() != null ?
+    final var contentJson = objectMapper.valueToTree(request.content());
+    final var attachmentsJson = request.attachments() != null ?
         objectMapper.valueToTree(request.attachments()) : null;
 
-    val message = MessageEntity.builder()
+    final var message = MessageEntity.builder()
         .id(UUID.randomUUID())
         .threadId(threadId)
         .author(author)
@@ -75,6 +73,6 @@ public class MessageService {
         .createdAt(Instant.now())
         .build();
 
-    return messageRepository.save(message);
+    messageRepository.save(message);
   }
 }

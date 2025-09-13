@@ -8,7 +8,6 @@ import com.example.the_machine.domain.ThreadEntity;
 import com.example.the_machine.dto.ThreadDto;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,10 +21,10 @@ class ThreadMapperTest {
   @Test
   void testEntityToDto() {
     // Given
-    val entity = createTestThreadEntity();
+    final var entity = createTestThreadEntity();
 
     // When
-    val dto = threadMapper.toDto(entity);
+    final var dto = threadMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -38,10 +37,10 @@ class ThreadMapperTest {
   @Test
   void testDTOToEntity() {
     // Given
-    val dto = createTestThreadDto();
+    final var dto = createTestThreadDto();
 
     // When
-    val entity = threadMapper.toEntity(dto);
+    final var entity = threadMapper.toEntity(dto);
 
     // Then
     assertNotNull(entity);
@@ -63,14 +62,14 @@ class ThreadMapperTest {
   @Test
   void testNullOptionalFields() {
     // Test entity with null title
-    val entity = ThreadEntity.builder()
+    final var entity = ThreadEntity.builder()
         .id(UUID.randomUUID())
         .title(null) // null title
         .createdAt(Instant.now())
         .lastActivityAt(Instant.now())
         .build();
 
-    val dto = threadMapper.toDto(entity);
+    final var dto = threadMapper.toDto(entity);
 
     assertNotNull(dto);
     assertEquals(entity.getId(), dto.id());

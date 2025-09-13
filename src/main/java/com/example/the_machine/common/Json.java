@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import lombok.val;
 
 /**
  * ObjectMapper factory with configured settings for JSON serialization/deserialization.
@@ -30,7 +29,7 @@ public final class Json {
   }
 
   private static ObjectMapper createObjectMapper() {
-    val mapper = new ObjectMapper();
+    final var mapper = new ObjectMapper();
 
     // Configure property naming strategy to snake_case
     mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);

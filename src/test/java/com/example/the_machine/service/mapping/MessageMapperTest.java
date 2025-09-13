@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,10 +27,10 @@ class MessageMapperTest {
   @Test
   void testEntityToDto() {
     // Given
-    val entity = createTestMessageEntity();
+    final var entity = createTestMessageEntity();
 
     // When
-    val dto = messageMapper.toDto(entity);
+    final var dto = messageMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -47,10 +46,10 @@ class MessageMapperTest {
   @Test
   void testDtoToEntity() {
     // Given
-    val dto = createTestMessageDto();
+    final var dto = createTestMessageDto();
 
     // When
-    val entity = messageMapper.toEntity(dto);
+    final var entity = messageMapper.toEntity(dto);
 
     // Then
     assertNotNull(entity);
@@ -75,11 +74,11 @@ class MessageMapperTest {
   @Test
   void testMessageMapperRoundTrip() throws Exception {
     // Given - entity with content and attachments
-    val entity = createTestMessageEntity();
+    final var entity = createTestMessageEntity();
 
     // When - convert DTO→Entity→DTO
-    val dto = messageMapper.toDto(entity);
-    val roundTripEntity = messageMapper.toEntity(dto);
+    final var dto = messageMapper.toDto(entity);
+    final var roundTripEntity = messageMapper.toEntity(dto);
 
     // Then - JSON fields should be preserved
     assertEquals(objectMapper.writeValueAsString(entity.getContentJson()),

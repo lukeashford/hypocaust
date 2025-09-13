@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 /**
  * Context class containing all necessary components and helper methods for run execution. Stores
@@ -65,8 +64,8 @@ public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
    * @param completed whether the message is completed
    */
   public void emitMessage(UUID messageId, Object messageData, boolean completed) {
-    val eventType = completed ? EventType.MESSAGE_COMPLETED : EventType.MESSAGE_DELTA;
-    val envelope = new EventEnvelopeDto(
+    final var eventType = completed ? EventType.MESSAGE_COMPLETED : EventType.MESSAGE_DELTA;
+    final var envelope = new EventEnvelopeDto(
         eventType,
         threadId,
         runId,
@@ -132,7 +131,7 @@ public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
    */
   public void updateRunStatus(Status status) {
     // Fetch the current managed entity to ensure it's managed
-    val managedRun = runRepository.findById(runId)
+    final var managedRun = runRepository.findById(runId)
         .orElseThrow(() -> new IllegalStateException("Run not found: " + runId));
 
     // Update the managed entity
@@ -148,7 +147,7 @@ public record RunContext(UUID threadId, UUID runId, RunRepository runRepository,
     // Save the managed entity (no merge issues)
     runRepository.save(managedRun);
 
-    val envelope = new EventEnvelopeDto(
+    final var envelope = new EventEnvelopeDto(
         EventType.RUN_UPDATED,
         threadId,
         managedRun.getId(),

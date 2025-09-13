@@ -11,7 +11,6 @@ import com.example.the_machine.dto.RunStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,10 +27,10 @@ class RunMapperTest {
   @Test
   void testEntityToDto() {
     // Given
-    val entity = createTestRunEntity();
+    final var entity = createTestRunEntity();
 
     // When
-    val dto = runMapper.toDto(entity);
+    final var dto = runMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -49,10 +48,10 @@ class RunMapperTest {
   @Test
   void testDtoToEntity() {
     // Given
-    val dto = createTestRunDto();
+    final var dto = createTestRunDto();
 
     // When
-    val entity = runMapper.toEntity(dto);
+    final var entity = runMapper.toEntity(dto);
 
     // Then
     assertNotNull(entity);
@@ -82,7 +81,7 @@ class RunMapperTest {
   @Test
   void testOptionalFields() {
     // Test entity with null optional fields
-    val entity = new RunEntity();
+    final var entity = new RunEntity();
     entity.setId(UUID.randomUUID());
     entity.setThreadId(UUID.randomUUID());
     entity.setAssistantId(UUID.randomUUID());
@@ -95,7 +94,7 @@ class RunMapperTest {
     entity.setUsageJson(null);
     entity.setError(null);
 
-    val dto = runMapper.toDto(entity);
+    final var dto = runMapper.toDto(entity);
 
     assertNotNull(dto);
     assertEquals(entity.getId(), dto.id());
@@ -112,7 +111,7 @@ class RunMapperTest {
 
   private RunEntity createTestRunEntity() {
     try {
-      val entity = new RunEntity();
+      final var entity = new RunEntity();
       entity.setId(UUID.randomUUID());
       entity.setThreadId(UUID.randomUUID());
       entity.setAssistantId(UUID.randomUUID());
@@ -127,7 +126,7 @@ class RunMapperTest {
       return entity;
     } catch (Exception e) {
       // Fallback without JSON for testing
-      val entity = new RunEntity();
+      final var entity = new RunEntity();
       entity.setId(UUID.randomUUID());
       entity.setThreadId(UUID.randomUUID());
       entity.setAssistantId(UUID.randomUUID());

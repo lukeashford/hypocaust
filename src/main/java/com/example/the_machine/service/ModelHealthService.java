@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -48,23 +47,23 @@ public class ModelHealthService {
   private final ModelRegistry modelRegistry;
 
   public Map<String, Object> checkModelHealth(String modelName) {
-    val result = new ConcurrentHashMap<String, Object>();
+    final var result = new ConcurrentHashMap<String, Object>();
     result.put(FIELD_MODEL, modelName);
     result.put(FIELD_TIMESTAMP, LocalDateTime.now());
 
     try {
-      val chatModel = modelRegistry.get(modelName);
-      val prompt = new Prompt(List.of(
+      final var chatModel = modelRegistry.get(modelName);
+      final var prompt = new Prompt(List.of(
           new SystemMessage(SYSTEM_MESSAGE),
           new UserMessage(HEALTH_CHECK_PROMPT)
       ));
 
-      val startTime = System.currentTimeMillis();
-      val response = chatModel.call(prompt);
-      val endTime = System.currentTimeMillis();
+      final var startTime = System.currentTimeMillis();
+      final var response = chatModel.call(prompt);
+      final var endTime = System.currentTimeMillis();
 
-      val content = Objects.requireNonNull(response.getResult().getOutput().getText()).trim();
-      val isHealthy = EXPECTED_RESPONSE.equals(content);
+      final var content = Objects.requireNonNull(response.getResult().getOutput().getText()).trim();
+      final var isHealthy = EXPECTED_RESPONSE.equals(content);
 
       result.put(FIELD_STATUS, isHealthy ? STATUS_HEALTHY : STATUS_UNHEALTHY);
       result.put(FIELD_RESPONSE, content);
@@ -86,19 +85,19 @@ public class ModelHealthService {
   }
 
   public Map<String, Object> checkAllModelsHealth() {
-    val results = new ConcurrentHashMap<String, Object>();
-    val availableModels = modelRegistry.listAvailableModels();
+    final var results = new ConcurrentHashMap<String, Object>();
+    final var availableModels = modelRegistry.listAvailableModels();
 
     results.put(FIELD_TIMESTAMP, LocalDateTime.now());
     results.put(FIELD_TOTAL_MODELS, availableModels.size());
 
-    val modelResults = new ConcurrentHashMap<String, Object>();
+    final var modelResults = new ConcurrentHashMap<String, Object>();
     availableModels.parallelStream()
         .forEach(modelName -> modelResults.put(modelName, checkModelHealth(modelName)));
 
     results.put(FIELD_MODELS, modelResults);
 
-    val healthyCount = modelResults.values().stream()
+    final var healthyCount = modelResults.values().stream()
         .mapToInt(result -> STATUS_HEALTHY.equals(((Map<?, ?>) result).get(FIELD_STATUS)) ? 1 : 0)
         .sum();
 

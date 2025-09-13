@@ -3,7 +3,6 @@ package com.example.the_machine.service.events;
 import com.example.the_machine.dto.EventEnvelopeDto;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,7 +18,7 @@ public class EventPublisher {
   }
 
   public void publishAndStore(UUID threadId, EventEnvelopeDto e, String dedupeKeyOrNull) {
-    val eventId = eventLogService.append(
+    final var eventId = eventLogService.append(
         threadId, e.runId(), e.messageId(), e.type(), e.data(), dedupeKeyOrNull
     );
     sseHub.broadcast(threadId, eventId, e.type(), e.data());

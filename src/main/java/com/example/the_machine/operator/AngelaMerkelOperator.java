@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import lombok.val;
 
 /**
  * Operator that responds to text in the tone and style of Angela Merkel. Provides responses in her
@@ -51,7 +50,7 @@ public class AngelaMerkelOperator extends BaseOperator {
 
   @Override
   protected OperatorResult doExecute(RunContext ctx, Map<String, Object> inputs) throws Exception {
-    val inputText = (String) inputs.get("text");
+    final var inputText = (String) inputs.get("text");
 
     // Simulate processing time
     Thread.sleep(100);
@@ -60,7 +59,7 @@ public class AngelaMerkelOperator extends BaseOperator {
     String responseText = generateAngelaMerkelResponse(inputText);
 
     // Create outputs map
-    val outputs = Map.of("response", (Object) responseText);
+    final var outputs = Map.of("response", (Object) responseText);
 
     // Return successful result with the response
     return OperatorResult.success(
@@ -77,7 +76,7 @@ public class AngelaMerkelOperator extends BaseOperator {
    */
   private String generateAngelaMerkelResponse(String inputText) {
     // Characteristic Angela Merkel phrases and approach
-    val merkelPhrases = List.of(
+    final var merkelPhrases = List.of(
         "Wir schaffen das",
         "We must work together",
         "This requires careful consideration",

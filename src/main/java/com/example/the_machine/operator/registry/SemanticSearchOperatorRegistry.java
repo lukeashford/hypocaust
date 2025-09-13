@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -50,24 +49,24 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   private void discoverAndIndexOperators() {
     log.info("Discovering operators and generating embeddings...");
 
-    val serviceLoader = ServiceLoader.load(Operator.class);
-    val newEmbeddings = new ArrayList<OperatorEmbedding>();
+    final var serviceLoader = ServiceLoader.load(Operator.class);
+    final var newEmbeddings = new ArrayList<OperatorEmbedding>();
 
-    for (val operator : serviceLoader) {
+    for (final var operator : serviceLoader) {
       try {
-        val spec = operator.spec();
-        val operatorName = spec.getName();
+        final var spec = operator.spec();
+        final var operatorName = spec.getName();
 
         // Single source of truth - cache only operators
         operatorsByName.put(operatorName, operator);
 
         // Use ToolSpec's existing description method + context
-        val descriptionText = createEmbeddingText(spec);
-        val existingEmbedding = embeddingRepository.findByOperatorName(operatorName);
-        val textHash = hashCalculationService.calculateSha256Hash(descriptionText);
+        final var descriptionText = createEmbeddingText(spec);
+        final var existingEmbedding = embeddingRepository.findByOperatorName(operatorName);
+        final var textHash = hashCalculationService.calculateSha256Hash(descriptionText);
 
         if (existingEmbedding.isEmpty() || !existingEmbedding.get().getHash().equals(textHash)) {
-          val embedding = embeddingService.generateEmbedding(descriptionText);
+          final var embedding = embeddingService.generateEmbedding(descriptionText);
 
           newEmbeddings.add(OperatorEmbedding.builder()
               .id(idGenerator.newId())
@@ -95,7 +94,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
    * Creates embedding text from ToolSpec using existing methods.
    */
   private String createEmbeddingText(ToolSpec spec) {
-    val text = new StringBuilder();
+    final var text = new StringBuilder();
     text.append("Tool: ").append(spec.getName());
 
     // ToolSpec already has getDescription()!
@@ -123,17 +122,18 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
    */
   @Override
   public List<ToolSpec> searchByTask(String taskDescription) {
-    val maxResults = 3;
+    final var maxResults = 3;
 
     try {
-      val queryEmbedding = embeddingService.generateEmbedding(taskDescription);
-      val pageable = PageRequest.of(0, maxResults);
+      final var queryEmbedding = embeddingService.generateEmbedding(taskDescription);
+      final var pageable = PageRequest.of(0, maxResults);
 
-      val results = embeddingRepository.findTopByEmbeddingSimilarity(queryEmbedding, pageable);
+      final var results = embeddingRepository.findTopByEmbeddingSimilarity(queryEmbedding,
+          pageable);
 
       return results.stream()
           .map(embedding -> {
-            val operator = operatorsByName.get(embedding.getOperatorName());
+            final var operator = operatorsByName.get(embedding.getOperatorName());
             return operator != null ? operator.spec() : null; // Single source of truth!
           })
           .filter(Objects::nonNull)

@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.val;
 
 /**
  * Specification for a parameter with validation rules and metadata. Supports builder pattern for
@@ -63,7 +62,7 @@ public class ParamSpec<T> {
 
     // Validate numeric constraints
     if (castValue instanceof Number num && (min != null || max != null)) {
-      val result = validateNumericConstraints(num);
+      final var result = validateNumericConstraints(num);
       if (!result.isOk()) {
         return result;
       }
@@ -80,7 +79,7 @@ public class ParamSpec<T> {
 
     // Validate regex constraints
     if (regex != null && castValue instanceof String str) {
-      val result = validateRegexConstraint(str);
+      final var result = validateRegexConstraint(str);
       if (!result.isOk()) {
         return result;
       }
@@ -90,7 +89,7 @@ public class ParamSpec<T> {
   }
 
   private ValidationResult validateNumericConstraints(Number value) {
-    val doubleValue = value.doubleValue();
+    final var doubleValue = value.doubleValue();
 
     if (min != null && doubleValue < min.doubleValue()) {
       return ValidationResult.constraintValidationError(name, "MIN_VALUE",
@@ -236,7 +235,8 @@ public class ParamSpec<T> {
    * Creates a list parameter specification.
    */
   public static <T> ParamSpec<List<T>> list(String name, Class<T> elementType) {
-    val listType = TypeFactory.defaultInstance().constructCollectionType(List.class, elementType);
+    final var listType = TypeFactory.defaultInstance()
+        .constructCollectionType(List.class, elementType);
     return ParamSpec.<List<T>>builder()
         .name(name)
         .type(listType)
@@ -250,7 +250,7 @@ public class ParamSpec<T> {
    * Creates a map parameter specification.
    */
   public static <V> ParamSpec<Map<String, V>> map(String name, Class<V> valueType) {
-    val mapType = TypeFactory.defaultInstance()
+    final var mapType = TypeFactory.defaultInstance()
         .constructMapType(Map.class, String.class, valueType);
     return ParamSpec.<Map<String, V>>builder()
         .name(name)

@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +46,7 @@ public class ArtifactService {
   ) {
     log.debug("Creating artifact: kind={}, stage={}, title={}", kind, stage, title);
 
-    val artifact = ArtifactEntity.builder()
+    final var artifact = ArtifactEntity.builder()
         .id(idGenerator.newId())
         .threadId(threadId)
         .runId(runId)
@@ -59,7 +58,7 @@ public class ArtifactService {
         .createdAt(Instant.now())
         .build();
 
-    val saved = artifactRepository.save(artifact);
+    final var saved = artifactRepository.save(artifact);
     log.info("Artifact created: {} for thread: {}", saved.getId(), threadId);
     return saved;
   }
@@ -72,7 +71,7 @@ public class ArtifactService {
    */
   @Transactional
   public void setContent(UUID artifactId, JsonNode content) {
-    val artifact = artifactRepository.findById(artifactId)
+    final var artifact = artifactRepository.findById(artifactId)
         .orElseThrow(() -> new IllegalArgumentException("Artifact not found: " + artifactId));
 
     artifact.setContent(content);
@@ -91,7 +90,7 @@ public class ArtifactService {
    */
   @Transactional
   public void setStorageKey(UUID artifactId, String storageKey, String mime) {
-    val artifact = artifactRepository.findById(artifactId)
+    final var artifact = artifactRepository.findById(artifactId)
         .orElseThrow(() -> new IllegalArgumentException("Artifact not found: " + artifactId));
 
     artifact.setStorageKey(storageKey);
@@ -110,7 +109,7 @@ public class ArtifactService {
    */
   @Transactional
   public void setMetadata(UUID artifactId, JsonNode metadata) {
-    val artifact = artifactRepository.findById(artifactId)
+    final var artifact = artifactRepository.findById(artifactId)
         .orElseThrow(() -> new IllegalArgumentException("Artifact not found: " + artifactId));
 
     artifact.setMetadata(metadata);

@@ -18,7 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,7 +55,7 @@ public class RunService {
     log.info("Creating run for thread: {}", request.threadId());
 
     // Load thread
-    val thread = threadRepository.findById(request.threadId())
+    final var thread = threadRepository.findById(request.threadId())
         .orElseThrow(() -> new IllegalArgumentException("Thread not found: " + request.threadId()));
 
     // Note: MessageService would handle user message creation if available
@@ -66,11 +65,11 @@ public class RunService {
     }
 
     // Create run entity using factory
-    val runId = runFactory.createAndSaveRun(request, request.threadId());
-    val runDto = runMapper.toDto(runFactory.findManagedRun(runId));
+    final var runId = runFactory.createAndSaveRun(request, request.threadId());
+    final var runDto = runMapper.toDto(runFactory.findManagedRun(runId));
 
     // Log run creation event
-    val envelope = new EventEnvelopeDto(
+    final var envelope = new EventEnvelopeDto(
         EventType.RUN_CREATED,
         thread.getId(),
         runId,
@@ -109,14 +108,14 @@ public class RunService {
 
     try {
       // Fetch managed entities
-      val run = runFactory.findManagedRun(runId);
+      final var run = runFactory.findManagedRun(runId);
 
       // Transition to RUNNING
       run.setStatus(RunEntity.Status.RUNNING);
       run.setStartedAt(Instant.now());
       runRepository.save(run);
 
-      val envelope = new EventEnvelopeDto(
+      final var envelope = new EventEnvelopeDto(
           EventType.RUN_UPDATED,
           threadId,
           runId,
@@ -126,7 +125,7 @@ public class RunService {
       eventPublisher.publishAndStore(threadId, envelope, null);
 
       // Create run context with IDs
-      val context = new RunContext(
+      final var context = new RunContext(
           threadId,
           runId,
           runRepository,
@@ -140,7 +139,7 @@ public class RunService {
       );
 
       // Simple planner logic
-      val executionType = determineExecutionType(run);
+      final var executionType = determineExecutionType(run);
 
       switch (executionType) {
         case PLAN_CLARIFY -> assistantEngine.executePlanAskClarify(context);
@@ -154,13 +153,13 @@ public class RunService {
       log.error("Run execution failed: {}", runId, e);
 
       // Fetch managed run for error update
-      val run = runFactory.findManagedRun(runId);
+      final var run = runFactory.findManagedRun(runId);
       run.setStatus(RunEntity.Status.FAILED);
       run.setError(e.getMessage());
       run.setCompletedAt(Instant.now());
       runRepository.save(run);
 
-      val errorEnvelope = new EventEnvelopeDto(
+      final var errorEnvelope = new EventEnvelopeDto(
           EventType.RUN_UPDATED,
           threadId,
           runId,

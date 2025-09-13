@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -41,7 +40,7 @@ public class ArtifactController {
 
     try {
       // Look up artifact
-      val artifact = artifactRepository.findById(id)
+      final var artifact = artifactRepository.findById(id)
           .orElse(null);
 
       if (artifact == null) {
@@ -56,7 +55,7 @@ public class ArtifactController {
       }
 
       // Get file path
-      val filePath = Paths.get(artifact.getStorageKey());
+      final var filePath = Paths.get(artifact.getStorageKey());
 
       // Check if file exists
       if (!Files.exists(filePath)) {
@@ -65,19 +64,19 @@ public class ArtifactController {
       }
 
       // Create resource
-      val resource = new FileSystemResource(filePath);
+      final var resource = new FileSystemResource(filePath);
 
       // Determine content type
-      val contentType = determineContentType(artifact.getMime(), filePath);
+      final var contentType = determineContentType(artifact.getMime(), filePath);
 
       // Build response headers
-      val headers = new HttpHeaders();
+      final var headers = new HttpHeaders();
       headers.setContentType(contentType);
       headers.setContentLength(Files.size(filePath));
 
       // Set filename for download
       if (artifact.getTitle() != null) {
-        val filename = sanitizeFilename(artifact.getTitle()) + getFileExtension(filePath);
+        final var filename = sanitizeFilename(artifact.getTitle()) + getFileExtension(filePath);
         headers.setContentDisposition(
             org.springframework.http.ContentDisposition.attachment()
                 .filename(filename)
@@ -113,7 +112,7 @@ public class ArtifactController {
     }
 
     // Fallback to file extension
-    val fileName = filePath.getFileName().toString().toLowerCase();
+    final var fileName = filePath.getFileName().toString().toLowerCase();
     if (fileName.endsWith(".png")) {
       return MediaType.IMAGE_PNG;
     } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
@@ -144,8 +143,8 @@ public class ArtifactController {
    * Gets file extension from path.
    */
   private String getFileExtension(Path filePath) {
-    val fileName = filePath.getFileName().toString();
-    val lastDot = fileName.lastIndexOf('.');
+    final var fileName = filePath.getFileName().toString();
+    final var lastDot = fileName.lastIndexOf('.');
     if (lastDot > 0 && lastDot < fileName.length() - 1) {
       return fileName.substring(lastDot);
     }

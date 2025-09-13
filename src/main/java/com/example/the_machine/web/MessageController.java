@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +39,7 @@ public class MessageController {
     log.info("Processing message for thread: {}", threadId);
 
     try {
-      val run = messageService.processMessage(threadId, request);
+      final var run = messageService.processMessage(threadId, request);
       return ResponseEntity.ok(run);
     } catch (RejectedExecutionException e) {
       log.warn("Execution rejected for thread {}: {}", threadId, e.getMessage());

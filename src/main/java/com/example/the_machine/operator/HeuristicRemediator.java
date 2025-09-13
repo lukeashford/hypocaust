@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -29,8 +28,8 @@ public class HeuristicRemediator implements Remediator {
   @Override
   public List<JsonNode> remediate(RunContext ctx, Map<String, Object> normalizedInputs,
       Exception exception, String remediationHints) {
-    val patches = new ArrayList<JsonNode>();
-    val exceptionMessage = exception.getMessage().toLowerCase();
+    final var patches = new ArrayList<JsonNode>();
+    final var exceptionMessage = exception.getMessage().toLowerCase();
 
     log.debug("HeuristicRemediator attempting remediation for exception: {}",
         exception.getMessage());
@@ -60,17 +59,17 @@ public class HeuristicRemediator implements Remediator {
   }
 
   private List<JsonNode> adjustTimeouts(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
-    for (val entry : inputs.entrySet()) {
-      val key = entry.getKey();
-      val value = entry.getValue();
+    for (final var entry : inputs.entrySet()) {
+      final var key = entry.getKey();
+      final var value = entry.getValue();
 
       if (key.toLowerCase().contains("timeout") && value instanceof Number) {
-        val currentTimeout = ((Number) value).intValue();
-        val newTimeout = Math.min(currentTimeout * 2, 300); // Cap at 5 minutes
+        final var currentTimeout = ((Number) value).intValue();
+        final var newTimeout = Math.min(currentTimeout * 2, 300); // Cap at 5 minutes
 
-        val patch = createReplacePatch("/" + key, newTimeout);
+        final var patch = createReplacePatch("/" + key, newTimeout);
         patches.add(patch);
         log.debug("Adjusting timeout {} from {} to {}", key, currentTimeout, newTimeout);
       }
@@ -80,21 +79,21 @@ public class HeuristicRemediator implements Remediator {
   }
 
   private List<JsonNode> addBackoff(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     // Add or increase retry delay
     if (!inputs.containsKey("retryDelayMs")) {
-      val patch = objectMapper.createObjectNode();
+      final var patch = objectMapper.createObjectNode();
       patch.put("op", "add");
       patch.put("path", "/retryDelayMs");
       patch.set("value", objectMapper.valueToTree(1000));
       patches.add(patch);
       log.debug("Adding retryDelayMs: 1000");
     } else if (inputs.get("retryDelayMs") instanceof Number) {
-      val currentDelay = ((Number) inputs.get("retryDelayMs")).intValue();
-      val newDelay = Math.min(currentDelay * 2, 30000); // Cap at 30 seconds
+      final var currentDelay = ((Number) inputs.get("retryDelayMs")).intValue();
+      final var newDelay = Math.min(currentDelay * 2, 30000); // Cap at 30 seconds
 
-      val patch = createReplacePatch("/retryDelayMs", newDelay);
+      final var patch = createReplacePatch("/retryDelayMs", newDelay);
       patches.add(patch);
       log.debug("Increasing retryDelayMs from {} to {}", currentDelay, newDelay);
     }
@@ -103,14 +102,14 @@ public class HeuristicRemediator implements Remediator {
   }
 
   private List<JsonNode> clampValues(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
-    for (val entry : inputs.entrySet()) {
-      val key = entry.getKey();
-      val value = entry.getValue();
+    for (final var entry : inputs.entrySet()) {
+      final var key = entry.getKey();
+      final var value = entry.getValue();
 
       if (value instanceof Number) {
-        val numValue = ((Number) value).doubleValue();
+        final var numValue = ((Number) value).doubleValue();
         Double clampedValue = null;
 
         // Common parameter ranges
@@ -123,7 +122,7 @@ public class HeuristicRemediator implements Remediator {
         }
 
         if (clampedValue != null && !clampedValue.equals(numValue)) {
-          val patch = createReplacePatch("/" + key, clampedValue);
+          final var patch = createReplacePatch("/" + key, clampedValue);
           patches.add(patch);
           log.debug("Clamping {} from {} to {}", key, numValue, clampedValue);
         }
@@ -134,13 +133,13 @@ public class HeuristicRemediator implements Remediator {
   }
 
   private List<JsonNode> switchModel(Map<String, Object> inputs) {
-    val patches = new ArrayList<JsonNode>();
+    final var patches = new ArrayList<JsonNode>();
 
     if (inputs.containsKey("model") && inputs.get("model") instanceof String currentModel) {
       String fallbackModel = getFallbackModel(currentModel);
 
       if (fallbackModel != null && !fallbackModel.equals(currentModel)) {
-        val patch = createReplacePatch("/model", fallbackModel);
+        final var patch = createReplacePatch("/model", fallbackModel);
         patches.add(patch);
         log.debug("Switching model from {} to {}", currentModel, fallbackModel);
       }
@@ -161,7 +160,7 @@ public class HeuristicRemediator implements Remediator {
   }
 
   private ObjectNode createReplacePatch(String path, Object value) {
-    val patch = objectMapper.createObjectNode();
+    final var patch = objectMapper.createObjectNode();
     patch.put("op", "replace");
     patch.put("path", path);
     patch.set("value", objectMapper.valueToTree(value));

@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import lombok.val;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,8 +22,8 @@ public class HashCalculationService {
    */
   public String calculateSha256Hash(String text) {
     try {
-      val digest = MessageDigest.getInstance("SHA-256");
-      val hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+      final var digest = MessageDigest.getInstance("SHA-256");
+      final var hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(hash);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 algorithm not available", e);

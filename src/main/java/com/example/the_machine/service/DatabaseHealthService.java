@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -32,32 +31,32 @@ public class DatabaseHealthService {
   private final DataSource dataSource;
 
   public Map<String, Object> checkDatabaseHealth() {
-    val result = new ConcurrentHashMap<String, Object>();
+    final var result = new ConcurrentHashMap<String, Object>();
     result.put(FIELD_DATABASE, "postgresql");
     result.put(FIELD_TIMESTAMP, LocalDateTime.now());
 
     try {
-      val startTime = System.currentTimeMillis();
+      final var startTime = System.currentTimeMillis();
 
       // Check connection validity
       boolean connectionValid;
       boolean querySuccess = false;
 
-      try (val connection = dataSource.getConnection()) {
+      try (final var connection = dataSource.getConnection()) {
         // Check if connection is valid with 5-second timeout
         connectionValid = connection.isValid(5);
         result.put(FIELD_CONNECTION_VALID, connectionValid);
 
         if (connectionValid) {
           // Execute simple query to verify database functionality
-          try (val statement = connection.createStatement();
-              val resultSet = statement.executeQuery(DB_HEALTH_CHECK_QUERY)) {
+          try (final var statement = connection.createStatement();
+              final var resultSet = statement.executeQuery(DB_HEALTH_CHECK_QUERY)) {
             querySuccess = resultSet.next() && resultSet.getInt(1) == 1;
           }
         }
       }
 
-      val endTime = System.currentTimeMillis();
+      final var endTime = System.currentTimeMillis();
 
       result.put(FIELD_QUERY_SUCCESS, querySuccess);
       result.put(FIELD_RESPONSE_TIME_MS, endTime - startTime);

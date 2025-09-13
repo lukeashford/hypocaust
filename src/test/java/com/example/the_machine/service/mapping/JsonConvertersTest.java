@@ -10,7 +10,6 @@ import com.example.the_machine.dto.TextContentDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,8 +32,8 @@ class JsonConvertersTest {
     );
 
     // When - convert to JSON and back
-    val json = jsonConverters.blocksToJson(original);
-    val roundTrip = jsonConverters.blocksFromJson(json);
+    final var json = jsonConverters.blocksToJson(original);
+    final var roundTrip = jsonConverters.blocksFromJson(json);
 
     // Then - should be identical
     assertNotNull(roundTrip);
@@ -64,8 +63,8 @@ class JsonConvertersTest {
     );
 
     // When - convert to JSON and back
-    val json = jsonConverters.uuidsToJson(original);
-    val roundTrip = jsonConverters.uuidsFromJson(json);
+    final var json = jsonConverters.uuidsToJson(original);
+    final var roundTrip = jsonConverters.uuidsFromJson(json);
 
     // Then - should be identical
     assertNotNull(roundTrip);
@@ -90,15 +89,15 @@ class JsonConvertersTest {
   void testEmptyListHandling() {
     // Test empty list -> [] JSON -> empty list
     List<ContentBlockDto> emptyBlocks = List.of();
-    val blocksJson = jsonConverters.blocksToJson(emptyBlocks);
-    val blocksRoundTrip = jsonConverters.blocksFromJson(blocksJson);
+    final var blocksJson = jsonConverters.blocksToJson(emptyBlocks);
+    final var blocksRoundTrip = jsonConverters.blocksFromJson(blocksJson);
 
     assertEquals(emptyBlocks, blocksRoundTrip);
 
     // Test empty UUID list
     List<UUID> emptyUuids = List.of();
-    val uuidsJson = jsonConverters.uuidsToJson(emptyUuids);
-    val uuidsRoundTrip = jsonConverters.uuidsFromJson(uuidsJson);
+    final var uuidsJson = jsonConverters.uuidsToJson(emptyUuids);
+    final var uuidsRoundTrip = jsonConverters.uuidsFromJson(uuidsJson);
 
     assertEquals(emptyUuids, uuidsRoundTrip);
   }

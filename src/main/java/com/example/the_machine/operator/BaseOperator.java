@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 /**
  * Base implementation of Operator that provides common lifecycle management including validation,
@@ -36,16 +35,16 @@ public abstract class BaseOperator implements Operator {
 
   @Override
   public final OperatorResult execute(RunContext ctx, Map<String, Object> rawInputs) {
-    val startTime = Instant.now();
-    val spec = spec();
-    val operatorName = this.getClass().getSimpleName();
-    val operatorVersion = getVersion();
+    final var startTime = Instant.now();
+    final var spec = spec();
+    final var operatorName = this.getClass().getSimpleName();
+    final var operatorVersion = getVersion();
 
     log.debug("Starting execution of {} with inputs: {}", operatorName, rawInputs.keySet());
 
     try {
       // Step 1: Validate raw inputs against ToolSpec
-      val validationResult = spec.validate(rawInputs);
+      final var validationResult = spec.validate(rawInputs);
       if (!validationResult.isOk()) {
         log.warn("Validation failed for {}: {}", operatorName, validationResult.getMessage());
         return OperatorResult.validationFailure(operatorName, operatorVersion,
@@ -53,7 +52,7 @@ public abstract class BaseOperator implements Operator {
       }
 
       // Step 2: Apply defaults
-      val normalizedInputs = spec.applyDefaults(rawInputs);
+      final var normalizedInputs = spec.applyDefaults(rawInputs);
       log.debug("Applied defaults, normalized inputs: {}", normalizedInputs.keySet());
 
       // Step 3: Check budgets
@@ -63,11 +62,11 @@ public abstract class BaseOperator implements Operator {
       return executeWithRetries(ctx, normalizedInputs, operatorName, operatorVersion, startTime);
 
     } catch (Exception e) {
-      val latencyMs = calculateLatency(startTime);
+      final var latencyMs = calculateLatency(startTime);
       log.error("Unexpected error in {} after {}ms", operatorName, latencyMs, e);
 
       // Redact secrets from error message
-      val redactedMessage = redactSecrets(e.getMessage(), rawInputs);
+      final var redactedMessage = redactSecrets(e.getMessage(), rawInputs);
 
       return OperatorResult.failure(operatorName, operatorVersion,
               OperatorResultCode.UNEXPECTED_ERROR,
@@ -81,9 +80,9 @@ public abstract class BaseOperator implements Operator {
    */
   private OperatorResult executeWithRetries(RunContext ctx, Map<String, Object> normalizedInputs,
       String operatorName, String operatorVersion, Instant startTime) {
-    val allPatches = new ArrayList<JsonNode>();
-    val currentInputs = new HashMap<>(normalizedInputs);
-    val maxTries = ctx.policy().maxTriesPerOp();
+    final var allPatches = new ArrayList<JsonNode>();
+    final var currentInputs = new HashMap<>(normalizedInputs);
+    final var maxTries = ctx.policy().maxTriesPerOp();
 
     Exception lastException = null;
     String lastErrorSignature = null;
@@ -93,10 +92,10 @@ public abstract class BaseOperator implements Operator {
       try {
         log.debug("Attempt {}/{} for {}", attempt, maxTries - 1, operatorName);
 
-        val result = doExecute(ctx, currentInputs);
+        final var result = doExecute(ctx, currentInputs);
 
         // Success path
-        val latencyMs = calculateLatency(startTime);
+        final var latencyMs = calculateLatency(startTime);
         log.debug("Successfully executed {} in {}ms after {} attempts",
             operatorName, latencyMs, attempt + 1);
 
@@ -108,7 +107,7 @@ public abstract class BaseOperator implements Operator {
 
       } catch (Exception e) {
         lastException = e;
-        val currentErrorSignature = createErrorSignature(e);
+        final var currentErrorSignature = createErrorSignature(e);
         log.warn("Attempt {}/{} failed for {}: {}", attempt, maxTries - 1, operatorName,
             e.getMessage());
 
@@ -129,7 +128,7 @@ public abstract class BaseOperator implements Operator {
           }
 
           // Try remediation with current remediator
-          val remediationPatches = getPatchFromRemediator(ctx, currentInputs, e,
+          final var remediationPatches = getPatchFromRemediator(ctx, currentInputs, e,
               attemptsForCurrentError);
           if (remediationPatches.isEmpty()) {
             log.debug("No remediation available from remediator {}, will retry with same inputs",
@@ -147,8 +146,8 @@ public abstract class BaseOperator implements Operator {
     }
 
     // All retries exhausted or early termination - create failure result
-    val latencyMs = calculateLatency(startTime);
-    val redactedMessage =
+    final var latencyMs = calculateLatency(startTime);
+    final var redactedMessage =
         lastException != null ? redactSecrets(lastException.getMessage(), normalizedInputs) : "";
 
     return OperatorResult.failure(operatorName, operatorVersion,
@@ -169,11 +168,11 @@ public abstract class BaseOperator implements Operator {
       return List.of();
     }
 
-    val remediator = remediators.get(remediatorIndex);
-    val hints = remediationHints();
+    final var remediator = remediators.get(remediatorIndex);
+    final var hints = remediationHints();
 
     try {
-      val patches = remediator.remediate(ctx, normalizedInputs, exception, hints);
+      final var patches = remediator.remediate(ctx, normalizedInputs, exception, hints);
       log.debug("Remediator {} ({}) generated {} patches",
           remediatorIndex, remediator.getName(), patches.size());
       return patches;
@@ -189,8 +188,8 @@ public abstract class BaseOperator implements Operator {
    */
   private String createErrorSignature(Exception e) {
     // Use exception class name and first 100 chars of message for signature
-    val message = e.getMessage();
-    val truncatedMessage = message != null && message.length() > 100 ?
+    final var message = e.getMessage();
+    final var truncatedMessage = message != null && message.length() > 100 ?
         message.substring(0, 100) : (message != null ? message : "");
     return e.getClass().getSimpleName() + ":" + truncatedMessage;
   }
@@ -202,14 +201,14 @@ public abstract class BaseOperator implements Operator {
   private void applyPatches(Map<String, Object> inputs, List<JsonNode> patches) {
     try {
       // Apply each patch directly to the input map
-      for (val patchNode : patches) {
+      for (final var patchNode : patches) {
         if (!patchNode.has("op") || !patchNode.has("path")) {
           log.warn("Invalid patch format, skipping: {}", patchNode);
           continue;
         }
 
-        val operation = patchNode.get("op").asText();
-        val path = patchNode.get("path").asText();
+        final var operation = patchNode.get("op").asText();
+        final var path = patchNode.get("path").asText();
 
         // Simple path handling - only support root level fields for now
         if (!path.startsWith("/") || path.indexOf("/", 1) != -1) {
@@ -217,13 +216,13 @@ public abstract class BaseOperator implements Operator {
           continue;
         }
 
-        val fieldName = path.substring(1); // Remove leading "/"
+        final var fieldName = path.substring(1); // Remove leading "/"
 
         switch (operation) {
           case "replace":
           case "add":
             if (patchNode.has("value")) {
-              val value = objectMapper.convertValue(patchNode.get("value"), Object.class);
+              final var value = objectMapper.convertValue(patchNode.get("value"), Object.class);
               inputs.put(fieldName, value);
               log.debug("Applied {} patch: {} = {}", operation, fieldName, value);
             }

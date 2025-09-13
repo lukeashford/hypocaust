@@ -10,7 +10,6 @@ import com.example.the_machine.dto.ArtifactDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,10 +26,10 @@ class ArtifactMapperTest {
   @Test
   void testEntityToDto() {
     // Given
-    val entity = createTestArtifactEntity();
+    final var entity = createTestArtifactEntity();
 
     // When
-    val dto = artifactMapper.toDto(entity);
+    final var dto = artifactMapper.toDto(entity);
 
     // Then
     assertNotNull(dto);
@@ -51,10 +50,10 @@ class ArtifactMapperTest {
   @Test
   void testDTOToEntity() {
     // Given
-    val dto = createTestArtifactDto();
+    final var dto = createTestArtifactDto();
 
     // When
-    val entity = artifactMapper.toEntity(dto);
+    final var entity = artifactMapper.toEntity(dto);
 
     // Then
     assertNotNull(entity);
@@ -75,22 +74,22 @@ class ArtifactMapperTest {
   @Test
   void testUrlGeneration() {
     // Given - entity with storageKey
-    val entity = createTestArtifactEntity();
+    final var entity = createTestArtifactEntity();
     entity.setStorageKey("some-storage-key");
 
     // When
-    val dto = artifactMapper.toDto(entity);
+    final var dto = artifactMapper.toDto(entity);
 
     // Then
     assertEquals("/artifacts/" + entity.getId(),
         dto.url()); // Should generate URL when storageKey exists
 
     // Given - entity without storageKey
-    val entityWithoutStorageKey = createTestArtifactEntity();
+    final var entityWithoutStorageKey = createTestArtifactEntity();
     entityWithoutStorageKey.setStorageKey(null);
 
     // When
-    val dtoWithoutUrl = artifactMapper.toDto(entityWithoutStorageKey);
+    final var dtoWithoutUrl = artifactMapper.toDto(entityWithoutStorageKey);
 
     // Then
     assertNull(dtoWithoutUrl.url()); // Should be null when no storageKey

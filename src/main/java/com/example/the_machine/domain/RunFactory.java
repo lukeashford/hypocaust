@@ -6,7 +6,6 @@ import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.repo.RunRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,7 +28,7 @@ public class RunFactory {
    * @return the UUID of the created and saved run
    */
   public UUID createAndSaveRun(CreateRunRequestDto request, UUID threadId) {
-    val run = RunEntity.builder()
+    final var run = RunEntity.builder()
         .id(UUID.randomUUID())
         .threadId(threadId)
         .assistantId(
@@ -38,7 +37,7 @@ public class RunFactory {
         .kind(RunEntity.Kind.FULL)
         .build();
 
-    val savedRun = runRepository.save(run);
+    final var savedRun = runRepository.save(run);
     return savedRun.getId();
   }
 

@@ -5,7 +5,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,7 +42,7 @@ public class ExecutorConfig {
     log.info("Creating run executor service with corePoolSize={}, maxPoolSize={}, queueCapacity={}",
         corePoolSize, maxPoolSize, queueCapacity);
 
-    val executor = new ThreadPoolExecutor(
+    final var executor = new ThreadPoolExecutor(
         corePoolSize,
         maxPoolSize,
         keepAliveSeconds,

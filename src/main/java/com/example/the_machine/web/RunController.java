@@ -6,7 +6,6 @@ import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.service.RunService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,7 +30,7 @@ public class RunController {
   @PostMapping(Routes.RUNS)
   public ResponseEntity<RunDto> createRun(@RequestBody CreateRunRequestDto request) {
     log.info("Creating run for thread: {}", request.threadId());
-    val run = runService.createRun(request);
+    final var run = runService.createRun(request);
     return ResponseEntity.ok(run);
   }
 }

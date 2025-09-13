@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.val;
 
 @Getter
 @AllArgsConstructor
@@ -25,7 +24,7 @@ public enum EventType {
 
   @JsonCreator
   public static EventType fromValue(String value) {
-    for (val type : EventType.values()) {
+    for (final var type : EventType.values()) {
       if (type.value.equals(value)) {
         return type;
       }

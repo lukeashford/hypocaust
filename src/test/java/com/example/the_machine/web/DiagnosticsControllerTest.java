@@ -23,7 +23,6 @@ import com.example.the_machine.service.DatabaseHealthService;
 import com.example.the_machine.service.ModelHealthService;
 import java.util.Map;
 import java.util.Set;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -45,7 +44,7 @@ class DiagnosticsControllerTest {
   @Test
   void testCheckModelHealth() throws Exception {
     // Given
-    val modelName = "openai:gpt4o";
+    final var modelName = "openai:gpt4o";
     Map<String, Object> healthResult = Map.of(
         FIELD_MODEL, modelName,
         FIELD_STATUS, STATUS_HEALTHY,
@@ -88,7 +87,7 @@ class DiagnosticsControllerTest {
   @Test
   void testListAvailableModels() throws Exception {
     // Given
-    val models = Set.of("openai:gpt4o", "anthropic:sonnet4");
+    final var models = Set.of("openai:gpt4o", "anthropic:sonnet4");
     when(modelHealthService.listAvailableModels()).thenReturn(models);
 
     // When & Then

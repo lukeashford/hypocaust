@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.val;
 
 /**
  * Specification for a tool/operator including inputs, outputs, validation rules, and metadata.
@@ -43,33 +42,33 @@ public class ToolSpec {
    * @return validation result with detailed error messages
    */
   public ValidationResult validate(Map<String, Object> inputParams) {
-    val errors = new ArrayList<String>();
+    final var errors = new ArrayList<String>();
 
     // Validate each parameter against its specification
-    for (val paramSpec : inputs) {
-      val paramName = paramSpec.getName();
-      val value = inputParams.get(paramName);
+    for (final var paramSpec : inputs) {
+      final var paramName = paramSpec.getName();
+      final var value = inputParams.get(paramName);
 
-      val result = paramSpec.validate(value);
+      final var result = paramSpec.validate(value);
       if (!result.isOk()) {
         errors.add(result.getMessage());
       }
     }
 
     // Validate XOR groups
-    for (val xorGroup : xorGroups) {
-      val result = validateXorGroup(xorGroup, inputParams);
+    for (final var xorGroup : xorGroups) {
+      final var result = validateXorGroup(xorGroup, inputParams);
       if (!result.isOk()) {
         errors.add(result.getMessage());
       }
     }
 
     // Check for unexpected parameters
-    val expectedParams = inputs.stream()
+    final var expectedParams = inputs.stream()
         .map(ParamSpec::getName)
         .collect(Collectors.toSet());
 
-    for (val paramName : inputParams.keySet()) {
+    for (final var paramName : inputParams.keySet()) {
       if (!expectedParams.contains(paramName)) {
         errors.add("Unexpected parameter: " + paramName);
       }
@@ -91,7 +90,7 @@ public class ToolSpec {
       return ValidationResult.success("XOR group validation completed successfully");
     }
 
-    val presentParams = xorGroup.stream()
+    final var presentParams = xorGroup.stream()
         .filter(
             paramName -> inputParams.containsKey(paramName) && inputParams.get(paramName) != null
         ).toList();
@@ -118,10 +117,10 @@ public class ToolSpec {
    * @return the modified input parameters map
    */
   public Map<String, Object> applyDefaults(Map<String, Object> inputParams) {
-    val result = new HashMap<>(inputParams);
+    final var result = new HashMap<>(inputParams);
 
-    for (val paramSpec : inputs) {
-      val paramName = paramSpec.getName();
+    for (final var paramSpec : inputs) {
+      final var paramName = paramSpec.getName();
 
       // Apply default if parameter is missing and has a default value
       if (!result.containsKey(paramName) && paramSpec.getDefaultValue() != null) {
@@ -139,13 +138,13 @@ public class ToolSpec {
    * @return a redacted copy of the parameters
    */
   public Map<String, Object> redactor(Map<String, Object> inputParams) {
-    val result = new HashMap<>(inputParams);
+    final var result = new HashMap<>(inputParams);
 
-    for (val paramSpec : inputs) {
-      val paramName = paramSpec.getName();
+    for (final var paramSpec : inputs) {
+      final var paramName = paramSpec.getName();
 
       if (paramSpec.isSecret() && result.containsKey(paramName)) {
-        val value = result.get(paramName);
+        final var value = result.get(paramName);
         if (value != null) {
           result.put(paramName, redactValue(value.toString()));
         }
@@ -168,7 +167,7 @@ public class ToolSpec {
    * @return JSON Schema as JsonNode
    */
   public JsonNode toJsonSchema() {
-    val schema = OBJECT_MAPPER.createObjectNode();
+    final var schema = OBJECT_MAPPER.createObjectNode();
 
     // Basic schema metadata
     schema.put("$schema", "http://json-schema.org/draft-07/schema#");
@@ -179,7 +178,7 @@ public class ToolSpec {
     }
 
     // Add tool metadata
-    val toolInfo = schema.putObject("tool");
+    final var toolInfo = schema.putObject("tool");
     toolInfo.put("name", name);
     toolInfo.put("version", version);
     if (description != null) {
@@ -188,7 +187,7 @@ public class ToolSpec {
 
     // Add custom metadata
     if (!metadata.isEmpty()) {
-      val metadataNode = toolInfo.putObject("metadata");
+      final var metadataNode = toolInfo.putObject("metadata");
       metadata.forEach((key, value) -> {
         if (value != null) {
           metadataNode.set(key, OBJECT_MAPPER.valueToTree(value));
@@ -198,14 +197,14 @@ public class ToolSpec {
 
     // Input parameters schema
     if (!inputs.isEmpty()) {
-      val inputsSchema = schema.putObject("inputs");
+      final var inputsSchema = schema.putObject("inputs");
       inputsSchema.put("type", "object");
 
-      val properties = inputsSchema.putObject("properties");
-      val required = inputsSchema.putArray("required");
+      final var properties = inputsSchema.putObject("properties");
+      final var required = inputsSchema.putArray("required");
 
-      for (val paramSpec : inputs) {
-        val paramSchema = createParameterSchema(paramSpec);
+      for (final var paramSpec : inputs) {
+        final var paramSchema = createParameterSchema(paramSpec);
         properties.set(paramSpec.getName(), paramSchema);
 
         if (paramSpec.isRequired()) {
@@ -215,14 +214,14 @@ public class ToolSpec {
 
       // Add XOR groups as anyOf constraints
       if (!xorGroups.isEmpty()) {
-        val anyOf = inputsSchema.putArray("anyOf");
-        for (val xorGroup : xorGroups) {
-          val xorSchema = OBJECT_MAPPER.createObjectNode();
-          val oneOf = xorSchema.putArray("oneOf");
+        final var anyOf = inputsSchema.putArray("anyOf");
+        for (final var xorGroup : xorGroups) {
+          final var xorSchema = OBJECT_MAPPER.createObjectNode();
+          final var oneOf = xorSchema.putArray("oneOf");
 
-          for (val paramName : xorGroup) {
-            val paramRequired = OBJECT_MAPPER.createObjectNode();
-            val requiredArray = paramRequired.putArray("required");
+          for (final var paramName : xorGroup) {
+            final var paramRequired = OBJECT_MAPPER.createObjectNode();
+            final var requiredArray = paramRequired.putArray("required");
             requiredArray.add(paramName);
             oneOf.add(paramRequired);
           }
@@ -234,14 +233,14 @@ public class ToolSpec {
 
     // Output parameters schema
     if (!outputs.isEmpty()) {
-      val outputsSchema = schema.putObject("outputs");
+      final var outputsSchema = schema.putObject("outputs");
       outputsSchema.put("type", "object");
 
-      val properties = outputsSchema.putObject("properties");
-      val required = outputsSchema.putArray("required");
+      final var properties = outputsSchema.putObject("properties");
+      final var required = outputsSchema.putArray("required");
 
-      for (val paramSpec : outputs) {
-        val paramSchema = createParameterSchema(paramSpec);
+      for (final var paramSpec : outputs) {
+        final var paramSchema = createParameterSchema(paramSpec);
         properties.set(paramSpec.getName(), paramSchema);
 
         if (paramSpec.isRequired()) {
@@ -275,8 +274,8 @@ public class ToolSpec {
    * Creates a JSON Schema for a single parameter.
    */
   private ObjectNode createParameterSchema(ParamSpec<?> paramSpec) {
-    val paramSchema = OBJECT_MAPPER.createObjectNode();
-    val rawClass = paramSpec.getType().getRawClass();
+    final var paramSchema = OBJECT_MAPPER.createObjectNode();
+    final var rawClass = paramSpec.getType().getRawClass();
 
     // Determine JSON Schema type
     if (String.class.equals(rawClass)) {
@@ -306,8 +305,8 @@ public class ToolSpec {
       paramSchema.put("pattern", paramSpec.getRegex());
     }
     if (paramSpec.getEnumValues() != null && !paramSpec.getEnumValues().isEmpty()) {
-      val enumArray = paramSchema.putArray("enum");
-      for (val enumValue : paramSpec.getEnumValues()) {
+      final var enumArray = paramSchema.putArray("enum");
+      for (final var enumValue : paramSpec.getEnumValues()) {
         enumArray.add(OBJECT_MAPPER.valueToTree(enumValue));
       }
     }

@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Setter;
-import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,11 +57,11 @@ class SequentialRemediationTest {
     lenient().when(mockLLMRemediator.getName()).thenReturn("LLMRemediator");
 
     // Create TestOperator with mock remediators
-    val remediators = List.of(mockHeuristicRemediator, mockLLMRemediator);
+    final var remediators = List.of(mockHeuristicRemediator, mockLLMRemediator);
     testOperator = new TestOperator(objectMapper, remediators);
 
     // Setup default policy
-    val policy = new RunPolicy(3, 10.0, 10, 100);
+    final var policy = new RunPolicy(3, 10.0, 10, 100);
     lenient().when(mockContext.policy()).thenReturn(policy);
     lenient().doNothing().when(mockContext).checkBudgets();
   }
@@ -70,14 +69,14 @@ class SequentialRemediationTest {
   @Test
   void testHeuristicSucceeds_LLMNotCalled() {
     // Given
-    val rawInputs = Map.<String, Object>of("timeout", 10);
-    val normalizedInputs = Map.<String, Object>of("timeout", 10);
-    val exception = new RuntimeException("Operation timed out");
+    final var rawInputs = Map.<String, Object>of("timeout", 10);
+    final var normalizedInputs = Map.<String, Object>of("timeout", 10);
+    final var exception = new RuntimeException("Operation timed out");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
 
     // Create a timeout adjustment patch
-    val timeoutPatch = objectMapper.createObjectNode();
+    final var timeoutPatch = objectMapper.createObjectNode();
     timeoutPatch.put("op", "replace");
     timeoutPatch.put("path", "/timeout");
     timeoutPatch.set("value", objectMapper.valueToTree(20));
@@ -93,7 +92,7 @@ class SequentialRemediationTest {
     testOperator.setSuccessResultForAttempt(2, OperatorResult.success());
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertTrue(result.isOk());
@@ -112,14 +111,14 @@ class SequentialRemediationTest {
   @Test
   void testHeuristicFails_LLMSucceeds() {
     // Given
-    val rawInputs = Map.<String, Object>of("model", "gpt-4");
-    val normalizedInputs = Map.<String, Object>of("model", "gpt-4");
-    val exception = new RuntimeException("Model unavailable");
+    final var rawInputs = Map.<String, Object>of("model", "gpt-4");
+    final var normalizedInputs = Map.<String, Object>of("model", "gpt-4");
+    final var exception = new RuntimeException("Model unavailable");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
 
     // Create a model switch patch
-    val modelPatch = objectMapper.createObjectNode();
+    final var modelPatch = objectMapper.createObjectNode();
     modelPatch.put("op", "replace");
     modelPatch.put("path", "/model");
     modelPatch.set("value", objectMapper.valueToTree("gpt-3.5-turbo"));
@@ -139,7 +138,7 @@ class SequentialRemediationTest {
     testOperator.setSuccessResultForAttempt(3, OperatorResult.success());
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertTrue(result.isOk());
@@ -158,9 +157,9 @@ class SequentialRemediationTest {
   @Test
   void testBothRemediatorsFail_NoPatches() {
     // Given
-    val rawInputs = Map.<String, Object>of("param", "value");
-    val normalizedInputs = Map.<String, Object>of("param", "value");
-    val exception = new RuntimeException("Unknown error");
+    final var rawInputs = Map.<String, Object>of("param", "value");
+    final var normalizedInputs = Map.<String, Object>of("param", "value");
+    final var exception = new RuntimeException("Unknown error");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
 
@@ -177,7 +176,7 @@ class SequentialRemediationTest {
     testOperator.setAlwaysFailWith(exception);
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertFalse(result.isOk());
@@ -193,7 +192,7 @@ class SequentialRemediationTest {
 
   private void setupMockValidationAndDefaults(Map<String, Object> rawInputs,
       Map<String, Object> normalizedInputs) {
-    val validationResult = mock(ValidationResult.class);
+    final var validationResult = mock(ValidationResult.class);
     lenient().when(validationResult.isOk()).thenReturn(true);
 
     lenient().when(mockToolSpec.validate(rawInputs)).thenReturn(validationResult);

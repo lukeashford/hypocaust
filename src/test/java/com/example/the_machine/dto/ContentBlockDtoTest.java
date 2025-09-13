@@ -8,7 +8,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 
 class ContentBlockDtoTest {
@@ -18,16 +17,16 @@ class ContentBlockDtoTest {
   @Test
   void testRoundTripJsonSerialization() throws Exception {
     // Create test data with mixed content blocks
-    val toolArgs = objectMapper.createObjectNode();
+    final var toolArgs = objectMapper.createObjectNode();
     toolArgs.put("query", "test query");
     toolArgs.put("limit", 10);
 
-    val toolResult = objectMapper.createObjectNode();
+    final var toolResult = objectMapper.createObjectNode();
     toolResult.put("status", "success");
     toolResult.put("count", 5);
 
-    val imageAssetId = UUID.randomUUID();
-    val fileAssetId = UUID.randomUUID();
+    final var imageAssetId = UUID.randomUUID();
+    final var fileAssetId = UUID.randomUUID();
 
     List<ContentBlockDto> originalBlocks = List.of(
         new TextContentDto("Hello, world!"),
@@ -39,7 +38,7 @@ class ContentBlockDtoTest {
     );
 
     // Serialize to JSON
-    val json = objectMapper.writeValueAsString(originalBlocks);
+    final var json = objectMapper.writeValueAsString(originalBlocks);
     System.out.println("[DEBUG_LOG] Serialized JSON: " + json);
 
     // Deserialize back to objects
@@ -54,7 +53,7 @@ class ContentBlockDtoTest {
 
     // Debug: Print actual types and values
     for (int i = 0; i < deserializedBlocks.size(); i++) {
-      val block = deserializedBlocks.get(i);
+      final var block = deserializedBlocks.get(i);
       System.out.println(
           "[DEBUG_LOG] Block " + i + ": " + block.getClass().getSimpleName() + " = " + block);
     }
@@ -69,25 +68,25 @@ class ContentBlockDtoTest {
 
     // Verify content - using instanceof checks, no need to test type() method
     // since if instanceof works, the type() method will return the correct constant
-    val textContent = (TextContentDto) deserializedBlocks.get(0);
+    final var textContent = (TextContentDto) deserializedBlocks.get(0);
     assertEquals("Hello, world!", textContent.text());
 
-    val markdownContent = (MarkdownContentDto) deserializedBlocks.get(1);
+    final var markdownContent = (MarkdownContentDto) deserializedBlocks.get(1);
     assertEquals("## Header\n\nSome **bold** text", markdownContent.markdown());
 
-    val toolCallContent = (ToolCallContentDto) deserializedBlocks.get(2);
+    final var toolCallContent = (ToolCallContentDto) deserializedBlocks.get(2);
     assertEquals("search", toolCallContent.name());
     assertEquals("test query", toolCallContent.arguments().get("query").asText());
 
-    val toolResultContent = (ToolResultContentDto) deserializedBlocks.get(3);
+    final var toolResultContent = (ToolResultContentDto) deserializedBlocks.get(3);
     assertEquals("search", toolResultContent.name());
     assertEquals("call-123", toolResultContent.callId());
     assertEquals("success", toolResultContent.result().get("status").asText());
 
-    val imageRef = (ImageRefDto) deserializedBlocks.get(4);
+    final var imageRef = (ImageRefDto) deserializedBlocks.get(4);
     assertEquals(imageAssetId, imageRef.assetId());
 
-    val fileRef = (FileRefDto) deserializedBlocks.get(5);
+    final var fileRef = (FileRefDto) deserializedBlocks.get(5);
     assertEquals(fileAssetId, fileRef.assetId());
     assertEquals("document.pdf", fileRef.filename());
     assertEquals("application/pdf", fileRef.mime());

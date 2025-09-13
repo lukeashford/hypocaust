@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +27,7 @@ public class EventLogService {
       JsonNode payloadJson,
       String dedupeKey
   ) {
-    val entity = EventLogEntity.builder()
+    final var entity = EventLogEntity.builder()
         .id(idGenerator.newId())
         .threadId(threadId)
         .runId(runId)
@@ -39,7 +38,7 @@ public class EventLogService {
         .dedupeKey(dedupeKey)
         .build();
 
-    val saved = eventLogRepository.save(entity);
+    final var saved = eventLogRepository.save(entity);
     return saved.getId();
   }
 }

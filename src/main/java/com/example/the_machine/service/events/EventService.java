@@ -5,7 +5,6 @@ import com.example.the_machine.repo.ThreadRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,7 +26,7 @@ public class EventService {
     );
 
     // 2. Parse and validate lastEventId
-    val lastEventId = parseAndValidateLastEventId(lastEventIdFromHeader, threadId);
+    final var lastEventId = parseAndValidateLastEventId(lastEventIdFromHeader, threadId);
 
     // 3. Delegate to SseHub
     log.debug("SSE subscription for thread {} with validated lastEventId: {}", threadId,

@@ -9,7 +9,6 @@ import com.example.the_machine.common.IdGenerator;
 import com.example.the_machine.domain.ArtifactEntity;
 import com.example.the_machine.repo.ArtifactRepository;
 import java.util.UUID;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -36,16 +35,16 @@ class ArtifactServiceTest {
   @Test
   void shouldCreateStructuredJsonArtifact() {
     // Given
-    val threadId = UUID.randomUUID();
-    val runId = UUID.randomUUID();
-    val artifactId = UUID.randomUUID();
+    final var threadId = UUID.randomUUID();
+    final var runId = UUID.randomUUID();
+    final var artifactId = UUID.randomUUID();
 
     when(idGenerator.newId()).thenReturn(artifactId);
     when(artifactRepository.save(any(ArtifactEntity.class))).thenAnswer(
         invocation -> invocation.getArgument(0));
 
     // When
-    val result = artifactService.createArtifact(
+    final var result = artifactService.createArtifact(
         threadId, runId,
         ArtifactEntity.Kind.STRUCTURED_JSON,
         ArtifactEntity.Stage.SCRIPT,
@@ -55,7 +54,7 @@ class ArtifactServiceTest {
 
     // Then
     verify(artifactRepository).save(artifactCaptor.capture());
-    val savedArtifact = artifactCaptor.getValue();
+    final var savedArtifact = artifactCaptor.getValue();
 
     assertThat(savedArtifact.getId()).isEqualTo(artifactId);
     assertThat(savedArtifact.getThreadId()).isEqualTo(threadId);
@@ -72,16 +71,16 @@ class ArtifactServiceTest {
   @Test
   void shouldCreateImageArtifact() {
     // Given
-    val threadId = UUID.randomUUID();
-    val runId = UUID.randomUUID();
-    val artifactId = UUID.randomUUID();
+    final var threadId = UUID.randomUUID();
+    final var runId = UUID.randomUUID();
+    final var artifactId = UUID.randomUUID();
 
     when(idGenerator.newId()).thenReturn(artifactId);
     when(artifactRepository.save(any(ArtifactEntity.class))).thenAnswer(
         invocation -> invocation.getArgument(0));
 
     // When
-    val result = artifactService.createArtifact(
+    final var result = artifactService.createArtifact(
         threadId, runId,
         ArtifactEntity.Kind.IMAGE,
         ArtifactEntity.Stage.IMAGES,
@@ -91,7 +90,7 @@ class ArtifactServiceTest {
 
     // Then
     verify(artifactRepository).save(artifactCaptor.capture());
-    val savedArtifact = artifactCaptor.getValue();
+    final var savedArtifact = artifactCaptor.getValue();
 
     assertThat(savedArtifact.getKind()).isEqualTo(ArtifactEntity.Kind.IMAGE);
     assertThat(savedArtifact.getStage()).isEqualTo(ArtifactEntity.Stage.IMAGES);
@@ -105,16 +104,16 @@ class ArtifactServiceTest {
   @Test
   void shouldCreatePdfArtifact() {
     // Given
-    val threadId = UUID.randomUUID();
-    val runId = UUID.randomUUID();
-    val artifactId = UUID.randomUUID();
+    final var threadId = UUID.randomUUID();
+    final var runId = UUID.randomUUID();
+    final var artifactId = UUID.randomUUID();
 
     when(idGenerator.newId()).thenReturn(artifactId);
     when(artifactRepository.save(any(ArtifactEntity.class))).thenAnswer(
         invocation -> invocation.getArgument(0));
 
     // When
-    val result = artifactService.createArtifact(
+    final var result = artifactService.createArtifact(
         threadId, runId,
         ArtifactEntity.Kind.PDF,
         ArtifactEntity.Stage.DECK,
@@ -124,7 +123,7 @@ class ArtifactServiceTest {
 
     // Then
     verify(artifactRepository).save(artifactCaptor.capture());
-    val savedArtifact = artifactCaptor.getValue();
+    final var savedArtifact = artifactCaptor.getValue();
 
     assertThat(savedArtifact.getKind()).isEqualTo(ArtifactEntity.Kind.PDF);
     assertThat(savedArtifact.getStage()).isEqualTo(ArtifactEntity.Stage.DECK);

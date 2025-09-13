@@ -15,7 +15,6 @@ import com.example.the_machine.service.mapping.ThreadMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,31 +34,31 @@ public class ThreadService {
 
   @Transactional
   public ThreadDto createThread() {
-    val now = Instant.now();
-    val thread = ThreadEntity.builder()
+    final var now = Instant.now();
+    final var thread = ThreadEntity.builder()
         .id(idGenerator.newId())
         .createdAt(now)
         .lastActivityAt(now)
         .build();
 
-    val savedThread = threadRepository.save(thread);
+    final var savedThread = threadRepository.save(thread);
     return threadMapper.toDto(savedThread);
   }
 
   @Transactional(readOnly = true)
   public ThreadViewDto getThreadView(UUID threadId) {
-    val thread = threadRepository.findById(threadId)
+    final var thread = threadRepository.findById(threadId)
         .orElseThrow(() -> new RuntimeException("Thread not found: " + threadId));
 
-    val threadDto = threadMapper.toDto(thread);
+    final var threadDto = threadMapper.toDto(thread);
 
-    val messages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
-    val messageDtos = messages.stream()
+    final var messages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
+    final var messageDtos = messages.stream()
         .map(messageMapper::toDto)
         .toList();
 
-    val artifacts = artifactRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
-    val artifactDtos = artifacts.stream()
+    final var artifacts = artifactRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
+    final var artifactDtos = artifacts.stream()
         .map(artifactMapper::toDto)
         .toList();
 

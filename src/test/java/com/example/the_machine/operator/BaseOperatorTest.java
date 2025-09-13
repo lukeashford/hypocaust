@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,11 +53,11 @@ class BaseOperatorTest {
     lenient().when(mockLLMRemediator.getName()).thenReturn("LLMRemediator");
 
     // Create TestOperator with mock remediators
-    val remediators = List.of(mockHeuristicRemediator, mockLLMRemediator);
+    final var remediators = List.of(mockHeuristicRemediator, mockLLMRemediator);
     testOperator = new TestOperator(objectMapper, remediators);
 
     // Setup default policy
-    val policy = new RunPolicy(3, 10.0, 10, 100);
+    final var policy = new RunPolicy(3, 10.0, 10, 100);
     lenient().when(mockContext.policy()).thenReturn(policy);
 
     // Setup checkBudgets to not throw by default
@@ -68,16 +67,17 @@ class BaseOperatorTest {
   @Test
   void testSuccessPath() {
     // Given
-    val rawInputs = Map.<String, Object>of("param1", "value1");
-    val normalizedInputs = Map.<String, Object>of("param1", "value1", "param2", "defaultValue");
-    val outputs = Map.<String, Object>of("result", "success");
+    final var rawInputs = Map.<String, Object>of("param1", "value1");
+    final var normalizedInputs = Map.<String, Object>of("param1", "value1", "param2",
+        "defaultValue");
+    final var outputs = Map.<String, Object>of("result", "success");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
     testOperator.setSuccessResult(
         OperatorResult.success("TestOperator", "1.0.0", normalizedInputs, outputs));
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertTrue(result.isOk());
@@ -91,20 +91,20 @@ class BaseOperatorTest {
   @Test
   void testFailureWithRemediationThenSuccess() {
     // Given
-    val rawInputs = Map.<String, Object>of("timeout", 10);
-    val normalizedInputs = Map.<String, Object>of("timeout", 10);
-    val outputs = Map.<String, Object>of("result", "success after remediation");
+    final var rawInputs = Map.<String, Object>of("timeout", 10);
+    final var normalizedInputs = Map.<String, Object>of("timeout", 10);
+    final var outputs = Map.<String, Object>of("result", "success after remediation");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
 
     // Setup mock remediation patches - create a timeout adjustment patch
-    val timeoutPatch = objectMapper.createObjectNode();
+    final var timeoutPatch = objectMapper.createObjectNode();
     timeoutPatch.put("op", "replace");
     timeoutPatch.put("path", "/timeout");
     timeoutPatch.set("value", objectMapper.valueToTree(20));
 
     // Configure mock HeuristicRemediator to return patches for timeout error
-    val timeoutException = new RuntimeException("Operation timed out");
+    final var timeoutException = new RuntimeException("Operation timed out");
     when(mockHeuristicRemediator.remediate(mockContext, normalizedInputs, timeoutException,
         "timeout,backoff"))
         .thenReturn(List.of(timeoutPatch));
@@ -119,7 +119,7 @@ class BaseOperatorTest {
         OperatorResult.success("TestOperator", "1.0.0", normalizedInputs, outputs));
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertTrue(result.isOk());
@@ -135,17 +135,17 @@ class BaseOperatorTest {
   @Test
   void testHittingMaxTriesPerOp() {
     // Given
-    val rawInputs = Map.<String, Object>of("param1", "value1");
-    val normalizedInputs = Map.<String, Object>of("param1", "value1");
+    final var rawInputs = Map.<String, Object>of("param1", "value1");
+    final var normalizedInputs = Map.<String, Object>of("param1", "value1");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
 
     // All attempts fail
-    val exception = new RuntimeException("Persistent failure");
+    final var exception = new RuntimeException("Persistent failure");
     testOperator.setAlwaysFailWith(exception);
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertFalse(result.isOk());
@@ -158,16 +158,16 @@ class BaseOperatorTest {
   @Test
   void testSecretRedaction() {
     // Given
-    val secretValue = "super-secret-key-123";
-    val rawInputs = Map.<String, Object>of("apiKey", secretValue, "model", "gpt-4");
-    val normalizedInputs = Map.<String, Object>of("apiKey", secretValue, "model", "gpt-4");
+    final var secretValue = "super-secret-key-123";
+    final var rawInputs = Map.<String, Object>of("apiKey", secretValue, "model", "gpt-4");
+    final var normalizedInputs = Map.<String, Object>of("apiKey", secretValue, "model", "gpt-4");
 
     // Setup secret parameter
-    val secretParamSpec = mock(ParamSpec.class);
+    final var secretParamSpec = mock(ParamSpec.class);
     when(secretParamSpec.getName()).thenReturn("apiKey");
     when(secretParamSpec.isSecret()).thenReturn(true);
 
-    val regularParamSpec = mock(ParamSpec.class);
+    final var regularParamSpec = mock(ParamSpec.class);
     lenient().when(regularParamSpec.getName()).thenReturn("model");
     lenient().when(regularParamSpec.isSecret()).thenReturn(false);
 
@@ -178,11 +178,11 @@ class BaseOperatorTest {
     when(mockToolSpec.getInputs()).thenReturn(specs);
 
     // Fail with error message containing secret
-    val exception = new RuntimeException("Authentication failed with key: " + secretValue);
+    final var exception = new RuntimeException("Authentication failed with key: " + secretValue);
     testOperator.setAlwaysFailWith(exception);
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertFalse(result.isOk());
@@ -194,9 +194,9 @@ class BaseOperatorTest {
   @Test
   void testValidationFailure() {
     // Given
-    val rawInputs = Map.<String, Object>of("invalidParam", "value");
+    final var rawInputs = Map.<String, Object>of("invalidParam", "value");
 
-    val validationResult = mock(ValidationResult.class);
+    final var validationResult = mock(ValidationResult.class);
     when(validationResult.isOk()).thenReturn(false);
     when(validationResult.getMessage()).thenReturn("Invalid parameter: invalidParam");
 
@@ -204,7 +204,7 @@ class BaseOperatorTest {
     testOperator.setMockToolSpec(mockToolSpec);
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertFalse(result.isOk());
@@ -216,14 +216,14 @@ class BaseOperatorTest {
   @Test
   void testOperatorVersionIsReturnedInResult() {
     // Given
-    val rawInputs = Map.<String, Object>of("param", "value");
-    val normalizedInputs = Map.<String, Object>of("param", "value");
+    final var rawInputs = Map.<String, Object>of("param", "value");
+    final var normalizedInputs = Map.<String, Object>of("param", "value");
 
     setupMockValidationAndDefaults(rawInputs, normalizedInputs);
     testOperator.setSuccessResult(OperatorResult.success());
 
     // When
-    val result = testOperator.execute(mockContext, rawInputs);
+    final var result = testOperator.execute(mockContext, rawInputs);
 
     // Then
     assertTrue(result.isOk());
@@ -233,7 +233,7 @@ class BaseOperatorTest {
 
   private void setupMockValidationAndDefaults(Map<String, Object> rawInputs,
       Map<String, Object> normalizedInputs) {
-    val validationResult = mock(ValidationResult.class);
+    final var validationResult = mock(ValidationResult.class);
     lenient().when(validationResult.isOk()).thenReturn(true);
 
     lenient().when(mockToolSpec.validate(rawInputs)).thenReturn(validationResult);

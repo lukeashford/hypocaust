@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import java.util.List;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,7 +21,7 @@ class SchemaChangeTest {
     // and assert `toJsonSchema()` reflects it immediately."
 
     // Create initial spec with steps max = 150
-    val stepsSpec150 = ParamSpec.<Integer>builder()
+    final var stepsSpec150 = ParamSpec.<Integer>builder()
         .name("steps")
         .type(TypeFactory.defaultInstance().constructType(Integer.class))
         .required(true)
@@ -31,7 +30,7 @@ class SchemaChangeTest {
         .doc("Number of processing steps")
         .build();
 
-    val spec150 = ToolSpec.builder()
+    final var spec150 = ToolSpec.builder()
         .name("ProcessingOperator")
         .version("1.0.0")
         .description("Test operator for schema changes")
@@ -39,8 +38,8 @@ class SchemaChangeTest {
         .build();
 
     // Generate schema for initial spec
-    val schema150 = spec150.toJsonSchema();
-    val stepsProperty150 = schema150.get("inputs").get("properties").get("steps");
+    final var schema150 = spec150.toJsonSchema();
+    final var stepsProperty150 = schema150.get("inputs").get("properties").get("steps");
 
     // Verify initial schema has max = 150
     assertEquals(150, stepsProperty150.get("maximum").asInt());
@@ -48,7 +47,7 @@ class SchemaChangeTest {
     assertEquals("integer", stepsProperty150.get("type").asText());
 
     // Create updated spec with steps max = 200
-    val stepsSpec200 = ParamSpec.<Integer>builder()
+    final var stepsSpec200 = ParamSpec.<Integer>builder()
         .name("steps")
         .type(TypeFactory.defaultInstance().constructType(Integer.class))
         .required(true)
@@ -57,7 +56,7 @@ class SchemaChangeTest {
         .doc("Number of processing steps")
         .build();
 
-    val spec200 = ToolSpec.builder()
+    final var spec200 = ToolSpec.builder()
         .name("ProcessingOperator")
         .version("1.0.0")
         .description("Test operator for schema changes")
@@ -65,8 +64,8 @@ class SchemaChangeTest {
         .build();
 
     // Generate schema for updated spec
-    val schema200 = spec200.toJsonSchema();
-    val stepsProperty200 = schema200.get("inputs").get("properties").get("steps");
+    final var schema200 = spec200.toJsonSchema();
+    final var stepsProperty200 = schema200.get("inputs").get("properties").get("steps");
 
     // Verify updated schema has max = 200
     assertEquals(200, stepsProperty200.get("maximum").asInt());
@@ -88,7 +87,7 @@ class SchemaChangeTest {
     // Demonstrate that ParamSpec already provides JavaType utils functionality
     // as mentioned in the issue requirements
 
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("JavaTypeDemo")
         .version("1.0.0")
         .inputs(List.of(
@@ -101,8 +100,8 @@ class SchemaChangeTest {
         ))
         .build();
 
-    val schema = spec.toJsonSchema();
-    val properties = schema.get("inputs").get("properties");
+    final var schema = spec.toJsonSchema();
+    final var properties = schema.get("inputs").get("properties");
 
     // Verify all types are correctly represented in JSON Schema
     assertEquals("string", properties.get("textParam").get("type").asText());

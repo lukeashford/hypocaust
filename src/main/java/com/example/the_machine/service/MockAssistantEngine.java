@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -32,14 +31,14 @@ public class MockAssistantEngine implements AssistantEngine {
       Thread.sleep(1000);
 
       // Create plan artifact directly
-      val planArtifact = ctx.createArtifact(
+      final var planArtifact = ctx.createArtifact(
           ArtifactEntity.Kind.STRUCTURED_JSON,
           ArtifactEntity.Stage.PLAN,
           "Marketing Pitch Planning",
           "application/json"
       );
 
-      val planContent = Map.of(
+      final var planContent = Map.of(
           "content",
           "I need to create a marketing pitch. Could you please specify which brand you'd like me to analyze?",
           "status", "awaiting_input"
@@ -50,8 +49,8 @@ public class MockAssistantEngine implements AssistantEngine {
       // Simulate assistant asking for clarification
       Thread.sleep(500);
 
-      val questionMessageId = UUID.randomUUID();
-      val questionData = Map.of(
+      final var questionMessageId = UUID.randomUUID();
+      final var questionData = Map.of(
           "id", questionMessageId,
           "author", "ASSISTANT",
           "content", Map.of(
@@ -79,14 +78,14 @@ public class MockAssistantEngine implements AssistantEngine {
     try {
       // Analysis phase
       Thread.sleep(1500);
-      val analysisArtifact = ctx.createArtifact(
+      final var analysisArtifact = ctx.createArtifact(
           ArtifactEntity.Kind.STRUCTURED_JSON,
           ArtifactEntity.Stage.ANALYSIS,
           "Apple Brand Analysis",
           "application/json"
       );
 
-      val analysisContent = Map.of(
+      final var analysisContent = Map.of(
           "brand", "Apple",
           "key_points",
           new String[]{"Innovation", "Premium quality", "User experience", "Brand loyalty"},
@@ -98,14 +97,14 @@ public class MockAssistantEngine implements AssistantEngine {
 
       // Script generation
       Thread.sleep(2000);
-      val scriptArtifact = ctx.createArtifact(
+      final var scriptArtifact = ctx.createArtifact(
           ArtifactEntity.Kind.STRUCTURED_JSON,
           ArtifactEntity.Stage.SCRIPT,
           "Apple Brand Marketing Pitch",
           "text/plain"
       );
 
-      val scriptContent = Map.of(
+      final var scriptContent = Map.of(
           "content",
           "Revolutionary. Intuitive. Premium. Apple doesn't just create products - we craft experiences that transform how people connect with technology...",
           "duration", "30 seconds"
@@ -115,9 +114,9 @@ public class MockAssistantEngine implements AssistantEngine {
 
       // Image generation simulation
       Thread.sleep(3000);
-      val imageFiles = createPlaceholderFiles(ctx.threadId(), "png", 3);
+      final var imageFiles = createPlaceholderFiles(ctx.threadId(), "png", 3);
       for (int i = 0; i < imageFiles.length; i++) {
-        val imageArtifact = ctx.createArtifact(
+        final var imageArtifact = ctx.createArtifact(
             ArtifactEntity.Kind.IMAGE,
             ArtifactEntity.Stage.IMAGES,
             "Marketing Visual " + (i + 1),
@@ -148,9 +147,9 @@ public class MockAssistantEngine implements AssistantEngine {
 
       // Generate updated images with female character
       Thread.sleep(2000);
-      val revisedImageFiles = createPlaceholderFiles(ctx.threadId(), "png", 2);
+      final var revisedImageFiles = createPlaceholderFiles(ctx.threadId(), "png", 2);
       for (int i = 0; i < revisedImageFiles.length; i++) {
-        val revisedImageArtifact = ctx.createArtifact(
+        final var revisedImageArtifact = ctx.createArtifact(
             ArtifactEntity.Kind.IMAGE,
             ArtifactEntity.Stage.IMAGES,
             "Updated Marketing Visual " + (i + 1),
@@ -162,8 +161,8 @@ public class MockAssistantEngine implements AssistantEngine {
 
       // Generate presentation deck
       Thread.sleep(1500);
-      val deckFile = createPlaceholderFiles(ctx.threadId(), "pdf", 1)[0];
-      val deckArtifact = ctx.createArtifact(
+      final var deckFile = createPlaceholderFiles(ctx.threadId(), "pdf", 1)[0];
+      final var deckArtifact = ctx.createArtifact(
           ArtifactEntity.Kind.PDF,
           ArtifactEntity.Stage.DECK,
           "Apple Marketing Pitch - Revised",
@@ -173,7 +172,7 @@ public class MockAssistantEngine implements AssistantEngine {
       ctx.setArtifactFile(deckArtifact.getId(), deckFile, "application/pdf");
 
       // Set metadata with page count
-      val deckMetadata = Map.of("pages", 12);
+      final var deckMetadata = Map.of("pages", 12);
       ctx.setArtifactMetadata(deckArtifact.getId(), ctx.objectMapper().valueToTree(deckMetadata));
 
       ctx.updateRunStatus(RunEntity.Status.COMPLETED);
@@ -188,16 +187,16 @@ public class MockAssistantEngine implements AssistantEngine {
 
   @SneakyThrows
   private String[] createPlaceholderFiles(UUID threadId, String extension, int count) {
-    val threadDir = Paths.get(dataBasePath, threadId.toString());
+    final var threadDir = Paths.get(dataBasePath, threadId.toString());
     Files.createDirectories(threadDir);
 
-    val filePaths = new String[count];
+    final var filePaths = new String[count];
     for (int i = 0; i < count; i++) {
-      val fileName = UUID.randomUUID() + "." + extension;
-      val filePath = threadDir.resolve(fileName);
+      final var fileName = UUID.randomUUID() + "." + extension;
+      final var filePath = threadDir.resolve(fileName);
 
       // Create small placeholder file
-      val content = extension.equals("pdf")
+      final var content = extension.equals("pdf")
           ? createPdfPlaceholder()
           : createImagePlaceholder();
       Files.write(filePath, content);
@@ -225,7 +224,7 @@ public class MockAssistantEngine implements AssistantEngine {
 
   private byte[] createPdfPlaceholder() {
     // Minimal PDF file content
-    val pdfContent = """
+    final var pdfContent = """
          %PDF-1.3
          1 0 obj
          << /Type /Catalog /Pages 2 0 R >>

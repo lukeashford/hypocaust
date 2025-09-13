@@ -10,26 +10,25 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.val;
 import org.junit.jupiter.api.Test;
 
 class ToolSpecTest {
 
   @Test
   void testBasicValidation() {
-    val nameSpec = ParamSpec.<String>builder()
+    final var nameSpec = ParamSpec.<String>builder()
         .name("name")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .required(true)
         .build();
-    val ageSpec = ParamSpec.<Integer>builder()
+    final var ageSpec = ParamSpec.<Integer>builder()
         .name("age")
         .type(TypeFactory.defaultInstance().constructType(Integer.class))
         .required(false)
         .defaultValue(25)
         .build();
 
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .description("A test tool")
@@ -40,20 +39,20 @@ class ToolSpecTest {
     Map<String, Object> validInput = new HashMap<>();
     validInput.put("name", "John");
     validInput.put("age", 30);
-    val result1 = spec.validate(validInput);
+    final var result1 = spec.validate(validInput);
     assertTrue(result1.isOk());
 
     // Missing required parameter
     Map<String, Object> invalidInput = new HashMap<>();
     invalidInput.put("age", 30);
-    val result2 = spec.validate(invalidInput);
+    final var result2 = spec.validate(invalidInput);
     assertFalse(result2.isOk());
     assertTrue(result2.getMessage().contains("is required but was null"));
   }
 
   @Test
   void testXorGroupValidation() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .inputs(List.of(
@@ -76,7 +75,7 @@ class ToolSpecTest {
 
     // Invalid: no parameters from XOR group
     Map<String, Object> invalidInput1 = new HashMap<>();
-    val result1 = spec.validate(invalidInput1);
+    final var result1 = spec.validate(invalidInput1);
     assertFalse(result1.isOk());
     assertTrue(result1.getMessage()
         .contains("requires exactly one parameter, but none were provided"));
@@ -85,7 +84,7 @@ class ToolSpecTest {
     Map<String, Object> invalidInput2 = new HashMap<>();
     invalidInput2.put("prompt", "Hello");
     invalidInput2.put("initImage", "image.jpg");
-    val result2 = spec.validate(invalidInput2);
+    final var result2 = spec.validate(invalidInput2);
     assertFalse(result2.isOk());
     assertTrue(result2.getMessage()
         .contains("requires exactly one parameter, but multiple were provided"));
@@ -93,7 +92,7 @@ class ToolSpecTest {
 
   @Test
   void testMultipleXorGroups() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .inputs(List.of(
@@ -117,30 +116,30 @@ class ToolSpecTest {
     // Invalid: missing from second XOR group
     Map<String, Object> invalidInput = new HashMap<>();
     invalidInput.put("inputA", "valueA");
-    val result = spec.validate(invalidInput);
+    final var result = spec.validate(invalidInput);
     assertFalse(result.isOk());
     assertTrue(result.getMessage().contains("outputX, outputY"));
   }
 
   @Test
   void testApplyDefaults() {
-    val nameSpec = ParamSpec.<String>builder()
+    final var nameSpec = ParamSpec.<String>builder()
         .name("name")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .required(true)
         .build();
-    val ageSpec = ParamSpec.<Integer>builder()
+    final var ageSpec = ParamSpec.<Integer>builder()
         .name("age")
         .type(TypeFactory.defaultInstance().constructType(Integer.class))
         .defaultValue(25)
         .build();
-    val countrySpec = ParamSpec.<String>builder()
+    final var countrySpec = ParamSpec.<String>builder()
         .name("country")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .defaultValue("US")
         .build();
 
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .inputs(List.of(nameSpec, ageSpec, countrySpec))
@@ -148,7 +147,7 @@ class ToolSpecTest {
 
     Map<String, Object> input = new HashMap<>();
     input.put("name", "John");
-    val result = spec.applyDefaults(input);
+    final var result = spec.applyDefaults(input);
 
     assertEquals("John", result.get("name"));
     assertEquals(25, result.get("age"));
@@ -161,7 +160,7 @@ class ToolSpecTest {
 
   @Test
   void testRedactor() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .inputs(List.of(
@@ -176,7 +175,7 @@ class ToolSpecTest {
     input.put("apiKey", "sk-1234567890abcdef");
     input.put("password", "secret123");
 
-    val redacted = spec.redactor(input);
+    final var redacted = spec.redactor(input);
 
     assertEquals("john_doe", redacted.get("username"));
     assertEquals("sk***ef", redacted.get("apiKey"));
@@ -185,13 +184,13 @@ class ToolSpecTest {
     // Test short secrets
     Map<String, Object> shortSecret = new HashMap<>();
     shortSecret.put("apiKey", "abc");
-    val redactedShort = spec.redactor(shortSecret);
+    final var redactedShort = spec.redactor(shortSecret);
     assertEquals("***", redactedShort.get("apiKey"));
   }
 
   @Test
   void testUnexpectedParameters() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .inputs(List.of(
@@ -203,40 +202,40 @@ class ToolSpecTest {
     input.put("name", "John");
     input.put("unexpected", "value");
 
-    val result = spec.validate(input);
+    final var result = spec.validate(input);
     assertFalse(result.isOk());
     assertTrue(result.getMessage().contains("Unexpected parameter: unexpected"));
   }
 
   @Test
   void testToJsonSchema() {
-    val nameSpec = ParamSpec.<String>builder()
+    final var nameSpec = ParamSpec.<String>builder()
         .name("name")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .required(true)
         .doc("User's full name")
         .build();
-    val ageSpec = ParamSpec.<Integer>builder()
+    final var ageSpec = ParamSpec.<Integer>builder()
         .name("age")
         .type(TypeFactory.defaultInstance().constructType(Integer.class))
         .min(0)
         .max(150)
         .defaultValue(25)
         .build();
-    val apiKeySpec = ParamSpec.<String>builder()
+    final var apiKeySpec = ParamSpec.<String>builder()
         .name("apiKey")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .required(true)
         .secret(true)
         .build();
-    val greetingSpec = ParamSpec.<String>builder()
+    final var greetingSpec = ParamSpec.<String>builder()
         .name("greeting")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .required(true)
         .doc("Generated greeting message")
         .build();
 
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TestTool")
         .version("1.0")
         .description("A test tool for validation")
@@ -253,7 +252,7 @@ class ToolSpecTest {
         .metadata(Map.of("category", "greeting", "tags", List.of("demo", "test")))
         .build();
 
-    val schema = spec.toJsonSchema();
+    final var schema = spec.toJsonSchema();
 
     // Basic schema structure
     assertEquals("http://json-schema.org/draft-07/schema#", schema.get("$schema").asText());
@@ -262,46 +261,46 @@ class ToolSpecTest {
     assertEquals("A test tool for validation", schema.get("description").asText());
 
     // Tool metadata
-    val toolInfo = schema.get("tool");
+    final var toolInfo = schema.get("tool");
     assertEquals("TestTool", toolInfo.get("name").asText());
     assertEquals("1.0", toolInfo.get("version").asText());
     assertEquals("greeting", toolInfo.get("metadata").get("category").asText());
 
     // Inputs schema
-    val inputsSchema = schema.get("inputs");
+    final var inputsSchema = schema.get("inputs");
     assertEquals("object", inputsSchema.get("type").asText());
 
-    val properties = inputsSchema.get("properties");
+    final var properties = inputsSchema.get("properties");
     assertTrue(properties.has("name"));
     assertTrue(properties.has("age"));
     assertTrue(properties.has("status"));
     assertTrue(properties.has("apiKey"));
 
     // Check name parameter
-    val nameParam = properties.get("name");
+    final var nameParam = properties.get("name");
     assertEquals("string", nameParam.get("type").asText());
     assertEquals("User's full name", nameParam.get("description").asText());
 
     // Check age parameter
-    val ageParam = properties.get("age");
+    final var ageParam = properties.get("age");
     assertEquals("integer", ageParam.get("type").asText());
     assertEquals(0, ageParam.get("minimum").asInt());
     assertEquals(150, ageParam.get("maximum").asInt());
     assertEquals(25, ageParam.get("default").asInt());
 
     // Check status parameter (enum)
-    val statusParam = properties.get("status");
+    final var statusParam = properties.get("status");
     assertEquals("string", statusParam.get("type").asText());
     assertTrue(statusParam.has("enum"));
     assertEquals(2, statusParam.get("enum").size());
 
     // Check secret parameter
-    val apiKeyParam = properties.get("apiKey");
+    final var apiKeyParam = properties.get("apiKey");
     assertEquals("string", apiKeyParam.get("type").asText());
     assertTrue(apiKeyParam.get("secret").asBoolean());
 
     // Required fields
-    val required = inputsSchema.get("required");
+    final var required = inputsSchema.get("required");
     assertEquals(2, required.size());
     assertTrue(containsText(required, "name"));
     assertTrue(containsText(required, "apiKey"));
@@ -310,7 +309,7 @@ class ToolSpecTest {
     assertTrue(inputsSchema.has("anyOf"));
 
     // Outputs schema
-    val outputsSchema = schema.get("outputs");
+    final var outputsSchema = schema.get("outputs");
     assertEquals("object", outputsSchema.get("type").asText());
     assertTrue(outputsSchema.get("properties").has("greeting"));
   }
@@ -326,7 +325,7 @@ class ToolSpecTest {
 
   @Test
   void testJsonSchemaTypes() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("TypeTest")
         .version("1.0")
         .inputs(List.of(
@@ -340,8 +339,8 @@ class ToolSpecTest {
         ))
         .build();
 
-    val schema = spec.toJsonSchema();
-    val properties = schema.get("inputs").get("properties");
+    final var schema = spec.toJsonSchema();
+    final var properties = schema.get("inputs").get("properties");
 
     assertEquals("string", properties.get("stringParam").get("type").asText());
     assertEquals("integer", properties.get("intParam").get("type").asText());
@@ -354,20 +353,20 @@ class ToolSpecTest {
 
   @Test
   void testJsonSchemaWithRegex() {
-    val emailSpec = ParamSpec.<String>builder()
+    final var emailSpec = ParamSpec.<String>builder()
         .name("email")
         .type(TypeFactory.defaultInstance().constructType(String.class))
         .regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
         .build();
 
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("RegexTest")
         .version("1.0")
         .inputs(List.of(emailSpec))
         .build();
 
-    val schema = spec.toJsonSchema();
-    val emailParam = schema.get("inputs").get("properties").get("email");
+    final var schema = spec.toJsonSchema();
+    final var emailParam = schema.get("inputs").get("properties").get("email");
 
     assertEquals("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
         emailParam.get("pattern").asText());
@@ -375,12 +374,12 @@ class ToolSpecTest {
 
   @Test
   void testEmptyInputsAndOutputs() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("EmptyTool")
         .version("1.0")
         .build();
 
-    val schema = spec.toJsonSchema();
+    final var schema = spec.toJsonSchema();
 
     // Should not have inputs or outputs sections when empty
     assertFalse(schema.has("inputs"));
@@ -389,7 +388,7 @@ class ToolSpecTest {
 
   @Test
   void testBuilderDefaults() {
-    val spec = ToolSpec.builder()
+    final var spec = ToolSpec.builder()
         .name("MinimalTool")
         .version("1.0")
         .build();

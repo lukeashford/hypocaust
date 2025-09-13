@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,7 +39,7 @@ public class DiagnosticsController {
   @GetMapping(MODEL_HEALTH_ENDPOINT)
   public ResponseEntity<Map<String, Object>> checkModelHealth(@PathVariable String modelName) {
     log.info(LOG_MODEL_HEALTH_CHECK, modelName);
-    val healthResult = modelHealthService.checkModelHealth(modelName);
+    final var healthResult = modelHealthService.checkModelHealth(modelName);
     return ResponseEntity.ok(healthResult);
   }
 
@@ -50,7 +49,7 @@ public class DiagnosticsController {
   @GetMapping(ALL_MODELS_HEALTH_ENDPOINT)
   public ResponseEntity<Map<String, Object>> checkAllModelsHealth() {
     log.info(LOG_ALL_MODELS_HEALTH_CHECK);
-    val healthResults = modelHealthService.checkAllModelsHealth();
+    final var healthResults = modelHealthService.checkAllModelsHealth();
     return ResponseEntity.ok(healthResults);
   }
 
@@ -59,7 +58,7 @@ public class DiagnosticsController {
    */
   @GetMapping(LIST_MODELS_ENDPOINT)
   public ResponseEntity<Set<String>> listAvailableModels() {
-    val availableModels = modelHealthService.listAvailableModels();
+    final var availableModels = modelHealthService.listAvailableModels();
     return ResponseEntity.ok(availableModels);
   }
 
@@ -69,7 +68,7 @@ public class DiagnosticsController {
   @GetMapping(DATABASE_HEALTH_ENDPOINT)
   public ResponseEntity<Map<String, Object>> checkDatabaseHealth() {
     log.info(LOG_DATABASE_HEALTH_CHECK);
-    val healthResult = databaseHealthService.checkDatabaseHealth();
+    final var healthResult = databaseHealthService.checkDatabaseHealth();
     return ResponseEntity.ok(healthResult);
   }
 }
