@@ -19,6 +19,7 @@ import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +47,7 @@ class SemanticSearchOperatorRegistryTest {
   @Mock
   private ToolSpec mockToolSpec;
 
+  @InjectMocks
   private SemanticSearchOperatorRegistry registry;
 
   private final float[] testEmbedding = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
@@ -54,9 +56,6 @@ class SemanticSearchOperatorRegistryTest {
 
   @BeforeEach
   void setUp() {
-    registry = new SemanticSearchOperatorRegistry(embeddingRepository, embeddingService,
-        hashCalculationService);
-
     // Setup common mock behavior with lenient to avoid unnecessary stubbing exceptions
     lenient().when(embeddingService.generateEmbedding(any(String.class)))
         .thenReturn(testEmbedding);

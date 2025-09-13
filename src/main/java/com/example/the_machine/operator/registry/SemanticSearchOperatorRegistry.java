@@ -1,5 +1,6 @@
 package com.example.the_machine.operator.registry;
 
+import com.example.the_machine.common.IdGenerator;
 import com.example.the_machine.domain.OperatorEmbedding;
 import com.example.the_machine.operator.Operator;
 import com.example.the_machine.operator.ToolSpec;
@@ -36,6 +37,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   private final HashCalculationService hashCalculationService;
 
   private final Map<String, Operator> operatorsByName = new ConcurrentHashMap<>();
+  private final IdGenerator idGenerator;
 
   @PostConstruct
   public void initialize() {
@@ -68,6 +70,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
           val embedding = embeddingService.generateEmbedding(descriptionText);
 
           newEmbeddings.add(OperatorEmbedding.builder()
+              .id(idGenerator.newId())
               .operatorName(operatorName)
               .embedding(embedding)
               .hash(textHash)
