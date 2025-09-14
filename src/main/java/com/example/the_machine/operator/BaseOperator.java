@@ -1,8 +1,8 @@
 package com.example.the_machine.operator;
 
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.operator.result.OperatorResult;
 import com.example.the_machine.operator.result.OperatorResultCode;
-import com.example.the_machine.service.RunContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -34,7 +34,7 @@ public abstract class BaseOperator implements Operator {
   protected abstract String getVersion();
 
   @Override
-  public final OperatorResult execute(RunContext ctx, Map<String, Object> rawInputs) {
+  public final OperatorResult execute(RunDto ctx, Map<String, Object> rawInputs) {
     final var startTime = Instant.now();
     final var spec = spec();
     final var operatorName = this.getClass().getSimpleName();
@@ -56,7 +56,7 @@ public abstract class BaseOperator implements Operator {
       log.debug("Applied defaults, normalized inputs: {}", normalizedInputs.keySet());
 
       // Step 3: Check budgets
-      ctx.checkBudgets();
+      // TODO
 
       // Step 4: Execute with retry logic
       return executeWithRetries(ctx, normalizedInputs, operatorName, operatorVersion, startTime);
@@ -78,11 +78,11 @@ public abstract class BaseOperator implements Operator {
   /**
    * Execute with retry and remediation logic using 0-based attempt indexing.
    */
-  private OperatorResult executeWithRetries(RunContext ctx, Map<String, Object> normalizedInputs,
+  private OperatorResult executeWithRetries(RunDto ctx, Map<String, Object> normalizedInputs,
       String operatorName, String operatorVersion, Instant startTime) {
     final var allPatches = new ArrayList<JsonNode>();
     final var currentInputs = new HashMap<>(normalizedInputs);
-    final var maxTries = ctx.policy().maxTriesPerOp();
+    final var maxTries = 3; // TODO configurable
 
     Exception lastException = null;
     String lastErrorSignature = null;
@@ -147,8 +147,7 @@ public abstract class BaseOperator implements Operator {
 
     // All retries exhausted or early termination - create failure result
     final var latencyMs = calculateLatency(startTime);
-    final var redactedMessage =
-        lastException != null ? redactSecrets(lastException.getMessage(), normalizedInputs) : "";
+    final var redactedMessage = redactSecrets(lastException.getMessage(), normalizedInputs);
 
     return OperatorResult.failure(operatorName, operatorVersion,
             OperatorResultCode.EXECUTION_FAILED, redactedMessage, normalizedInputs)
@@ -160,7 +159,7 @@ public abstract class BaseOperator implements Operator {
   /**
    * Gets patch from a specific remediator using direct indexing.
    */
-  private List<JsonNode> getPatchFromRemediator(RunContext ctx,
+  private List<JsonNode> getPatchFromRemediator(RunDto ctx,
       Map<String, Object> normalizedInputs,
       Exception exception, int remediatorIndex) {
 
@@ -275,7 +274,7 @@ public abstract class BaseOperator implements Operator {
    * @return the operator result with outputs
    * @throws Exception if the operation fails
    */
-  protected abstract OperatorResult doExecute(RunContext ctx, Map<String, Object> inputs)
+  protected abstract OperatorResult doExecute(RunDto ctx, Map<String, Object> inputs)
       throws Exception;
 
   /**

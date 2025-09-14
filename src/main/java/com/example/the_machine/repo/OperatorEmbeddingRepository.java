@@ -1,6 +1,6 @@
 package com.example.the_machine.repo;
 
-import com.example.the_machine.domain.OperatorEmbedding;
+import com.example.the_machine.db.OperatorEmbedding;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;

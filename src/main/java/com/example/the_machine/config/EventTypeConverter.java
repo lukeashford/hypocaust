@@ -1,6 +1,6 @@
 package com.example.the_machine.config;
 
-import com.example.the_machine.domain.EventType;
+import com.example.the_machine.domain.event.EventType;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 

@@ -30,7 +30,7 @@ public class RunController {
   @PostMapping(Routes.RUNS)
   public ResponseEntity<RunDto> createRun(@RequestBody CreateRunRequestDto request) {
     log.info("Creating run for thread: {}", request.threadId());
-    final var run = runService.createRun(request);
+    final var run = runService.scheduleRun(request);
     return ResponseEntity.ok(run);
   }
 }

@@ -28,17 +28,16 @@ CREATE TABLE thread
 -- Message table
 CREATE TABLE message
 (
-    id               uuid PRIMARY KEY,
-    created_at       timestamptz NOT NULL DEFAULT now(),
-    thread_id        uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
-    author           text        NOT NULL CHECK (author IN ('USER', 'ASSISTANT', 'TOOL', 'SYSTEM')),
-    content_json     jsonb       NOT NULL,
-    attachments_json jsonb
+    id          uuid PRIMARY KEY,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    thread_id   uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
+    author      text        NOT NULL CHECK (author IN ('USER', 'ASSISTANT', 'TOOL', 'SYSTEM')),
+    content     text        NOT NULL,
+    attachments jsonb
 );
 
 -- Message indexes
 CREATE INDEX idx_message_thread_time ON message (thread_id, created_at);
-CREATE INDEX idx_message_content_gin ON message USING gin (content_json);
 
 -- Run table
 CREATE TABLE run
@@ -47,15 +46,13 @@ CREATE TABLE run
     created_at   timestamptz NOT NULL DEFAULT now(),
     thread_id    uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
     assistant_id uuid        NOT NULL REFERENCES assistant (id),
+    task         text        NOT NULL,
     status       text        NOT NULL CHECK (status IN
                                              ('QUEUED', 'RUNNING', 'REQUIRES_ACTION', 'COMPLETED',
                                               'FAILED', 'CANCELLED')),
-    kind         text        NOT NULL CHECK (kind IN ('FULL', 'PARTIAL')),
     reason       text,
     started_at   timestamptz,
-    completed_at timestamptz,
-    usage_json   jsonb,
-    error        text
+    completed_at timestamptz
 );
 
 -- Run indexes
@@ -87,25 +84,25 @@ CREATE INDEX idx_artifact_stage ON artifact (thread_id, stage, created_at DESC);
 CREATE INDEX idx_artifact_superseded_by_chain ON artifact (superseded_by_id) WHERE superseded_by_id IS NOT NULL;
 CREATE INDEX idx_artifact_content_gin ON artifact USING gin (content);
 
--- Event log table
-CREATE TABLE event_log
+-- Event table
+CREATE TABLE event
 (
     id          uuid PRIMARY KEY,
-    created_at  timestamptz          DEFAULT now(),
+    created_at  timestamptz DEFAULT now(),
     thread_id   uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
-    run_id      uuid,
-    message_id  uuid,
-    event_type  text        NOT NULL CHECK (event_type IN
-                                            ('run.created', 'run.updated', 'message.delta',
-                                             'message.completed', 'artifact.created', 'error')),
+    thread_seq  uuid        NOT NULL,
+    type        text        NOT NULL CHECK (type IN
+                                            ('message.processing', 'message.delta',
+                                             'message.completed', 'run.created', 'run.updated',
+                                             'artifact.created', 'tool.calling', 'error')),
     payload     jsonb       NOT NULL,
-    occurred_at timestamptz NOT NULL DEFAULT now(),
+    occurred_at timestamptz NOT NULL,
     dedupe_key  text
 );
 
--- Event log indexes
-CREATE INDEX idx_event_thread_id ON event_log (thread_id, id);
-CREATE INDEX idx_event_dedupe ON event_log (thread_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
+-- Event indexes
+CREATE INDEX idx_event_thread_id ON event (thread_id, id);
+CREATE INDEX idx_event_dedupe ON event (thread_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
 
 -- Operator embeddings table
 CREATE TABLE operator_embeddings

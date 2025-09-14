@@ -1,17 +1,16 @@
 package com.example.the_machine.service;
 
-import com.example.the_machine.common.IdGenerator;
-import com.example.the_machine.domain.ThreadEntity;
+import com.example.the_machine.db.ThreadEntity;
 import com.example.the_machine.dto.ThreadDto;
 import com.example.the_machine.dto.ThreadViewDto;
+import com.example.the_machine.mapper.ArtifactMapper;
+import com.example.the_machine.mapper.MessageMapper;
+import com.example.the_machine.mapper.RunMapper;
+import com.example.the_machine.mapper.ThreadMapper;
 import com.example.the_machine.repo.ArtifactRepository;
 import com.example.the_machine.repo.MessageRepository;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
-import com.example.the_machine.service.mapping.ArtifactMapper;
-import com.example.the_machine.service.mapping.MessageMapper;
-import com.example.the_machine.service.mapping.RunMapper;
-import com.example.the_machine.service.mapping.ThreadMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class ThreadService {
   private final MessageRepository messageRepository;
   private final ArtifactRepository artifactRepository;
   private final RunRepository runRepository;
-  private final IdGenerator idGenerator;
   private final ThreadMapper threadMapper;
   private final MessageMapper messageMapper;
   private final ArtifactMapper artifactMapper;
@@ -36,8 +34,6 @@ public class ThreadService {
   public ThreadDto createThread() {
     final var now = Instant.now();
     final var thread = ThreadEntity.builder()
-        .id(idGenerator.newId())
-        .createdAt(now)
         .lastActivityAt(now)
         .build();
 

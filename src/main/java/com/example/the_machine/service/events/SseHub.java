@@ -1,10 +1,10 @@
 package com.example.the_machine.service.events;
 
-import com.example.the_machine.domain.EventType;
-import com.example.the_machine.repo.EventLogRepository;
+import com.example.the_machine.domain.event.Event;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +24,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 public class SseHub {
 
-  private final EventLogRepository eventLogRepository;
   private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> threadEmitters = new ConcurrentHashMap<>();
   private final Map<SseEmitter, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
   private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(
@@ -39,12 +38,11 @@ public class SseHub {
   @Value("${app.sse.shutdown.grace-period-seconds:5}")
   private int shutdownTimeout;
 
-  public SseEmitter subscribe(UUID threadId, @Nullable UUID lastId) {
+  public SseEmitter subscribe(UUID threadId, @Nullable List<Event<?>> replayEvents) {
     final var emitter = new SseEmitter(emitterTimeout);
 
-    // Replay events if lastId is provided
-    if (lastId != null) {
-      replayEvents(emitter, threadId, lastId);
+    if (replayEvents != null && !replayEvents.isEmpty()) {
+      replayEvents(emitter, replayEvents);
     }
 
     // Add to live list
@@ -67,7 +65,8 @@ public class SseHub {
     return emitter;
   }
 
-  public void broadcast(UUID threadId, UUID id, EventType eventType, Object payload) {
+  public void broadcast(Event<?> event) {
+    final var threadId = event.getThreadId();
     final var emitters = threadEmitters.get(threadId);
     if (emitters == null || emitters.isEmpty()) {
       return;
@@ -77,7 +76,7 @@ public class SseHub {
 
     for (final var emitter : emitters) {
       try {
-        sendEvent(emitter, id, eventType.getValue(), payload);
+        sendEvent(emitter, event);
       } catch (IOException e) {
         log.debug("Failed to send SSE event to emitter for thread {}: {}", threadId,
             e.getMessage());
@@ -91,20 +90,30 @@ public class SseHub {
     }
   }
 
-  private void replayEvents(SseEmitter emitter, UUID threadId, UUID lastId) {
+  private void replayEvents(SseEmitter emitter, List<Event<?>> events) {
     try {
-      final var events = eventLogRepository.findByThreadIdAndIdGreaterThanOrderById(threadId,
-          lastId);
       for (final var event : events) {
-        sendEvent(emitter, event.getId(), event.getEventType().getValue(), event.getPayload());
+        sendEvent(emitter, event);
       }
     } catch (IOException e) {
-      log.warn("IO error during event replay for thread {}: {}", threadId, e.getMessage());
+      log.warn("IO error during event replay for thread {}: {}", events.getFirst().getThreadId(),
+          e.getMessage());
       emitter.completeWithError(e);
     } catch (Exception e) {
-      log.error("Unexpected error replaying events for thread {}: {}", threadId, e.getMessage(), e);
+      log.error("Unexpected error replaying events for thread {}: {}",
+          events.getFirst().getThreadId(), e.getMessage(), e);
       emitter.completeWithError(e);
     }
+  }
+
+  private void sendEvent(SseEmitter emitter, Event<?> event)
+      throws IOException {
+    final var sseEventBuilder = SseEmitter.event()
+        .id(event.getThreadSeq().toString())
+        .name(String.valueOf(event.type()))
+        // TODO make sure this works
+        .data(event);
+    emitter.send(sseEventBuilder);
   }
 
   private void removeEmitter(UUID threadId, SseEmitter emitter) {
@@ -128,15 +137,6 @@ public class SseHub {
       }
     }, heartbeatInterval, heartbeatInterval, TimeUnit.SECONDS);
     heartbeatTasks.put(emitter, task);
-  }
-
-  private void sendEvent(SseEmitter emitter, UUID id, String eventType, Object payload)
-      throws IOException {
-    final var sseEventBuilder = SseEmitter.event()
-        .id(id.toString())
-        .name(eventType)
-        .data(payload);
-    emitter.send(sseEventBuilder);
   }
 
   private void cancelHeartbeat(SseEmitter emitter) {

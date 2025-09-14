@@ -67,6 +67,10 @@ app:
           thinking:
             budgetTokens: 0
 
+    # Orchestration configuration
+    orchestration:
+      model-name: "gpt-4o"  # Default orchestration model
+
   data:
     base-path: ${DATA_PATH:./data}
   sse:

@@ -1,7 +1,7 @@
 package com.example.the_machine.operator;
 
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.operator.result.OperatorResult;
-import com.example.the_machine.service.RunContext;
 import java.util.Map;
 
 /**
@@ -28,5 +28,5 @@ public interface Operator {
    * @return the result of the operation including outputs, metrics, and status
    * @throws Exception if the operation fails catastrophically
    */
-  OperatorResult execute(RunContext ctx, Map<String, Object> rawInputs) throws Exception;
+  OperatorResult execute(RunDto ctx, Map<String, Object> rawInputs) throws Exception;
 }

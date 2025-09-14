@@ -25,6 +25,9 @@ dependencies {
   implementation(libs.postgresql)
   implementation(libs.bundles.flyway)
 
+  // Tools
+  implementation(libs.bundles.tools)
+
   // Spring AI (BOM managed)
   implementation(libs.spring.ai.openai)
   implementation(libs.spring.ai.anthropic)

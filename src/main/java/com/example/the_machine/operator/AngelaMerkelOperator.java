@@ -1,7 +1,7 @@
 package com.example.the_machine.operator;
 
+import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.operator.result.OperatorResult;
-import com.example.the_machine.service.RunContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +49,7 @@ public class AngelaMerkelOperator extends BaseOperator {
   }
 
   @Override
-  protected OperatorResult doExecute(RunContext ctx, Map<String, Object> inputs) throws Exception {
+  protected OperatorResult doExecute(RunDto ctx, Map<String, Object> inputs) throws Exception {
     final var inputText = (String) inputs.get("text");
 
     // Simulate processing time

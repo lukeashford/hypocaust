@@ -1,6 +1,6 @@
 package com.example.the_machine.operator;
 
-import com.example.the_machine.service.RunContext;
+import com.example.the_machine.dto.RunDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,7 +26,7 @@ public class HeuristicRemediator implements Remediator {
   private final ObjectMapper objectMapper;
 
   @Override
-  public List<JsonNode> remediate(RunContext ctx, Map<String, Object> normalizedInputs,
+  public List<JsonNode> remediate(RunDto ctx, Map<String, Object> normalizedInputs,
       Exception exception, String remediationHints) {
     final var patches = new ArrayList<JsonNode>();
     final var exceptionMessage = exception.getMessage().toLowerCase();

@@ -1,0 +1,19 @@
+package com.example.the_machine.domain.event;
+
+import com.example.the_machine.domain.event.RunEvent.RunEventPayload;
+import java.util.UUID;
+import lombok.Getter;
+
+@Getter
+public abstract sealed class RunEvent<T extends RunEventPayload> extends Event<RunEventPayload>
+    permits RunCreatedEvent, RunUpdatedEvent {
+
+  protected RunEvent(UUID threadId, T payload) {
+    super(threadId, payload);
+  }
+
+  public interface RunEventPayload extends Payload {
+
+    UUID runId();
+  }
+}

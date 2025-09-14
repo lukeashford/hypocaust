@@ -1,7 +1,6 @@
 package com.example.the_machine.config;
 
-import com.example.the_machine.common.IdGenerator;
-import com.example.the_machine.domain.AssistantEntity;
+import com.example.the_machine.db.AssistantEntity;
 import com.example.the_machine.repo.AssistantRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class BootstrapConfig {
 
   private final AssistantRepository assistantRepository;
-  private final IdGenerator idGenerator;
   private final ObjectMapper objectMapper;
 
   @EventListener(ApplicationReadyEvent.class)
@@ -36,7 +34,6 @@ public class BootstrapConfig {
             """);
 
         var defaultAssistant = AssistantEntity.builder()
-            .id(idGenerator.newId())
             .name("Default Assistant")
             .model("anthropic/claude-3.7")
             .paramsJson(paramsJson)

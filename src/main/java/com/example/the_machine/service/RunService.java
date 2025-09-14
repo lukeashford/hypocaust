@@ -1,24 +1,18 @@
 package com.example.the_machine.service;
 
-import com.example.the_machine.domain.EventType;
-import com.example.the_machine.domain.RunEntity;
-import com.example.the_machine.domain.RunFactory;
+import com.example.the_machine.db.RunEntity;
+import com.example.the_machine.domain.event.RunCreatedEvent;
+import com.example.the_machine.domain.event.RunUpdatedEvent;
 import com.example.the_machine.dto.CreateRunRequestDto;
-import com.example.the_machine.dto.EventEnvelopeDto;
 import com.example.the_machine.dto.RunDto;
+import com.example.the_machine.mapper.RunMapper;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
-import com.example.the_machine.service.events.EventPublisher;
-import com.example.the_machine.service.events.RunCreatedEvent;
-import com.example.the_machine.service.mapping.RunMapper;
-import com.example.the_machine.service.mapping.ThreadMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
+import com.example.the_machine.service.events.EventService;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
@@ -35,14 +29,8 @@ public class RunService {
   private final RunRepository runRepository;
   private final ThreadRepository threadRepository;
   private final RunMapper runMapper;
-  private final ThreadMapper threadMapper;
-  private final EventPublisher eventPublisher;
-  private final ObjectMapper objectMapper;
+  private final EventService eventService;
   private final ExecutorService runExecutorService;
-  private final AssistantEngine assistantEngine;
-  private final RunFactory runFactory;
-  private final ApplicationEventPublisher applicationEventPublisher;
-  private final ArtifactService artifactService;
 
   /**
    * Creates a new run based on the request.
@@ -51,38 +39,24 @@ public class RunService {
    * @return the created run DTO
    */
   @Transactional
-  public RunDto createRun(CreateRunRequestDto request) {
-    log.info("Creating run for thread: {}", request.threadId());
-
-    // Load thread
+  public RunDto scheduleRun(CreateRunRequestDto request) {
     final var thread = threadRepository.findById(request.threadId())
         .orElseThrow(() -> new IllegalArgumentException("Thread not found: " + request.threadId()));
+    final var threadId = thread.getId();
+    log.info("Creating run for thread: {}", threadId);
 
-    // Note: MessageService would handle user message creation if available
-    // For now, we just log that input was provided
-    if (request.input() != null) {
-      log.debug("User input provided for run");
-    }
-
-    // Create run entity using factory
-    final var runId = runFactory.createAndSaveRun(request, request.threadId());
-    final var runDto = runMapper.toDto(runFactory.findManagedRun(runId));
-
-    // Log run creation event
-    final var envelope = new EventEnvelopeDto(
-        EventType.RUN_CREATED,
-        thread.getId(),
-        runId,
-        null,
-        objectMapper.valueToTree(runDto)
+    final var run = runRepository.save(RunEntity.builder()
+        .threadId(threadId)
+        .assistantId(request.assistantId())
+        .task(request.task())
+        .status(RunEntity.Status.QUEUED)
+        .build()
     );
-    eventPublisher.publishAndStore(thread.getId(), envelope, null);
 
-    // Publish event for async execution after transaction commit
-    applicationEventPublisher.publishEvent(new RunCreatedEvent(runId, thread.getId()));
+    eventService.publish(new RunCreatedEvent(threadId, run.getId()));
 
-    log.info("Run created and queued: {}", runId);
-    return runDto;
+    log.info("Run created and queued: {}", run.getId());
+    return runMapper.toDto(run);
   }
 
   /**
@@ -93,111 +67,28 @@ public class RunService {
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handleRunCreated(RunCreatedEvent event) {
-    log.debug("Handling run created event for run: {}", event.runId());
-    runExecutorService.submit(() -> executeRun(event.runId(), event.threadId()));
+    log.debug("Handling run created event for run: {}", event.getPayload().runId());
+    runExecutorService.submit(() -> executeRun(event.getPayload().runId()));
   }
 
   /**
    * Executes a run in the background.
    *
    * @param runId the ID of the run to execute
-   * @param threadId the ID of the thread associated with the run
    */
-  private void executeRun(UUID runId, UUID threadId) {
+  private void executeRun(UUID runId) {
     log.info("Starting execution of run: {}", runId);
 
-    try {
-      // Fetch managed entities
-      final var run = runFactory.findManagedRun(runId);
+    // Fetch managed entities
+    final var run = runRepository.findById(runId).orElseThrow();
+    run.start();
+    eventService.publish(
+        new RunUpdatedEvent(
+            run.getThreadId(), runId, run.getAssistantId(), run.getStatus(), "Started"
+        )
+    );
 
-      // Transition to RUNNING
-      run.setStatus(RunEntity.Status.RUNNING);
-      run.setStartedAt(Instant.now());
-      runRepository.save(run);
+    log.info("Run execution completed: {}", runId);
 
-      final var envelope = new EventEnvelopeDto(
-          EventType.RUN_UPDATED,
-          threadId,
-          runId,
-          null,
-          objectMapper.valueToTree(runMapper.toDto(run))
-      );
-      eventPublisher.publishAndStore(threadId, envelope, null);
-
-      // Create run context with IDs
-      final var context = new RunContext(
-          threadId,
-          runId,
-          runRepository,
-          threadRepository,
-          runMapper,
-          threadMapper,
-          eventPublisher,
-          objectMapper,
-          artifactService,
-          RunPolicy.defaultPolicy()
-      );
-
-      // Simple planner logic
-      final var executionType = determineExecutionType(run);
-
-      switch (executionType) {
-        case PLAN_CLARIFY -> assistantEngine.executePlanAskClarify(context);
-        case FULL_PIPELINE -> assistantEngine.executeFullPipeline(context);
-        case PARTIAL_REVISION -> assistantEngine.executePartialRevision(context, run.getReason());
-      }
-
-      log.info("Run execution completed: {}", runId);
-
-    } catch (Exception e) {
-      log.error("Run execution failed: {}", runId, e);
-
-      // Fetch managed run for error update
-      final var run = runFactory.findManagedRun(runId);
-      run.setStatus(RunEntity.Status.FAILED);
-      run.setError(e.getMessage());
-      run.setCompletedAt(Instant.now());
-      runRepository.save(run);
-
-      final var errorEnvelope = new EventEnvelopeDto(
-          EventType.RUN_UPDATED,
-          threadId,
-          runId,
-          null,
-          objectMapper.valueToTree(runMapper.toDto(run))
-      );
-      eventPublisher.publishAndStore(threadId, errorEnvelope, null);
-    }
-  }
-
-  /**
-   * Determines the execution type based on run and thread state. Simplified logic for MVP without
-   * complex message checking.
-   *
-   * @param run the current run
-   * @return the execution type
-   */
-  private ExecutionType determineExecutionType(RunEntity run) {
-    // Check if reason indicates partial revision
-    if (run.getReason() != null && run.getReason().startsWith("user_revision:")) {
-      return ExecutionType.PARTIAL_REVISION;
-    }
-
-    // Simple logic for MVP: assume FULL kind means full pipeline
-    // In a real implementation, this would check message history and context
-    if (run.getKind() == RunEntity.Kind.FULL) {
-      // For now, always run full pipeline for FULL kind
-      // This could be enhanced later with proper message context checking
-      return ExecutionType.FULL_PIPELINE;
-    }
-
-    // For new conversations, start with plan+maybe clarify
-    return ExecutionType.PLAN_CLARIFY;
-  }
-
-  private enum ExecutionType {
-    PLAN_CLARIFY,
-    FULL_PIPELINE,
-    PARTIAL_REVISION
   }
 }

@@ -1,6 +1,6 @@
 package com.example.the_machine.operator;
 
-import com.example.the_machine.service.RunContext;
+import com.example.the_machine.dto.RunDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +21,7 @@ public interface Remediator {
    * @param remediationHints optional hints from the operator about remediation strategy
    * @return a list of JSON patches to apply to the inputs, or empty list if no remediation possible
    */
-  List<JsonNode> remediate(RunContext ctx, Map<String, Object> normalizedInputs,
+  List<JsonNode> remediate(RunDto ctx, Map<String, Object> normalizedInputs,
       Exception exception, String remediationHints);
 
   /**

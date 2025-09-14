@@ -5,7 +5,7 @@
 * Java for all development, leveraging Spring Boot's ecosystem and mature tooling.
 * Share DTOs using Java `record`s to avoid duplication.
 * Follow Spring Boot conventions.
-* **IMPORTANT: Use `final` fields wherever suitable** (Lombok `val` in Java). Default to
+* **IMPORTANT: Use `final` fields wherever suitable** (`final var` in Java). Default to
   immutability.
 * Prefer **builders over setters** for object construction.
 * Keep **class annotations minimal and purpose-driven**. Add only what's required **now**; no

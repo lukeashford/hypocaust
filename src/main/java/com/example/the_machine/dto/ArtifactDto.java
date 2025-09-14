@@ -1,6 +1,6 @@
 package com.example.the_machine.dto;
 
-import com.example.the_machine.domain.ArtifactEntity;
+import com.example.the_machine.db.ArtifactEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;

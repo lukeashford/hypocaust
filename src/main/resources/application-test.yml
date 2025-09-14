@@ -15,8 +15,49 @@ app:
   llm:
     openai:
       api-key: test-openai-key     # Mock API key for testing
+      chat:
+        gpt-5: # Flagship generalist; strong tool use. Check models page for current limits.
+          topP: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 4096    # safe default; lift if you need longer answers
+
+        gpt-4o: # Multimodal generalist; typical ctx ~128K per OpenAI era guidance.
+          temperature: 0.2
+          topP: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 4096
+
+        gpt-4o-mini: # Context window 128K; up to 16K output; great cost/perf.
+          temperature: 0.2
+          topP: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 16000   # vendor-stated output max
+
+        o3: # Use maxCompletionTokens on Chat Completions; Responses API uses max_output_tokens.
+          topP: 1.0
+          maxCompletionTokens: 1024    # caps *visible + reasoning* tokens on Chat Completions
+          reasoning-effort: medium             # low|medium|high (supported for o3 family)
+
+      embedding: # 3-small supports dimension shortening; vendor post recommends dims control.
+        text-embedding-3-small:
+          dimensions: 1536            # default; may set 512 for cheaper vectors
+          encodingFormat: float
+
     anthropic:
       api-key: test-anthropic-key  # Mock API key for testing
+      chat:
+        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & ‘thinking’ behavior.
+          maxTokens: 4096                   # output cap; increase as needed
+          temperature: 0.7
+          topP: 1.0
+          # Thinking (billable) – enable only when you truly need it
+          thinking:
+            budgetTokens: 0
+    orchestration:
+      model-name: "gpt-4o"
 
 management:
   endpoints:

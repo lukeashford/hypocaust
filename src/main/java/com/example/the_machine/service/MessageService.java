@@ -1,13 +1,16 @@
 package com.example.the_machine.service;
 
-import com.example.the_machine.domain.MessageEntity;
-import com.example.the_machine.dto.CreateRunRequestDto;
-import com.example.the_machine.dto.MessageCreateRequestDto;
-import com.example.the_machine.dto.RunDto;
+import com.example.the_machine.db.MessageEntity;
+import com.example.the_machine.db.MessageEntity.Author;
+import com.example.the_machine.domain.event.ErrorEvent;
+import com.example.the_machine.domain.event.MessageProcessingEvent;
+import com.example.the_machine.dto.MessageIncomingDto;
+import com.example.the_machine.dto.MessageOutgoingDto;
+import com.example.the_machine.mapper.MessageMapper;
 import com.example.the_machine.repo.MessageRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
+import com.example.the_machine.service.events.EventService;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,57 +25,56 @@ import org.springframework.transaction.annotation.Transactional;
 public class MessageService {
 
   private final MessageRepository messageRepository;
-  private final RunService runService;
-  private final ObjectMapper objectMapper;
+  private final EventService eventService;
+  private final MessageMapper messageMapper;
+  private final CentralChatService centralChatService;
 
   /**
-   * Processes a message request by creating a user message and triggering a run.
+   * Processes a chat message request with immediate response and async LLM processing.
    *
    * @param threadId the thread ID
    * @param request the message creation request
-   * @return the created run DTO
+   * @return the chat response DTO with immediate status
    */
   @Transactional
-  public RunDto processMessage(UUID threadId, MessageCreateRequestDto request) {
-    log.info("Processing message for thread: {}", threadId);
+  public MessageOutgoingDto processMessage(UUID threadId, MessageIncomingDto request) {
+    log.info("Processing chat message for thread: {}", threadId);
 
-    // Create and persist user message
-    createUserMessage(threadId, request);
+    // Create and persist user message immediately
+    final var userMessage = MessageEntity.builder()
+        .threadId(threadId)
+        .author(Author.USER)
+        .content(request.message())
+        .build();
+    messageRepository.save(userMessage);
 
-    // Create run request using record constructor
-    final var runRequest = new CreateRunRequestDto(threadId, null, request);
+    // Process asynchronously
+    CompletableFuture.runAsync(() -> processChatAsync(threadId, userMessage.getId()));
 
-    // Trigger run execution
-    final var runDto = runService.createRun(runRequest);
-
-    log.info("Message processed and run created: {} for thread: {}", runDto.id(), threadId);
-    return runDto;
+    // Return immediate response
+    return messageMapper.toDto(userMessage);
   }
 
   /**
-   * Creates a user message entity.
+   * Processes chat message asynchronously with LLM and tool integration.
    *
    * @param threadId the thread ID
-   * @param request the message creation request
+   * @param messageId the message ID
    */
-  private void createUserMessage(UUID threadId, MessageCreateRequestDto request) {
-    // Convert AuthorType to MessageEntity.Author
-    final var author = MessageEntity.Author.valueOf(request.author().name());
+  private void processChatAsync(UUID threadId, UUID messageId) {
+    eventService.publish(new MessageProcessingEvent(threadId, messageId));
 
-    // Convert content to JsonNode
-    final var contentJson = objectMapper.valueToTree(request.content());
-    final var attachmentsJson = request.attachments() != null ?
-        objectMapper.valueToTree(request.attachments()) : null;
+    try {
+      // Process with LLM
+      final var llmResponse = centralChatService.processChatMessage(threadId, messageId);
 
-    final var message = MessageEntity.builder()
-        .id(UUID.randomUUID())
-        .threadId(threadId)
-        .author(author)
-        .contentJson(contentJson)
-        .attachmentsJson(attachmentsJson)
-        .createdAt(Instant.now())
-        .build();
+      log.info("LLM response for thread: {}, messageId: {}: {}", threadId, messageId, llmResponse);
 
-    messageRepository.save(message);
+    } catch (Exception e) {
+      log.error("Error in async chat processing for thread: {}, messageId: {}", threadId, messageId,
+          e);
+      eventService.publish(
+          new ErrorEvent(threadId, "Failed to process message: " + e.getMessage()));
+    }
   }
 }

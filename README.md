@@ -8,7 +8,7 @@ quickly orient yourself and contribute effectively.
 
 ## Technology Stack
 
-**Core Framework:** Java 21 + Spring Boot 3.5.0 with immutable-first design (`val` everywhere,
+**Core Framework:** Java 21 + Spring Boot 3.5.0 with immutable-first design (`final var` everywhere,
 builder patterns, `@RequiredArgsConstructor` for DI)
 
 **AI Integration:** Spring AI 1.0.0 (provider-agnostic, currently OpenAI configured, ready for

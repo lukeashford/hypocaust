@@ -22,7 +22,7 @@ public class EventController {
   @GetMapping(value = Routes.THREAD_EVENTS, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter getEvents(
       @PathVariable UUID id,
-      @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
+      @RequestHeader(value = "Last-Event-ID", required = false) UUID lastEventId) {
 
     log.debug("SSE subscription request for thread {} with lastEventId: {}", id, lastEventId);
     return eventService.subscribeToEvents(id, lastEventId);

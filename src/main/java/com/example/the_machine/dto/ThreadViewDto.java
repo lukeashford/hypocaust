@@ -4,7 +4,7 @@ import java.util.List;
 
 public record ThreadViewDto(
     ThreadDto thread,
-    List<MessageDto> messages,
+    List<MessageOutgoingDto> messages,
     List<ArtifactDto> artifacts,
     RunDto latestRun
 ) {

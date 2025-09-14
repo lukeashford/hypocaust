@@ -1,6 +1,6 @@
 package com.example.the_machine.operator;
 
-import com.example.the_machine.service.RunContext;
+import com.example.the_machine.dto.RunDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,7 +24,7 @@ public class LLMRemediator implements Remediator {
   private final ObjectMapper objectMapper;
 
   @Override
-  public List<JsonNode> remediate(RunContext ctx, Map<String, Object> normalizedInputs,
+  public List<JsonNode> remediate(RunDto ctx, Map<String, Object> normalizedInputs,
       Exception exception, String remediationHints) {
 
     log.debug("LLMRemediator attempting remediation for exception: {}", exception.getMessage());
@@ -34,7 +34,7 @@ public class LLMRemediator implements Remediator {
     //  propose JSON patches constrained to adjustable fields."
 
     // For now, we'll implement some rule-based logic that simulates LLM reasoning
-    final var patches = new ArrayList<JsonNode>(
+    final var patches = new ArrayList<>(
         analyzeAndRemediate(normalizedInputs, exception, remediationHints));
 
     log.debug("LLMRemediator generated {} patches", patches.size());

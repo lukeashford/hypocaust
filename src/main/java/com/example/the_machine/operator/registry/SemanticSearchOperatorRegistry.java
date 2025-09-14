@@ -1,12 +1,11 @@
 package com.example.the_machine.operator.registry;
 
-import com.example.the_machine.common.IdGenerator;
-import com.example.the_machine.domain.OperatorEmbedding;
+import com.example.the_machine.common.HashCalculator;
+import com.example.the_machine.db.OperatorEmbedding;
 import com.example.the_machine.operator.Operator;
 import com.example.the_machine.operator.ToolSpec;
 import com.example.the_machine.repo.OperatorEmbeddingRepository;
 import com.example.the_machine.service.EmbeddingService;
-import com.example.the_machine.service.HashCalculationService;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,10 +32,9 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
 
   private final OperatorEmbeddingRepository embeddingRepository;
   private final EmbeddingService embeddingService;
-  private final HashCalculationService hashCalculationService;
+  private final HashCalculator hashCalculator;
 
   private final Map<String, Operator> operatorsByName = new ConcurrentHashMap<>();
-  private final IdGenerator idGenerator;
 
   @PostConstruct
   public void initialize() {
@@ -63,13 +61,12 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
         // Use ToolSpec's existing description method + context
         final var descriptionText = createEmbeddingText(spec);
         final var existingEmbedding = embeddingRepository.findByOperatorName(operatorName);
-        final var textHash = hashCalculationService.calculateSha256Hash(descriptionText);
+        final var textHash = hashCalculator.calculateSha256Hash(descriptionText);
 
         if (existingEmbedding.isEmpty() || !existingEmbedding.get().getHash().equals(textHash)) {
           final var embedding = embeddingService.generateEmbedding(descriptionText);
 
           newEmbeddings.add(OperatorEmbedding.builder()
-              .id(idGenerator.newId())
               .operatorName(operatorName)
               .embedding(embedding)
               .hash(textHash)
@@ -153,14 +150,5 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   @Override
   public int size() {
     return operatorsByName.size();
-  }
-
-  // Package-private methods for testing
-  Map<String, Operator> getOperatorsByName() {
-    return operatorsByName;
-  }
-
-  String createEmbeddingTextForTesting(ToolSpec spec) {
-    return createEmbeddingText(spec);
   }
 }
