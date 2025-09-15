@@ -6,10 +6,17 @@ import com.example.the_machine.models.ModelRegistry;
 import com.example.the_machine.repo.MessageRepository;
 import com.example.the_machine.service.events.EventService;
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -46,10 +53,23 @@ public class CentralChatService {
 
   @Async
   public void processChatMessage(UUID threadId, UUID messageId) {
-    final var message = messageRepository.findById(messageId).orElseThrow();
     log.info("Processing chat message for thread: {}, messageId: {}", threadId, messageId);
 
-    final var response = chatClient.prompt(message.getContent()).call().content();
+    final var allMessages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
+
+    final int maxTurns = 10;
+    final var history = allMessages.stream().limit(maxTurns).toList();
+
+    List<Message> msgs = history.stream().map(m ->
+        switch (m.getAuthor()) {
+          case ASSISTANT -> new AssistantMessage(m.getContent());
+          case SYSTEM -> new SystemMessage(m.getContent());
+          default -> new UserMessage(m.getContent());
+        }
+    ).collect(Collectors.toUnmodifiableList());
+
+    final var response = chatClient.prompt(new Prompt(msgs)).call().content();
+
     log.info("LLM response for thread: {}, messageId: {}: {}", threadId, messageId, response);
     eventService.publish(new MessageCompletedEvent(threadId, messageId, response));
   }
