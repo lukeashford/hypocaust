@@ -3,6 +3,7 @@ package com.example.the_machine.repo;
 import com.example.the_machine.db.OperatorEmbedding;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Repository;
  * to store and retrieve operator embeddings for semantic search.
  */
 @Repository
-public interface OperatorEmbeddingRepository extends JpaRepository<OperatorEmbedding, Long> {
+public interface OperatorEmbeddingRepository extends JpaRepository<OperatorEmbedding, UUID> {
 
   /**
    * Finds an operator embedding by its exact operator name.
@@ -32,7 +33,11 @@ public interface OperatorEmbeddingRepository extends JpaRepository<OperatorEmbed
    * @param pageable pagination parameters to limit results
    * @return list of operator embeddings ordered by similarity
    */
-  @Query("SELECT o FROM OperatorEmbedding o ORDER BY vector_cosine_distance(o.embedding, :queryEmbedding) ASC")
+  @Query("""
+      select o
+      from OperatorEmbedding o
+      order by cosine_distance(o.embedding, :probe)
+      """)
   List<OperatorEmbedding> findTopByEmbeddingSimilarity(
       @Param("queryEmbedding") float[] queryEmbedding, Pageable pageable);
 }

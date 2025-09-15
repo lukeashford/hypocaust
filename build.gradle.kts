@@ -22,8 +22,7 @@ val mockitoAgent by configurations.creating { isTransitive = false }
 dependencies {
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
-  implementation(libs.postgresql)
-  implementation(libs.bundles.flyway)
+  implementation(libs.bundles.db)
 
   // Tools
   implementation(libs.bundles.tools)
@@ -50,6 +49,7 @@ dependencies {
 
 dependencyManagement {
   imports {
+    mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
     mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
   }
 }

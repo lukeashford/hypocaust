@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Array;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -28,7 +29,8 @@ public class OperatorEmbedding extends BaseEntity {
   private String operatorName;
 
   @Column(name = "embedding", nullable = false, columnDefinition = "vector(1536)")
-  @JdbcTypeCode(SqlTypes.ARRAY)
+  @JdbcTypeCode(SqlTypes.VECTOR)
+  @Array(length = 1536)
   private float[] embedding;
 
   @Column(nullable = false, length = 64)
