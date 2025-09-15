@@ -25,12 +25,7 @@ Content-Type: application/json
 
 {
   "author": "USER",
-  "content": [
-    {
-      "type": "text",
-      "text": "Analyze a brand and design a marketing pitch."
-    }
-  ]
+  "content": "Say hello!"
 }
 
 ### 4. Wait for processing, then get thread view

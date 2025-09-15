@@ -3,8 +3,6 @@ package com.example.the_machine.domain.event;
 import com.example.the_machine.db.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -37,7 +35,6 @@ public class EventEntity extends BaseEntity {
   @Column(nullable = false, columnDefinition = "json")
   private Event.Payload payload;
 
-  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private EventType type;
 }

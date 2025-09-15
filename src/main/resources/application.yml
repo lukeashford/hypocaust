@@ -33,8 +33,7 @@ app:
           maxCompletionTokens: 4096    # safe default; lift if you need longer answers
 
         gpt-4o: # Multimodal generalist; typical ctx ~128K per OpenAI era guidance.
-          temperature: 0.2
-          topP: 1.0
+          temperature: 1.0
           presencePenalty: 0.0
           frequencyPenalty: 0.0
           maxCompletionTokens: 4096

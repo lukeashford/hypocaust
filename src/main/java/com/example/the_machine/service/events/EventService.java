@@ -27,6 +27,7 @@ public class EventService {
 
   @Transactional
   public void publish(Event<?> event, boolean doPersist) {
+    log.debug("Publishing event: {}", event);
     final var entity = eventMapper.toEntity(event);
     if (doPersist) {
       eventLogRepository.save(entity);

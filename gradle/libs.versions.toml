@@ -31,6 +31,7 @@ mockito-core = { module = "org.mockito:mockito-core" }
 # Spring AI BOM managed
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
 spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic" }
+spring-ai-client-chat = { module = "org.springframework.ai:spring-ai-client-chat" }
 
 # Explicitly versioned dependencies
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -42,6 +43,7 @@ mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.re
 spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "spring-boot-starter-data-jpa"]
 db = ["postgresql", "hibernate-vector", "flyway-core", "flyway-database-postgresql"]
 tools = ["uuid-creator"]
+spring-ai = ["spring-ai-openai", "spring-ai-anthropic", "spring-ai-client-chat"]
 
 # Testing infrastructure
 testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]

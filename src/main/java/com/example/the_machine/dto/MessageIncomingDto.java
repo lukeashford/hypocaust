@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record MessageIncomingDto(
-    String message,
+    String content,
     List<UUID> attachments
 ) {
 
