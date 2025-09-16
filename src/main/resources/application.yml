@@ -22,6 +22,8 @@ spring:
 
 app:
   llm:
+    orchestration-model-name: "gpt-4o"
+
     openai:
       api-key: ${OPENAI_API_KEY}
 
@@ -65,10 +67,6 @@ app:
           # Thinking (billable) – enable only when you truly need it
           thinking:
             budgetTokens: 0
-
-    # Orchestration configuration
-    orchestration:
-      model-name: "gpt-4o"  # Default orchestration model
 
   data:
     base-path: ${DATA_PATH:./data}

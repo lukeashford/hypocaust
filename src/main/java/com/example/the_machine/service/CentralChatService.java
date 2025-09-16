@@ -29,18 +29,18 @@ public class CentralChatService {
   private final ModelProperties modelProperties;
   private final MessageRepository messageRepository;
   private final EventService eventService;
+  private final ContextPackingService contextPackingService;
 
   private ChatClient chatClient;
 
   @PostConstruct
   private void initializeOrchestrationModel() {
-    final var orchestrationConfig = modelProperties.getOrchestration();
-    if (orchestrationConfig == null || orchestrationConfig.getModelName() == null) {
+    final var modelName = modelProperties.getOrchestrationModelName();
+    if (modelName == null) {
       throw new IllegalStateException(
           "Orchestration model not configured. Please set app.llm.orchestration.model-name");
     }
 
-    final var modelName = orchestrationConfig.getModelName();
     try {
       chatClient = ChatClient.create(modelRegistry.get(modelName));
       log.info("Initialized orchestration model: {}", modelName);
@@ -55,20 +55,25 @@ public class CentralChatService {
   public void processChatMessage(UUID threadId, UUID messageId) {
     log.info("Processing chat message for thread: {}, messageId: {}", threadId, messageId);
 
-    final var allMessages = messageRepository.findByThreadIdOrderByCreatedAt(threadId);
+    final var allMessages = messageRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
 
-    final int maxTurns = 10;
-    final var history = allMessages.stream().limit(maxTurns).toList();
+    // Convert repository messages to Spring AI messages
+    final List<Message> chronological = allMessages.stream().map(m -> switch (m.getAuthor()) {
+      case ASSISTANT -> new AssistantMessage(m.getContent());
+      case SYSTEM -> new SystemMessage(m.getContent());
+      default -> new UserMessage(m.getContent());
+    }).collect(Collectors.toUnmodifiableList());
 
-    List<Message> msgs = history.stream().map(m ->
-        switch (m.getAuthor()) {
-          case ASSISTANT -> new AssistantMessage(m.getContent());
-          case SYSTEM -> new SystemMessage(m.getContent());
-          default -> new UserMessage(m.getContent());
-        }
-    ).collect(Collectors.toUnmodifiableList());
+    final var modelName = modelProperties.getOrchestrationModelName();
 
-    final var response = chatClient.prompt(new Prompt(msgs)).call().content();
+    // Extract system message if present, or create empty one
+    final var systemMessage = new SystemMessage("You are a helpful assistant.");
+
+    // Use token-aware context packing instead of fixed maxTurns
+    final var packedMessages = contextPackingService.buildContext(
+        modelName, systemMessage, chronological);
+
+    final var response = chatClient.prompt(new Prompt(packedMessages)).call().content();
 
     log.info("LLM response for thread: {}, messageId: {}: {}", threadId, messageId, response);
     eventService.publish(new MessageCompletedEvent(threadId, messageId, response));

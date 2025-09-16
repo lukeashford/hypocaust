@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface MessageRepository extends JpaRepository<MessageEntity, UUID> {
 
   List<MessageEntity> findByThreadIdOrderByCreatedAt(UUID threadId);
+
+  List<MessageEntity> findByThreadIdOrderByCreatedAtDesc(UUID threadId);
 }

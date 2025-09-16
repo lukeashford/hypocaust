@@ -18,7 +18,7 @@ public class ModelProperties {
 
   private OpenAi openAi;
   private Anthropic anthropic;
-  private Orchestration orchestration;
+  private String orchestrationModelName;
 
   @Data
   public static class OpenAi {
@@ -33,12 +33,6 @@ public class ModelProperties {
 
     private String apiKey;
     private Map<AnthropicChatModelSpec, AnthropicChatOptions> chat;
-  }
-
-  @Data
-  public static class Orchestration {
-
-    private String modelName;
   }
 
 }
