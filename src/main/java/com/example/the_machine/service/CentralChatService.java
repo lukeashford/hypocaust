@@ -16,9 +16,12 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 @Service
 @RequiredArgsConstructor
@@ -79,4 +82,25 @@ public class CentralChatService {
     eventService.publish(new MessageCompletedEvent(threadId, messageId, response));
   }
 
+  public Flux<ChatResponse> streamChatCompletion(ChatCompletionRequest request) {
+    return chatClient.prompt(convertOpenAiToSpringAiMessages(request))
+        .stream()
+        .chatResponse();
+  }
+
+  public ChatResponse chatCompletion(ChatCompletionRequest request) {
+    return chatClient.prompt(convertOpenAiToSpringAiMessages(request)).call().chatResponse();
+  }
+
+  private Prompt convertOpenAiToSpringAiMessages(ChatCompletionRequest request) {
+    final List<Message> messages = request.messages().stream()
+        .map(msg -> switch (msg.role()) {
+          case SYSTEM -> new SystemMessage(msg.content());
+          case ASSISTANT -> new AssistantMessage(msg.content());
+          default -> new UserMessage(msg.content());
+        })
+        .collect(Collectors.toUnmodifiableList());
+
+    return new Prompt(messages);
+  }
 }
