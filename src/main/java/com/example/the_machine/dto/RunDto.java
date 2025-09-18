@@ -9,7 +9,6 @@ public record RunDto(
     UUID threadId,
     UUID assistantId,
     RunStatus status,
-    RunKind kind,
     String reason,
     Instant startedAt,
     Instant completedAt,

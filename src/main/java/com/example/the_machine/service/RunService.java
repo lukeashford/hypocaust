@@ -1,5 +1,7 @@
 package com.example.the_machine.service;
 
+import static com.example.the_machine.db.AssistantEntity.DEFAULT_ASSISTANT_ID;
+
 import com.example.the_machine.db.RunEntity;
 import com.example.the_machine.domain.event.RunCreatedEvent;
 import com.example.the_machine.domain.event.RunUpdatedEvent;
@@ -47,7 +49,7 @@ public class RunService {
 
     final var run = runRepository.save(RunEntity.builder()
         .threadId(threadId)
-        .assistantId(request.assistantId())
+        .assistantId(DEFAULT_ASSISTANT_ID)
         .task(request.task())
         .status(RunEntity.Status.QUEUED)
         .build()
