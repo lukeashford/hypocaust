@@ -19,6 +19,7 @@ public class ModelProperties {
   private OpenAi openAi;
   private Anthropic anthropic;
   private String orchestrationModelName;
+  private String decomposingModelName;
 
   @Data
   public static class OpenAi {

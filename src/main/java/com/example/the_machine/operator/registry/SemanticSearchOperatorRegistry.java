@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +21,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Semantic search-enabled operator registry that uses vector embeddings for intelligent operator
- * discovery and matching. Discovers operators via ServiceLoader, generates embeddings for their
- * descriptions, and provides semantic search capabilities.
+ * discovery and matching. Discovers operators from the Spring context, generates embeddings for
+ * their descriptions, and provides semantic search capabilities.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,6 +32,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   private final OperatorEmbeddingRepository embeddingRepository;
   private final EmbeddingService embeddingService;
   private final HashCalculator hashCalculator;
+  private final List<Operator> operators;
 
   private final Map<String, Operator> operatorsByName = new ConcurrentHashMap<>();
 
@@ -42,15 +42,14 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   }
 
   /**
-   * Discovers operators using ServiceLoader and generates embeddings for new operators.
+   * Discovers operators and generates embeddings for new/updated operators.
    */
   private void discoverAndIndexOperators() {
-    log.info("Discovering operators and generating embeddings...");
+    log.info("Generating operator embeddings...");
 
-    final var serviceLoader = ServiceLoader.load(Operator.class);
     final var newEmbeddings = new ArrayList<OperatorEmbedding>();
 
-    for (final var operator : serviceLoader) {
+    for (final var operator : operators) {
       try {
         final var spec = operator.spec();
         final var operatorName = spec.getName();

@@ -1,6 +1,7 @@
 package com.example.the_machine.operator;
 
 import com.example.the_machine.operator.result.ValidationResult;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -22,7 +23,7 @@ import lombok.Getter;
 public class ToolSpec {
 
   private final String name;
-  private final String version;
+  private final Version version;
   private final String description;
   @Builder.Default
   private final List<ParamSpec<?>> inputs = new ArrayList<>();
@@ -180,7 +181,7 @@ public class ToolSpec {
     // Add tool metadata
     final var toolInfo = schema.putObject("tool");
     toolInfo.put("name", name);
-    toolInfo.put("version", version);
+    toolInfo.put("version", version.toString());
     if (description != null) {
       toolInfo.put("description", description);
     }

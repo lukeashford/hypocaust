@@ -138,6 +138,16 @@ public class ParamSpec<T> {
         .build();
   }
 
+  public static ParamSpec<String> string(String name, boolean required) {
+    return ParamSpec.<String>builder()
+        .name(name)
+        .type(TypeFactory.defaultInstance().constructType(String.class))
+        .required(required)
+        .secret(false)
+        .adjustable(true)
+        .build();
+  }
+
   /**
    * Creates a string parameter specification with required flag and documentation.
    */

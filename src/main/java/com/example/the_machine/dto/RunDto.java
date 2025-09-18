@@ -8,6 +8,7 @@ public record RunDto(
     UUID id,
     UUID threadId,
     UUID assistantId,
+    String task,
     RunStatus status,
     String reason,
     Instant startedAt,

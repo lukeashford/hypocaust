@@ -1,6 +1,5 @@
 package com.example.the_machine.operator;
 
-import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.operator.result.OperatorResult;
 import java.util.Map;
 
@@ -23,10 +22,8 @@ public interface Operator {
    * validated against the spec before calling this method, but implementations should be defensive
    * and handle invalid inputs gracefully.
    *
-   * @param ctx the execution context containing repositories, services, and utilities
    * @param rawInputs the input parameters (may need validation and normalization)
    * @return the result of the operation including outputs, metrics, and status
-   * @throws Exception if the operation fails catastrophically
    */
-  OperatorResult execute(RunDto ctx, Map<String, Object> rawInputs) throws Exception;
+  OperatorResult execute(Map<String, Object> rawInputs);
 }
