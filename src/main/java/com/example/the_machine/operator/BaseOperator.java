@@ -1,7 +1,6 @@
 package com.example.the_machine.operator;
 
 import com.example.the_machine.operator.result.OperatorResult;
-import com.example.the_machine.operator.result.OperatorResultCode;
 import java.util.Map;
 
 public abstract class BaseOperator implements Operator {
@@ -9,31 +8,18 @@ public abstract class BaseOperator implements Operator {
   public final OperatorResult execute(Map<String, Object> rawInputs) {
     try {
       final var validationResult = spec().validate(rawInputs);
-      if (!validationResult.isOk()) {
-        return OperatorResult.validationFailure(this.getClass().getSimpleName(),
-            getVersionString(), validationResult.getMessage());
+      if (!validationResult.ok()) {
+        return OperatorResult.failure(validationResult.message(), rawInputs);
       }
 
-      final var normalizedInputs = spec().applyDefaults(rawInputs);
-
-      return doExecute(normalizedInputs);
+      return doExecute(rawInputs);
     } catch (Exception e) {
-      return OperatorResult.failure(
-          getName(),
-          getVersionString(),
-          OperatorResultCode.UNEXPECTED_ERROR,
-          e.getMessage(),
-          rawInputs
-      );
+      return OperatorResult.failure(e.getMessage(), rawInputs);
     }
   }
 
   public String getName() {
-    return spec().getName();
-  }
-
-  public final String getVersionString() {
-    return spec().getVersion().toString();
+    return spec().name();
   }
 
   protected abstract OperatorResult doExecute(Map<String, Object> normalizedInputs);

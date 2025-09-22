@@ -36,7 +36,7 @@ public interface OperatorEmbeddingRepository extends JpaRepository<OperatorEmbed
   @Query("""
       select o
       from OperatorEmbedding o
-      order by cosine_distance(o.embedding, :probe)
+      order by cosine_distance(o.embedding, :queryEmbedding)
       """)
   List<OperatorEmbedding> findTopByEmbeddingSimilarity(
       @Param("queryEmbedding") float[] queryEmbedding, Pageable pageable);

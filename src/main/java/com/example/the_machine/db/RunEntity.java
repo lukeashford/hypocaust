@@ -47,4 +47,16 @@ public class RunEntity extends BaseEntity {
     this.startedAt = Instant.now();
     this.status = Status.RUNNING;
   }
+
+  public void complete(String reason) {
+    this.completedAt = Instant.now();
+    this.status = Status.COMPLETED;
+    this.reason = reason;
+  }
+
+  public void fail(String reason) {
+    this.completedAt = Instant.now();
+    this.status = Status.FAILED;
+    this.reason = reason;
+  }
 }

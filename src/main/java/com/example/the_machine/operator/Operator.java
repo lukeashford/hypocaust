@@ -15,7 +15,7 @@ public interface Operator {
    *
    * @return the tool specification
    */
-  ToolSpec spec();
+  OperatorSpec spec();
 
   /**
    * Executes the operator with the provided context and input parameters. The inputs should be

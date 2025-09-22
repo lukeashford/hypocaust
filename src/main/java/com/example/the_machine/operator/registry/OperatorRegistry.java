@@ -1,7 +1,7 @@
 package com.example.the_machine.operator.registry;
 
 import com.example.the_machine.operator.Operator;
-import com.example.the_machine.operator.ToolSpec;
+import com.example.the_machine.operator.OperatorSpec;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +27,7 @@ public interface OperatorRegistry {
    * @param taskDescription the task description to search for
    * @return list of tool specs ordered by similarity
    */
-  List<ToolSpec> searchByTask(String taskDescription);
+  List<OperatorSpec> searchByTask(String taskDescription);
 
   /**
    * Returns the number of operators currently registered.

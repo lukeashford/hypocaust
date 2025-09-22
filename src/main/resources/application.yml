@@ -23,6 +23,7 @@ spring:
 app:
   llm:
     orchestration-model-name: "gpt-4o"
+    decomposing-model-name: "o3"
 
     openai:
       api-key: ${OPENAI_API_KEY}

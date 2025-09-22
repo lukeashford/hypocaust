@@ -8,9 +8,11 @@ import com.example.the_machine.domain.event.RunUpdatedEvent;
 import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.mapper.RunMapper;
+import com.example.the_machine.operator.DecomposingOperator;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
 import com.example.the_machine.service.events.EventService;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class RunService {
   private final RunMapper runMapper;
   private final EventService eventService;
   private final ExecutorService runExecutorService;
+  private final DecomposingOperator decomposingOperator;
 
   /**
    * Creates a new run based on the request.
@@ -78,7 +81,7 @@ public class RunService {
    *
    * @param runId the ID of the run to execute
    */
-  private void executeRun(UUID runId) {
+  public void executeRun(UUID runId) {
     log.info("Starting execution of run: {}", runId);
 
     // Fetch managed entities
@@ -87,6 +90,21 @@ public class RunService {
     eventService.publish(
         new RunUpdatedEvent(
             run.getThreadId(), runId, run.getAssistantId(), run.getStatus(), "Started"
+        )
+    );
+
+    final var result = decomposingOperator.execute(Map.of("task", run.getTask()));
+
+    if (result.ok()) {
+      run.complete(result.message());
+    } else {
+      run.fail(result.message());
+    }
+
+    runRepository.save(run);
+    eventService.publish(
+        new RunUpdatedEvent(
+            run.getThreadId(), runId, run.getAssistantId(), run.getStatus(), run.getReason()
         )
     );
 

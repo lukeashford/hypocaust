@@ -3,7 +3,7 @@ package com.example.the_machine.operator.registry;
 import com.example.the_machine.common.HashCalculator;
 import com.example.the_machine.db.OperatorEmbedding;
 import com.example.the_machine.operator.Operator;
-import com.example.the_machine.operator.ToolSpec;
+import com.example.the_machine.operator.OperatorSpec;
 import com.example.the_machine.repo.OperatorEmbeddingRepository;
 import com.example.the_machine.service.EmbeddingService;
 import jakarta.annotation.PostConstruct;
@@ -52,7 +52,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
     for (final var operator : operators) {
       try {
         final var spec = operator.spec();
-        final var operatorName = spec.getName();
+        final var operatorName = spec.name();
 
         // Single source of truth - cache only operators
         operatorsByName.put(operatorName, operator);
@@ -89,13 +89,13 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   /**
    * Creates embedding text from ToolSpec using existing methods.
    */
-  private String createEmbeddingText(ToolSpec spec) {
+  private String createEmbeddingText(OperatorSpec spec) {
     final var text = new StringBuilder();
-    text.append("Tool: ").append(spec.getName());
+    text.append("Tool: ").append(spec.name());
 
     // ToolSpec already has getDescription()!
-    if (spec.getDescription() != null && !spec.getDescription().trim().isEmpty()) {
-      text.append(" - ").append(spec.getDescription());
+    if (spec.description() != null && !spec.description().trim().isEmpty()) {
+      text.append(" - ").append(spec.description());
     }
 
     // Add I/O context for better matching
@@ -117,7 +117,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
    * @return list of tool specs ordered by similarity
    */
   @Override
-  public List<ToolSpec> searchByTask(String taskDescription) {
+  public List<OperatorSpec> searchByTask(String taskDescription) {
     final var maxResults = 3;
 
     try {
@@ -137,7 +137,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
 
     } catch (Exception e) {
       log.error("Semantic search failed for query: {}", taskDescription, e);
-      return List.of();
+      return new ArrayList<>();
     }
   }
 
