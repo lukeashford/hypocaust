@@ -18,6 +18,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ThreadEntity extends BaseEntity {
 
+  @Column(unique = true)
+  private String librechatConversationId;
+
   private String title;
 
   @Column(nullable = false)

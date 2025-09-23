@@ -1,5 +1,6 @@
 package com.example.the_machine.web;
 
+import com.example.the_machine.domain.RequestContext;
 import com.example.the_machine.service.CentralChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,6 +25,7 @@ public class OpenAiCompatController {
 
   private final CentralChatService chat;
   private final ObjectMapper mapper;
+  private final RequestContext requestContext;
 
   @PostMapping(
       value = "/chat/completions",
@@ -35,14 +37,17 @@ public class OpenAiCompatController {
   )
   public Object completions(@RequestBody ChatCompletionRequest req) {
     if (Boolean.TRUE.equals(req.stream())) {
-      SseEmitter emitter = new SseEmitter(0L); // no timeout for long generations
+      final var emitter = new SseEmitter(0L); // no timeout for long generations
       emitter.onTimeout(emitter::complete);
-      CompletableFuture.runAsync(() -> stream(req, emitter));
+      final var conversationId = requestContext.librechatConversationId();
+      CompletableFuture.runAsync(
+          () -> stream(req, emitter, conversationId)
+      );
       return emitter; // Spring will set text/event-stream for SseEmitter
     }
 
     // non-stream: JSON response compatible with OpenAI
-    var cr = chat.chatCompletion(req);
+    var cr = chat.chatCompletion(req, requestContext.librechatConversationId());
     var content = extractText(cr);
 
     ObjectNode body = mapper.createObjectNode()
@@ -66,7 +71,7 @@ public class OpenAiCompatController {
         .body(body);
   }
 
-  private void stream(ChatCompletionRequest req, SseEmitter em) {
+  private void stream(ChatCompletionRequest req, SseEmitter em, String librechatConversationId) {
     final String id = "chatcmpl_" + UUID.randomUUID();
     final long created = Instant.now().getEpochSecond();
     final String model = req.model() == null ? "unknown" : req.model();
@@ -75,7 +80,7 @@ public class OpenAiCompatController {
       // Initial role delta (OpenAI-compatible)
       sendChunk(em, id, created, model, "assistant", null);
 
-      chat.streamChatCompletion(req).toStream().forEach(cr -> {
+      chat.streamChatCompletion(req, librechatConversationId).toStream().forEach(cr -> {
         String delta = extractText(cr);
         if (delta != null && !delta.isBlank()) {
           sendChunk(em, id, created, model, null, delta);

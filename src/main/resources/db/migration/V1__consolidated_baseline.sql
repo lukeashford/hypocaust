@@ -19,10 +19,11 @@ CREATE TABLE assistant
 -- Thread table
 CREATE TABLE thread
 (
-    id               uuid PRIMARY KEY,
-    created_at       timestamptz NOT NULL DEFAULT now(),
-    title            text,
-    last_activity_at timestamptz NOT NULL
+    id                        uuid PRIMARY KEY,
+    created_at                timestamptz NOT NULL DEFAULT now(),
+    librechat_conversation_id text UNIQUE,
+    title                     text,
+    last_activity_at          timestamptz NOT NULL
 );
 
 -- Message table

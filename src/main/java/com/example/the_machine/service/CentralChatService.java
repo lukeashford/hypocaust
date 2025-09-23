@@ -1,16 +1,11 @@
 package com.example.the_machine.service;
 
-import com.example.the_machine.domain.event.MessageCompletedEvent;
-import com.example.the_machine.dto.CreateRunRequestDto;
-import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.models.ModelProperties;
 import com.example.the_machine.models.ModelRegistry;
-import com.example.the_machine.repo.MessageRepository;
-import com.example.the_machine.repo.ThreadRepository;
-import com.example.the_machine.service.events.EventService;
+import com.example.the_machine.tool.TaskSchedulingTool;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +18,6 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest;
-import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -36,11 +28,7 @@ public class CentralChatService {
 
   private final ModelRegistry modelRegistry;
   private final ModelProperties modelProperties;
-  private final MessageRepository messageRepository;
-  private final EventService eventService;
-  private final ContextPackingService contextPackingService;
-  private final RunService runService;
-  private final ThreadRepository threadRepository;
+  private final TaskSchedulingTool taskSchedulingTool;
 
   private ChatClient chatClient;
 
@@ -64,7 +52,6 @@ public class CentralChatService {
 
     try {
       chatClient = ChatClient.builder(modelRegistry.get(modelName))
-          .defaultTools(this)
           .build();
       log.info("Initialized orchestration model: {}", modelName);
     } catch (Exception e) {
@@ -74,14 +61,26 @@ public class CentralChatService {
     }
   }
 
-  public Flux<ChatResponse> streamChatCompletion(ChatCompletionRequest request) {
+  public Flux<ChatResponse> streamChatCompletion(
+      ChatCompletionRequest request,
+      String librechatConversationId
+  ) {
     return chatClient.prompt(convertOpenAiToSpringAiMessages(request))
+        .tools(taskSchedulingTool)
+        .toolContext(Map.of("librechatConversationId", librechatConversationId))
         .stream()
         .chatResponse();
   }
 
-  public ChatResponse chatCompletion(ChatCompletionRequest request) {
-    return chatClient.prompt(convertOpenAiToSpringAiMessages(request)).call().chatResponse();
+  public ChatResponse chatCompletion(
+      ChatCompletionRequest request,
+      String librechatConversationId
+  ) {
+    return chatClient.prompt(convertOpenAiToSpringAiMessages(request))
+        .tools(taskSchedulingTool)
+        .toolContext(Map.of("librechatConversationId", librechatConversationId))
+        .call()
+        .chatResponse();
   }
 
   private Prompt convertOpenAiToSpringAiMessages(ChatCompletionRequest request) {
@@ -96,42 +95,5 @@ public class CentralChatService {
         .collect(Collectors.toUnmodifiableList());
 
     return new Prompt(messages);
-  }
-
-  @Tool(
-      name = "schedule_task",
-      description = "Schedule a run for the given task and return the RunDto."
-  )
-  public RunDto scheduleTask(
-      @ToolParam(description = "Natural language task to execute") String task
-  ) {
-    // TODO mimic thread ids from LibreChat
-    final var threadId = threadRepository.findAll().getFirst().getId();
-    return runService.scheduleRun(new CreateRunRequestDto(threadId, task));
-  }
-
-  @Async
-  public void processChatMessage(UUID threadId, UUID messageId) {
-    log.info("Processing chat message for thread: {}, messageId: {}", threadId, messageId);
-
-    final var allMessages = messageRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
-
-    // Convert repository messages to Spring AI messages
-    final List<Message> chronological = allMessages.stream().map(m -> switch (m.getAuthor()) {
-      case ASSISTANT -> new AssistantMessage(m.getContent());
-      case SYSTEM -> new SystemMessage(m.getContent());
-      default -> new UserMessage(m.getContent());
-    }).collect(Collectors.toUnmodifiableList());
-
-    final var modelName = modelProperties.getOrchestrationModelName();
-
-    // Use token-aware context packing instead of fixed maxTurns
-    final var packedMessages = contextPackingService.buildContext(
-        modelName, SYSTEM_MESSAGE, chronological);
-
-    final var response = chatClient.prompt(new Prompt(packedMessages)).call().content();
-
-    log.info("LLM response for thread: {}, messageId: {}: {}", threadId, messageId, response);
-    eventService.publish(new MessageCompletedEvent(threadId, messageId, response));
   }
 }
