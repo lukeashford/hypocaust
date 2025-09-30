@@ -1,7 +1,9 @@
 package com.example.the_machine.web;
 
 import com.example.the_machine.domain.RequestContext;
+import com.example.the_machine.service.ArtifactService;
 import com.example.the_machine.service.CentralChatService;
+import com.example.the_machine.service.ThreadService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
@@ -26,6 +28,8 @@ public class OpenAiCompatController {
   private final CentralChatService chat;
   private final ObjectMapper mapper;
   private final RequestContext requestContext;
+  private final ThreadService threadService;
+  private final ArtifactService artifactService;
 
   @PostMapping(
       value = "/chat/completions",
@@ -36,18 +40,21 @@ public class OpenAiCompatController {
       }
   )
   public Object completions(@RequestBody ChatCompletionRequest req) {
+    final UUID threadId = threadService.getOrCreateByLibrechatConversationId(
+        requestContext.librechatConversationId()
+    );
+
     if (Boolean.TRUE.equals(req.stream())) {
       final var emitter = new SseEmitter(0L); // no timeout for long generations
       emitter.onTimeout(emitter::complete);
-      final var conversationId = requestContext.librechatConversationId();
       CompletableFuture.runAsync(
-          () -> stream(req, emitter, conversationId)
+          () -> stream(req, emitter, threadId)
       );
       return emitter; // Spring will set text/event-stream for SseEmitter
     }
 
     // non-stream: JSON response compatible with OpenAI
-    var cr = chat.chatCompletion(req, requestContext.librechatConversationId());
+    var cr = chat.chatCompletion(req, threadId);
     var content = extractText(cr);
 
     ObjectNode body = mapper.createObjectNode()
@@ -71,7 +78,7 @@ public class OpenAiCompatController {
         .body(body);
   }
 
-  private void stream(ChatCompletionRequest req, SseEmitter em, String librechatConversationId) {
+  private void stream(ChatCompletionRequest req, SseEmitter em, UUID threadId) {
     final String id = "chatcmpl_" + UUID.randomUUID();
     final long created = Instant.now().getEpochSecond();
     final String model = req.model() == null ? "unknown" : req.model();
@@ -80,7 +87,10 @@ public class OpenAiCompatController {
       // Initial role delta (OpenAI-compatible)
       sendChunk(em, id, created, model, "assistant", null);
 
-      chat.streamChatCompletion(req, librechatConversationId).toStream().forEach(cr -> {
+      var artifact = artifactService.loadRunStatusArtifact(threadId);
+      sendChunk(em, id, created, model, null, artifact);
+
+      chat.streamChatCompletion(req, threadId).toStream().forEach(cr -> {
         String delta = extractText(cr);
         if (delta != null && !delta.isBlank()) {
           sendChunk(em, id, created, model, null, delta);

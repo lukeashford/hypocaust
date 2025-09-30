@@ -1,11 +1,14 @@
 package com.example.the_machine.service;
 
+import static com.example.the_machine.tool.TaskSchedulingTool.THREAD_ID_KEY;
+
 import com.example.the_machine.models.ModelProperties;
 import com.example.the_machine.models.ModelRegistry;
 import com.example.the_machine.tool.TaskSchedulingTool;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -63,22 +66,22 @@ public class CentralChatService {
 
   public Flux<ChatResponse> streamChatCompletion(
       ChatCompletionRequest request,
-      String librechatConversationId
+      UUID threadId
   ) {
     return chatClient.prompt(convertOpenAiToSpringAiMessages(request))
         .tools(taskSchedulingTool)
-        .toolContext(Map.of("librechatConversationId", librechatConversationId))
+        .toolContext(Map.of(THREAD_ID_KEY, threadId))
         .stream()
         .chatResponse();
   }
 
   public ChatResponse chatCompletion(
       ChatCompletionRequest request,
-      String librechatConversationId
+      UUID threadId
   ) {
     return chatClient.prompt(convertOpenAiToSpringAiMessages(request))
         .tools(taskSchedulingTool)
-        .toolContext(Map.of("librechatConversationId", librechatConversationId))
+        .toolContext(Map.of(THREAD_ID_KEY, threadId))
         .call()
         .chatResponse();
   }

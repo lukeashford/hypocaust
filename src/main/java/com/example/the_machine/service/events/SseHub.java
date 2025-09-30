@@ -110,7 +110,7 @@ public class SseHub {
       throws IOException {
     final var sseEventBuilder = SseEmitter.event()
         .id(event.getThreadSeq().toString())
-        .name(String.valueOf(event.type()))
+        .name(String.valueOf(event.type().getValue()))
         // TODO make sure this works
         .data(event);
     emitter.send(sseEventBuilder);
@@ -130,12 +130,17 @@ public class SseHub {
   private void startHeartbeat(SseEmitter emitter) {
     final var task = heartbeatExecutor.scheduleAtFixedRate(() -> {
       try {
-        emitter.send(SseEmitter.event().comment("heartbeat"));
+        emitter.send(
+            SseEmitter.event()
+                .name("heartbeat")
+                .data("ping")          // tiny payload; avoids comment-only frames
+                .reconnectTime(3000L)   // optional: hint to browser reconnect time
+        );
       } catch (Exception e) {
         log.debug("Heartbeat failed, emitter likely closed: {}", e.getMessage());
         cancelHeartbeat(emitter);
       }
-    }, heartbeatInterval, heartbeatInterval, TimeUnit.SECONDS);
+    }, 0, heartbeatInterval, TimeUnit.SECONDS);
     heartbeatTasks.put(emitter, task);
   }
 

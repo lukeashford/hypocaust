@@ -69,8 +69,11 @@ app:
           thinking:
             budgetTokens: 0
 
+  host-url: ${HOST_URL:http://localhost:8080}
+
   data:
     base-path: ${DATA_PATH:./data}
+
   sse:
     heartbeat:
       interval-seconds: 20
