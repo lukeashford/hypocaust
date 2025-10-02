@@ -69,7 +69,6 @@ CREATE TABLE artifact
     kind             text        NOT NULL CHECK (kind IN
                                                  ('STRUCTURED_JSON', 'IMAGE', 'PDF', 'AUDIO',
                                                   'VIDEO')),
-    stage            text        NOT NULL CHECK (stage IN ('PLAN', 'ANALYSIS', 'SCRIPT', 'IMAGES', 'DECK')),
     status           text        NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'DONE', 'FAILED')),
     title            text,
     mime             text,
@@ -81,7 +80,6 @@ CREATE TABLE artifact
 
 -- Artifact indexes
 CREATE INDEX idx_artifact_thread_time ON artifact (thread_id, created_at DESC);
-CREATE INDEX idx_artifact_stage ON artifact (thread_id, stage, created_at DESC);
 CREATE INDEX idx_artifact_superseded_by_chain ON artifact (superseded_by_id) WHERE superseded_by_id IS NOT NULL;
 CREATE INDEX idx_artifact_content_gin ON artifact USING gin (content);
 

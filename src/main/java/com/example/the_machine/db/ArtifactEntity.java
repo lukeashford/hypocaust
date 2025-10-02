@@ -44,15 +44,6 @@ public class ArtifactEntity extends BaseEntity {
   private Kind kind;
 
   /**
-   * The workflow stage this artifact represents - PLAN: Initial planning and strategy artifacts -
-   * ANALYSIS: Research and analysis results - SCRIPT: Written content, copy, scripts - IMAGES:
-   * Visual assets and graphics - DECK: Final presentations and documents
-   */
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Stage stage;
-
-  /**
    * Current processing status of the artifact - PENDING: Queued for generation - RUNNING: Currently
    * being generated - DONE: Successfully completed - FAILED: Generation failed
    */
@@ -100,11 +91,7 @@ public class ArtifactEntity extends BaseEntity {
     STRUCTURED_JSON, IMAGE, PDF, AUDIO, VIDEO
   }
 
-  public enum Stage {
-    PLAN, ANALYSIS, SCRIPT, IMAGES, DECK
-  }
-
   public enum Status {
-    PENDING, RUNNING, DONE, FAILED
+    SCHEDULED, RUNNING, DONE, FAILED
   }
 }

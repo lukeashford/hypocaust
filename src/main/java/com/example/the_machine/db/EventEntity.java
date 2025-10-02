@@ -1,6 +1,7 @@
-package com.example.the_machine.domain.event;
+package com.example.the_machine.db;
 
-import com.example.the_machine.db.BaseEntity;
+import com.example.the_machine.domain.event.Event.EventPayload;
+import com.example.the_machine.domain.event.EventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -33,7 +34,7 @@ public class EventEntity extends BaseEntity {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false, columnDefinition = "json")
-  private Event.Payload payload;
+  private EventPayload payload;
 
   @Column(nullable = false)
   private EventType type;

@@ -1,6 +1,6 @@
 package com.example.the_machine.repo;
 
-import com.example.the_machine.domain.event.EventEntity;
+import com.example.the_machine.db.EventEntity;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

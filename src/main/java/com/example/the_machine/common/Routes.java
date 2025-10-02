@@ -11,9 +11,7 @@ public final class Routes {
 
   // Thread routes
   public static final String THREADS = "/threads";
-  public static final String THREADS_BY_ID = "/threads/{id}";
-  public static final String THREAD_MESSAGES = "/threads/{threadId}/messages";
-  public static final String COMPLETIONS = "/api/v1/chat/completions";
+  public static final String COMPLETIONS = "/v1/chat/completions";
   public static final String THREAD_EVENTS = "/threads/{id}/events";
 
   // Run routes
@@ -21,5 +19,4 @@ public final class Routes {
 
   // Artifact routes
   public static final String ARTIFACTS = "/artifacts";
-  public static final String ARTIFACTS_BY_ID = "/artifacts/{id}";
 }

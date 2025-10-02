@@ -27,6 +27,9 @@ dependencies {
   // Tools
   implementation(libs.bundles.tools)
 
+  // Storage
+  implementation(libs.minio)
+
   // Spring AI (BOM managed)
   implementation(libs.bundles.spring.ai)
 

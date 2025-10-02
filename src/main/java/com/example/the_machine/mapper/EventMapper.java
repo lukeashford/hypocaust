@@ -1,12 +1,14 @@
 package com.example.the_machine.mapper;
 
+import com.example.the_machine.db.EventEntity;
+import com.example.the_machine.domain.event.ArtifactCancelledEvent;
+import com.example.the_machine.domain.event.ArtifactCreatedEvent;
+import com.example.the_machine.domain.event.ArtifactScheduledEvent;
+import com.example.the_machine.domain.event.ErrorEvent;
 import com.example.the_machine.domain.event.Event;
-import com.example.the_machine.domain.event.EventEntity;
-import com.example.the_machine.domain.event.MessageCompletedEvent;
-import com.example.the_machine.domain.event.MessageDeltaEvent;
-import com.example.the_machine.domain.event.MessageProcessingEvent;
-import com.example.the_machine.domain.event.RunCreatedEvent;
-import com.example.the_machine.domain.event.RunUpdatedEvent;
+import com.example.the_machine.domain.event.RunCompletedEvent;
+import com.example.the_machine.domain.event.RunScheduledEvent;
+import com.example.the_machine.domain.event.RunStartedEvent;
 import com.example.the_machine.domain.event.ToolCallingEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.ObjectFactory;
@@ -16,28 +18,36 @@ public interface EventMapper {
 
   EventEntity toEntity(Event<?> event);
 
-  MessageProcessingEvent toMessageProcessingEvent(EventEntity entity);
+  RunScheduledEvent toRunScheduledEvent(EventEntity entity);
 
-  MessageDeltaEvent toMessageDeltaEvent(EventEntity entity);
+  RunStartedEvent toRunStartedEvent(EventEntity entity);
 
-  MessageCompletedEvent toMessageCompletedEvent(EventEntity entity);
+  RunCompletedEvent toRunCompletedEvent(EventEntity entity);
 
-  RunCreatedEvent toRunCreatedEvent(EventEntity entity);
+  ArtifactScheduledEvent toArtifactScheduledEvent(EventEntity entity);
 
-  RunUpdatedEvent toRunUpdatedEvent(EventEntity entity);
+  ArtifactCreatedEvent toArtifactCreatedEvent(EventEntity entity);
+
+  ArtifactCancelledEvent toArtifactCancelledEvent(EventEntity entity);
 
   ToolCallingEvent toToolCallingEvent(EventEntity entity);
+
+  ErrorEvent toErrorEvent(EventEntity entity);
 
   @ObjectFactory
   default Event<?> createEvent(EventEntity entity) {
     return switch (entity.getType()) {
-      case MESSAGE_PROCESSING -> toMessageProcessingEvent(entity);
-      case MESSAGE_DELTA -> toMessageDeltaEvent(entity);
-      case MESSAGE_COMPLETED -> toMessageCompletedEvent(entity);
-      case RUN_CREATED -> toRunCreatedEvent(entity);
-      case RUN_UPDATED -> toRunUpdatedEvent(entity);
+      case RUN_SCHEDULED -> toRunScheduledEvent(entity);
+      case RUN_STARTED -> toRunStartedEvent(entity);
+      case RUN_COMPLETED -> toRunCompletedEvent(entity);
+
+      case ARTIFACT_SCHEDULED -> toArtifactScheduledEvent(entity);
+      case ARTIFACT_CREATED -> toArtifactCreatedEvent(entity);
+      case ARTIFACT_CANCELLED -> toArtifactCancelledEvent(entity);
+
       case TOOL_CALLING -> toToolCallingEvent(entity);
-      default -> throw new IllegalArgumentException("Unsupported event type: " + entity.getType());
+
+      case ERROR -> toErrorEvent(entity);
     };
   }
 

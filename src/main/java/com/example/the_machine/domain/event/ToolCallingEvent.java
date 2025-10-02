@@ -1,12 +1,12 @@
 package com.example.the_machine.domain.event;
 
-import com.example.the_machine.domain.event.ToolCallingEvent.ToolCallingPayload;
+import com.example.the_machine.domain.event.ToolCallingEvent.ToolCallingEventPayload;
 import java.util.UUID;
 
-public final class ToolCallingEvent extends ToolEvent<ToolCallingPayload> {
+public final class ToolCallingEvent extends ToolEvent<ToolCallingEventPayload> {
 
   public ToolCallingEvent(UUID threadId, String content) {
-    super(threadId, new ToolCallingPayload(content));
+    super(threadId, new ToolCallingEventPayload(content));
   }
 
   @Override
@@ -14,8 +14,7 @@ public final class ToolCallingEvent extends ToolEvent<ToolCallingPayload> {
     return EventType.TOOL_CALLING;
   }
 
-  public record ToolCallingPayload(String content)
-      implements ToolEventPayload {
+  public record ToolCallingEventPayload(String content) implements ToolEventPayload {
 
   }
 }

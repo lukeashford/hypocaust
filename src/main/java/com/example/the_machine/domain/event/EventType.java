@@ -8,14 +8,14 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum EventType {
-  MESSAGE_PROCESSING("message.processing"),
-  MESSAGE_DELTA("message.delta"),
-  MESSAGE_COMPLETED("message.completed"),
-  RUN_CREATED("run.created"),
-  RUN_UPDATED("run.updated"),
+  ARTIFACT_SCHEDULED("artifact.scheduled"),
   ARTIFACT_CREATED("artifact.created"),
-  TOOL_CALLING("tool.calling"),
-  ERROR("error");
+  ARTIFACT_CANCELLED("artifact.cancelled"),
+  ERROR("error"),
+  RUN_SCHEDULED("run.scheduled"),
+  RUN_STARTED("run.started"),
+  RUN_COMPLETED("run.completed"),
+  TOOL_CALLING("tool.calling");
 
   private final String value;
 

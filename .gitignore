@@ -36,8 +36,8 @@ out/
 ### VS Code ###
 .vscode/
 
-### Postgres ###
-/podman/volumes/postgres
+### Storage ###
+/podman/volumes/*
 
 ### Local data directory ###
 /data/

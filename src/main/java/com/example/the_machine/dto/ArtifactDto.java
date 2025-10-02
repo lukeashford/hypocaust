@@ -10,7 +10,6 @@ public record ArtifactDto(
     UUID threadId,
     UUID runId,
     ArtifactEntity.Kind kind,
-    ArtifactEntity.Stage stage,
     ArtifactEntity.Status status,
     String title,
     String mime,

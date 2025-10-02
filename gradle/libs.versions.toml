@@ -9,6 +9,7 @@ mapstruct = "1.6.2"
 uuid-creator = "6.1.1"
 hibernate-vector = "6.6.15.Final"
 jtokkit = "1.1.0"
+minio = "8.6.0"
 
 [libraries]
 # Spring Boot BOM managed (no version needed, managed by BOM)
@@ -25,6 +26,7 @@ uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+minio = { module = "io.minio:minio", version.ref = "minio" }
 
 # Mockito (BOM managed)
 mockito-core = { module = "org.mockito:mockito-core" }

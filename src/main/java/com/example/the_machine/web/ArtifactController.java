@@ -1,153 +1,141 @@
 package com.example.the_machine.web;
 
-import com.example.the_machine.common.Routes;
-import com.example.the_machine.repo.ArtifactRepository;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.example.the_machine.db.ArtifactEntity;
+import com.example.the_machine.service.ArtifactService;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Controller for handling artifact file downloads.
- */
 @RestController
+@RequestMapping("/api/threads/{threadId}/artifacts")
 @RequiredArgsConstructor
 @Slf4j
 public class ArtifactController {
 
-  private final ArtifactRepository artifactRepository;
+  private final ArtifactService artifactService;
 
   /**
-   * Downloads an artifact file by ID.
-   *
-   * @param id the artifact ID
-   * @return the file resource with proper headers
+   * List all artifacts for a thread Returns lightweight metadata without full content
    */
-  @GetMapping(Routes.ARTIFACTS_BY_ID)
-  public ResponseEntity<Resource> downloadArtifact(@PathVariable UUID id) {
-    log.info("Downloading artifact: {}", id);
-
-    try {
-      // Look up artifact
-      final var artifact = artifactRepository.findById(id)
-          .orElse(null);
-
-      if (artifact == null) {
-        log.warn("Artifact not found: {}", id);
-        return ResponseEntity.notFound().build();
-      }
-
-      // Check if storage key is present
-      if (artifact.getStorageKey() == null || artifact.getStorageKey().trim().isEmpty()) {
-        log.warn("Artifact {} has no storage key", id);
-        return ResponseEntity.notFound().build();
-      }
-
-      // Get file path
-      final var filePath = Paths.get(artifact.getStorageKey());
-
-      // Check if file exists
-      if (!Files.exists(filePath)) {
-        log.warn("File not found for artifact {}: {}", id, filePath);
-        return ResponseEntity.notFound().build();
-      }
-
-      // Create resource
-      final var resource = new FileSystemResource(filePath);
-
-      // Determine content type
-      final var contentType = determineContentType(artifact.getMime(), filePath);
-
-      // Build response headers
-      final var headers = new HttpHeaders();
-      headers.setContentType(contentType);
-      headers.setContentLength(Files.size(filePath));
-
-      // Set filename for download
-      if (artifact.getTitle() != null) {
-        final var filename = sanitizeFilename(artifact.getTitle()) + getFileExtension(filePath);
-        headers.setContentDisposition(
-            org.springframework.http.ContentDisposition.attachment()
-                .filename(filename)
-                .build()
-        );
-      }
-
-      log.info("Streaming artifact file: {} ({})", id, filePath);
-      return ResponseEntity.ok()
-          .headers(headers)
-          .body(resource);
-
-    } catch (IOException e) {
-      log.error("Error reading artifact file for ID: {}", id, e);
-      return ResponseEntity.internalServerError().build();
-    } catch (Exception e) {
-      log.error("Unexpected error downloading artifact: {}", id, e);
-      return ResponseEntity.internalServerError().build();
-    }
+  @GetMapping
+  public ResponseEntity<List<ArtifactMetadataDto>> listArtifacts(
+      @PathVariable UUID threadId) {
+    final var artifacts = artifactService.getThreadArtifacts(threadId);
+    final var dtos = artifacts.stream()
+        .map(this::toMetadataDto)
+        .toList();
+    return ResponseEntity.ok(dtos);
   }
 
   /**
-   * Determines the content type from mime field or file extension.
+   * Get a specific artifact's metadata
    */
-  private MediaType determineContentType(String mime, Path filePath) {
-    // Use stored mime type if available
-    if (mime != null && !mime.trim().isEmpty()) {
-      try {
-        return MediaType.parseMediaType(mime);
-      } catch (Exception e) {
-        log.warn("Invalid mime type '{}': {}", mime, e.getMessage());
+  @GetMapping("/{artifactId}")
+  public ResponseEntity<ArtifactMetadataDto> getArtifact(
+      @PathVariable UUID threadId,
+      @PathVariable UUID artifactId) {
+    final var artifact = artifactService.getArtifact(threadId, artifactId);
+    return ResponseEntity.ok(toMetadataDto(artifact));
+  }
+
+  /**
+   * Get artifact content For STRUCTURED_JSON: returns the JSON data For file-based artifacts:
+   * returns a URL to download/stream the file
+   */
+  @GetMapping("/{artifactId}/content")
+  public ResponseEntity<ArtifactContentDto> getArtifactContent(
+      @PathVariable UUID threadId,
+      @PathVariable UUID artifactId) {
+    final var artifact = artifactService.getArtifact(threadId, artifactId);
+
+    if (artifact.getStatus() != ArtifactEntity.Status.DONE) {
+      return ResponseEntity.status(HttpStatus.ACCEPTED)
+          .body(new ArtifactContentDto(
+              artifactId,
+              artifact.getKind(),
+              artifact.getStatus(),
+              null,
+              null
+          ));
+    }
+
+    return switch (artifact.getKind()) {
+      case STRUCTURED_JSON -> {
+        final var content = artifactService.getArtifactContent(threadId, artifactId);
+        yield ResponseEntity.ok(new ArtifactContentDto(
+            artifactId,
+            artifact.getKind(),
+            artifact.getStatus(),
+            content.data(),
+            null
+        ));
       }
-    }
-
-    // Fallback to file extension
-    final var fileName = filePath.getFileName().toString().toLowerCase();
-    if (fileName.endsWith(".png")) {
-      return MediaType.IMAGE_PNG;
-    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
-      return MediaType.IMAGE_JPEG;
-    } else if (fileName.endsWith(".pdf")) {
-      return MediaType.APPLICATION_PDF;
-    } else if (fileName.endsWith(".json")) {
-      return MediaType.APPLICATION_JSON;
-    } else if (fileName.endsWith(".txt")) {
-      return MediaType.TEXT_PLAIN;
-    }
-
-    // Default to octet-stream
-    return MediaType.APPLICATION_OCTET_STREAM;
+      case IMAGE, PDF, AUDIO, VIDEO -> {
+        final var url = artifactService.getArtifactUrl(threadId, artifactId);
+        yield ResponseEntity.ok(new ArtifactContentDto(
+            artifactId,
+            artifact.getKind(),
+            artifact.getStatus(),
+            null,
+            url
+        ));
+      }
+    };
   }
 
   /**
-   * Sanitizes filename for safe download.
+   * Download endpoint for file-based artifacts This would stream the actual file content
    */
-  private String sanitizeFilename(String filename) {
-    if (filename == null) {
-      return "artifact";
-    }
-    return filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+  @GetMapping(value = "/{artifactId}/download", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+  public ResponseEntity<byte[]> downloadArtifact(
+      @PathVariable UUID threadId,
+      @PathVariable UUID artifactId) {
+    // Implementation would fetch from storage and stream
+    // For now, just a placeholder
+    throw new UnsupportedOperationException("Download not yet implemented");
   }
 
-  /**
-   * Gets file extension from path.
-   */
-  private String getFileExtension(Path filePath) {
-    final var fileName = filePath.getFileName().toString();
-    final var lastDot = fileName.lastIndexOf('.');
-    if (lastDot > 0 && lastDot < fileName.length() - 1) {
-      return fileName.substring(lastDot);
-    }
-    return "";
+  private ArtifactMetadataDto toMetadataDto(ArtifactEntity artifact) {
+    return new ArtifactMetadataDto(
+        artifact.getId(),
+        artifact.getThreadId(),
+        artifact.getRunId(),
+        artifact.getKind(),
+        artifact.getStatus(),
+        artifact.getTitle(),
+        artifact.getMime(),
+        artifact.getCreatedAt()
+    );
+  }
+
+  public record ArtifactMetadataDto(
+      UUID id,
+      UUID threadId,
+      UUID runId,
+      ArtifactEntity.Kind kind,
+      ArtifactEntity.Status status,
+      String title,
+      String mime,
+      java.time.Instant createdAt
+  ) {
+
+  }
+
+  public record ArtifactContentDto(
+      UUID id,
+      ArtifactEntity.Kind kind,
+      ArtifactEntity.Status status,
+      Object data,      // For STRUCTURED_JSON
+      String url        // For file-based artifacts
+  ) {
+
   }
 }

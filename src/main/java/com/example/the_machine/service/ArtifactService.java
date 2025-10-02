@@ -1,36 +1,99 @@
 package com.example.the_machine.service;
 
-import com.example.the_machine.common.Routes;
-import com.example.the_machine.config.AppConfig;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import com.example.the_machine.db.ArtifactEntity;
+import com.example.the_machine.exception.ArtifactNotFoundException;
+import com.example.the_machine.exception.ArtifactNotReadyException;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ClassPathResource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public final class ArtifactService {
+@Slf4j
+@Transactional(readOnly = true)
+public class ArtifactService {
 
-  private final AppConfig appConfig;
+  private final com.example.the_machine.repo.ArtifactsRepository artifactsRepository;
+  // Inject your storage service here if using external storage (S3, etc.)
+  // private final StorageService storageService;
 
-  public String loadRunStatusArtifact(UUID threadId) throws IOException {
-    var res = new ClassPathResource("artifact/RunStatusArtifact.tsx");
-    final String tsx_template = new String(res.getInputStream().readAllBytes(),
-        StandardCharsets.UTF_8);
+  /**
+   * Get all artifacts for a thread
+   */
+  public List<ArtifactEntity> getThreadArtifacts(UUID threadId) {
+    return artifactsRepository.findByThreadIdOrderByCreatedAt(threadId);
+  }
 
-    final String tsx = tsx_template.replace(
-        "__STREAM_URL__",
-        appConfig.getHostUrl() + Routes.THREAD_EVENTS.replace("{id}", threadId.toString())
-    );
-    final String identifier = "run-status-artifact";
-    final String mimeType = "application/vnd.react";
-    final String title = "Run Status";
+  /**
+   * Get a specific artifact by ID, ensuring it belongs to the specified thread
+   */
+  public ArtifactEntity getArtifact(UUID threadId, UUID artifactId) {
+    return artifactsRepository.findByIdAndThreadId(artifactId, threadId)
+        .orElseThrow(() -> new ArtifactNotFoundException(
+            String.format("Artifact %s not found in thread %s", artifactId, threadId)));
+  }
 
-    return String.format(
-        ":::artifact{identifier=\"%s\" type=\"%s\" title=\"%s\"}\n```\n%s\n```\n:::\n",
-        identifier, mimeType, title, tsx
-    );
+  /**
+   * Get artifact content. For file-based artifacts, this would fetch from storage. For structured
+   * artifacts, returns the inline content.
+   */
+  public ArtifactContent getArtifactContent(UUID threadId, UUID artifactId) {
+    final var artifact = getArtifact(threadId, artifactId);
+
+    if (artifact.getStatus() != ArtifactEntity.Status.DONE) {
+      throw new ArtifactNotReadyException(
+          String.format("Artifact %s is not ready (status: %s)", artifactId, artifact.getStatus()));
+    }
+
+    return switch (artifact.getKind()) {
+      case STRUCTURED_JSON -> new ArtifactContent(
+          artifact.getId(),
+          artifact.getKind(),
+          artifact.getMime(),
+          artifact.getTitle(),
+          artifact.getContent() // inline JSON content
+      );
+      case IMAGE, PDF, AUDIO, VIDEO -> {
+        // For file-based artifacts, you'd fetch from storage here
+        // byte[] data = storageService.fetch(artifact.getStorageKey());
+        // For now, just return metadata
+        yield new ArtifactContent(
+            artifact.getId(),
+            artifact.getKind(),
+            artifact.getMime(),
+            artifact.getTitle(),
+            artifact.getMetadata()
+        );
+      }
+    };
+  }
+
+  /**
+   * Get URL for streaming/downloading file-based artifacts
+   */
+  public String getArtifactUrl(UUID threadId, UUID artifactId) {
+    final var artifact = getArtifact(threadId, artifactId);
+
+    if (artifact.getStorageKey() == null) {
+      throw new IllegalStateException(
+          String.format("Artifact %s does not have a storage key", artifactId));
+    }
+
+    // Return the URL that the frontend can use to fetch the artifact
+    // This could be a presigned S3 URL or a controller endpoint
+    return String.format("/api/threads/%s/artifacts/%s/download", threadId, artifactId);
+  }
+
+  public record ArtifactContent(
+      UUID id,
+      ArtifactEntity.Kind kind,
+      String mime,
+      String title,
+      Object data // JsonNode for structured, byte[] for files (or null if using URL)
+  ) {
+
   }
 }

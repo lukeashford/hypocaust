@@ -71,9 +71,12 @@ app:
 
   host-url: ${HOST_URL:http://localhost:8080}
 
-  data:
-    base-path: ${DATA_PATH:./data}
-
+  storage:
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  
   sse:
     heartbeat:
       interval-seconds: 20

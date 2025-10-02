@@ -3,8 +3,9 @@ package com.example.the_machine.service;
 import static com.example.the_machine.db.AssistantEntity.DEFAULT_ASSISTANT_ID;
 
 import com.example.the_machine.db.RunEntity;
-import com.example.the_machine.domain.event.RunCreatedEvent;
-import com.example.the_machine.domain.event.RunUpdatedEvent;
+import com.example.the_machine.domain.event.RunCompletedEvent;
+import com.example.the_machine.domain.event.RunScheduledEvent;
+import com.example.the_machine.domain.event.RunStartedEvent;
 import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.mapper.RunMapper;
@@ -58,7 +59,7 @@ public class RunService {
         .build()
     );
 
-    eventService.publish(new RunCreatedEvent(threadId, run.getId()));
+    eventService.publish(new RunScheduledEvent(threadId, run.getId()));
 
     log.info("Run created and queued: {}", run.getId());
     return runMapper.toDto(run);
@@ -71,7 +72,7 @@ public class RunService {
    * @param event the run created event
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void handleRunCreated(RunCreatedEvent event) {
+  public void handleRunCreated(RunScheduledEvent event) {
     log.debug("Handling run created event for run: {}", event.getPayload().runId());
     runExecutorService.submit(() -> executeRun(event.getPayload().runId()));
   }
@@ -87,11 +88,7 @@ public class RunService {
     // Fetch managed entities
     final var run = runRepository.findById(runId).orElseThrow();
     run.start();
-    eventService.publish(
-        new RunUpdatedEvent(
-            run.getThreadId(), runId, run.getAssistantId(), run.getStatus(), "Started"
-        )
-    );
+    eventService.publish(new RunStartedEvent(run.getThreadId(), runId));
 
     final var result = decomposingOperator.execute(Map.of("task", run.getTask()));
 
@@ -102,11 +99,7 @@ public class RunService {
     }
 
     runRepository.save(run);
-    eventService.publish(
-        new RunUpdatedEvent(
-            run.getThreadId(), runId, run.getAssistantId(), run.getStatus(), run.getReason()
-        )
-    );
+    eventService.publish(new RunCompletedEvent(run.getThreadId(), runId));
 
     log.info("Run execution completed: {}", runId);
 

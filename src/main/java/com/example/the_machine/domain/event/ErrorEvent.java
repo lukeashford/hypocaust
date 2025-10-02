@@ -1,12 +1,12 @@
 package com.example.the_machine.domain.event;
 
-import com.example.the_machine.domain.event.ErrorEvent.ErrorPayload;
+import com.example.the_machine.domain.event.ErrorEvent.ErrorEventPayload;
 import java.util.UUID;
 
-public final class ErrorEvent extends Event<ErrorPayload> {
+public final class ErrorEvent extends Event<ErrorEventPayload> {
 
   public ErrorEvent(UUID threadId, String message) {
-    super(threadId, new ErrorPayload(message));
+    super(threadId, new ErrorEventPayload(message));
   }
 
   @Override
@@ -14,7 +14,7 @@ public final class ErrorEvent extends Event<ErrorPayload> {
     return EventType.ERROR;
   }
 
-  public record ErrorPayload(String message) implements Payload {
+  public record ErrorEventPayload(String message) implements EventPayload {
 
   }
 }
