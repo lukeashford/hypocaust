@@ -1,5 +1,6 @@
 package com.example.the_machine.service;
 
+import com.example.the_machine.common.Routes;
 import com.example.the_machine.config.AppConfig;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,11 +21,8 @@ public final class ArtifactPanelService {
         StandardCharsets.UTF_8);
 
     final String tsx = tsx_template.replace(
-        "__HOST_URL",
-        appConfig.getHostUrl()
-    ).replace(
-        "__THREAD_ID__",
-        threadId.toString()
+        "__STREAM_URL__",
+        appConfig.getHostUrl() + Routes.THREAD_EVENTS.replace("{id}", threadId.toString())
     );
     final String identifier = "run-status-artifact";
     final String mimeType = "application/vnd.react";
@@ -36,14 +34,26 @@ public final class ArtifactPanelService {
     );
   }
 
-  public String loadRunMonitor(UUID threadId) {
+  public String loadRunMonitor(UUID threadId) throws IOException {
+    var res = new ClassPathResource("artifact/ArtifactPanel.tsx");
+    final String tsx_template = new String(res.getInputStream().readAllBytes(),
+        StandardCharsets.UTF_8);
+
+    final String tsx = tsx_template.replace(
+        "__HOST_URL__",
+        appConfig.getHostUrl()
+    ).replace(
+        "__THREAD_ID__",
+        threadId.toString()
+    );
+
     final String identifier = "run-monitor";
     final String mimeType = "application/vnd.react";
     final String title = "Run Monitor";
 
     return String.format(
         ":::artifact{identifier=\"%s\" type=\"%s\" title=\"%s\"}\n```\n%s\n```\n:::\n",
-        identifier, mimeType, title, "Loading..."
+        identifier, mimeType, title, tsx
     );
   }
 }

@@ -12,12 +12,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "artifact")
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -92,6 +94,6 @@ public class ArtifactEntity extends BaseEntity {
   }
 
   public enum Status {
-    SCHEDULED, RUNNING, DONE, FAILED
+    SCHEDULED, CREATED, CANCELLED
   }
 }

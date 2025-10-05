@@ -1,13 +1,12 @@
 package com.example.the_machine.domain.event;
 
-import com.example.the_machine.db.ArtifactEntity.Kind;
 import com.example.the_machine.domain.event.ArtifactCreatedEvent.ArtifactCreatedEventPayload;
 import java.util.UUID;
 
 public final class ArtifactCreatedEvent extends ArtifactEvent<ArtifactCreatedEventPayload> {
 
-  public ArtifactCreatedEvent(UUID threadId, UUID artifactId, Kind kind) {
-    super(threadId, new ArtifactCreatedEventPayload(artifactId, kind));
+  public ArtifactCreatedEvent(UUID threadId, UUID artifactId) {
+    super(threadId, new ArtifactCreatedEventPayload(artifactId));
   }
 
   @Override
@@ -16,8 +15,7 @@ public final class ArtifactCreatedEvent extends ArtifactEvent<ArtifactCreatedEve
   }
 
   public record ArtifactCreatedEventPayload(
-      UUID artifactId,
-      Kind kind
+      UUID artifactId
   ) implements ArtifactEventEventPayload {
 
   }

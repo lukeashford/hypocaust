@@ -69,7 +69,7 @@ CREATE TABLE artifact
     kind             text        NOT NULL CHECK (kind IN
                                                  ('STRUCTURED_JSON', 'IMAGE', 'PDF', 'AUDIO',
                                                   'VIDEO')),
-    status           text        NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'DONE', 'FAILED')),
+    status           text        NOT NULL CHECK (status IN ('SCHEDULED', 'CREATED', 'CANCELLED')),
     title            text,
     mime             text,
     storage_key      text,
@@ -91,9 +91,11 @@ CREATE TABLE event
     thread_id   uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
     thread_seq  uuid        NOT NULL,
     type        text        NOT NULL CHECK (type IN
-                                            ('message.processing', 'message.delta',
-                                             'message.completed', 'run.created', 'run.updated',
-                                             'artifact.created', 'tool.calling', 'error')),
+                                            ('artifact.scheduled', 'artifact.created',
+                                             'artifact.cancelled',
+                                             'run.scheduled', 'run.started', 'run.completed',
+                                             'tool.calling',
+                                             'error')),
     payload     jsonb       NOT NULL,
     occurred_at timestamptz NOT NULL,
     dedupe_key  text

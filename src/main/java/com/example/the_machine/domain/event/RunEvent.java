@@ -5,8 +5,7 @@ import java.util.UUID;
 import lombok.Getter;
 
 @Getter
-public abstract sealed class RunEvent<T extends RunEventPayload>
-    extends Event<RunEventPayload>
+public abstract sealed class RunEvent<T extends RunEventPayload> extends Event<T>
     permits RunScheduledEvent, RunStartedEvent, RunCompletedEvent {
 
   protected RunEvent(UUID threadId, T payload) {

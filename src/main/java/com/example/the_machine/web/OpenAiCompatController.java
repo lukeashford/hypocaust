@@ -2,8 +2,10 @@ package com.example.the_machine.web;
 
 import com.example.the_machine.common.Routes;
 import com.example.the_machine.domain.RequestContext;
+import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.service.ArtifactPanelService;
 import com.example.the_machine.service.CentralChatService;
+import com.example.the_machine.service.RunService;
 import com.example.the_machine.service.ThreadService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,6 +31,7 @@ public class OpenAiCompatController {
   private final RequestContext requestContext;
   private final ThreadService threadService;
   private final ArtifactPanelService artifactPanelService;
+  private final RunService runService;
 
   @PostMapping(
       value = Routes.COMPLETIONS,
@@ -86,15 +89,16 @@ public class OpenAiCompatController {
       // Initial role delta (OpenAI-compatible)
       sendChunk(em, id, created, model, "assistant", null);
 
-      var artifact = artifactPanelService.loadRunStatusArtifact(threadId);
+      var artifact = artifactPanelService.loadRunMonitor(threadId);
       sendChunk(em, id, created, model, null, artifact);
+      runService.scheduleRun(new CreateRunRequestDto(threadId, "Bla"));
 
-      chat.streamChatCompletion(req, threadId).toStream().forEach(cr -> {
-        String delta = extractText(cr);
-        if (delta != null && !delta.isBlank()) {
-          sendChunk(em, id, created, model, null, delta);
-        }
-      });
+//      chat.streamChatCompletion(req, threadId).toStream().forEach(cr -> {
+//        String delta = extractText(cr);
+//        if (delta != null && !delta.isBlank()) {
+//          sendChunk(em, id, created, model, null, delta);
+//        }
+//      });
 
       // Finish chunk then DONE sentinel
       sendFinish(em, id, created, model);

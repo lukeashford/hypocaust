@@ -39,6 +39,12 @@ public abstract sealed class Event<T extends EventPayload>
   @JsonGetter("type")
   public abstract EventType type();
 
+  @JsonTypeInfo(
+      use = JsonTypeInfo.Id.NAME,
+      include = JsonTypeInfo.As.PROPERTY,
+      property = "payloadType"
+  )
+  @JsonTypeIdResolver(PayloadTypeIdResolver.class)
   public interface EventPayload {
 
   }

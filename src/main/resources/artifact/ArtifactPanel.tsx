@@ -5,24 +5,34 @@ import React, {useCallback, useEffect, useState} from "react";
 type Status = "idle" | "connecting" | "active" | "completed" | "error";
 
 type ArtifactKind = "STRUCTURED_JSON" | "IMAGE" | "PDF" | "AUDIO" | "VIDEO";
-type ArtifactStatus = "PENDING" | "RUNNING" | "DONE" | "FAILED";
+type ArtifactStatus = "SCHEDULED" | "CREATED" | "FAILED";
 
 interface ArtifactState {
   id: string;
-  kind: ArtifactKind;
-  status: ArtifactStatus;
+  kind?: ArtifactKind;
+  status: ArtifactStatus | "LOADING_META" | "LOADING_CONTENT";
   title?: string;
   data?: any;
   url?: string;
+  metadata?: any;
   error?: string;
 }
 
 interface SSEEvent {
   type: string;
   threadId: string;
-  threadSeq: string;
+  payload: {
+    artifactId?: string;
+    artifact_id?: string;
+    runId?: string;
+    [key: string]: any;
+  };
+}
+
+interface EventLogEntry {
+  timestamp: string;
+  type: string;
   payload: any;
-  occurredAt: string;
 }
 
 // ==================== CONFIGURATION ====================
@@ -37,8 +47,17 @@ export default function ArtifactPanel() {
   const [artifacts, setArtifacts] = useState<Map<string, ArtifactState>>(new Map());
   const [runActive, setRunActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
+  const [showLog, setShowLog] = useState(true);
 
-  // ==================== ARTIFACT MANAGEMENT ====================
+  const logEvent = useCallback((type: string, payload: any) => {
+    const entry: EventLogEntry = {
+      timestamp: new Date().toLocaleTimeString(),
+      type,
+      payload
+    };
+    setEventLog(prev => [...prev, entry].slice(-50));
+  }, []);
 
   const addOrUpdateArtifact = useCallback((id: string, updates: Partial<ArtifactState>) => {
     setArtifacts(prev => {
@@ -49,40 +68,90 @@ export default function ArtifactPanel() {
     });
   }, []);
 
-  const fetchArtifactContent = useCallback(async (artifactId: string) => {
+  const removeArtifact = useCallback((id: string) => {
+    setArtifacts(prev => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // Fetch artifact metadata (title, kind, status, etc.)
+  const fetchArtifactMetadata = useCallback(async (artifactId: string) => {
     try {
+      console.log(`Fetching metadata for artifact ${artifactId}`);
+
       const response = await fetch(
-          `${HOST_URL}/api/threads/${THREAD_ID}/artifacts/${artifactId}/content`
+          `${HOST_URL}/threads/${THREAD_ID}/artifacts/${artifactId}`
       );
 
       if (!response.ok) {
-        if (response.status === 202) {
-          // Still processing
-          return;
-        }
-        throw new Error(`Failed to fetch artifact: ${response.statusText}`);
+        throw new Error(`Failed to fetch metadata: ${response.statusText}`);
       }
 
-      const content = await response.json();
+      const metadata = await response.json();
+      console.log(`Received metadata for ${artifactId}:`, metadata);
 
       addOrUpdateArtifact(artifactId, {
-        status: "DONE",
-        data: content.data,
-        url: content.url,
+        kind: metadata.kind,
+        status: metadata.status,
+        title: metadata.title,
       });
+
+      // If already CREATED, immediately fetch content
+      if (metadata.status === "CREATED") {
+        fetchArtifactContent(artifactId);
+      }
     } catch (err) {
-      console.error(`Error fetching artifact ${artifactId}:`, err);
+      console.error(`Error fetching metadata for ${artifactId}:`, err);
       addOrUpdateArtifact(artifactId, {
         status: "FAILED",
-        error: err instanceof Error ? err.message : "Failed to load artifact",
+        error: err instanceof Error ? err.message : "Failed to load metadata",
       });
     }
   }, [addOrUpdateArtifact]);
 
-  // ==================== EVENT HANDLERS ====================
+  // Fetch artifact content (data or URL)
+  const fetchArtifactContent = useCallback(async (artifactId: string) => {
+    try {
+      console.log(`Fetching content for artifact ${artifactId}`);
+
+      addOrUpdateArtifact(artifactId, {
+        status: "LOADING_CONTENT",
+      });
+
+      const response = await fetch(
+          `${HOST_URL}/threads/${THREAD_ID}/artifacts/${artifactId}/content`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch content: ${response.statusText}`);
+      }
+
+      const content = await response.json();
+      console.log(`Received content for ${artifactId}:`, content);
+
+      addOrUpdateArtifact(artifactId, {
+        status: "CREATED",
+        data: content.data,
+        url: content.url ? HOST_URL + content.url : undefined,
+        metadata: content.metadata,
+      });
+    } catch (err) {
+      console.error(`Error fetching content for ${artifactId}:`, err);
+      addOrUpdateArtifact(artifactId, {
+        status: "FAILED",
+        error: err instanceof Error ? err.message : "Failed to load content",
+      });
+    }
+  }, [addOrUpdateArtifact]);
 
   const handleEvent = useCallback((event: SSEEvent) => {
     console.log("📨 Event:", event.type, event.payload);
+    logEvent(event.type, event.payload);
+
+    // Support both camelCase and snake_case
+    const artifactId = event.payload.artifactId || event.payload.artifact_id;
 
     switch (event.type) {
       case "run.scheduled":
@@ -96,25 +165,29 @@ export default function ArtifactPanel() {
         break;
 
       case "artifact.scheduled":
-        addOrUpdateArtifact(event.payload.artifactId, {
-          kind: event.payload.kind,
-          status: "PENDING",
-        });
+        if (artifactId) {
+          console.log(`Artifact scheduled: ${artifactId}, fetching metadata...`);
+          // Create placeholder immediately
+          addOrUpdateArtifact(artifactId, {
+            status: "LOADING_META",
+          });
+          // Fetch metadata from API
+          fetchArtifactMetadata(artifactId);
+        }
         break;
 
       case "artifact.created":
-        addOrUpdateArtifact(event.payload.artifactId, {
-          status: "RUNNING",
-        });
-        // Fetch the actual content
-        fetchArtifactContent(event.payload.artifactId);
+        if (artifactId) {
+          console.log(`Artifact created: ${artifactId}, fetching content...`);
+          // Fetch the actual content
+          fetchArtifactContent(artifactId);
+        }
         break;
 
       case "artifact.cancelled":
-        addOrUpdateArtifact(event.payload.artifactId, {
-          status: "FAILED",
-          error: "Artifact generation was cancelled",
-        });
+        if (artifactId) {
+          removeArtifact(artifactId);
+        }
         break;
 
       case "error":
@@ -122,9 +195,7 @@ export default function ArtifactPanel() {
         setStatus("error");
         break;
     }
-  }, [addOrUpdateArtifact, fetchArtifactContent]);
-
-  // ==================== SSE CONNECTION ====================
+  }, [addOrUpdateArtifact, removeArtifact, fetchArtifactMetadata, fetchArtifactContent, logEvent]);
 
   useEffect(() => {
     if (!HOST_URL || HOST_URL.startsWith("__")) {
@@ -137,50 +208,79 @@ export default function ArtifactPanel() {
     let es: EventSource;
 
     try {
-      es = new EventSource(`${HOST_URL}/api/threads/${THREAD_ID}/events`);
+      es = new EventSource(`${HOST_URL}/threads/${THREAD_ID}/events`);
 
       es.onopen = () => {
         setStatus("active");
         setError(null);
+        logEvent("connection.opened", {});
       };
 
-      // Listen for all event types
       es.addEventListener("message", (e: MessageEvent) => {
         try {
           const event = JSON.parse(e.data) as SSEEvent;
           handleEvent(event);
         } catch (err) {
           console.error("Failed to parse event:", err);
+          logEvent("parse.error", {data: e.data, error: String(err)});
         }
+      });
+
+      const eventTypes = [
+        "run.scheduled", "run.started", "run.completed",
+        "artifact.scheduled", "artifact.created", "artifact.cancelled",
+        "error"
+      ];
+
+      eventTypes.forEach(eventType => {
+        es.addEventListener(eventType, (e: MessageEvent) => {
+          try {
+            const event = JSON.parse(e.data) as SSEEvent;
+            handleEvent(event);
+          } catch (err) {
+            handleEvent({
+              type: eventType,
+              threadId: THREAD_ID,
+              payload: {data: e.data},
+            } as SSEEvent);
+          }
+        });
       });
 
       es.onerror = () => {
         if (es.readyState === EventSource.CLOSED) {
           setStatus("error");
           setError("Connection closed");
+          logEvent("connection.closed", {});
         }
       };
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Failed to connect");
+      logEvent("connection.error", {error: String(err)});
     }
 
     return () => {
       es?.close();
     };
-  }, [handleEvent]);
-
-  // ==================== RENDER ====================
+  }, [handleEvent, logEvent]);
 
   const artifactList = Array.from(artifacts.values());
 
   return (
       <div className="h-full flex flex-col bg-white">
-        {/* Header */}
         <div className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
-            <StatusBadge status={status} runActive={runActive}/>
+            <div className="flex items-center gap-2">
+              <button
+                  onClick={() => setShowLog(!showLog)}
+                  className="px-3 py-1 text-xs font-medium rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                {showLog ? "Hide" : "Show"} Log
+              </button>
+              <StatusBadge status={status} runActive={runActive}/>
+            </div>
           </div>
           {error && (
               <div
@@ -190,7 +290,30 @@ export default function ArtifactPanel() {
           )}
         </div>
 
-        {/* Content */}
+        {showLog && (
+            <div className="border-b border-gray-200 bg-gray-50 p-3 max-h-48 overflow-y-auto">
+              <div className="text-xs font-medium text-gray-600 mb-2">
+                Event Log ({eventLog.length})
+              </div>
+              {eventLog.length === 0 ? (
+                  <div className="text-xs text-gray-400">No events received yet</div>
+              ) : (
+                  <div className="space-y-1">
+                    {eventLog.slice().reverse().map((entry, idx) => (
+                        <div key={idx}
+                             className="text-xs font-mono bg-white p-2 rounded border border-gray-200">
+                          <span className="text-gray-500">{entry.timestamp}</span>
+                          {' '}
+                          <span className="font-semibold text-blue-600">{entry.type}</span>
+                          {' '}
+                          <span className="text-gray-600">{JSON.stringify(entry.payload)}</span>
+                        </div>
+                    ))}
+                  </div>
+              )}
+            </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4">
           {artifactList.length === 0 ? (
               <EmptyState status={status}/>
@@ -206,16 +329,14 @@ export default function ArtifactPanel() {
   );
 }
 
-// ==================== STATUS BADGE ====================
-
 function StatusBadge({status, runActive}: { status: Status; runActive: boolean }) {
   if (status === "error") {
     return (
         <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-        <span className="w-2 h-2 rounded-full bg-red-500"/>
-        Error
-      </span>
+          <span className="w-2 h-2 rounded-full bg-red-500"/>
+          Error
+        </span>
     );
   }
 
@@ -223,9 +344,9 @@ function StatusBadge({status, runActive}: { status: Status; runActive: boolean }
     return (
         <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"/>
-        Connecting
-      </span>
+          <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"/>
+          Connecting
+        </span>
     );
   }
 
@@ -233,9 +354,9 @@ function StatusBadge({status, runActive}: { status: Status; runActive: boolean }
     return (
         <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
-        Running
-      </span>
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
+          Running
+        </span>
     );
   }
 
@@ -243,22 +364,20 @@ function StatusBadge({status, runActive}: { status: Status; runActive: boolean }
     return (
         <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-        <span className="w-2 h-2 rounded-full bg-green-500"/>
-        Completed
-      </span>
+          <span className="w-2 h-2 rounded-full bg-green-500"/>
+          Completed
+        </span>
     );
   }
 
   return (
       <span
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-      <span className="w-2 h-2 rounded-full bg-gray-500"/>
-      Ready
-    </span>
+        <span className="w-2 h-2 rounded-full bg-gray-500"/>
+        Ready
+      </span>
   );
 }
-
-// ==================== EMPTY STATE ====================
 
 function EmptyState({status}: { status: Status }) {
   if (status === "connecting" || status === "idle") {
@@ -283,18 +402,16 @@ function EmptyState({status}: { status: Status }) {
   );
 }
 
-// ==================== ARTIFACT CARD ====================
-
 function ArtifactCard({artifact}: { artifact: ArtifactState }) {
   return (
       <div
           className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
         <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
           <div className="flex items-center gap-2">
-            <ArtifactIcon kind={artifact.kind}/>
+            {artifact.kind && <ArtifactIcon kind={artifact.kind}/>}
             <span className="text-sm font-medium text-gray-700">
-            {artifact.title || getDefaultTitle(artifact.kind)}
-          </span>
+              {artifact.title || (artifact.kind ? getDefaultTitle(artifact.kind) : "Loading...")}
+            </span>
           </div>
           <ArtifactStatusBadge status={artifact.status}/>
         </div>
@@ -306,24 +423,23 @@ function ArtifactCard({artifact}: { artifact: ArtifactState }) {
   );
 }
 
-// ==================== ARTIFACT STATUS BADGE ====================
-
-function ArtifactStatusBadge({status}: { status: ArtifactStatus }) {
+function ArtifactStatusBadge({status}: {
+  status: ArtifactStatus | "LOADING_META" | "LOADING_CONTENT"
+}) {
   const config = {
-    PENDING: {bg: "bg-gray-100", text: "text-gray-700", label: "Pending"},
-    RUNNING: {bg: "bg-blue-100", text: "text-blue-700", label: "Generating"},
-    DONE: {bg: "bg-green-100", text: "text-green-700", label: "Done"},
+    LOADING_META: {bg: "bg-gray-100", text: "text-gray-700", label: "Loading..."},
+    SCHEDULED: {bg: "bg-yellow-100", text: "text-yellow-700", label: "Scheduled"},
+    LOADING_CONTENT: {bg: "bg-blue-100", text: "text-blue-700", label: "Generating"},
+    CREATED: {bg: "bg-green-100", text: "text-green-700", label: "Ready"},
     FAILED: {bg: "bg-red-100", text: "text-red-700", label: "Failed"},
   }[status];
 
   return (
       <span className={`px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text}`}>
-      {config.label}
-    </span>
+        {config.label}
+      </span>
   );
 }
-
-// ==================== ARTIFACT ICON ====================
 
 function ArtifactIcon({kind}: { kind: ArtifactKind }) {
   const className = "w-5 h-5 text-gray-600";
@@ -367,8 +483,6 @@ function ArtifactIcon({kind}: { kind: ArtifactKind }) {
   }
 }
 
-// ==================== ARTIFACT CONTENT ====================
-
 function ArtifactContent({artifact}: { artifact: ArtifactState }) {
   if (artifact.status === "FAILED") {
     return (
@@ -383,35 +497,46 @@ function ArtifactContent({artifact}: { artifact: ArtifactState }) {
     );
   }
 
-  if (artifact.status === "PENDING" || artifact.status === "RUNNING") {
+  if (!artifact.kind || artifact.status === "LOADING_META" || artifact.status === "SCHEDULED"
+      || artifact.status === "LOADING_CONTENT") {
     return <LoadingPlaceholder kind={artifact.kind}/>;
   }
 
-  // DONE status
+  // CREATED status
   switch (artifact.kind) {
     case "IMAGE":
       return artifact.url ? (
-          <img src={artifact.url} alt={artifact.title} className="w-full rounded"/>
+          <div className="space-y-2">
+            <img src={artifact.url} alt={artifact.title} className="w-full rounded"/>
+            {artifact.metadata && (
+                <div className="text-xs text-gray-500 flex gap-3">
+                  {artifact.metadata.width && artifact.metadata.height && (
+                      <span>{artifact.metadata.width} × {artifact.metadata.height}</span>
+                  )}
+                  {artifact.metadata.size && (
+                      <span>{(artifact.metadata.size / 1024).toFixed(0)} KB</span>
+                  )}
+                </div>
+            )}
+          </div>
       ) : (
           <div className="text-center py-8 text-gray-500">Image loading...</div>
       );
 
     case "PDF":
       return artifact.url ? (
-          <div className="space-y-2">
-            <a
-                href={artifact.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              Download PDF
-            </a>
-          </div>
+          <a
+              href={artifact.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Download PDF
+          </a>
       ) : (
           <div className="text-center py-8 text-gray-500">PDF loading...</div>
       );
@@ -439,24 +564,22 @@ function ArtifactContent({artifact}: { artifact: ArtifactState }) {
     case "STRUCTURED_JSON":
       return artifact.data ? (
           <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
-          {JSON.stringify(artifact.data, null, 2)}
-        </pre>
+            {JSON.stringify(artifact.data, null, 2)}
+          </pre>
       ) : (
           <div className="text-center py-8 text-gray-500">Data loading...</div>
       );
   }
 }
 
-// ==================== LOADING PLACEHOLDER ====================
-
-function LoadingPlaceholder({kind}: { kind: ArtifactKind }) {
-  const message = {
+function LoadingPlaceholder({kind}: { kind?: ArtifactKind }) {
+  const message = kind ? {
     IMAGE: "Generating image...",
     PDF: "Creating PDF...",
     AUDIO: "Generating audio...",
     VIDEO: "Rendering video...",
     STRUCTURED_JSON: "Processing data...",
-  }[kind];
+  }[kind] : "Loading...";
 
   return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -466,8 +589,6 @@ function LoadingPlaceholder({kind}: { kind: ArtifactKind }) {
       </div>
   );
 }
-
-// ==================== UTILITIES ====================
 
 function getDefaultTitle(kind: ArtifactKind): string {
   return {

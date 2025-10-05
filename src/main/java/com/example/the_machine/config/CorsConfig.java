@@ -9,10 +9,11 @@ public class CorsConfig implements WebMvcConfigurer {
 
   @Override
   public void addCorsMappings(CorsRegistry registry) {
-    registry.addMapping("/threads/*/events")
-        .allowedOrigins("*") // Add your React dev server ports
-        .allowedMethods("*")
+    registry.addMapping("/**")
+        .allowedOriginPatterns("*")
+        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
         .allowedHeaders("*")
-        .exposedHeaders("*");
+        .allowCredentials(false)
+        .maxAge(3600);
   }
 }

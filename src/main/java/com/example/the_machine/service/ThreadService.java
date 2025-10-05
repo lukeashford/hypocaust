@@ -66,6 +66,7 @@ public class ThreadService {
     return new ThreadViewDto(threadDto, messageDtos, artifactDtos, latestRunDto);
   }
 
+  @Transactional
   public UUID getOrCreateByLibrechatConversationId(String conversationId) {
     final var thread = threadRepository.findByLibrechatConversationId(conversationId)
         .orElseGet(() -> threadRepository.save(ThreadEntity.builder()
