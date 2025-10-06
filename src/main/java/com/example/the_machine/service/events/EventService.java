@@ -59,7 +59,11 @@ public class EventService {
 
   private List<Event<?>> findEventsSince(UUID threadId, UUID lastEventId) {
     if (lastEventId == null) {
-      return null;
+      // No lastEventId means this is a new connection - replay all events
+      return eventLogRepository.findByThreadIdOrderById(threadId)
+          .parallelStream()
+          .map(eventMapper::toDomain)
+          .collect(Collectors.toUnmodifiableList());
     }
 
     if (!eventLogRepository.existsByIdAndThreadId(lastEventId, threadId)) {

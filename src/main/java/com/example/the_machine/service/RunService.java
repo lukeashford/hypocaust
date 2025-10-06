@@ -17,7 +17,6 @@ import com.example.the_machine.repo.ArtifactRepository;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
 import com.example.the_machine.service.events.EventService;
-import com.example.the_machine.service.events.SseHub;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -40,7 +39,6 @@ public class RunService {
   private final EventService eventService;
   private final ExecutorService runExecutorService;
   private final ArtifactRepository artifactRepository;
-  private final SseHub sseHub;
   private final ObjectMapper objectMapper;
 
   @Transactional
@@ -93,11 +91,12 @@ public class RunService {
             .build();
 
         textArtifact = artifactRepository.save(textArtifact);
+        artifactRepository.flush();
         final var textArtifactId = textArtifact.getId();
         log.info("Created text artifact: {}", textArtifactId);
 
         // Minimal event - just the ID
-        sseHub.broadcast(new ArtifactScheduledEvent(threadId, textArtifactId));
+        eventService.publish(new ArtifactScheduledEvent(threadId, textArtifactId));
         log.info("Broadcasted artifact.scheduled for {}", textArtifactId);
 
         Thread.sleep(1500);
@@ -122,7 +121,7 @@ public class RunService {
         log.info("Updated text artifact to CREATED");
 
         // Minimal event - frontend will fetch details
-        sseHub.broadcast(new ArtifactCreatedEvent(threadId, textArtifactId));
+        eventService.publish(new ArtifactCreatedEvent(threadId, textArtifactId));
         log.info("Broadcasted artifact.created for {}", textArtifactId);
 
         Thread.sleep(1000);
@@ -143,7 +142,7 @@ public class RunService {
         final var imageArtifactId = imageArtifact.getId();
         log.info("Created image artifact: {}", imageArtifactId);
 
-        sseHub.broadcast(new ArtifactScheduledEvent(threadId, imageArtifactId));
+        eventService.publish(new ArtifactScheduledEvent(threadId, imageArtifactId));
         log.info("Broadcasted artifact.scheduled for {}", imageArtifactId);
 
         Thread.sleep(2000);
@@ -163,7 +162,7 @@ public class RunService {
         artifactRepository.save(imageArtifact);
         log.info("Updated image artifact to CREATED with storage key: {}", storageKey);
 
-        sseHub.broadcast(new ArtifactCreatedEvent(threadId, imageArtifactId));
+        eventService.publish(new ArtifactCreatedEvent(threadId, imageArtifactId));
         log.info("Broadcasted artifact.created for {}", imageArtifactId);
 
         log.info("Artifact simulation completed successfully!");

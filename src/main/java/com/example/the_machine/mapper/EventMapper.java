@@ -18,21 +18,45 @@ public interface EventMapper {
 
   EventEntity toEntity(Event<?> event);
 
-  RunScheduledEvent toRunScheduledEvent(EventEntity entity);
+  default RunScheduledEvent toRunScheduledEvent(EventEntity entity) {
+    var payload = (RunScheduledEvent.RunScheduledEventPayload) entity.getPayload();
+    return new RunScheduledEvent(entity.getThreadId(), payload.runId());
+  }
 
-  RunStartedEvent toRunStartedEvent(EventEntity entity);
+  default RunStartedEvent toRunStartedEvent(EventEntity entity) {
+    var payload = (RunStartedEvent.RunStartedEventPayload) entity.getPayload();
+    return new RunStartedEvent(entity.getThreadId(), payload.runId());
+  }
 
-  RunCompletedEvent toRunCompletedEvent(EventEntity entity);
+  default RunCompletedEvent toRunCompletedEvent(EventEntity entity) {
+    var payload = (RunCompletedEvent.RunCompletedEventPayload) entity.getPayload();
+    return new RunCompletedEvent(entity.getThreadId(), payload.runId());
+  }
 
-  ArtifactScheduledEvent toArtifactScheduledEvent(EventEntity entity);
+  default ArtifactScheduledEvent toArtifactScheduledEvent(EventEntity entity) {
+    var payload = (ArtifactScheduledEvent.ArtifactScheduledEventPayload) entity.getPayload();
+    return new ArtifactScheduledEvent(entity.getThreadId(), payload.artifactId());
+  }
 
-  ArtifactCreatedEvent toArtifactCreatedEvent(EventEntity entity);
+  default ArtifactCreatedEvent toArtifactCreatedEvent(EventEntity entity) {
+    var payload = (ArtifactCreatedEvent.ArtifactCreatedEventPayload) entity.getPayload();
+    return new ArtifactCreatedEvent(entity.getThreadId(), payload.artifactId());
+  }
 
-  ArtifactCancelledEvent toArtifactCancelledEvent(EventEntity entity);
+  default ArtifactCancelledEvent toArtifactCancelledEvent(EventEntity entity) {
+    var payload = (ArtifactCancelledEvent.ArtifactCancelledEventPayload) entity.getPayload();
+    return new ArtifactCancelledEvent(entity.getThreadId(), payload.artifactId(), payload.kind());
+  }
 
-  ToolCallingEvent toToolCallingEvent(EventEntity entity);
+  default ToolCallingEvent toToolCallingEvent(EventEntity entity) {
+    var payload = (ToolCallingEvent.ToolCallingEventPayload) entity.getPayload();
+    return new ToolCallingEvent(entity.getThreadId(), payload.content());
+  }
 
-  ErrorEvent toErrorEvent(EventEntity entity);
+  default ErrorEvent toErrorEvent(EventEntity entity) {
+    var payload = (ErrorEvent.ErrorEventPayload) entity.getPayload();
+    return new ErrorEvent(entity.getThreadId(), payload.message());
+  }
 
   @ObjectFactory
   default Event<?> createEvent(EventEntity entity) {
