@@ -82,7 +82,7 @@ export default function ArtifactPanel() {
       console.log(`Fetching metadata for artifact ${artifactId}`);
 
       const response = await fetch(
-          `${HOST_URL}/threads/${THREAD_ID}/artifacts/${artifactId}`
+          `${HOST_URL}/artifacts/${artifactId}`
       );
 
       if (!response.ok) {
@@ -121,7 +121,7 @@ export default function ArtifactPanel() {
       });
 
       const response = await fetch(
-          `${HOST_URL}/threads/${THREAD_ID}/artifacts/${artifactId}/content`
+          `${HOST_URL}/artifacts/${artifactId}/content`
       );
 
       if (!response.ok) {

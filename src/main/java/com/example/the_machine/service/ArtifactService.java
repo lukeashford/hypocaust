@@ -1,10 +1,16 @@
 package com.example.the_machine.service;
 
 import com.example.the_machine.db.ArtifactEntity;
+import com.example.the_machine.db.ArtifactEntity.Kind;
 import com.example.the_machine.db.ArtifactEntity.Status;
+import com.example.the_machine.domain.event.ArtifactCreatedEvent;
+import com.example.the_machine.domain.event.ArtifactScheduledEvent;
 import com.example.the_machine.exception.ArtifactNotFoundException;
 import com.example.the_machine.exception.ArtifactNotReadyException;
+import com.example.the_machine.operator.RunContextHolder;
 import com.example.the_machine.repo.ArtifactRepository;
+import com.example.the_machine.service.events.EventService;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +27,7 @@ public class ArtifactService {
 
   private final ArtifactRepository artifactRepository;
   private final StorageService storageService;
+  private final EventService eventService;
 
   /**
    * Get all artifacts for a thread
@@ -32,68 +39,17 @@ public class ArtifactService {
   /**
    * Get a specific artifact by ID, ensuring it belongs to the specified thread
    */
-  public ArtifactEntity getArtifact(UUID threadId, UUID artifactId) {
-    return artifactRepository.findByIdAndThreadId(artifactId, threadId)
+  public ArtifactEntity getArtifact(UUID artifactId) {
+    return artifactRepository.findById(artifactId)
         .orElseThrow(() -> new ArtifactNotFoundException(
-            String.format("Artifact %s not found in thread %s", artifactId, threadId)));
-  }
-
-  /**
-   * Get artifact content. For file-based artifacts, this would fetch from storage. For structured
-   * artifacts, returns the inline content.
-   */
-  public ArtifactContent getArtifactContent(UUID threadId, UUID artifactId) {
-    final var artifact = getArtifact(threadId, artifactId);
-
-    if (artifact.getStatus() != Status.CREATED) {
-      throw new ArtifactNotReadyException(
-          String.format("Artifact %s is not ready (status: %s)", artifactId, artifact.getStatus()));
-    }
-
-    return switch (artifact.getKind()) {
-      case STRUCTURED_JSON -> new ArtifactContent(
-          artifact.getId(),
-          artifact.getKind(),
-          artifact.getMime(),
-          artifact.getTitle(),
-          artifact.getContent() // inline JSON content
-      );
-      case IMAGE, PDF, AUDIO, VIDEO -> {
-        // For file-based artifacts, you'd fetch from storage here
-        // byte[] data = storageService.fetch(artifact.getStorageKey());
-        // For now, just return metadata
-        yield new ArtifactContent(
-            artifact.getId(),
-            artifact.getKind(),
-            artifact.getMime(),
-            artifact.getTitle(),
-            artifact.getMetadata()
-        );
-      }
-    };
-  }
-
-  /**
-   * Get URL for streaming/downloading file-based artifacts
-   */
-  public String getArtifactUrl(UUID threadId, UUID artifactId) {
-    final var artifact = getArtifact(threadId, artifactId);
-
-    if (artifact.getStorageKey() == null) {
-      throw new IllegalStateException(
-          String.format("Artifact %s does not have a storage key", artifactId));
-    }
-
-    // Return the URL that the frontend can use to fetch the artifact
-    // This could be a presigned S3 URL or a controller endpoint
-    return String.format("/threads/%s/artifacts/%s/download", threadId, artifactId);
+            String.format("Artifact %s not found", artifactId)));
   }
 
   /**
    * Download file-based artifact from storage
    */
-  public InputStream downloadArtifact(UUID threadId, UUID artifactId) {
-    final var artifact = getArtifact(threadId, artifactId);
+  public InputStream downloadArtifact(UUID artifactId) {
+    final var artifact = getArtifact(artifactId);
 
     // Validate artifact is file-based and has storage key
     if (artifact.getStorageKey() == null) {
@@ -113,13 +69,43 @@ public class ArtifactService {
     return storageService.retrieve(artifact.getStorageKey());
   }
 
-  public record ArtifactContent(
-      UUID id,
-      ArtifactEntity.Kind kind,
-      String mime,
+  @Transactional
+  public UUID schedule(
+      Kind kind,
       String title,
-      Object data // JsonNode for structured, byte[] for files (or null if using URL)
+      String mime
   ) {
+    final var threadId = RunContextHolder.getThreadId();
+    final var runId = RunContextHolder.getRunId();
+    log.debug("Scheduling artifact for thread {}: {}", threadId, title);
 
+    final var artifact = new ArtifactEntity(
+        threadId,
+        runId,
+        kind,
+        Status.SCHEDULED,
+        title,
+        mime,
+        null,
+        null,
+        null,
+        null
+    );
+    artifactRepository.save(artifact);
+    eventService.publish(new ArtifactScheduledEvent(threadId, artifact.getId()));
+
+    return artifact.getId();
+  }
+
+  @Transactional
+  public void updateArtifact(UUID artifactId, JsonNode content, JsonNode metadata) {
+    log.debug("Updating artifact {}.\nContent: {} \nMetadata: {}", artifactId, content, metadata);
+    final var artifact = getArtifact(artifactId);
+    artifact.setContent(content);
+    artifact.setMetadata(metadata);
+    artifact.setStatus(Status.CREATED);
+    artifactRepository.save(artifact);
+
+    eventService.publish(new ArtifactCreatedEvent(artifact.getThreadId(), artifact.getId()));
   }
 }

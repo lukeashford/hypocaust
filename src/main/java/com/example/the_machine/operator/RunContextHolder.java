@@ -1,0 +1,44 @@
+package com.example.the_machine.operator;
+
+import java.util.UUID;
+
+public final class RunContextHolder {
+
+  private static final ThreadLocal<RunExecutionContext> contextHolder = new ThreadLocal<>();
+
+  private RunContextHolder() {
+    // Utility class
+  }
+
+  public static void setContext(UUID threadId, UUID runId) {
+    contextHolder.set(new RunExecutionContext(threadId, runId));
+  }
+
+  public static void setContext(RunExecutionContext context) {
+    contextHolder.set(context);
+  }
+
+  public static RunExecutionContext getContext() {
+    final var context = contextHolder.get();
+    if (context == null) {
+      throw new IllegalStateException("OperatorExecutionContext not set for current thread");
+    }
+    return context;
+  }
+
+  public static UUID getThreadId() {
+    return getContext().threadId();
+  }
+
+  public static UUID getRunId() {
+    return getContext().runId();
+  }
+
+  public static void clear() {
+    contextHolder.remove();
+  }
+
+  public record RunExecutionContext(UUID threadId, UUID runId) {
+
+  }
+}

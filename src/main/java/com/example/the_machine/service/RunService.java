@@ -13,6 +13,7 @@ import com.example.the_machine.domain.event.RunStartedEvent;
 import com.example.the_machine.dto.CreateRunRequestDto;
 import com.example.the_machine.dto.RunDto;
 import com.example.the_machine.mapper.RunMapper;
+import com.example.the_machine.operator.RunContextHolder;
 import com.example.the_machine.repo.ArtifactRepository;
 import com.example.the_machine.repo.RunRepository;
 import com.example.the_machine.repo.ThreadRepository;
@@ -75,6 +76,8 @@ public class RunService {
     eventService.publish(new RunStartedEvent(run.getThreadId(), runId));
 
     final var threadId = run.getThreadId();
+
+    RunContextHolder.setContext(threadId, runId);
 
     CompletableFuture.runAsync(() -> {
       try {
@@ -172,6 +175,8 @@ public class RunService {
         log.error("Artifact simulation interrupted", e);
       } catch (Exception e) {
         log.error("Error during artifact simulation", e);
+      } finally {
+        RunContextHolder.clear();
       }
     });
 
