@@ -12,6 +12,9 @@ sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-postgres.yaml | podman p
 # MinIO
 sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-minio.yaml | podman play kube ${REPLACE} --configmap ./podman/local-dev/configmap-local-dev.yaml -
 
+# Nginx reverse proxy
+sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-nginx.yaml | podman play kube ${REPLACE} --configmap ./podman/local-dev/configmap-local-dev.yaml -
+
 echo "${CY}#############################################################################################"
 echo "#                                                                                           #"
 echo "#   postgres at ${GR}localhost:5432${CY} user:${GR}postgres${CY} pass:${GR}postgres${CY}                                  #"
@@ -20,4 +23,5 @@ echo "#                                                                         
 echo "#   minio    at ${GR}http://localhost:9000${CY} api-key:${GR}minioadmin${CY} secret:${GR}minioadmin${CY}                  #"
 echo "#   console  at ${GR}http://localhost:9001${NC}                                                              #"
 echo "#                                                                                           #"
+echo "#   nginx    at ${GR}https://localhost${NC}                                                                 #"
 echo "#############################################################################################${NC}"

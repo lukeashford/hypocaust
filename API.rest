@@ -1,26 +1,26 @@
 ### App Health Check
-GET http://localhost:8080/actuator/health
+GET https://localhost/actuator/health
 Accept: application/json
 
 ### Model Health Check
-GET http://localhost:8080/api/diagnostics/models/health
+GET https://localhost/api/diagnostics/models/health
 Accept: application/json
 
-### 1. Create new thread (same as before)
-POST http://localhost:8080/threads
+### 1. Create new thread
+POST https://localhost/threads
 Content-Type: application/json
 
 > {%
   client.global.set("threadId", response.body.id);
 %}
 
-### 2. Start SSE connection (same as before)
+### 2. Start SSE connection
 #curl -N -H "Accept: text/event-stream"
-GET http://localhost:8080/threads/{{threadId}}/events
+GET https://localhost/threads/{{threadId}}/events
 
 
-### 3. Send message with instruction (NEW - replaces direct run call)
-POST http://localhost:8080/threads/{{threadId}}/messages
+### 3. Send message with instruction
+POST https://localhost/threads/{{threadId}}/messages
 Content-Type: application/json
 
 {
@@ -29,17 +29,17 @@ Content-Type: application/json
 }
 
 ### 4. Wait for processing, then get thread view
-GET http://localhost:8080/threads/{{threadId}}
+GET https://localhost/threads/{{threadId}}
 
 > {%
   client.global.set("artifactPath", response.body.artifacts[0].url);
 %}
 
 ### 5. Get an artifact
-GET http://localhost:8080/{{artifactPath}}
+GET https://localhost/{{artifactPath}}
 
 ### 6. Send follow-up message (replaces second run call)
-POST http://localhost:8080/threads/{{threadId}}/messages
+POST https://localhost/threads/{{threadId}}/messages
 Content-Type: application/json
 
 {
@@ -53,7 +53,7 @@ Content-Type: application/json
 }
 
 ### 7. Send revision request (replaces third run call)
-POST http://localhost:8080/threads/{{threadId}}/messages
+POST https://localhost/threads/{{threadId}}/messages
 Content-Type: application/json
 
 {

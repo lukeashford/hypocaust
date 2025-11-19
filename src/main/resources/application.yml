@@ -21,6 +21,7 @@ spring:
       fail-on-unknown-properties: false
 
 app:
+  host-url: ${HOST_URL:https://localhost}
   llm:
     orchestration-model-name: "gpt-4o"
     decomposing-model-name: "o3"
@@ -68,8 +69,6 @@ app:
           # Thinking (billable) – enable only when you truly need it
           thinking:
             budgetTokens: 0
-
-  host-url: ${HOST_URL:http://localhost:8080}
 
   storage:
     minio:
