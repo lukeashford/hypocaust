@@ -1,9 +1,10 @@
 package com.example.the_machine.web;
 
 import com.example.the_machine.common.Routes;
+import com.example.the_machine.dto.ArtifactMetadataDto;
 import com.example.the_machine.dto.ThreadDto;
-import com.example.the_machine.dto.ThreadViewDto;
 import com.example.the_machine.service.ThreadService;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,8 +27,9 @@ public class ThreadController {
     return ResponseEntity.status(HttpStatus.CREATED).body(threadService.createThread());
   }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<ThreadViewDto> getThread(@PathVariable UUID id) {
-    return ResponseEntity.ok(threadService.getThreadView(id));
+  @GetMapping("/{threadId}/artifacts")
+  public ResponseEntity<List<ArtifactMetadataDto>> listThreadArtifacts(
+      @PathVariable UUID threadId) {
+    return ResponseEntity.ok(threadService.listThreadArtifacts(threadId));
   }
 }

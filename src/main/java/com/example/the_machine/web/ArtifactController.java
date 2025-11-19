@@ -2,9 +2,9 @@ package com.example.the_machine.web;
 
 import com.example.the_machine.db.ArtifactEntity;
 import com.example.the_machine.db.ArtifactEntity.Status;
+import com.example.the_machine.dto.ArtifactMetadataDto;
 import com.example.the_machine.exception.ArtifactNotReadyException;
 import com.example.the_machine.service.ArtifactService;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,21 +25,10 @@ public class ArtifactController {
 
   private final ArtifactService artifactService;
 
-  @GetMapping("/{threadId}")
-  public ResponseEntity<List<ArtifactMetadataDto>> listArtifacts(
-      @PathVariable UUID threadId) {
-    final var artifacts = artifactService.getThreadArtifacts(threadId);
-    final var dtos = artifacts.stream()
-        .map(this::toMetadataDto)
-        .toList();
-    return ResponseEntity.ok(dtos);
-  }
-
   @GetMapping("/{artifactId}")
   public ResponseEntity<ArtifactMetadataDto> getArtifact(
       @PathVariable UUID artifactId) {
-    final var artifact = artifactService.getArtifact(artifactId);
-    return ResponseEntity.ok(toMetadataDto(artifact));
+    return ResponseEntity.ok(artifactService.getArtifactMetadata(artifactId));
   }
 
   /**
@@ -126,32 +115,6 @@ public class ArtifactController {
             String.format("inline; filename=\"%s\"",
                 artifact.getTitle() != null ? artifact.getTitle() : artifact.getId().toString()))
         .body(responseBody);
-  }
-
-  private ArtifactMetadataDto toMetadataDto(ArtifactEntity artifact) {
-    return new ArtifactMetadataDto(
-        artifact.getId(),
-        artifact.getThreadId(),
-        artifact.getRunId(),
-        artifact.getKind(),
-        artifact.getStatus().name(), // Convert to string for consistency
-        artifact.getTitle(),
-        artifact.getMime(),
-        artifact.getCreatedAt()
-    );
-  }
-
-  public record ArtifactMetadataDto(
-      UUID id,
-      UUID threadId,
-      UUID runId,
-      ArtifactEntity.Kind kind,
-      String status, // Changed to String
-      String title,
-      String mime,
-      java.time.Instant createdAt
-  ) {
-
   }
 
   public record ArtifactContentDto(

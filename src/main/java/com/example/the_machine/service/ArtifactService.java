@@ -5,8 +5,10 @@ import com.example.the_machine.db.ArtifactEntity.Kind;
 import com.example.the_machine.db.ArtifactEntity.Status;
 import com.example.the_machine.domain.event.ArtifactCreatedEvent;
 import com.example.the_machine.domain.event.ArtifactScheduledEvent;
+import com.example.the_machine.dto.ArtifactMetadataDto;
 import com.example.the_machine.exception.ArtifactNotFoundException;
 import com.example.the_machine.exception.ArtifactNotReadyException;
+import com.example.the_machine.mapper.ArtifactMapper;
 import com.example.the_machine.operator.RunContextHolder;
 import com.example.the_machine.repo.ArtifactRepository;
 import com.example.the_machine.service.events.EventService;
@@ -28,6 +30,7 @@ public class ArtifactService {
   private final ArtifactRepository artifactRepository;
   private final StorageService storageService;
   private final EventService eventService;
+  private final ArtifactMapper artifactMapper;
 
   /**
    * Get all artifacts for a thread
@@ -37,12 +40,28 @@ public class ArtifactService {
   }
 
   /**
-   * Get a specific artifact by ID, ensuring it belongs to the specified thread
+   * Get metadata DTOs for all artifacts in a thread
+   */
+  public List<ArtifactMetadataDto> getThreadArtifactMetadata(UUID threadId) {
+    return getThreadArtifacts(threadId).stream()
+        .map(artifactMapper::toMetadataDto)
+        .toList();
+  }
+
+  /**
+   * Get a specific artifact by ID
    */
   public ArtifactEntity getArtifact(UUID artifactId) {
     return artifactRepository.findById(artifactId)
         .orElseThrow(() -> new ArtifactNotFoundException(
             String.format("Artifact %s not found", artifactId)));
+  }
+
+  /**
+   * Get metadata DTO for an artifact by ID
+   */
+  public ArtifactMetadataDto getArtifactMetadata(UUID artifactId) {
+    return artifactMapper.toMetadataDto(getArtifact(artifactId));
   }
 
   /**
