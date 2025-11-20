@@ -36,4 +36,12 @@ public class OperatorEmbedding extends BaseEntity {
   @Column(nullable = false, length = 64)
   private String hash;
 
+  /**
+   * In-place update of the embedding and its hash. Replaces the array reference so JPA can detect
+   * the change, and clones to avoid aliasing shared mutable state.
+   */
+  public void updateEmbedding(float[] newEmbedding, String newHash) {
+    this.embedding = newEmbedding == null ? null : newEmbedding.clone();
+    this.hash = newHash;
+  }
 }

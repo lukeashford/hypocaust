@@ -22,9 +22,14 @@ spring:
 
 app:
   host-url: ${HOST_URL:https://localhost}
+  rag:
+    platforms-path: ${PLATFORMS_PATH:src/main/resources/rag/platforms}
+    workflows-path: ${WORKFLOWS_PATH:src/main/resources/rag/workflows}
   llm:
     orchestration-model-name: "gpt-4o"
     decomposing-model-name: "o3"
+  decomposer:
+    max-branch-factor: ${DECOMPOSER_MAX_BRANCH_FACTOR:3}
 
     openai:
       api-key: ${OPENAI_API_KEY}

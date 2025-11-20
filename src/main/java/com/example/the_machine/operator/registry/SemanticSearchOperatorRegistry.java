@@ -8,10 +8,12 @@ import com.example.the_machine.repo.OperatorEmbeddingRepository;
 import com.example.the_machine.service.EmbeddingService;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +31,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class SemanticSearchOperatorRegistry implements OperatorRegistry {
 
-  private final OperatorEmbeddingRepository embeddingRepository;
+  private final OperatorEmbeddingRepository repository;
   private final EmbeddingService embeddingService;
   private final HashCalculator hashCalculator;
   private final List<Operator> operators;
@@ -47,29 +49,38 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
   private void discoverAndIndexOperators() {
     log.info("Generating operator embeddings...");
 
-    final var newEmbeddings = new ArrayList<OperatorEmbedding>();
+    // Reset cache to reflect current discovery
+    operatorsByName.clear();
+
+    final var upsertRows = new ArrayList<OperatorEmbedding>();
+    final Set<String> currentOperatorNames = new HashSet<>();
 
     for (final var operator : operators) {
       try {
         final var spec = operator.spec();
         final var operatorName = spec.name();
 
+        // Track discovered operator names
+        currentOperatorNames.add(operatorName);
+
         // Single source of truth - cache only operators
         operatorsByName.put(operatorName, operator);
 
         // Use ToolSpec's existing description method + context
         final var descriptionText = createEmbeddingText(spec);
-        final var existingEmbedding = embeddingRepository.findByOperatorName(operatorName);
+        final var existingEmbeddingOpt = repository.findByOperatorName(operatorName);
         final var textHash = hashCalculator.calculateSha256Hash(descriptionText);
 
-        if (existingEmbedding.isEmpty() || !existingEmbedding.get().getHash().equals(textHash)) {
-          final var embedding = embeddingService.generateEmbedding(descriptionText);
-
-          newEmbeddings.add(OperatorEmbedding.builder()
+        if (existingEmbeddingOpt.isEmpty()) {
+          upsertRows.add(OperatorEmbedding.builder()
               .operatorName(operatorName)
-              .embedding(embedding)
+              .embedding(embeddingService.generateEmbedding(descriptionText))
               .hash(textHash)
               .build());
+        } else if (!Objects.equals(existingEmbeddingOpt.get().getHash(), textHash)) {
+          final var existing = existingEmbeddingOpt.get();
+          existing.updateEmbedding(embeddingService.generateEmbedding(descriptionText), textHash);
+          upsertRows.add(existing);
         }
 
       } catch (Exception e) {
@@ -78,9 +89,23 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
       }
     }
 
-    if (!newEmbeddings.isEmpty()) {
-      embeddingRepository.saveAll(newEmbeddings);
-      log.info("Generated embeddings for {} operators", newEmbeddings.size());
+    if (!upsertRows.isEmpty()) {
+      repository.saveAll(upsertRows);
+      log.info("Generated embeddings for {} operators", upsertRows.size());
+    }
+
+    // Remove embeddings for operators that no longer exist
+    try {
+      final var allEmbeddings = repository.findAll();
+      final var obsoleteEmbeddings = allEmbeddings.stream()
+          .filter(e -> !currentOperatorNames.contains(e.getOperatorName()))
+          .toList();
+      if (!obsoleteEmbeddings.isEmpty()) {
+        repository.deleteAll(obsoleteEmbeddings);
+        log.info("Deleted {} obsolete operator embeddings", obsoleteEmbeddings.size());
+      }
+    } catch (Exception e) {
+      log.warn("Failed to clean up obsolete operator embeddings: {}", e.getMessage(), e);
     }
 
     log.info("Registry initialization complete. Indexed {} operators", operatorsByName.size());
@@ -124,7 +149,7 @@ public class SemanticSearchOperatorRegistry implements OperatorRegistry {
       final var queryEmbedding = embeddingService.generateEmbedding(taskDescription);
       final var pageable = PageRequest.of(0, maxResults);
 
-      final var results = embeddingRepository.findTopByEmbeddingSimilarity(queryEmbedding,
+      final var results = repository.findTopByEmbeddingSimilarity(queryEmbedding,
           pageable);
 
       return results.stream()

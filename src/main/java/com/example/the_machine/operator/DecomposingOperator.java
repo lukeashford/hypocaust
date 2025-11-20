@@ -1,21 +1,20 @@
 package com.example.the_machine.operator;
 
-import com.example.the_machine.domain.OperatorLedger;
 import com.example.the_machine.models.ModelProperties;
 import com.example.the_machine.models.ModelRegistry;
 import com.example.the_machine.operator.registry.OperatorRegistry;
 import com.example.the_machine.operator.result.OperatorResult;
+import com.example.the_machine.tool.InvokeTool;
+import com.example.the_machine.tool.ModelSearchTool;
+import com.example.the_machine.tool.WorkflowSearchTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -26,186 +25,139 @@ public class DecomposingOperator extends BaseOperator {
   private final ModelRegistry modelRegistry;
   private final ModelProperties modelProperties;
   private final ObjectMapper mapper;
+  private final InvokeTool invokeTool;
+  private final WorkflowSearchTool workflowSearchTool;
+  private final ModelSearchTool modelSearchTool;
+
+  @Value("${app.decomposer.max-branch-factor:3}")
+  private int maxBranchFactor;
 
   public DecomposingOperator(
       @Lazy OperatorRegistry operatorRegistry,
       ModelRegistry modelRegistry,
       ModelProperties modelProperties,
-      ObjectMapper mapper
+      ObjectMapper mapper,
+      InvokeTool invokeTool,
+      WorkflowSearchTool workflowSearchTool,
+      ModelSearchTool modelSearchTool
   ) {
     this.operatorRegistry = operatorRegistry;
     this.modelRegistry = modelRegistry;
     this.modelProperties = modelProperties;
     this.mapper = mapper;
+    this.invokeTool = invokeTool;
+    this.workflowSearchTool = workflowSearchTool;
+    this.modelSearchTool = modelSearchTool;
   }
 
-  private static final SystemMessage systemMessage = new SystemMessage("""
-      # DecomposingOperator System Prompt
-      
-      You are the DecomposingOperator, an orchestrator that solves tasks by coordinating specialized operators. You accomplish this through designing and executing an OperatorLedger that wires operators together.
-      
-      ## Your Core Task
-      
-      Given a task and a list of available operator specifications, you will:
-      1. Create an OperatorLedger that orchestrates the solution
-      2. Execute that ledger using the `invoke` tool to produce the actual result
-      
-      ## The OperatorLedger Structure
-      
-      ```java
-      public record OperatorLedger(
-          Map<String, Object> values,
-          List<ChildConfig> children,
-          String finalOutputKey
-      ) {
-        public record ChildConfig(
-            String operatorName,
-            Map<String, String> inputsToKeys,
-            Map<String, String> outputsToKeys
-        ) {}
-      }
-      ```
-      
-      ### Values Map
-      - Contains initial input values and template strings for downstream operators
-      - Template strings use `{{keyName}}` syntax to reference outputs from previous children
-      - Example: `"Write a script about {{numberPiglets}} little piglets"` where `numberPiglets` is an earlier child's outputsToKeys value
-      - This map is append-only - attempting to write the same key twice will cause an error
-      
-      ### Children Configuration
-      Each child operator configuration specifies:
-      - `operatorName`: The operator to invoke
-      - `inputsToKeys`: Maps the operator's input parameter names to keys in the values map
-      - `outputsToKeys`: Maps the operator's output names to keys where results will be stored in the values map
-      
-      ### Final Output Key
-      - Specifies which key in the values map contains the final result of the entire operation chain
-      - This should typically be the output key from the last child operator that produces the primary result
-      - Must reference an existing key that will be populated during execution
-      
-      ## Operator Selection Strategy
-      
-      Follow this decision tree for each task:
-      
-      1. **Direct Match**: Can a single available operator directly accomplish this task?
-         → Use that operator
-      
-      2. **Simple Composition**: Can 2-3 operators in sequence accomplish this task?
-         → Wire them together with appropriate data flow
-      
-      3. **Complex/Abstract Task**: Is the task too complex or abstract for available tool operators?
-         → Use DecomposingOperator as a child to handle the sub-problem
-      
-      4. **Default**: When uncertain, prefer concrete tool operators over decomposition
-      
-      ## Critical Constraints
-      
-      ### Type Safety
-      **CRITICAL**: Only wire operators when types align exactly:
-      - The output type of operator A must match the input type expected by operator B
-      - Never assume type coercion (e.g., `List<URI>` ≠ `List<String>`)
-      - Validate type compatibility before creating any operator connection
-      
-      ### Branch Factor
-      Maximum 3 children per ledger. This constraint forces you to:
-      - Identify the most critical path to the solution
-      - Combine related operations when possible
-      - Decompose only when truly necessary for complexity management
-      
-      ### Context Isolation
-      When using DecomposingOperator as a child:
-      - Package the sub-problem as a complete, self-contained task
-      - Include all necessary context in the task description
-      - Use the `{{placeholder}}` syntax to reference parent values that the child will need
-      - The child DecomposingOperator treats its sub-problem as if it were the root task
-      
-      ## Value Naming Conventions
-      
-      Choose semantic, descriptive key names that reflect data meaning:
-      - ✓ `searchResults`, `filteredDocuments`, `brandAnalysis`
-      - ✗ `output1`, `temp2`, `result`
-      
-      This improves readability and helps subsequent operators understand available data.
-      
-      ## Decomposition Guidelines
-      
-      Before adding DecomposingOperator as a child, verify:
-      - □ No combination of 1-3 tool operators can handle this subtask
-      - □ The subtask is genuinely complex, requiring further breakdown
-      - □ You can articulate the specific sub-problem clearly
-      - □ The decomposition will make meaningful progress toward the goal
-      
-      Remember: Complex tasks may legitimately require multiple levels of decomposition. The goal is not to avoid decomposition but to use it judiciously.
-      
-      ## Example Ledger
-      
-      For a task analyzing a brand's online presence:
-      
-      ```json
-      {
-        "values": {
-          "brandName": "Nike",
-          "analysisPrompt": "Analyze the brand {{brandName}} using these resources: {{rankedResources}}"
-        },
-        "children": [
-          {
-            "operatorName": "WebSearchOperator",
-            "inputsToKeys": {"query": "brandName"},
-            "outputsToKeys": {"results": "searchResults"}
+  private SystemMessage buildSystemMessage() {
+    return new SystemMessage("""
+        # DecomposingOperator
+        
+        You solve tasks through recursive decomposition. You are either a **leaf** that invokes a single operator, or a **decomposer** that delegates subtasks to child DecomposingOperators.
+        
+        ## Decision Algorithm
+        
+        Given a task and candidate operators from semantic search:
+        
+        1. **Leaf Case – Direct Match**: If exactly ONE candidate operator can fully solve this task → invoke it directly via the `invoke` tool with a single-child ledger.
+        
+        2. **Leaf Case – No Match**: If the task is atomic (cannot be meaningfully split) but no candidate fits → respond with exactly: `No operator found for atomic task: <task description>`
+        
+        3. **Decomposer Case**: If the task requires multiple steps or is too complex for any single operator:
+           - Call `workflowSearchTool` to retrieve similar past workflows for guidance
+           - Call `modelSearchTool` if creative model selection is relevant
+           - Decompose into subtasks (max %d children), each delegated to a DecomposingOperator
+           - If a child returns a "No operator found" failure, **re-attempt decomposition** with an alternative breakdown
+        
+        ## OperatorLedger Structure
+        record OperatorLedger(
+            Map<String, Object> values,       // Initial inputs + templates with {{key}} placeholders
+            List<ChildConfig> children,       // Ordered operator invocations
+            String finalOutputKey             // Key holding the final result
+        ) {
+          record ChildConfig(
+              String operatorName,            // Operator to invoke
+              Map<String, String> inputsToKeys,
+              Map<String, String> outputsToKeys
+          ) {}
+        }
+        
+        - **values**: Append-only map; duplicate keys cause errors. Use `{{keyName}}` to reference prior outputs.
+        - **children**: As a leaf, contains ONE tool operator. As a decomposer, contains ONLY `DecomposingOperator` entries.
+        - **finalOutputKey**: Must reference a key populated during execution.
+        
+        ## Examples
+        
+        ### Leaf – Direct Match
+        Task: "Generate an image of a sunset over mountains"
+        Candidate `ImageGenerationOperator` matches directly.
+        
+        {
+          "values": { "prompt": "a sunset over mountains" },
+          "children": [{
+            "operatorName": "ImageGenerationOperator",
+            "inputsToKeys": { "prompt": "prompt" },
+            "outputsToKeys": { "image": "generatedImage" }
+          }],
+          "finalOutputKey": "generatedImage"
+        }
+        
+        ### Leaf – No Match
+        Task: "Translate this text to Klingon"
+        No candidate operator handles Klingon translation; task is atomic.
+        
+        Response: `No operator found for atomic task: Translate this text to Klingon`
+        
+        ### Decomposer – Complex Task
+        Task: "Create a brand video: write a script about our product, generate voiceover, and compile with stock footage"
+        No single operator suffices; decompose into subtasks for child DecomposingOperators.
+        
+        {
+          "values": {
+            "productInfo": "Our product is...",
+            "scriptTask": "Write a 30-second brand script about: {{productInfo}}",
+            "voiceoverTask": "Generate voiceover audio from this script: {{script}}",
+            "videoTask": "Compile a video using this audio: {{voiceover}} with relevant stock footage"
           },
-          {
-            "operatorName": "FetchAndRankOperator",
-            "inputsToKeys": {"links": "searchResults"},
-            "outputsToKeys": {"ranked": "rankedResources"}
-          },
-          {
-            "operatorName": "BrandAnalysisOperator",
-            "inputsToKeys": {
-              "brand": "brandName",
-              "resources": "rankedResources",
-              "prompt": "analysisPrompt"
+          "children": [
+            {
+              "operatorName": "DecomposingOperator",
+              "inputsToKeys": { "task": "scriptTask" },
+              "outputsToKeys": { "result": "script" }
             },
-            "outputsToKeys": {"report": "analysis"}
-          }
-        ],
-        "finalOutputKey": "analysis"
-      }
-      ```
-      
-      ## Execution Workflow
-      
-      You complete each task through two essential phases:
-      
-      ### Phase 1: Design
-      Analyze the task and available operators to create an optimal OperatorLedger that orchestrates the solution.
-      
-      ### Phase 2: Execute
-      Call the `invoke` tool with your ledger to execute the operator chain and obtain the actual result. The invoke tool will process each operator in sequence, flowing data through the values map as specified.
-      
-      ## Key Principles
-      
-      1. **You solve problems by orchestrating operators** - Design efficient execution chains
-      2. **Type safety first** - Validate all type alignments before wiring operators
-      3. **Design then execute** - Create your ledger, then invoke it to get results
-      4. **Minimal sufficient decomposition** - Use the simplest operator chain that accomplishes the task
-      5. **Clear data flow** - Every value should have a clear purpose and destination
-      6. **Terminal tool operators** - Leaf nodes should be tool operators, not decompositions
-      
-      ## Success Metrics
-      
-      A well-designed and executed solution:
-      - Uses the minimum number of operators necessary
-      - Has clear, traceable data flow
-      - Terminates in tool operators that produce concrete results
-      - Maintains type safety throughout the execution chain
-      - Provides sufficient context for any child DecomposingOperators
-      - Successfully invokes the ledger to produce the final result
-      
-      After designing your OperatorLedger, you must call the `invoke` tool to execute it and return the actual result of the operation chain.
-      """);
+            {
+              "operatorName": "DecomposingOperator",
+              "inputsToKeys": { "task": "voiceoverTask" },
+              "outputsToKeys": { "result": "voiceover" }
+            },
+            {
+              "operatorName": "DecomposingOperator",
+              "inputsToKeys": { "task": "videoTask" },
+              "outputsToKeys": { "result": "finalVideo" }
+            }
+          ],
+          "finalOutputKey": "finalVideo"
+        }
+        
+        ## Constraints
+        
+        - **Type Safety**: Wire operators only when output/input types match exactly. Never assume coercion.
+        - **Max Children**: %d per ledger.
+        - **Context Isolation**: Child DecomposingOperators receive self-contained task descriptions with all necessary context embedded via `{{placeholder}}` references.
+        - **Semantic Key Names**: Use descriptive names (`searchResults`, `brandAnalysis`) not generic ones (`output1`, `temp`).
+        
+        ## Execution
+        
+        1. **Design** your OperatorLedger based on the decision algorithm
+        2. **Execute** by calling the `invoke` tool with your ledger
+        
+        The recursion terminates when every branch reaches a leaf that either successfully invokes an operator or returns a "No operator found" failure.
+        """.formatted(maxBranchFactor, maxBranchFactor));
+  }
 
   private static final OperatorSpec OPERATOR_SPEC = new OperatorSpec(
-      "decomposer",
+      "Decomposer",
       "0.0.1",
       "Execute or decompose",
       List.of(
@@ -229,7 +181,7 @@ public class DecomposingOperator extends BaseOperator {
     // Build a chat client for the decomposing model and expose this operator's tools
     final var client = ChatClient.builder(
             modelRegistry.get(modelProperties.getDecomposingModelName()))
-        .defaultTools(this)
+        .defaultTools(invokeTool, workflowSearchTool, modelSearchTool)
         .build();
 
     // Build the user message payload with the task and candidate tool JSON Schemas
@@ -241,74 +193,20 @@ public class DecomposingOperator extends BaseOperator {
     }
 
     final var userMessage = new UserMessage(root.toPrettyString());
-    final var prompt = new Prompt(List.of(systemMessage, userMessage));
+    final var prompt = new Prompt(List.of(buildSystemMessage(), userMessage));
 
     final var chatResponse = client.prompt(prompt).call();
     final var content = chatResponse.content();
 
+    if (content != null && content.startsWith("No operator found for atomic task:")) {
+      return OperatorResult.failure(content, Map.of("task", task));
+    }
+
     return OperatorResult.success(
         "Successfully decomposed task",
-        java.util.Map.of("task", task),
-        java.util.Map.of("result", content)
+        Map.of("task", task),
+        Map.of("result", content)
     );
-  }
-
-  @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
-  public OperatorResult invoke(OperatorLedger ledger) {
-    for (final var child : ledger.children()) {
-      final var op = operatorRegistry.get(child.operatorName()).orElseThrow();
-
-      final var inputs = new HashMap<String, Object>();
-      for (final var inputName : op.spec().getInputKeys()) {
-        final var inputKey = child.inputsToKeys().get(inputName);
-        var inputValue = ledger.values().get(inputKey);
-
-        if (inputValue instanceof String) {
-          inputValue = resolvePlaceholders(ledger.values(), (String) inputValue);
-        }
-        inputs.put(inputName, inputValue);
-      }
-
-      final var result = op.execute(inputs);
-      if (!result.ok()) {
-        return result;
-      }
-
-      for (final var outputName : op.spec().getOutputKeys()) {
-        final var outputKey = child.outputsToKeys().get(outputName);
-        if (outputKey == null) {
-          continue;
-        }
-        if (ledger.values().containsKey(outputKey)) {
-          return OperatorResult.failure(
-              "Output key already exists: " + outputKey,
-              inputs
-          );
-        }
-
-        ledger.values().put(outputKey, result.outputs().get(outputName));
-      }
-    }
-
-    return OperatorResult.success(
-        "Successfully invoked operator chain",
-        Map.of("task", ledger.values().get("task")),
-        Map.of("result", ledger.values().get(ledger.finalOutputKey()))
-    );
-  }
-
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([^}]+)}}");
-
-  private String resolvePlaceholders(Map<String, Object> context, String template) {
-    if (template == null || !template.contains("{{")) {
-      return template; // Early exit if no placeholders
-    }
-
-    return PLACEHOLDER_PATTERN.matcher(template).replaceAll(matchResult -> {
-      String key = matchResult.group(1).trim();
-      Object value = context.get(key);
-      return value != null ? Matcher.quoteReplacement(value.toString()) : matchResult.group(0);
-    });
   }
 
   @Override
