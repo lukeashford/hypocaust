@@ -28,8 +28,6 @@ app:
   llm:
     orchestration-model-name: "gpt-4o"
     decomposing-model-name: "o3"
-  decomposer:
-    max-branch-factor: ${DECOMPOSER_MAX_BRANCH_FACTOR:3}
 
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -67,13 +65,16 @@ app:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       chat:
-        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & ‘thinking’ behavior.
+        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & 'thinking' behavior.
           maxTokens: 4096                   # output cap; increase as needed
           temperature: 0.7
           topP: 1.0
           # Thinking (billable) – enable only when you truly need it
           thinking:
             budgetTokens: 0
+
+  decomposer:
+    max-branch-factor: ${DECOMPOSER_MAX_BRANCH_FACTOR:3}
 
   storage:
     minio:
