@@ -37,7 +37,7 @@ public class DecomposingOperator extends BaseOperator {
       ModelRegistry modelRegistry,
       ModelProperties modelProperties,
       ObjectMapper mapper,
-      InvokeTool invokeTool,
+      @Lazy InvokeTool invokeTool,
       WorkflowSearchTool workflowSearchTool,
       ModelSearchTool modelSearchTool
   ) {
