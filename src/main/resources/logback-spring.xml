@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Console appender with operator-focused pattern -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%thread]) %magenta(%logger{36}) - %msg%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Operator execution console logger - shows high-level operator flow -->
+    <appender name="OPERATOR_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%green([OPERATOR]) %d{HH:mm:ss} %highlight(%-5level) - %msg%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator>
+                <expression>
+                    return logger.contains("Operator") ||
+                           logger.contains("InvokeTool") ||
+                           message.contains("Generating image") ||
+                           message.contains("Successfully generated") ||
+                           message.contains("Executing operator") ||
+                           message.contains("operator execution");
+                </expression>
+            </evaluator>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- Application package loggers -->
+    <logger name="com.example.the_machine" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OPERATOR_CONSOLE"/>
+    </logger>
+
+    <!-- Reduce Spring AI verbosity -->
+    <logger name="org.springframework.ai" level="WARN"/>
+    <logger name="org.springframework.ai.chat" level="WARN"/>
+    <logger name="org.springframework.ai.openai" level="WARN"/>
+    <logger name="org.springframework.ai.anthropic" level="WARN"/>
+
+    <!-- Reduce other framework verbosity -->
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+
+    <!-- SSE specific logging -->
+    <logger name="com.example.the_machine.service.events.SseHub" level="INFO"/>
+    <logger name="com.example.the_machine.service.events.EventService" level="INFO"/>
+
+    <!-- Storage logging -->
+    <logger name="com.example.the_machine.service.MinioStorageService" level="INFO"/>
+
+    <!-- Task execution logging -->
+    <logger name="com.example.the_machine.service.TaskService" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Dev profile overrides -->
+    <springProfile name="dev">
+        <logger name="com.example.the_machine" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Test profile overrides -->
+    <springProfile name="test">
+        <logger name="com.example.the_machine" level="DEBUG"/>
+        <logger name="org.springframework.test" level="DEBUG"/>
+    </springProfile>
+</configuration>

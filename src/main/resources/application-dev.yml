@@ -6,8 +6,3 @@ management:
   endpoint:
     health:
       show-details: always
-
-logging:
-  level:
-    com.example.the_machine: DEBUG
-    org.springframework.web: DEBUG

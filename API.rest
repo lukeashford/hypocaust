@@ -16,9 +16,10 @@ Content-Type: application/json
   client.global.set("projectId", response.body.project_id);
 %}
 
-### 2. Start SSE connection
-#curl -N -H "Accept: text/event-stream"
+### 2. Start SSE connection (subscribe to events)
+# Note: This is the SSE endpoint that will stream events for your project
 GET https://localhost/projects/{{projectId}}/events
+Accept: text/event-stream
 
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1

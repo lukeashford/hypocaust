@@ -41,3 +41,6 @@ out/
 
 ### Local data directory ###
 /data/
+
+### Application logs ###
+/logs/

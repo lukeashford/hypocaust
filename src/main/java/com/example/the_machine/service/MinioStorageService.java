@@ -2,8 +2,10 @@ package com.example.the_machine.service;
 
 import com.example.the_machine.exception.StorageException;
 import com.example.the_machine.service.storage.StorageProperties;
+import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -38,9 +40,35 @@ public class MinioStorageService implements StorageService {
 
   @PostConstruct
   public void init() {
-    log.info("MinIO storage initialized: endpoint={}, bucket={}",
-        storageProperties.getMinio().getEndpoint(),
-        storageProperties.getBucketName());
+    final var bucketName = storageProperties.getBucketName();
+    try {
+      // Check if bucket exists
+      boolean bucketExists = minioClient.bucketExists(
+          BucketExistsArgs.builder()
+              .bucket(bucketName)
+              .build()
+      );
+
+      if (!bucketExists) {
+        // Create bucket if it doesn't exist
+        log.info("Bucket '{}' does not exist, creating...", bucketName);
+        minioClient.makeBucket(
+            MakeBucketArgs.builder()
+                .bucket(bucketName)
+                .build()
+        );
+        log.info("Successfully created bucket '{}'", bucketName);
+      } else {
+        log.info("Bucket '{}' already exists", bucketName);
+      }
+
+      log.info("MinIO storage initialized: endpoint={}, bucket={}",
+          storageProperties.getMinio().getEndpoint(),
+          bucketName);
+    } catch (Exception e) {
+      log.error("Failed to initialize MinIO storage: {}", e.getMessage(), e);
+      throw new StorageException("Failed to initialize MinIO storage", e);
+    }
   }
 
   @Override

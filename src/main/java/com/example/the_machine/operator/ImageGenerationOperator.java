@@ -3,8 +3,11 @@ package com.example.the_machine.operator;
 import com.example.the_machine.db.ArtifactEntity;
 import com.example.the_machine.operator.result.OperatorResult;
 import com.example.the_machine.service.ArtifactService;
+import com.example.the_machine.service.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.InputStream;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ public class ImageGenerationOperator extends BaseOperator {
 
   private final OpenAiImageModel imageModel;
   private final ArtifactService artifactService;
+  private final StorageService storageService;
   private final ObjectMapper objectMapper;
 
   @Override
@@ -64,24 +68,35 @@ public class ImageGenerationOperator extends BaseOperator {
       final var imageResult = response.getResults().getFirst();
       final var imageUrl = imageResult.getOutput().getUrl();
 
+      log.info("Image generated, downloading from: {}", imageUrl);
+
+      // Download the image from OpenAI's URL
+      String storageKey;
+      try (InputStream imageStream = new URI(imageUrl).toURL().openStream()) {
+        // Store the image in MinIO
+        storageKey = storageService.store(imageStream, imageStream.available(), "image/png", "generated-image.png");
+        log.info("Image stored to MinIO with key: {}", storageKey);
+      }
+
       // Create metadata for the artifact
       final ObjectNode metadata = objectMapper.createObjectNode();
       metadata.put("prompt", prompt);
       metadata.put("size", size);
       metadata.put("quality", quality);
       metadata.put("model", "dall-e-3");
+      metadata.put("originalUrl", imageUrl);  // Keep the original URL for reference
       if (!negativePrompt.isEmpty()) {
         metadata.put("negativePrompt", negativePrompt);
       }
 
-      // Create content with the image URL
+      // Create content with reference to the storage key
       final ObjectNode content = objectMapper.createObjectNode();
-      content.put("url", imageUrl);
+      content.put("storageKey", storageKey);
 
       // Update the artifact with the generated image info
-      artifactService.updateArtifact(artifactId, content, metadata);
+      artifactService.updateArtifactWithStorage(artifactId, storageKey, content, metadata);
 
-      log.info("Successfully generated image, artifact ID: {}", artifactId);
+      log.info("Successfully generated and stored image, artifact ID: {}", artifactId);
 
       return OperatorResult.success(
           "Successfully generated image",

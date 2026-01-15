@@ -127,4 +127,17 @@ public class ArtifactService {
 
     eventService.publish(new ArtifactCreatedEvent(artifact.getProjectId(), artifact.getId()));
   }
+
+  @Transactional
+  public void updateArtifactWithStorage(UUID artifactId, String storageKey, JsonNode content, JsonNode metadata) {
+    log.debug("Updating artifact {} with storage key: {}", artifactId, storageKey);
+    final var artifact = getArtifact(artifactId);
+    artifact.setStorageKey(storageKey);
+    artifact.setContent(content);
+    artifact.setMetadata(metadata);
+    artifact.setStatus(Status.CREATED);
+    artifactRepository.save(artifact);
+
+    eventService.publish(new ArtifactCreatedEvent(artifact.getProjectId(), artifact.getId()));
+  }
 }

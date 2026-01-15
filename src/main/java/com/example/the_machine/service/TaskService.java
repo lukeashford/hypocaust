@@ -3,6 +3,7 @@ package com.example.the_machine.service;
 import com.example.the_machine.db.ProjectEntity;
 import com.example.the_machine.dto.CreateTaskRequestDto;
 import com.example.the_machine.dto.TaskResponseDto;
+import com.example.the_machine.logging.ModelCallLogger;
 import com.example.the_machine.operator.DecomposingOperator;
 import com.example.the_machine.repo.ProjectRepository;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class TaskService {
   private final ProjectRepository projectRepository;
   private final DecomposingOperator decomposingOperator;
   private final ExecutorService runExecutorService;
+  private final ModelCallLogger modelCallLogger;
 
   @Transactional
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
@@ -52,13 +54,16 @@ public class TaskService {
 
   private void executeTask(UUID projectId, String task) {
     log.info("Starting task execution for project: {}", projectId);
-    
+
+    // Reset call sequence counter for this task execution
+    modelCallLogger.resetSequence();
+
     try {
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
-      
+
       final var result = decomposingOperator.execute(Map.of("task", augmentedTask));
-      
+
       if (result.ok()) {
         log.info("Task completed successfully for project: {}", projectId);
       } else {

@@ -1,6 +1,7 @@
 package com.example.the_machine.tool;
 
 import com.example.the_machine.domain.OperatorLedger;
+import com.example.the_machine.logging.ModelCallLogger;
 import com.example.the_machine.operator.registry.OperatorRegistry;
 import com.example.the_machine.operator.result.OperatorResult;
 import java.util.HashMap;
@@ -8,21 +9,30 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class InvokeTool {
 
   private final OperatorRegistry operatorRegistry;
+  private final ModelCallLogger modelCallLogger;
 
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([^}]+)}}");
 
   @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
   public OperatorResult invoke(OperatorLedger ledger) {
+    log.info("Starting operator chain execution with {} children", ledger.children().size());
+
     for (final var child : ledger.children()) {
       final var op = operatorRegistry.get(child.operatorName()).orElseThrow();
+
+      log.info("→ Calling operator: {} with inputs: {}",
+          child.operatorName(),
+          child.inputsToKeys().keySet());
 
       final var inputs = new HashMap<String, Object>();
       for (final var inputName : op.spec().getInputKeys()) {
@@ -37,8 +47,11 @@ public class InvokeTool {
 
       final var result = op.execute(inputs);
       if (!result.ok()) {
+        log.error("✗ Operator {} failed: {}", child.operatorName(), result.message());
         return result;
       }
+
+      log.info("✓ Operator {} completed successfully", child.operatorName());
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -55,6 +68,10 @@ public class InvokeTool {
         ledger.values().put(outputKey, result.outputs().get(outputName));
       }
     }
+
+    // Log the final ledger state
+    log.info("Operator chain completed successfully");
+    modelCallLogger.logLedger(ledger);
 
     return OperatorResult.success(
         "Successfully invoked operator chain",
