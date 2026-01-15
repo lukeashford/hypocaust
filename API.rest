@@ -6,65 +6,19 @@ Accept: application/json
 GET https://localhost/api/diagnostics/models/health
 Accept: application/json
 
-### 1. Create new thread
-POST https://localhost/threads
+### Picture Generation Task
+POST https://localhost/tasks
 Content-Type: application/json
 
+{"task":"Generate a picture of an apple."}
+
 > {%
-  client.global.set("threadId", response.body.id);
+  client.global.set("projectId", response.body.project_id);
 %}
 
 ### 2. Start SSE connection
 #curl -N -H "Accept: text/event-stream"
-GET https://localhost/threads/{{threadId}}/events
-
-
-### 3. Send message with instruction
-POST https://localhost/threads/{{threadId}}/messages
-Content-Type: application/json
-
-{
-  "author": "USER",
-  "content": "Say hello!"
-}
-
-### 4. Wait for processing, then get thread view
-GET https://localhost/threads/{{threadId}}
-
-> {%
-  client.global.set("artifactPath", response.body.artifacts[0].url);
-%}
-
-### 5. Get an artifact
-GET https://localhost/{{artifactPath}}
-
-### 6. Send follow-up message (replaces second run call)
-POST https://localhost/threads/{{threadId}}/messages
-Content-Type: application/json
-
-{
-  "author": "USER",
-  "content": [
-    {
-      "type": "text",
-      "text": "Apple"
-    }
-  ]
-}
-
-### 7. Send revision request (replaces third run call)
-POST https://localhost/threads/{{threadId}}/messages
-Content-Type: application/json
-
-{
-  "author": "USER",
-  "content": [
-    {
-      "type": "text",
-      "text": "Make the main character a girl."
-    }
-  ]
-}
+GET https://localhost/projects/{{projectId}}/events
 
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1
