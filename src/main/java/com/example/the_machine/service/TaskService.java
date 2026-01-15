@@ -1,11 +1,14 @@
 package com.example.the_machine.service;
 
 import com.example.the_machine.db.ProjectEntity;
+import com.example.the_machine.db.RunEntity;
 import com.example.the_machine.dto.CreateTaskRequestDto;
 import com.example.the_machine.dto.TaskResponseDto;
 import com.example.the_machine.logging.ModelCallLogger;
 import com.example.the_machine.operator.DecomposingOperator;
+import com.example.the_machine.operator.RunContextHolder;
 import com.example.the_machine.repo.ProjectRepository;
+import com.example.the_machine.repo.RunRepository;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +32,7 @@ public class TaskService {
       """;
 
   private final ProjectRepository projectRepository;
+  private final RunRepository runRepository;
   private final DecomposingOperator decomposingOperator;
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
@@ -52,25 +56,53 @@ public class TaskService {
     return TaskResponseDto.accepted(projectId);
   }
 
-  private void executeTask(UUID projectId, String task) {
+  @Transactional
+  public void executeTask(UUID projectId, String task) {
     log.info("Starting task execution for project: {}", projectId);
+
+    // Create and persist a run entity
+    final var run = RunEntity.builder()
+        .projectId(projectId)
+        .task(task)
+        .status(RunEntity.Status.QUEUED)
+        .build();
+    runRepository.save(run);
+    final var runId = run.getId();
+
+    log.info("Created run {} for project: {}", runId, projectId);
+
+    // Set the run context for this thread
+    RunContextHolder.setContext(projectId, runId);
 
     // Reset call sequence counter for this task execution
     modelCallLogger.resetSequence();
 
     try {
+      // Start the run
+      run.start();
+      runRepository.save(run);
+
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
 
       final var result = decomposingOperator.execute(Map.of("task", augmentedTask));
 
       if (result.ok()) {
+        run.complete("Task completed successfully");
+        runRepository.save(run);
         log.info("Task completed successfully for project: {}", projectId);
       } else {
+        run.fail(result.message());
+        runRepository.save(run);
         log.error("Task failed for project {}: {}", projectId, result.message());
       }
     } catch (Exception e) {
+      run.fail(e.getMessage());
+      runRepository.save(run);
       log.error("Error executing task for project {}: {}", projectId, e.getMessage(), e);
+    } finally {
+      // Always clear the context when done
+      RunContextHolder.clear();
     }
   }
 
