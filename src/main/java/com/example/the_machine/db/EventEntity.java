@@ -22,10 +22,10 @@ import org.hibernate.type.SqlTypes;
 public class EventEntity extends BaseEntity {
 
   @Column(nullable = false)
-  private UUID threadId;
+  private UUID projectId;
 
   @Column(nullable = false)
-  private UUID threadSeq;
+  private UUID projectSeq;
 
   @Column(nullable = false)
   private Instant occurredAt;

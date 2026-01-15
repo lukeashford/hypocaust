@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class RunScheduledEvent extends RunEvent<RunScheduledEventPayload> {
 
-  public RunScheduledEvent(UUID threadId, UUID runId) {
-    super(threadId, new RunScheduledEventPayload(runId));
+  public RunScheduledEvent(UUID projectId, UUID runId) {
+    super(projectId, new RunScheduledEventPayload(runId));
   }
 
   @Override

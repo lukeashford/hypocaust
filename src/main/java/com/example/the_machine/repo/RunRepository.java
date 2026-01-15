@@ -9,5 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RunRepository extends JpaRepository<RunEntity, UUID> {
 
-  Optional<RunEntity> findTopByThreadIdOrderByStartedAtDesc(UUID threadId);
+  Optional<RunEntity> findTopByProjectIdOrderByStartedAtDesc(UUID projectId);
 }

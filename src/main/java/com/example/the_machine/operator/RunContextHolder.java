@@ -10,8 +10,8 @@ public final class RunContextHolder {
     // Utility class
   }
 
-  public static void setContext(UUID threadId, UUID runId) {
-    contextHolder.set(new RunExecutionContext(threadId, runId));
+  public static void setContext(UUID projectId, UUID runId) {
+    contextHolder.set(new RunExecutionContext(projectId, runId));
   }
 
   public static void setContext(RunExecutionContext context) {
@@ -26,8 +26,8 @@ public final class RunContextHolder {
     return context;
   }
 
-  public static UUID getThreadId() {
-    return getContext().threadId();
+  public static UUID getProjectId() {
+    return getContext().projectId();
   }
 
   public static UUID getRunId() {
@@ -38,7 +38,7 @@ public final class RunContextHolder {
     contextHolder.remove();
   }
 
-  public record RunExecutionContext(UUID threadId, UUID runId) {
+  public record RunExecutionContext(UUID projectId, UUID runId) {
 
   }
 }

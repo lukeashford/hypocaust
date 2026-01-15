@@ -3,7 +3,6 @@ package com.example.the_machine.service.events;
 import com.example.the_machine.domain.event.Event;
 import com.example.the_machine.mapper.EventMapper;
 import com.example.the_machine.repo.EventLogRepository;
-import com.example.the_machine.repo.ThreadRepository;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,7 +21,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class EventService {
 
   private final SseHub sseHub;
-  private final ThreadRepository threadRepository;
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
   private final ApplicationEventPublisher applicationEventPublisher;
@@ -43,36 +41,29 @@ public class EventService {
     publish(event, true);
   }
 
-  public SseEmitter subscribeToEvents(UUID threadId, UUID lastEventId) {
-    // 1. Validate thread exists
-    threadRepository.findById(threadId).orElseThrow(
-        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Thread not found: " + threadId)
-    );
+  public SseEmitter subscribeToEvents(UUID projectId, UUID lastEventId) {
+    final var replayEvents = findEventsSince(projectId, lastEventId);
 
-    final var replayEvents = findEventsSince(threadId, lastEventId);
-
-    // 3. Delegate to SseHub
-    log.debug("SSE subscription for thread {} with validated lastEventId: {}", threadId,
-        lastEventId);
-    return sseHub.subscribe(threadId, replayEvents);
+    log.debug("SSE subscription for project {} with lastEventId: {}", projectId, lastEventId);
+    return sseHub.subscribe(projectId, replayEvents);
   }
 
-  private List<Event<?>> findEventsSince(UUID threadId, UUID lastEventId) {
+  private List<Event<?>> findEventsSince(UUID projectId, UUID lastEventId) {
     if (lastEventId == null) {
       // No lastEventId means this is a new connection - replay all events
-      return eventLogRepository.findByThreadIdOrderById(threadId)
+      return eventLogRepository.findByProjectIdOrderById(projectId)
           .parallelStream()
           .map(eventMapper::toDomain)
           .collect(Collectors.toUnmodifiableList());
     }
 
-    if (!eventLogRepository.existsByIdAndThreadId(lastEventId, threadId)) {
+    if (!eventLogRepository.existsByIdAndProjectId(lastEventId, projectId)) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Last-Event-ID not found for thread: " + lastEventId);
+          "Last-Event-ID not found for project: " + lastEventId);
     }
 
-    return eventLogRepository.findByThreadIdAndIdGreaterThanOrderById(threadId, lastEventId)
+    return eventLogRepository.findByProjectIdAndIdGreaterThanOrderById(projectId, lastEventId)
         .parallelStream()
         .map(eventMapper::toDomain)
         .collect(Collectors.toUnmodifiableList());

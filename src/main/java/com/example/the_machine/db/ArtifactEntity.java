@@ -26,10 +26,10 @@ import org.hibernate.type.SqlTypes;
 public class ArtifactEntity extends BaseEntity {
 
   /**
-   * The thread this artifact belongs to - required for all artifacts
+   * The project this artifact belongs to - required for all artifacts
    */
   @Column(nullable = false)
-  private UUID threadId;
+  private UUID projectId;
 
   /**
    * The run that generated this artifact - optional for user-uploaded artifacts

@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class ToolCallingEvent extends ToolEvent<ToolCallingEventPayload> {
 
-  public ToolCallingEvent(UUID threadId, String content) {
-    super(threadId, new ToolCallingEventPayload(content));
+  public ToolCallingEvent(UUID projectId, String content) {
+    super(projectId, new ToolCallingEventPayload(content));
   }
 
   @Override

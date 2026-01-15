@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class ErrorEvent extends Event<ErrorEventPayload> {
 
-  public ErrorEvent(UUID threadId, String message) {
-    super(threadId, new ErrorEventPayload(message));
+  public ErrorEvent(UUID projectId, String message) {
+    super(projectId, new ErrorEventPayload(message));
   }
 
   @Override

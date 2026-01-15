@@ -6,8 +6,8 @@ import java.util.UUID;
 public abstract sealed class ArtifactEvent<T extends ArtifactEventEventPayload> extends Event<T>
     permits ArtifactScheduledEvent, ArtifactCreatedEvent, ArtifactCancelledEvent {
 
-  protected ArtifactEvent(UUID threadId, T payload) {
-    super(threadId, payload);
+  protected ArtifactEvent(UUID projectId, T payload) {
+    super(projectId, payload);
   }
 
   public interface ArtifactEventEventPayload extends EventPayload {

@@ -22,10 +22,7 @@ import lombok.NoArgsConstructor;
 public class RunEntity extends BaseEntity {
 
   @Column(nullable = false)
-  private UUID threadId;
-
-  @Column(nullable = false)
-  private UUID assistantId;
+  private UUID projectId;
 
   private String task;
 

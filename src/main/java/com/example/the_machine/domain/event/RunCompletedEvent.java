@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class RunCompletedEvent extends RunEvent<RunCompletedEventPayload> {
 
-  public RunCompletedEvent(UUID threadId, UUID runId) {
-    super(threadId, new RunCompletedEventPayload(runId));
+  public RunCompletedEvent(UUID projectId, UUID runId) {
+    super(projectId, new RunCompletedEventPayload(runId));
   }
 
   @Override

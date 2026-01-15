@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record ArtifactMetadataDto(
     UUID id,
-    UUID threadId,
+    UUID projectId,
     UUID runId,
     ArtifactEntity.Kind kind,
     ArtifactEntity.Status status,

@@ -9,13 +9,11 @@ public final class Routes {
     // Utility class - prevent instantiation
   }
 
-  // Thread routes
-  public static final String THREADS = "/threads";
-  public static final String COMPLETIONS = "/v1/chat/completions";
-  public static final String THREAD_EVENTS = "/threads/{id}/events";
+  // Task routes
+  public static final String TASKS = "/tasks";
 
-  // Run routes
-  public static final String RUNS = "/runs";
+  // Project routes (for SSE subscription)
+  public static final String PROJECT_EVENTS = "/projects/{id}/events";
 
   // Artifact routes
   public static final String ARTIFACTS = "/artifacts";

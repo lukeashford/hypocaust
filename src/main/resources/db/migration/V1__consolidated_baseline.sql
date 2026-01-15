@@ -1,53 +1,24 @@
--- Consolidated baseline migration
--- This replaces migrations V1 through V7
+-- Consolidated baseline migration for simplified architecture
+-- Only persists: embeddings (operators, workflows, platforms) and artifacts
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
--- Assistant table
-CREATE TABLE assistant
+-- Project table (lightweight, just tracks project IDs for grouping)
+CREATE TABLE project
 (
-    id            uuid PRIMARY KEY,
-    created_at    timestamptz NOT NULL DEFAULT now(),
-    name          text        NOT NULL,
-    system_prompt text,
-    model         text        NOT NULL,
-    params_json   jsonb       NOT NULL
+    id         uuid PRIMARY KEY,
+    created_at timestamptz NOT NULL DEFAULT now()
 );
-
--- Thread table
-CREATE TABLE thread
-(
-    id                        uuid PRIMARY KEY,
-    created_at                timestamptz NOT NULL DEFAULT now(),
-    librechat_conversation_id text UNIQUE,
-    title                     text,
-    last_activity_at          timestamptz NOT NULL
-);
-
--- Message table
-CREATE TABLE message
-(
-    id          uuid PRIMARY KEY,
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    thread_id   uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
-    author      text        NOT NULL CHECK (author IN ('USER', 'ASSISTANT', 'TOOL', 'SYSTEM')),
-    content     text        NOT NULL,
-    attachments jsonb
-);
-
--- Message indexes
-CREATE INDEX idx_message_thread_time ON message (thread_id, created_at);
 
 -- Run table
 CREATE TABLE run
 (
     id           uuid PRIMARY KEY,
     created_at   timestamptz NOT NULL DEFAULT now(),
-    thread_id    uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
-    assistant_id uuid        NOT NULL REFERENCES assistant (id),
-    task         text        NOT NULL,
+    project_id   uuid        NOT NULL REFERENCES project (id) ON DELETE CASCADE,
+    task         text,
     status       text        NOT NULL CHECK (status IN
                                              ('QUEUED', 'RUNNING', 'REQUIRES_ACTION', 'COMPLETED',
                                               'FAILED', 'CANCELLED')),
@@ -57,14 +28,14 @@ CREATE TABLE run
 );
 
 -- Run indexes
-CREATE INDEX idx_run_thread_started_at ON run (thread_id, COALESCE(started_at, completed_at));
+CREATE INDEX idx_run_project_started_at ON run (project_id, COALESCE(started_at, completed_at));
 
 -- Artifact table
 CREATE TABLE artifact
 (
     id               uuid PRIMARY KEY,
     created_at       timestamptz NOT NULL DEFAULT now(),
-    thread_id        uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
+    project_id       uuid        NOT NULL REFERENCES project (id) ON DELETE CASCADE,
     run_id           uuid        REFERENCES run (id) ON DELETE SET NULL,
     kind             text        NOT NULL CHECK (kind IN
                                                  ('STRUCTURED_JSON', 'IMAGE', 'PDF', 'AUDIO',
@@ -79,7 +50,7 @@ CREATE TABLE artifact
 );
 
 -- Artifact indexes
-CREATE INDEX idx_artifact_thread_time ON artifact (thread_id, created_at DESC);
+CREATE INDEX idx_artifact_project_time ON artifact (project_id, created_at DESC);
 CREATE INDEX idx_artifact_superseded_by_chain ON artifact (superseded_by_id) WHERE superseded_by_id IS NOT NULL;
 CREATE INDEX idx_artifact_content_gin ON artifact USING gin (content);
 
@@ -88,8 +59,8 @@ CREATE TABLE event
 (
     id          uuid PRIMARY KEY,
     created_at  timestamptz DEFAULT now(),
-    thread_id   uuid        NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
-    thread_seq  uuid        NOT NULL,
+    project_id  uuid        NOT NULL REFERENCES project (id) ON DELETE CASCADE,
+    project_seq uuid        NOT NULL,
     type        text        NOT NULL CHECK (type IN
                                             ('artifact.scheduled', 'artifact.created',
                                              'artifact.cancelled',
@@ -102,8 +73,8 @@ CREATE TABLE event
 );
 
 -- Event indexes
-CREATE INDEX idx_event_thread_id ON event (thread_id, id);
-CREATE INDEX idx_event_dedupe ON event (thread_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
+CREATE INDEX idx_event_project_id ON event (project_id, id);
+CREATE INDEX idx_event_dedupe ON event (project_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
 
 -- Operator embeddings table
 CREATE TABLE operator_embeddings
@@ -118,11 +89,3 @@ CREATE TABLE operator_embeddings
 -- Operator embeddings index
 CREATE INDEX idx_operator_embeddings_vector ON operator_embeddings
     USING ivfflat (embedding vector_cosine_ops);
-
--- Default data
-INSERT INTO assistant (id, name, system_prompt, model, params_json)
-VALUES ('00000000-0000-0000-0000-000000000001',
-        'Default Assistant',
-        'You are a helpful AI assistant that specializes in creating marketing content and brand analysis. You can analyze brands, create marketing pitches, generate scripts, and create visual content to support marketing campaigns.',
-        'gpt-4',
-        '{}'::jsonb);

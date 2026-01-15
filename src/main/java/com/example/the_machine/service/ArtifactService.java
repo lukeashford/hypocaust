@@ -33,17 +33,17 @@ public class ArtifactService {
   private final ArtifactMapper artifactMapper;
 
   /**
-   * Get all artifacts for a thread
+   * Get all artifacts for a project
    */
-  public List<ArtifactEntity> getThreadArtifacts(UUID threadId) {
-    return artifactRepository.findByThreadIdOrderByCreatedAtDesc(threadId);
+  public List<ArtifactEntity> getProjectArtifacts(UUID projectId) {
+    return artifactRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
   }
 
   /**
-   * Get metadata DTOs for all artifacts in a thread
+   * Get metadata DTOs for all artifacts in a project
    */
-  public List<ArtifactMetadataDto> getThreadArtifactMetadata(UUID threadId) {
-    return getThreadArtifacts(threadId).stream()
+  public List<ArtifactMetadataDto> getProjectArtifactMetadata(UUID projectId) {
+    return getProjectArtifacts(projectId).stream()
         .map(artifactMapper::toMetadataDto)
         .toList();
   }
@@ -94,12 +94,12 @@ public class ArtifactService {
       String title,
       String mime
   ) {
-    final var threadId = RunContextHolder.getThreadId();
+    final var projectId = RunContextHolder.getProjectId();
     final var runId = RunContextHolder.getRunId();
-    log.debug("Scheduling artifact for thread {}: {}", threadId, title);
+    log.debug("Scheduling artifact for project {}: {}", projectId, title);
 
     final var artifact = new ArtifactEntity(
-        threadId,
+        projectId,
         runId,
         kind,
         Status.SCHEDULED,
@@ -111,7 +111,7 @@ public class ArtifactService {
         null
     );
     artifactRepository.save(artifact);
-    eventService.publish(new ArtifactScheduledEvent(threadId, artifact.getId()));
+    eventService.publish(new ArtifactScheduledEvent(projectId, artifact.getId()));
 
     return artifact.getId();
   }
@@ -125,6 +125,6 @@ public class ArtifactService {
     artifact.setStatus(Status.CREATED);
     artifactRepository.save(artifact);
 
-    eventService.publish(new ArtifactCreatedEvent(artifact.getThreadId(), artifact.getId()));
+    eventService.publish(new ArtifactCreatedEvent(artifact.getProjectId(), artifact.getId()));
   }
 }

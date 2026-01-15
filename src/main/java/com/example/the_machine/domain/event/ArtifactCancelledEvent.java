@@ -6,8 +6,8 @@ import java.util.UUID;
 
 public final class ArtifactCancelledEvent extends ArtifactEvent<ArtifactCancelledEventPayload> {
 
-  public ArtifactCancelledEvent(UUID threadId, UUID artifactId, Kind kind) {
-    super(threadId, new ArtifactCancelledEventPayload(artifactId, kind));
+  public ArtifactCancelledEvent(UUID projectId, UUID artifactId, Kind kind) {
+    super(projectId, new ArtifactCancelledEventPayload(artifactId, kind));
   }
 
   @Override

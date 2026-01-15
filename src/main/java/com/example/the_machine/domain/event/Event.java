@@ -19,15 +19,15 @@ import lombok.Getter;
 public abstract sealed class Event<T extends EventPayload>
     permits ArtifactEvent, RunEvent, ToolEvent, ErrorEvent {
 
-  private final UUID threadId;
-  private final UUID threadSeq;
+  private final UUID projectId;
+  private final UUID projectSeq;
   private final T payload;
   private final Instant occurredAt;
   private final EventType type;
 
-  protected Event(UUID threadId, T payload) {
-    this.threadId = threadId;
-    this.threadSeq = UuidCreator.getTimeOrderedEpoch();
+  protected Event(UUID projectId, T payload) {
+    this.projectId = projectId;
+    this.projectSeq = UuidCreator.getTimeOrderedEpoch();
     this.payload = payload;
     this.occurredAt = Instant.now();
     this.type = type();

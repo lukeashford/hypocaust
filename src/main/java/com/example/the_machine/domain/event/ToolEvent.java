@@ -6,8 +6,8 @@ import java.util.UUID;
 public abstract sealed class ToolEvent<T extends ToolEventPayload> extends Event<T>
     permits ToolCallingEvent {
 
-  protected ToolEvent(UUID threadId, T payload) {
-    super(threadId, payload);
+  protected ToolEvent(UUID projectId, T payload) {
+    super(projectId, payload);
   }
 
   public interface ToolEventPayload extends EventPayload {

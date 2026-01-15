@@ -23,7 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 /**
  * Hub for managing Server-Sent Event (SSE) connections and broadcasting events.
  * <p>
- * Features: - Thread-based subscriptions - Event replay for reconnecting clients - Automatic
+ * Features: - Project-based subscriptions - Event replay for reconnecting clients - Automatic
  * heartbeat to keep connections alive - Graceful shutdown
  */
 @Component
@@ -33,7 +33,7 @@ public class SseHub {
 
   private final ObjectMapper objectMapper;
 
-  private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> threadEmitters = new ConcurrentHashMap<>();
+  private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> projectEmitters = new ConcurrentHashMap<>();
   private final Map<SseEmitter, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
   private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(
       Math.max(4, Runtime.getRuntime().availableProcessors()));
@@ -48,42 +48,42 @@ public class SseHub {
   private int shutdownTimeout;
 
   /**
-   * Subscribe to events for a specific thread.
+   * Subscribe to events for a specific project.
    *
-   * @param threadId the thread to subscribe to
+   * @param projectId the project to subscribe to
    * @param replayEvents optional list of events to replay for reconnecting clients
    * @return SSE emitter for the connection
    */
-  public SseEmitter subscribe(UUID threadId, @Nullable List<Event<?>> replayEvents) {
-    log.debug("New SSE subscription for thread: {}", threadId);
+  public SseEmitter subscribe(UUID projectId, @Nullable List<Event<?>> replayEvents) {
+    log.debug("New SSE subscription for project: {}", projectId);
 
     final var emitter = new SseEmitter(emitterTimeout);
 
     // Replay missed events if provided
     if (replayEvents != null && !replayEvents.isEmpty()) {
-      log.debug("Replaying {} events for thread {}", replayEvents.size(), threadId);
+      log.debug("Replaying {} events for project {}", replayEvents.size(), projectId);
       replayEvents(emitter, replayEvents);
     }
 
     // Add to live subscribers
-    threadEmitters.computeIfAbsent(threadId, k -> new CopyOnWriteArrayList<>()).add(emitter);
-    log.info("Active SSE connections for thread {}: {}",
-        threadId, threadEmitters.get(threadId).size());
+    projectEmitters.computeIfAbsent(projectId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+    log.info("Active SSE connections for project {}: {}",
+        projectId, projectEmitters.get(projectId).size());
 
     // Setup cleanup callbacks
     emitter.onCompletion(() -> {
-      log.debug("SSE connection completed for thread: {}", threadId);
-      removeEmitter(threadId, emitter);
+      log.debug("SSE connection completed for project: {}", projectId);
+      removeEmitter(projectId, emitter);
     });
 
     emitter.onError(throwable -> {
-      log.warn("SSE error for thread {}: {}", threadId, throwable.getMessage());
-      removeEmitter(threadId, emitter);
+      log.warn("SSE error for project {}: {}", projectId, throwable.getMessage());
+      removeEmitter(projectId, emitter);
     });
 
     emitter.onTimeout(() -> {
-      log.debug("SSE timeout for thread: {}", threadId);
-      removeEmitter(threadId, emitter);
+      log.debug("SSE timeout for project: {}", projectId);
+      removeEmitter(projectId, emitter);
     });
 
     // Start heartbeat
@@ -93,21 +93,21 @@ public class SseHub {
   }
 
   /**
-   * Broadcast an event to all subscribers of a thread.
+   * Broadcast an event to all subscribers of a project.
    *
    * @param event the event to broadcast
    */
   public void broadcast(Event<?> event) {
-    final var threadId = event.getThreadId();
-    final var emitters = threadEmitters.get(threadId);
+    final var projectId = event.getProjectId();
+    final var emitters = projectEmitters.get(projectId);
 
     if (emitters == null || emitters.isEmpty()) {
-      log.trace("No subscribers for thread {}, skipping broadcast", threadId);
+      log.trace("No subscribers for project {}, skipping broadcast", projectId);
       return;
     }
 
-    log.debug("Broadcasting {} event to {} subscribers of thread {}",
-        event.type().getValue(), emitters.size(), threadId);
+    log.debug("Broadcasting {} event to {} subscribers of project {}",
+        event.type().getValue(), emitters.size(), projectId);
 
     final var failedEmitters = new CopyOnWriteArrayList<SseEmitter>();
 
@@ -115,7 +115,7 @@ public class SseHub {
       try {
         sendEvent(emitter, event);
       } catch (IOException e) {
-        log.debug("Failed to send SSE event to emitter for thread {}: {}", threadId,
+        log.debug("Failed to send SSE event to emitter for project {}: {}", projectId,
             e.getMessage());
         failedEmitters.add(emitter);
       }
@@ -123,7 +123,7 @@ public class SseHub {
 
     // Clean up failed connections
     for (final var failedEmitter : failedEmitters) {
-      removeEmitter(threadId, failedEmitter);
+      removeEmitter(projectId, failedEmitter);
     }
   }
 
@@ -155,11 +155,11 @@ public class SseHub {
     // The event name should match the type value for frontend routing
     final var eventName = event.type().getValue();
 
-    log.trace("Sending SSE event: name={}, id={}", eventName, event.getThreadSeq());
+    log.trace("Sending SSE event: name={}, id={}", eventName, event.getProjectSeq());
 
     // Build and send the SSE event
     final var sseEvent = SseEmitter.event()
-        .id(event.getThreadSeq().toString())
+        .id(event.getProjectSeq().toString())
         .name(eventName)
         .data(eventJson)
         .reconnectTime(3000L);
@@ -170,13 +170,13 @@ public class SseHub {
   /**
    * Remove an emitter from tracking and cancel its heartbeat.
    */
-  private void removeEmitter(UUID threadId, SseEmitter emitter) {
-    final var emitters = threadEmitters.get(threadId);
+  private void removeEmitter(UUID projectId, SseEmitter emitter) {
+    final var emitters = projectEmitters.get(projectId);
     if (emitters != null) {
       emitters.remove(emitter);
       if (emitters.isEmpty()) {
-        threadEmitters.remove(threadId);
-        log.debug("No more subscribers for thread {}, removed from tracking", threadId);
+        projectEmitters.remove(projectId);
+        log.debug("No more subscribers for project {}, removed from tracking", projectId);
       }
     }
     cancelHeartbeat(emitter);
@@ -223,7 +223,7 @@ public class SseHub {
     log.info("Shutting down SSE hub...");
 
     // Complete all active connections
-    threadEmitters.values().forEach(emitters ->
+    projectEmitters.values().forEach(emitters ->
         emitters.forEach(emitter -> {
           try {
             emitter.complete();

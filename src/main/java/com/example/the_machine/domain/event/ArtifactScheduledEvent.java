@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class ArtifactScheduledEvent extends ArtifactEvent<ArtifactScheduledEventPayload> {
 
-  public ArtifactScheduledEvent(UUID threadId, UUID artifactId) {
-    super(threadId, new ArtifactScheduledEventPayload(artifactId));
+  public ArtifactScheduledEvent(UUID projectId, UUID artifactId) {
+    super(projectId, new ArtifactScheduledEventPayload(artifactId));
   }
 
   @Override

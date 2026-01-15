@@ -8,8 +8,8 @@ import lombok.Getter;
 public abstract sealed class RunEvent<T extends RunEventPayload> extends Event<T>
     permits RunScheduledEvent, RunStartedEvent, RunCompletedEvent {
 
-  protected RunEvent(UUID threadId, T payload) {
-    super(threadId, payload);
+  protected RunEvent(UUID projectId, T payload) {
+    super(projectId, payload);
   }
 
   public interface RunEventPayload extends EventPayload {
