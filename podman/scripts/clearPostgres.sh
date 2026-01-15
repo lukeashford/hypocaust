@@ -19,4 +19,4 @@ podman start the_machine-postgres-postgres
 sleep 3
 
 echo "${GR}PostgreSQL database recreated successfully.${NC}"
-echo "${CY}You can now connect to PostgreSQL at localhost:5432${NC}"
+echo "${CY}You can now connect to PostgreSQL at localhost:7888${NC}"

@@ -102,3 +102,21 @@ tasks.register<Exec>("pods-clearPostgres") {
   group = "podman-dev"
   commandLine("sh", "./podman/scripts/clearPostgres.sh")
 }
+
+tasks.register<Exec>("pods-restart") {
+  description = "Restart all pods"
+  group = "podman-dev"
+  commandLine("sh", "./podman/scripts/restart.sh")
+}
+
+tasks.register<Exec>("pods-delete") {
+  description = "Delete all pods and containers (keep volumes)"
+  group = "podman-dev"
+  commandLine("sh", "./podman/scripts/delete.sh")
+}
+
+tasks.register<Exec>("pods-status") {
+  description = "Show status of all pods and containers"
+  group = "podman-dev"
+  commandLine("sh", "-c", "podman ps -a --filter name=the_machine")
+}
