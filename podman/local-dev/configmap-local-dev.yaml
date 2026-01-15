@@ -2,14 +2,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: the_machine-dev
+  name: hypocaust-dev
 data:
   TERM: "xterm"
 
   # postgres
   POSTGRES_USER: "postgres"
   POSTGRES_PASSWORD: "postgres"
-  POSTGRES_DB: "the_machine"
+  POSTGRES_DB: "hypocaust"
 
   # pgadmin
   PGADMIN_DEFAULT_EMAIL: "pgadmin@imp-ag.de"

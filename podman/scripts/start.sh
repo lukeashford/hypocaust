@@ -2,7 +2,7 @@
 
 source ./podman/scripts/functions.sh
 
-start the_machine-postgres-postgres
-start the_machine-postgres-pgadmin
-start the_machine-minio-minio
-start the_machine-nginx-nginx
+start hypocaust-postgres-postgres
+start hypocaust-postgres-pgadmin
+start hypocaust-minio-minio
+start hypocaust-nginx-nginx

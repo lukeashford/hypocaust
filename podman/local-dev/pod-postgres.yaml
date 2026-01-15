@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: the_machine-postgres
+  name: hypocaust-postgres
 spec:
   volumes:
     - name: postgres_data
@@ -12,7 +12,7 @@ spec:
       image: pgvector/pgvector:pg17
       envFrom:
         - configMapRef:
-            name: the_machine-dev
+            name: hypocaust-dev
       volumeMounts:
         - mountPath: /var/lib/postgresql/data:Z
           name: postgres_data
@@ -25,7 +25,7 @@ spec:
       image: docker.io/dpage/pgadmin4:2024-12-09-2
       envFrom:
         - configMapRef:
-            name: the_machine-dev
+            name: hypocaust-dev
       ports:
         - containerPort: 80
           hostPort: 7889

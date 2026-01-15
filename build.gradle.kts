@@ -98,7 +98,7 @@ tasks.register<Exec>("pods-create") {
 }
 
 tasks.register<Exec>("pods-clearPostgres") {
-  description = "recreate the_machine postgres database"
+  description = "recreate hypocaust postgres database"
   group = "podman-dev"
   commandLine("sh", "./podman/scripts/clearPostgres.sh")
 }
@@ -118,5 +118,5 @@ tasks.register<Exec>("pods-delete") {
 tasks.register<Exec>("pods-status") {
   description = "Show status of all pods and containers"
   group = "podman-dev"
-  commandLine("sh", "-c", "podman ps -a --filter name=the_machine")
+  commandLine("sh", "-c", "podman ps -a --filter name=hypocaust")
 }

@@ -17,8 +17,8 @@ sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-nginx.yaml | podman play
 
 echo "${CY}#############################################################################################"
 echo "#                                                                                           #"
-echo "#   postgres at ${GR}localhost:5432${CY} user:${GR}postgres${CY} pass:${GR}postgres${CY}                                  #"
-echo "#   pgadmin  at ${GR}http://localhost:8070${CY} user:${GR}pgadmin@imp-ag.de${CY} pass:${GR}postgres${CY}                  #"
+echo "#   postgres at ${GR}localhost:7888${CY} user:${GR}postgres${CY} pass:${GR}postgres${CY}                                  #"
+echo "#   pgadmin  at ${GR}http://localhost:7889${CY} user:${GR}pgadmin@imp-ag.de${CY} pass:${GR}postgres${CY}                  #"
 echo "#                                                                                           #"
 echo "#   minio    at ${GR}http://localhost:9000${CY} api-key:${GR}minioadmin${CY} secret:${GR}minioadmin${CY}                  #"
 echo "#   console  at ${GR}http://localhost:9001${NC}                                                              #"

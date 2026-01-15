@@ -18,9 +18,9 @@ restart() {
   fi
 }
 
-restart the_machine-postgres-postgres
-restart the_machine-postgres-pgadmin
-restart the_machine-minio-minio
-restart the_machine-nginx-nginx
+restart hypocaust-postgres-postgres
+restart hypocaust-postgres-pgadmin
+restart hypocaust-minio-minio
+restart hypocaust-nginx-nginx
 
 echo "${GR}All containers restarted.${NC}"

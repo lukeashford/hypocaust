@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: the_machine-nginx
+  name: hypocaust-nginx
 spec:
   volumes:
     - name: nginx_conf

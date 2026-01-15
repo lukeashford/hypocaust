@@ -2,16 +2,16 @@
 
 source ./podman/scripts/functions.sh
 
-echo "Stopping and removing all the_machine containers..."
+echo "Stopping and removing all hypocaust containers..."
 
 # Stop and remove containers
-podman stop the_machine-postgres-postgres the_machine-postgres-pgadmin the_machine-minio-minio the_machine-nginx-nginx 2>/dev/null || true
-podman rm the_machine-postgres-postgres the_machine-postgres-pgadmin the_machine-minio-minio the_machine-nginx-nginx 2>/dev/null || true
+podman stop hypocaust-postgres-postgres hypocaust-postgres-pgadmin hypocaust-minio-minio hypocaust-nginx-nginx 2>/dev/null || true
+podman rm hypocaust-postgres-postgres hypocaust-postgres-pgadmin hypocaust-minio-minio hypocaust-nginx-nginx 2>/dev/null || true
 
 # Remove pods
-podman pod rm the_machine-postgres 2>/dev/null || true
-podman pod rm the_machine-minio 2>/dev/null || true
-podman pod rm the_machine-nginx 2>/dev/null || true
+podman pod rm hypocaust-postgres 2>/dev/null || true
+podman pod rm hypocaust-minio 2>/dev/null || true
+podman pod rm hypocaust-nginx 2>/dev/null || true
 
 # Remove volumes
 echo "Removing postgres data volume..."

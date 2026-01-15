@@ -69,9 +69,9 @@ After running `pods-create`, the following services will be available:
 ## Container Architecture
 
 ### Pods Created:
-- **the_machine-postgres**: Contains Postgres + pgAdmin containers
-- **the_machine-minio**: Contains MinIO server + console
-- **the_machine-nginx**: Contains Nginx reverse proxy
+- **hypocaust-postgres**: Contains Postgres + pgAdmin containers
+- **hypocaust-minio**: Contains MinIO server + console
+- **hypocaust-nginx**: Contains Nginx reverse proxy
 
 ### Data Volumes:
 - `./podman/volumes/postgres/` - PostgreSQL data (persisted)
@@ -95,7 +95,7 @@ After running `pods-create`, the following services will be available:
 **Solution**:
 ```bash
 # Check container logs
-podman logs the_machine-postgres-postgres
+podman logs hypocaust-postgres-postgres
 
 # Check if podman machine is running (macOS/Windows only)
 podman machine list
@@ -136,8 +136,8 @@ netstat -ano | findstr :7888  # Windows
 **Solution**:
 1. Verify container is running: `./gradlew pods-status`
 2. Check you're using the correct port: `7888` (not 5432)
-3. Connection string should be: `jdbc:postgresql://localhost:7888/the_machine`
-4. Database name is `the_machine`, user and password are both `postgres`
+3. Connection string should be: `jdbc:postgresql://localhost:7888/hypocaust`
+4. Database name is `hypocaust`, user and password are both `postgres`
 
 ## Development Workflow
 

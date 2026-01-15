@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: the_machine-minio
+  name: hypocaust-minio
 spec:
   volumes:
     - name: minio_data
@@ -12,7 +12,7 @@ spec:
       image: docker.io/minio/minio:latest
       envFrom:
         - configMapRef:
-            name: the_machine-dev
+            name: hypocaust-dev
       volumeMounts:
         - mountPath: /data:Z
           name: minio_data
