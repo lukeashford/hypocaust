@@ -2,6 +2,7 @@ package com.example.hypocaust.tool;
 
 import com.example.hypocaust.domain.OperatorLedger;
 import com.example.hypocaust.logging.ModelCallLogger;
+import com.example.hypocaust.operator.RunContextHolder;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
 import java.util.HashMap;
@@ -25,12 +26,14 @@ public class InvokeTool {
 
   @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
   public OperatorResult invoke(OperatorLedger ledger) {
-    log.info("Starting operator chain execution with {} children", ledger.children().size());
+    final var indent = RunContextHolder.getIndent();
+    log.info("{}┌─ Starting operator chain with {} children", indent, ledger.children().size());
 
     for (final var child : ledger.children()) {
       final var op = operatorRegistry.get(child.operatorName()).orElseThrow();
 
-      log.info("→ Calling operator: {} with inputs: {}",
+      log.info("{}├─ [START] {} (inputs: {})",
+          indent,
           child.operatorName(),
           child.inputsToKeys().keySet());
 
@@ -45,13 +48,17 @@ public class InvokeTool {
         inputs.put(inputName, inputValue);
       }
 
+      // Increment depth before executing child operator
+      RunContextHolder.incrementDepth();
       final var result = op.execute(inputs);
+      RunContextHolder.decrementDepth();
+
       if (!result.ok()) {
-        log.error("✗ Operator {} failed: {}", child.operatorName(), result.message());
+        log.error("{}├─ [FAILED] {}: {}", indent, child.operatorName(), result.message());
         return result;
       }
 
-      log.info("✓ Operator {} completed successfully", child.operatorName());
+      log.info("{}├─ [DONE] {}", indent, child.operatorName());
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -70,7 +77,7 @@ public class InvokeTool {
     }
 
     // Log the final ledger state
-    log.info("Operator chain completed successfully");
+    log.info("{}└─ Operator chain completed", indent);
     modelCallLogger.logLedger(ledger);
 
     return OperatorResult.success(

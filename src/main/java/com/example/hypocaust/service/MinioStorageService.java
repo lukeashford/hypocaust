@@ -197,9 +197,10 @@ public class MinioStorageService implements StorageService {
 
   /**
    * Generates a storage key with date-based organization. Format:
-   * artifacts/YYYY/MM/DD/{uuid}.{ext}
+   * YYYY/MM/DD/{uuid}.{ext}
    * <p>
-   * Example: artifacts/2025/09/30/a1b2c3d4-e5f6-7890-abcd-ef1234567890.png
+   * Example: 2025/09/30/a1b2c3d4-e5f6-7890-abcd-ef1234567890.png
+   * <p>
    */
   private String generateStorageKey(String filename) {
     final var date = LocalDate.now();
@@ -215,7 +216,7 @@ public class MinioStorageService implements StorageService {
 
     final var uuid = UUID.randomUUID();
 
-    return String.format("artifacts/%s/%s/%s/%s.%s",
+    return String.format("%s/%s/%s/%s.%s",
         year, month, day, uuid, extension);
   }
 }

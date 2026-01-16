@@ -2,7 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <!-- Console appender with operator-focused pattern -->
+    <!-- Console appender with standard pattern -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%thread]) %magenta(%logger{36}) - %msg%n</pattern>
@@ -12,31 +12,9 @@
         </filter>
     </appender>
 
-    <!-- Operator execution console logger - shows high-level operator flow -->
-    <appender name="OPERATOR_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%green([OPERATOR]) %d{HH:mm:ss} %highlight(%-5level) - %msg%n</pattern>
-        </encoder>
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator>
-                <expression>
-                    return logger.contains("Operator") ||
-                           logger.contains("InvokeTool") ||
-                           message.contains("Generating image") ||
-                           message.contains("Successfully generated") ||
-                           message.contains("Executing operator") ||
-                           message.contains("operator execution");
-                </expression>
-            </evaluator>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
-    </appender>
-
     <!-- Application package loggers -->
     <logger name="com.example.hypocaust" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="OPERATOR_CONSOLE"/>
     </logger>
 
     <!-- Reduce Spring AI verbosity -->

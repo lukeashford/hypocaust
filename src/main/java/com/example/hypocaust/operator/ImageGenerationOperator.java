@@ -6,7 +6,6 @@ import com.example.hypocaust.service.ArtifactService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -27,12 +26,15 @@ public class ImageGenerationOperator extends BaseOperator {
   private final StorageService storageService;
   private final ObjectMapper objectMapper;
 
+  private static final String DEFAULT_SIZE = "1024x1024";
+  private static final String DEFAULT_QUALITY = "standard";
+
   @Override
   protected OperatorResult doExecute(Map<String, Object> normalizedInputs) {
     final var prompt = (String) normalizedInputs.get("prompt");
-    final var negativePrompt = (String) normalizedInputs.getOrDefault("negativePrompt", "");
-    final var size = (String) normalizedInputs.getOrDefault("size", "1024x1024");
-    final var quality = (String) normalizedInputs.getOrDefault("quality", "standard");
+    final var negativePrompt = getStringOrDefault(normalizedInputs, "negativePrompt", "");
+    final var size = getStringOrDefault(normalizedInputs, "size", DEFAULT_SIZE);
+    final var quality = getStringOrDefault(normalizedInputs, "quality", DEFAULT_QUALITY);
 
     log.info("Generating image with prompt: {}", prompt);
 
@@ -70,13 +72,15 @@ public class ImageGenerationOperator extends BaseOperator {
 
       log.info("Image generated, downloading from: {}", imageUrl);
 
-      // Download the image from OpenAI's URL
-      String storageKey;
-      try (InputStream imageStream = new URI(imageUrl).toURL().openStream()) {
-        // Store the image in MinIO
-        storageKey = storageService.store(imageStream, imageStream.available(), "image/png", "generated-image.png");
-        log.info("Image stored to MinIO with key: {}", storageKey);
+      // Download the image from OpenAI's URL into byte array for reliable storage
+      final byte[] imageData;
+      try (var imageStream = new URI(imageUrl).toURL().openStream()) {
+        imageData = imageStream.readAllBytes();
       }
+
+      log.info("Downloaded {} bytes, storing to MinIO", imageData.length);
+      final var storageKey = storageService.store(imageData, "image/png", "generated-image.png");
+      log.info("Image stored to MinIO with key: {}", storageKey);
 
       // Create metadata for the artifact
       final ObjectNode metadata = objectMapper.createObjectNode();
@@ -110,6 +114,15 @@ public class ImageGenerationOperator extends BaseOperator {
       log.error("Failed to generate image: {}", e.getMessage(), e);
       return OperatorResult.failure("Image generation failed: " + e.getMessage(), normalizedInputs);
     }
+  }
+
+  private String getStringOrDefault(Map<String, Object> inputs, String key, String defaultValue) {
+    final var value = inputs.get(key);
+    if (value == null) {
+      return defaultValue;
+    }
+    final var strValue = (String) value;
+    return strValue.isBlank() ? defaultValue : strValue;
   }
 
   private int parseWidth(String size) {
