@@ -34,7 +34,7 @@
     </appender>
 
     <!-- Application package loggers -->
-    <logger name="com.example.the_machine" level="INFO" additivity="false">
+    <logger name="com.example.hypocaust" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="OPERATOR_CONSOLE"/>
     </logger>
@@ -52,14 +52,14 @@
     <logger name="org.hibernate.SQL" level="WARN"/>
 
     <!-- SSE specific logging -->
-    <logger name="com.example.the_machine.service.events.SseHub" level="INFO"/>
-    <logger name="com.example.the_machine.service.events.EventService" level="INFO"/>
+    <logger name="com.example.hypocaust.service.events.SseHub" level="INFO"/>
+    <logger name="com.example.hypocaust.service.events.EventService" level="INFO"/>
 
     <!-- Storage logging -->
-    <logger name="com.example.the_machine.service.MinioStorageService" level="INFO"/>
+    <logger name="com.example.hypocaust.service.MinioStorageService" level="INFO"/>
 
     <!-- Task execution logging -->
-    <logger name="com.example.the_machine.service.TaskService" level="INFO"/>
+    <logger name="com.example.hypocaust.service.TaskService" level="INFO"/>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
@@ -67,12 +67,12 @@
 
     <!-- Dev profile overrides -->
     <springProfile name="dev">
-        <logger name="com.example.the_machine" level="DEBUG"/>
+        <logger name="com.example.hypocaust" level="DEBUG"/>
     </springProfile>
 
     <!-- Test profile overrides -->
     <springProfile name="test">
-        <logger name="com.example.the_machine" level="DEBUG"/>
+        <logger name="com.example.hypocaust" level="DEBUG"/>
         <logger name="org.springframework.test" level="DEBUG"/>
     </springProfile>
 </configuration>

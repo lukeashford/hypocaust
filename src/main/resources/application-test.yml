@@ -70,7 +70,7 @@ management:
 
 logging:
   level:
-    com.example.the_machine: DEBUG
+    com.example.hypocaust: DEBUG
     org.springframework.test: DEBUG
     org.testcontainers: INFO
     org.hibernate.SQL: INFO

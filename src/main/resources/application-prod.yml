@@ -23,6 +23,6 @@ spring:
 
 logging:
   level:
-    com.example.the_machine: INFO
+    com.example.hypocaust: INFO
     org.springframework.web: WARN
     org.springframework.security: WARN

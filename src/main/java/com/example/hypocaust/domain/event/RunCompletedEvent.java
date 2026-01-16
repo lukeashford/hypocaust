@@ -1,0 +1,20 @@
+package com.example.hypocaust.domain.event;
+
+import com.example.hypocaust.domain.event.RunCompletedEvent.RunCompletedEventPayload;
+import java.util.UUID;
+
+public final class RunCompletedEvent extends RunEvent<RunCompletedEventPayload> {
+
+  public RunCompletedEvent(UUID projectId, UUID runId) {
+    super(projectId, new RunCompletedEventPayload(runId));
+  }
+
+  @Override
+  public EventType type() {
+    return EventType.RUN_COMPLETED;
+  }
+
+  public record RunCompletedEventPayload(UUID runId) implements RunEventPayload {
+
+  }
+}

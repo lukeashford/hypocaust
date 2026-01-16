@@ -1,8 +1,8 @@
 spring:
   application:
-    name: the_machine
+    name: hypocaust
   datasource:
-    url: jdbc:postgresql://localhost:7888/the_machine
+    url: jdbc:postgresql://localhost:7888/hypocaust
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   jpa:

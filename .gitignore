@@ -44,3 +44,5 @@ out/
 
 ### Application logs ###
 /logs/
+
+.env

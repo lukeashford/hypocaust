@@ -1,1 +1,1 @@
-rootProject.name = "the_machine"
+rootProject.name = "hypocaust"
