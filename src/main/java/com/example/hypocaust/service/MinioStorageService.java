@@ -30,7 +30,7 @@ import org.springframework.stereotype.Service;
  * old files - Better performance with many files - Human-readable organization
  */
 @Service
-@ConditionalOnProperty(name = "storage.provider", havingValue = "minio", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.storage.provider", havingValue = "minio", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class MinioStorageService implements StorageService {
