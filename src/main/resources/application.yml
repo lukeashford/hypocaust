@@ -1,6 +1,103 @@
 spring:
   application:
-    name: the_machine
-  ai:
+    name: hypocaust
+  datasource:
+    url: jdbc:postgresql://localhost:7888/hypocaust
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+app:
+  host-url: ${HOST_URL:https://localhost}
+  rag:
+    platforms-path: ${PLATFORMS_PATH:src/main/resources/rag/platforms}
+    workflows-path: ${WORKFLOWS_PATH:src/main/resources/rag/workflows}
+  llm:
+    orchestration-model-name: "gpt-4o"
+    decomposing-model-name: "o3"
+
     openai:
       api-key: ${OPENAI_API_KEY}
+
+      chat:
+        gpt-5: # Flagship generalist; strong tool use. Check models page for current limits.
+          topP: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 4096    # safe default; lift if you need longer answers
+
+        gpt-4o: # Multimodal generalist; typical ctx ~128K per OpenAI era guidance.
+          temperature: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 4096
+
+        gpt-4o-mini: # Context window 128K; up to 16K output; great cost/perf.
+          temperature: 0.2
+          topP: 1.0
+          presencePenalty: 0.0
+          frequencyPenalty: 0.0
+          maxCompletionTokens: 16000   # vendor-stated output max
+
+        o3: # Use maxCompletionTokens on Chat Completions; Responses API uses max_output_tokens.
+          topP: 1.0
+          maxCompletionTokens: 1024    # caps *visible + reasoning* tokens on Chat Completions
+          reasoning-effort: medium             # low|medium|high (supported for o3 family)
+
+      embedding: # 3-small supports dimension shortening; vendor post recommends dims control.
+        text-embedding-3-small:
+          dimensions: 1536            # default; may set 512 for cheaper vectors
+          encodingFormat: float
+
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & 'thinking' behavior.
+          maxTokens: 4096                   # output cap; increase as needed
+          temperature: 0.7
+          topP: 1.0
+          # Thinking (billable) – enable only when you truly need it
+          thinking:
+            budgetTokens: 0
+
+  decomposer:
+    max-branch-factor: ${DECOMPOSER_MAX_BRANCH_FACTOR:3}
+
+  storage:
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  
+  sse:
+    heartbeat:
+      interval-seconds: 20
+    connection:
+      timeout-millis: 0              # 0 = no timeout
+    shutdown:
+      grace-period-seconds: 5
+
+  executor:
+    run:
+      thread-pool:
+        core-threads: 2
+        max-threads: 5
+      task-queue:
+        max-capacity: 10
+      idle-thread:
+        keep-alive-seconds: 60
+      shutdown:
+        grace-period-seconds: 5

@@ -1,0 +1,27 @@
+# This configmap contains environment variables for the local development.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hypocaust-dev
+data:
+  TERM: "xterm"
+
+  # postgres
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "hypocaust"
+
+  # pgadmin
+  PGADMIN_DEFAULT_EMAIL: "pgadmin@imp-ag.de"
+  PGADMIN_DEFAULT_PASSWORD: "postgres"
+
+  # minio (server + console)
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+
+  # application storage properties (Spring will map these to storage.*)
+  STORAGE_PROVIDER: "minio"
+  STORAGE_MINIO_ENDPOINT: "http://localhost:9000"
+  STORAGE_MINIO_ACCESS_KEY: "minioadmin"
+  STORAGE_MINIO_SECRET_KEY: "minioadmin"
+  STORAGE_BUCKET_NAME: "artifacts"

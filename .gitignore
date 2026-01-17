@@ -35,3 +35,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Storage ###
+/podman/volumes/*
+
+### Local data directory ###
+/data/
+
+### Application logs ###
+/logs/
+
+.env

@@ -1,0 +1,35 @@
+### App Health Check
+GET https://localhost/actuator/health
+Accept: application/json
+
+### Model Health Check
+GET https://localhost/api/diagnostics/models/health
+Accept: application/json
+
+### Picture Generation Task
+POST https://localhost/tasks
+Content-Type: application/json
+
+{"task":"Generate a picture of an apple."}
+
+> {%
+  client.global.set("projectId", response.body.project_id);
+%}
+
+### 2. Start SSE connection (subscribe to events)
+# Note: This is the SSE endpoint that will stream events for your project
+GET https://localhost/projects/{{projectId}}/events
+Accept: text/event-stream
+
+### List models (select the "local" environment from the IDE drop-down)
+@replicateBase = https://api.replicate.com/v1
+@replicateToken = r8_Wke9S4clis5oinqAf1MnApxPfL7WH9D0pfQsA
+GET {{replicateBase}}/models
+Authorization: Bearer {{replicateToken}}
+Accept: application/json
+
+###
+GET https://api.replicate.com/v1/search?
+    query=a+model+that+cannot+only+remove+background+in+videos+but+replace+it+seamlessly
+Authorization: Bearer {{replicateToken}}
+Accept: application/json

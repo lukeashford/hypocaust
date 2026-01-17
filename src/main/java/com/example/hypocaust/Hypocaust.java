@@ -1,13 +1,15 @@
-package com.example.the_machine;
+package com.example.hypocaust;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
-public class TheMachineApplication {
+@EnableAsync
+public class Hypocaust {
 
   public static void main(String[] args) {
-    SpringApplication.run(TheMachineApplication.class, args);
+    SpringApplication.run(Hypocaust.class, args);
   }
 
 }

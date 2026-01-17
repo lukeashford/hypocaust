@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hypocaust-nginx
+spec:
+  volumes:
+    - name: nginx_conf
+      hostPath:
+        path: ${HOSTPATH}/infra/nginx/nginx.conf
+    - name: nginx_certs
+      hostPath:
+        path: ${HOSTPATH}/infra/nginx/certs
+  containers:
+    - name: nginx
+      image: docker.io/library/nginx:alpine
+      volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf:Z
+          name: nginx_conf
+          readOnly: true
+        - mountPath: /etc/nginx/certs:Z
+          name: nginx_certs
+          readOnly: true
+      ports:
+        - containerPort: 443
+          hostPort: 443
+          protocol: TCP

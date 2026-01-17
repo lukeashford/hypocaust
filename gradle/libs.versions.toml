@@ -1,0 +1,59 @@
+[versions]
+# Spring versions
+spring-boot = "3.5.0"
+spring-ai = "1.0.0"
+
+# Explicitly versioned dependencies
+lombok = "1.18.34"
+mapstruct = "1.6.2"
+uuid-creator = "6.1.1"
+hibernate-vector = "6.6.15.Final"
+jtokkit = "1.1.0"
+minio = "8.6.0"
+
+[libraries]
+# Spring Boot BOM managed (no version needed, managed by BOM)
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+postgresql = { module = "org.postgresql:postgresql" }
+hibernate-vector = { module = "org.hibernate.orm:hibernate-vector", version.ref = "hibernate-vector" }
+flyway-core = { module = "org.flywaydb:flyway-core" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+minio = { module = "io.minio:minio", version.ref = "minio" }
+
+# Mockito (BOM managed)
+mockito-core = { module = "org.mockito:mockito-core" }
+
+# Spring AI BOM managed
+spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
+spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic" }
+spring-ai-client-chat = { module = "org.springframework.ai:spring-ai-client-chat" }
+
+# Explicitly versioned dependencies
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
+mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
+jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
+
+[bundles]
+# Core Spring Boot functionality
+spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "spring-boot-starter-data-jpa"]
+db = ["postgresql", "hibernate-vector", "flyway-core", "flyway-database-postgresql"]
+spring-ai = ["spring-ai-openai", "spring-ai-anthropic", "spring-ai-client-chat"]
+tools = ["uuid-creator", "jtokkit"]
+
+# Testing infrastructure
+testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]
+testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
+
+[plugins]
+# Plugin versions for reference
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.7" }

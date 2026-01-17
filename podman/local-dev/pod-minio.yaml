@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hypocaust-minio
+spec:
+  volumes:
+    - name: minio_data
+      hostPath:
+        path: ${HOSTPATH}/podman/volumes/minio
+  containers:
+    - name: minio
+      image: docker.io/minio/minio:latest
+      envFrom:
+        - configMapRef:
+            name: hypocaust-dev
+      volumeMounts:
+        - mountPath: /data:Z
+          name: minio_data
+          readOnly: false
+      ports:
+        - containerPort: 9000
+          hostPort: 9000
+          protocol: TCP
+        - containerPort: 9001
+          hostPort: 9001
+          protocol: TCP
+      args: [ "server", "/data", "--console-address", ":9001" ]

@@ -1,0 +1,28 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /internal
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      roles: ACTUATOR
+  server:
+    address: 127.0.0.1
+  security:
+    enabled: true
+
+spring:
+  security:
+    user:
+      name: ${ACTUATOR_USERNAME:admin}
+      password: ${ACTUATOR_PASSWORD}
+      roles: ACTUATOR
+
+logging:
+  level:
+    com.example.hypocaust: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN

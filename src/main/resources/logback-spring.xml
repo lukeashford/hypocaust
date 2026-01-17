@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Console appender with standard pattern -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%thread]) %magenta(%logger{36}) - %msg%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Application package loggers -->
+    <logger name="com.example.hypocaust" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Reduce Spring AI verbosity -->
+    <logger name="org.springframework.ai" level="WARN"/>
+    <logger name="org.springframework.ai.chat" level="WARN"/>
+    <logger name="org.springframework.ai.openai" level="WARN"/>
+    <logger name="org.springframework.ai.anthropic" level="WARN"/>
+
+    <!-- Reduce other framework verbosity -->
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+
+    <!-- SSE specific logging -->
+    <logger name="com.example.hypocaust.service.events.SseHub" level="INFO"/>
+    <logger name="com.example.hypocaust.service.events.EventService" level="INFO"/>
+
+    <!-- Storage logging -->
+    <logger name="com.example.hypocaust.service.MinioStorageService" level="INFO"/>
+
+    <!-- Task execution logging -->
+    <logger name="com.example.hypocaust.service.TaskService" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Dev profile overrides -->
+    <springProfile name="dev">
+        <logger name="com.example.hypocaust" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Test profile overrides -->
+    <springProfile name="test">
+        <logger name="com.example.hypocaust" level="DEBUG"/>
+        <logger name="org.springframework.test" level="DEBUG"/>
+    </springProfile>
+</configuration>
