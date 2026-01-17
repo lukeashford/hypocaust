@@ -29,9 +29,10 @@ public class CreativeTextGenerationOperator extends BaseOperator {
         null
     );
 
+    // Inputs are already normalized with defaults applied by BaseOperator
     final var prompt = (String) normalizedInputs.get("prompt");
-    final var style = (String) normalizedInputs.getOrDefault("style", "creative");
-    final var maxLength = (Integer) normalizedInputs.getOrDefault("maxLength", 500);
+    final var style = (String) normalizedInputs.get("style");
+    final var maxLength = (Integer) normalizedInputs.get("maxLength");
 
     final var chatClient = ChatClient.builder(
             modelRegistry.get("gpt-4o"))
@@ -71,8 +72,8 @@ public class CreativeTextGenerationOperator extends BaseOperator {
         "Generates creative text content from prompts",
         List.of(
             ParamSpec.string("prompt", "The creative prompt or concept", true),
-            ParamSpec.string("style", "Writing style (creative, professional, casual)", false),
-            ParamSpec.integer("maxLength", "Maximum length in words", false)
+            ParamSpec.string("style", "Writing style (creative, professional, casual)", "creative"),
+            ParamSpec.integer("maxLength", "Maximum length in words", 500)
         ),
         List.of(
             ParamSpec.string(OUTPUT_KEY, "Generated text content", true)

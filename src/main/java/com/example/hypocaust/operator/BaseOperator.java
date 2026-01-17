@@ -7,12 +7,15 @@ public abstract class BaseOperator implements Operator {
 
   public final OperatorResult execute(Map<String, Object> rawInputs) {
     try {
-      final var validationResult = spec().validate(rawInputs);
+      // First normalize (apply defaults), then validate
+      final var normalizedInputs = spec().normalize(rawInputs);
+
+      final var validationResult = spec().validate(normalizedInputs);
       if (!validationResult.ok()) {
-        return OperatorResult.failure(validationResult.message(), rawInputs);
+        return OperatorResult.failure(validationResult.message(), normalizedInputs);
       }
 
-      return doExecute(rawInputs);
+      return doExecute(normalizedInputs);
     } catch (Exception e) {
       return OperatorResult.failure(e.getMessage(), rawInputs);
     }
@@ -23,5 +26,4 @@ public abstract class BaseOperator implements Operator {
   }
 
   protected abstract OperatorResult doExecute(Map<String, Object> normalizedInputs);
-
 }

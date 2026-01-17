@@ -26,15 +26,13 @@ public class ImageGenerationOperator extends BaseOperator {
   private final StorageService storageService;
   private final ObjectMapper objectMapper;
 
-  private static final String DEFAULT_SIZE = "1024x1024";
-  private static final String DEFAULT_QUALITY = "standard";
-
   @Override
   protected OperatorResult doExecute(Map<String, Object> normalizedInputs) {
+    // Inputs are already normalized with defaults applied by BaseOperator
     final var prompt = (String) normalizedInputs.get("prompt");
-    final var negativePrompt = getStringOrDefault(normalizedInputs, "negativePrompt", "");
-    final var size = getStringOrDefault(normalizedInputs, "size", DEFAULT_SIZE);
-    final var quality = getStringOrDefault(normalizedInputs, "quality", DEFAULT_QUALITY);
+    final var negativePrompt = (String) normalizedInputs.get("negativePrompt");
+    final var size = (String) normalizedInputs.get("size");
+    final var quality = (String) normalizedInputs.get("quality");
 
     log.info("Generating image with prompt: {}", prompt);
 
@@ -116,15 +114,6 @@ public class ImageGenerationOperator extends BaseOperator {
     }
   }
 
-  private String getStringOrDefault(Map<String, Object> inputs, String key, String defaultValue) {
-    final var value = inputs.get(key);
-    if (value == null) {
-      return defaultValue;
-    }
-    final var strValue = (String) value;
-    return strValue.isBlank() ? defaultValue : strValue;
-  }
-
   private int parseWidth(String size) {
     return Integer.parseInt(size.split("x")[0]);
   }
@@ -141,9 +130,9 @@ public class ImageGenerationOperator extends BaseOperator {
         "Generates images using DALL-E 3 from text prompts",
         List.of(
             ParamSpec.string("prompt", "The text prompt describing the image to generate", true),
-            ParamSpec.string("negativePrompt", "Elements to avoid in the generated image", false),
-            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)", false),
-            ParamSpec.string("quality", "Image quality (standard or hd)", false)
+            ParamSpec.string("negativePrompt", "Elements to avoid in the generated image", ""),
+            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)", "1024x1024"),
+            ParamSpec.string("quality", "Image quality (standard or hd)", "standard")
         ),
         List.of(
             ParamSpec.string("imageUrl", "URL of the generated image", true),

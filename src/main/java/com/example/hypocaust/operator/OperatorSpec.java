@@ -2,6 +2,7 @@ package com.example.hypocaust.operator;
 
 import com.example.hypocaust.operator.result.Result;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,44 @@ public record OperatorSpec(
     List<ParamSpec<?>> inputs,
     List<ParamSpec<?>> outputs
 ) {
+
+  /**
+   * Normalizes input parameters by applying default values for missing or blank optional parameters.
+   * Returns a new map with defaults applied - does not modify the original.
+   *
+   * @param inputParams the raw input parameters
+   * @return normalized parameters with defaults applied
+   */
+  public Map<String, Object> normalize(Map<String, Object> inputParams) {
+    final var normalized = new HashMap<>(inputParams);
+
+    for (final var paramSpec : inputs) {
+      if (!paramSpec.hasDefault()) {
+        continue;
+      }
+
+      final var paramName = paramSpec.name();
+      final var value = normalized.get(paramName);
+
+      // Apply default if value is null or (for strings) blank
+      if (shouldApplyDefault(value)) {
+        normalized.put(paramName, paramSpec.defaultValue());
+      }
+    }
+
+    return normalized;
+  }
+
+  private boolean shouldApplyDefault(Object value) {
+    if (value == null) {
+      return true;
+    }
+    // For strings, also apply default if blank
+    if (value instanceof String str) {
+      return str.isBlank();
+    }
+    return false;
+  }
 
   /**
    * Validates input parameters against the specification.

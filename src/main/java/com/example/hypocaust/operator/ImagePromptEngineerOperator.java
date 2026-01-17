@@ -16,10 +16,11 @@ public class ImagePromptEngineerOperator extends BaseOperator {
 
   @Override
   protected OperatorResult doExecute(Map<String, Object> normalizedInputs) {
+    // Inputs are already normalized with defaults applied by BaseOperator
     final var concept = (String) normalizedInputs.get("concept");
-    final var style = (String) normalizedInputs.getOrDefault("style", "");
-    final var mood = (String) normalizedInputs.getOrDefault("mood", "");
-    final var technicalParams = (String) normalizedInputs.getOrDefault("technicalParams", "");
+    final var style = (String) normalizedInputs.get("style");
+    final var mood = (String) normalizedInputs.get("mood");
+    final var technicalParams = (String) normalizedInputs.get("technicalParams");
 
     final var chatClient = ChatClient.builder(
             modelRegistry.get("gpt-4o"))
@@ -85,12 +86,9 @@ public class ImagePromptEngineerOperator extends BaseOperator {
         "Crafts optimal prompts for AI image generation from simple concepts",
         List.of(
             ParamSpec.string("concept", "Simple concept or idea for the image", true),
-            ParamSpec.string("style", "Artistic style (photorealistic, anime, oil painting, etc.)",
-                false),
-            ParamSpec.string("mood", "Mood or atmosphere (dark, cheerful, mysterious, etc.)",
-                false),
-            ParamSpec.string("technicalParams", "Technical parameters (4k, HDR, cinematic, etc.)",
-                false)
+            ParamSpec.string("style", "Artistic style (photorealistic, anime, oil painting, etc.)", ""),
+            ParamSpec.string("mood", "Mood or atmosphere (dark, cheerful, mysterious, etc.)", ""),
+            ParamSpec.string("technicalParams", "Technical parameters (4k, HDR, cinematic, etc.)", "")
         ),
         List.of(
             ParamSpec.string("optimizedPrompt", "Engineered prompt for image generation", true),

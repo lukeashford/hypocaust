@@ -6,8 +6,22 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Simplified parameter specification containing only essential attributes.
+ * Supports optional default values for non-required parameters.
  */
-public record ParamSpec<T>(String name, JavaType type, String description, boolean required) {
+public record ParamSpec<T>(
+    String name,
+    JavaType type,
+    String description,
+    boolean required,
+    T defaultValue
+) {
+
+  /**
+   * Returns true if this parameter has a default value.
+   */
+  public boolean hasDefault() {
+    return defaultValue != null;
+  }
 
   /**
    * Validates a value against this parameter specification.
@@ -37,12 +51,15 @@ public record ParamSpec<T>(String name, JavaType type, String description, boole
     return Result.success("Parameter '" + name + "' validation completed successfully");
   }
 
+  // Factory methods for required parameters (no default)
+
   public static ParamSpec<String> string(String name, String description, boolean required) {
     return new ParamSpec<>(
         name,
         TypeFactory.defaultInstance().constructType(String.class),
         description,
-        required
+        required,
+        null
     );
   }
 
@@ -51,8 +68,30 @@ public record ParamSpec<T>(String name, JavaType type, String description, boole
         name,
         TypeFactory.defaultInstance().constructType(Integer.class),
         description,
-        required
+        required,
+        null
     );
   }
 
+  // Factory methods for optional parameters with defaults
+
+  public static ParamSpec<String> string(String name, String description, String defaultValue) {
+    return new ParamSpec<>(
+        name,
+        TypeFactory.defaultInstance().constructType(String.class),
+        description,
+        false,
+        defaultValue
+    );
+  }
+
+  public static ParamSpec<Integer> integer(String name, String description, int defaultValue) {
+    return new ParamSpec<>(
+        name,
+        TypeFactory.defaultInstance().constructType(Integer.class),
+        description,
+        false,
+        defaultValue
+    );
+  }
 }
