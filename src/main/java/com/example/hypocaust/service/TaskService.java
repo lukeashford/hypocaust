@@ -46,7 +46,7 @@ public class TaskService {
     }
 
     // Create a new project
-    final var project = projectRepository.save(new ProjectEntity());
+    final var project = projectRepository.saveAndFlush(new ProjectEntity());
     final var projectId = project.getId();
     log.info("Created project {} for task: {}", projectId, truncateTitle(task));
 
