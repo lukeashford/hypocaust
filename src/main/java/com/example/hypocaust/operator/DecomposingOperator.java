@@ -151,6 +151,7 @@ public class DecomposingOperator extends BaseOperator {
         
         1. **Design** your OperatorLedger based on the decision algorithm
         2. **Execute** by calling the `invoke` tool with your ledger
+        3. **Self-Healing**: If an operator in your ledger fails, analyze the error returned by the invoke tool and propose a new ledger with corrected parameters or an alternative strategy, but only if you are confident you can actually correct the error.
         
         The recursion terminates when every branch reaches a leaf that either successfully invokes an operator or returns a "No operator found" failure.
         """.formatted(maxBranchFactor, maxBranchFactor));
