@@ -13,8 +13,6 @@ public record ArtifactDto(
     ArtifactEntity.Status status,
     String title,
     String mime,
-    String url,                  // computed if file-backed
-    JsonNode content,            // structured outputs
     JsonNode metadata,           // dims, duration, etc.
     Instant createdAt,
     UUID supersededById

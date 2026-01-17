@@ -5,7 +5,7 @@ import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.db.ArtifactEntity.Status;
 import com.example.hypocaust.domain.event.ArtifactCreatedEvent;
 import com.example.hypocaust.domain.event.ArtifactScheduledEvent;
-import com.example.hypocaust.dto.ArtifactMetadataDto;
+import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactNotReadyException;
 import com.example.hypocaust.mapper.ArtifactMapper;
@@ -40,11 +40,11 @@ public class ArtifactService {
   }
 
   /**
-   * Get metadata DTOs for all artifacts in a project
+   * Get DTOs for all artifacts in a project
    */
-  public List<ArtifactMetadataDto> getProjectArtifactMetadata(UUID projectId) {
+  public List<ArtifactDto> getProjectArtifactsAsDto(UUID projectId) {
     return getProjectArtifacts(projectId).stream()
-        .map(artifactMapper::toMetadataDto)
+        .map(artifactMapper::toDto)
         .toList();
   }
 
@@ -58,10 +58,10 @@ public class ArtifactService {
   }
 
   /**
-   * Get metadata DTO for an artifact by ID
+   * Get DTO for an artifact by ID
    */
-  public ArtifactMetadataDto getArtifactMetadata(UUID artifactId) {
-    return artifactMapper.toMetadataDto(getArtifact(artifactId));
+  public ArtifactDto getArtifactDto(UUID artifactId) {
+    return artifactMapper.toDto(getArtifact(artifactId));
   }
 
   /**
