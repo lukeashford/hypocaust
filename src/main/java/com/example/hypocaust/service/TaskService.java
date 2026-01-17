@@ -2,6 +2,9 @@ package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.ProjectEntity;
 import com.example.hypocaust.db.RunEntity;
+import com.example.hypocaust.domain.event.RunCompletedEvent;
+import com.example.hypocaust.domain.event.RunScheduledEvent;
+import com.example.hypocaust.domain.event.RunStartedEvent;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
@@ -9,6 +12,7 @@ import com.example.hypocaust.operator.DecomposingOperator;
 import com.example.hypocaust.operator.RunContextHolder;
 import com.example.hypocaust.repo.ProjectRepository;
 import com.example.hypocaust.repo.RunRepository;
+import com.example.hypocaust.service.events.EventService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -18,8 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for handling task submission and execution.
- * Currently only supports picture generation tasks.
+ * Service for handling task submission and execution. Currently only supports picture generation
+ * tasks.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,11 +40,12 @@ public class TaskService {
   private final DecomposingOperator decomposingOperator;
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
+  private final EventService eventService;
 
   @Transactional
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
-    
+
     if (task == null || task.isBlank()) {
       return TaskResponseDto.rejected("Task description is required");
     }
@@ -70,6 +75,7 @@ public class TaskService {
     final var runId = run.getId();
 
     log.info("Created run {} for project: {}", runId, projectId);
+    eventService.publish(new RunScheduledEvent(projectId, runId));
 
     // Set the run context for this thread
     RunContextHolder.setContext(projectId, runId);
@@ -81,6 +87,7 @@ public class TaskService {
       // Start the run
       run.start();
       runRepository.save(run);
+      eventService.publish(new RunStartedEvent(projectId, runId));
 
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
@@ -90,6 +97,7 @@ public class TaskService {
       if (result.ok()) {
         run.complete("Task completed successfully");
         runRepository.save(run);
+        eventService.publish(new RunCompletedEvent(projectId, runId));
         log.info("Task completed successfully for project: {}", projectId);
       } else {
         run.fail(result.message());

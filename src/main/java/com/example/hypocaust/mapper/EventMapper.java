@@ -6,6 +6,9 @@ import com.example.hypocaust.domain.event.ArtifactCreatedEvent;
 import com.example.hypocaust.domain.event.ArtifactScheduledEvent;
 import com.example.hypocaust.domain.event.ErrorEvent;
 import com.example.hypocaust.domain.event.Event;
+import com.example.hypocaust.domain.event.OperatorFailedEvent;
+import com.example.hypocaust.domain.event.OperatorFinishedEvent;
+import com.example.hypocaust.domain.event.OperatorStartedEvent;
 import com.example.hypocaust.domain.event.RunCompletedEvent;
 import com.example.hypocaust.domain.event.RunScheduledEvent;
 import com.example.hypocaust.domain.event.RunStartedEvent;
@@ -58,6 +61,25 @@ public interface EventMapper {
     return new ErrorEvent(entity.getProjectId(), payload.message());
   }
 
+  default OperatorStartedEvent toOperatorStartedEvent(EventEntity entity) {
+    var payload = (OperatorStartedEvent.Payload) entity.getPayload();
+    return new OperatorStartedEvent(entity.getProjectId(), payload.operatorName(),
+        payload.inputs());
+  }
+
+  default OperatorFinishedEvent toOperatorFinishedEvent(EventEntity entity) {
+    var payload = (OperatorFinishedEvent.Payload) entity.getPayload();
+    return new OperatorFinishedEvent(entity.getProjectId(), payload.operatorName(),
+        payload.inputs(),
+        payload.outputs());
+  }
+
+  default OperatorFailedEvent toOperatorFailedEvent(EventEntity entity) {
+    var payload = (OperatorFailedEvent.Payload) entity.getPayload();
+    return new OperatorFailedEvent(entity.getProjectId(), payload.operatorName(), payload.inputs(),
+        payload.reason());
+  }
+
   @ObjectFactory
   default Event<?> createEvent(EventEntity entity) {
     return switch (entity.getType()) {
@@ -72,6 +94,10 @@ public interface EventMapper {
       case TOOL_CALLING -> toToolCallingEvent(entity);
 
       case ERROR -> toErrorEvent(entity);
+
+      case OPERATOR_STARTED -> toOperatorStartedEvent(entity);
+      case OPERATOR_FINISHED -> toOperatorFinishedEvent(entity);
+      case OPERATOR_FAILED -> toOperatorFailedEvent(entity);
     };
   }
 

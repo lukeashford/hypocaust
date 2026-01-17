@@ -90,4 +90,33 @@ class EventSerializationTest {
 
     System.out.println("[DEBUG_LOG] ToolCallingEvent serialization test passed");
   }
+
+  @Test
+  void testOperatorEventsSerialization() throws Exception {
+    System.out.println("[DEBUG_LOG] Testing OperatorEvents serialization");
+
+    UUID projectId = UUID.randomUUID();
+    var inputs = java.util.Map.of("key", (Object) "value");
+    var outputs = java.util.Map.of("result", (Object) 42);
+
+    // Started
+    var started = new OperatorStartedEvent(projectId, "test-op", inputs);
+    String jsonStarted = objectMapper.writeValueAsString(started);
+    assertTrue(jsonStarted.contains("\"type\":\"operator.started\""));
+    assertTrue(jsonStarted.contains("\"operatorName\":\"test-op\""));
+
+    // Finished
+    var finished = new OperatorFinishedEvent(projectId, "test-op", inputs, outputs);
+    String jsonFinished = objectMapper.writeValueAsString(finished);
+    assertTrue(jsonFinished.contains("\"type\":\"operator.finished\""));
+    assertTrue(jsonFinished.contains("\"outputs\":{\"result\":42}"));
+
+    // Failed
+    var failed = new OperatorFailedEvent(projectId, "test-op", inputs, "something went wrong");
+    String jsonFailed = objectMapper.writeValueAsString(failed);
+    assertTrue(jsonFailed.contains("\"type\":\"operator.failed\""));
+    assertTrue(jsonFailed.contains("\"reason\":\"something went wrong\""));
+
+    System.out.println("[DEBUG_LOG] OperatorEvents serialization tests passed");
+  }
 }

@@ -195,40 +195,47 @@ public class DecomposingOperator extends BaseOperator {
     final var userMessage = new UserMessage(root.toPrettyString());
     final var prompt = new Prompt(List.of(buildSystemMessage(), userMessage));
 
-    final var chatResponse = client.prompt(prompt).call();
-    final var content = chatResponse.content();
+    try {
+      final var chatResponse = client.prompt(prompt).call();
+      final var content = chatResponse.content();
 
-    // Check for explicit failure messages
-    if (content != null && content.startsWith("No operator found for atomic task:")) {
-      return OperatorResult.failure(content, Map.of("task", task));
-    }
+      // Check for explicit failure messages
+      if (content != null && content.startsWith("No operator found for atomic task:")) {
+        return OperatorResult.failure(content, Map.of("task", task));
+      }
 
-    // Check for common error patterns in the response
-    if (content != null && (
-        content.contains("failed:") ||
-        content.contains("error:") ||
-        content.contains("Error:") ||
-        content.toLowerCase().contains("could not") ||
-        content.toLowerCase().contains("unable to"))) {
+      // Check for common error patterns in the response
+      if (content != null && (
+          content.contains("failed:") ||
+              content.contains("error:") ||
+              content.contains("Error:") ||
+              content.toLowerCase().contains("could not") ||
+              content.toLowerCase().contains("unable to"))) {
+        return OperatorResult.failure(
+            "Decomposition failed: " + content,
+            Map.of("task", task)
+        );
+      }
+
+      // If we got here and content is empty or null, that's also a failure
+      if (content == null || content.isBlank()) {
+        return OperatorResult.failure(
+            "Decomposition produced no result",
+            Map.of("task", task)
+        );
+      }
+
+      return OperatorResult.success(
+          "Successfully decomposed task",
+          Map.of("task", task),
+          Map.of("result", content)
+      );
+    } catch (Exception e) {
       return OperatorResult.failure(
-          "Decomposition failed: " + content,
+          "Decomposition error: " + e.getMessage(),
           Map.of("task", task)
       );
     }
-
-    // If we got here and content is empty or null, that's also a failure
-    if (content == null || content.isBlank()) {
-      return OperatorResult.failure(
-          "Decomposition produced no result",
-          Map.of("task", task)
-      );
-    }
-
-    return OperatorResult.success(
-        "Successfully decomposed task",
-        Map.of("task", task),
-        Map.of("result", content)
-    );
   }
 
   @Override

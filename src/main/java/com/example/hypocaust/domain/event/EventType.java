@@ -15,7 +15,10 @@ public enum EventType {
   RUN_SCHEDULED("run.scheduled"),
   RUN_STARTED("run.started"),
   RUN_COMPLETED("run.completed"),
-  TOOL_CALLING("tool.calling");
+  TOOL_CALLING("tool.calling"),
+  OPERATOR_STARTED("operator.started"),
+  OPERATOR_FINISHED("operator.finished"),
+  OPERATOR_FAILED("operator.failed");
 
   private final String value;
 
