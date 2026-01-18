@@ -45,6 +45,22 @@ public class EventService {
     return sseHub.subscribe(projectId, replayEvents);
   }
 
+  public String getProjectLogs(UUID projectId) {
+    log.debug("Fetching event history for project {}", projectId);
+    return eventLogRepository.findByProjectIdOrderById(projectId)
+        .stream()
+        .map(eventMapper::toDomain)
+        .map(this::formatEvent)
+        .collect(Collectors.joining("\n"));
+  }
+
+  private String formatEvent(Event<?> event) {
+    return String.format("[%s] %s: %s",
+        event.getOccurredAt(),
+        event.getType().getValue(),
+        event.getPayload());
+  }
+
   private List<Event<?>> findEventsSince(UUID projectId, UUID lastEventId) {
     if (lastEventId == null) {
       // No lastEventId means this is a new connection - replay all events

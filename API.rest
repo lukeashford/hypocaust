@@ -10,7 +10,9 @@ Accept: application/json
 POST https://localhost/tasks
 Content-Type: application/json
 
-{"task":"Generate a picture of an apple."}
+{
+  "task": "Generate a picture of an apple."
+}
 
 > {%
   client.global.set("projectId", response.body.project_id);
@@ -20,6 +22,10 @@ Content-Type: application/json
 # Note: This is the SSE endpoint that will stream events for your project
 GET https://localhost/projects/{{projectId}}/events
 Accept: text/event-stream
+
+### 3. Get all logs for a project
+GET https://localhost/projects/{{projectId}}/logs
+Accept: text/plain
 
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1
