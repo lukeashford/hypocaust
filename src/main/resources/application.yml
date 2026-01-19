@@ -76,15 +76,11 @@ app:
           maxTokens: 8192
           temperature: 0.7
           topP: 1.0
-          thinking:
-            budgetTokens: 0
 
         claude-sonnet-4-latest: # Claude Sonnet 4; balanced performance for orchestration.
           maxTokens: 4096
           temperature: 0.7
           topP: 1.0
-          thinking:
-            budgetTokens: 0
 
         claude-3-5-haiku-latest: # Claude Haiku 3.5; fast and efficient for simple tasks like title generation.
           maxTokens: 1024
