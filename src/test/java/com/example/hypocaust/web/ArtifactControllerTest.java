@@ -51,6 +51,8 @@ class ArtifactControllerTest {
         Kind.IMAGE,
         Status.CREATED,
         "Test Image",
+        "A test subtitle",
+        "Alt text for the image",
         "image/png",
         null,
         Instant.now(),
@@ -63,6 +65,8 @@ class ArtifactControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(artifactId.toString()))
         .andExpect(jsonPath("$.title").value("Test Image"))
+        .andExpect(jsonPath("$.subtitle").value("A test subtitle"))
+        .andExpect(jsonPath("$.alt").value("Alt text for the image"))
         .andExpect(jsonPath("$.kind").value("IMAGE"));
   }
 

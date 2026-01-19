@@ -12,6 +12,8 @@ public record ArtifactDto(
     ArtifactEntity.Kind kind,
     ArtifactEntity.Status status,
     String title,
+    String subtitle,
+    String alt,
     String mime,
     JsonNode metadata,           // dims, duration, etc.
     Instant createdAt,

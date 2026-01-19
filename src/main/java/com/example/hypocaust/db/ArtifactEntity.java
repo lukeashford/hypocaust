@@ -59,6 +59,16 @@ public class ArtifactEntity extends BaseEntity {
   private String title;
 
   /**
+   * Subtitle displayed below the title
+   */
+  private String subtitle;
+
+  /**
+   * Alt text for image artifacts, used for accessibility
+   */
+  private String alt;
+
+  /**
    * MIME type for proper content handling (image/png, application/pdf, etc.)
    */
   private String mime;

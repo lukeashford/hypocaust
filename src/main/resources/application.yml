@@ -26,8 +26,8 @@ app:
     platforms-path: ${PLATFORMS_PATH:src/main/resources/rag/platforms}
     workflows-path: ${WORKFLOWS_PATH:src/main/resources/rag/workflows}
   llm:
-    orchestration-model-name: "gpt-4o"
-    decomposing-model-name: "o3"
+    orchestration-model-name: "claude-sonnet-4-latest"
+    decomposing-model-name: "claude-opus-4-5-latest"
 
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -38,6 +38,13 @@ app:
           presencePenalty: 0.0
           frequencyPenalty: 0.0
           maxCompletionTokens: 4096    # safe default; lift if you need longer answers
+
+        gpt-5.2: # Latest flagship with enhanced creativity; ideal for creative writing tasks.
+          topP: 1.0
+          temperature: 0.9
+          presencePenalty: 0.1
+          frequencyPenalty: 0.1
+          maxCompletionTokens: 4096
 
         gpt-4o: # Multimodal generalist; typical ctx ~128K per OpenAI era guidance.
           temperature: 1.0
@@ -65,13 +72,24 @@ app:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       chat:
-        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & 'thinking' behavior.
-          maxTokens: 4096                   # output cap; increase as needed
+        claude-opus-4-5-latest: # Claude Opus 4.5; most capable for complex reasoning and decomposition.
+          maxTokens: 8192
           temperature: 0.7
           topP: 1.0
-          # Thinking (billable) – enable only when you truly need it
           thinking:
             budgetTokens: 0
+
+        claude-sonnet-4-latest: # Claude Sonnet 4; balanced performance for orchestration.
+          maxTokens: 4096
+          temperature: 0.7
+          topP: 1.0
+          thinking:
+            budgetTokens: 0
+
+        claude-3-5-haiku-latest: # Claude Haiku 3.5; fast and efficient for simple tasks like title generation.
+          maxTokens: 1024
+          temperature: 0.5
+          topP: 1.0
 
   decomposer:
     max-branch-factor: ${DECOMPOSER_MAX_BRANCH_FACTOR:3}
