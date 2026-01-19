@@ -30,11 +30,20 @@ public class InvokeTool {
     log.info("{}┌─ Starting operator chain with {} children", indent, ledger.children().size());
 
     for (final var child : ledger.children()) {
-      final var op = operatorRegistry.get(child.operatorName()).orElseThrow();
+      final var operatorName = child.operatorName();
+      final var opOpt = operatorRegistry.get(operatorName);
+
+      if (opOpt.isEmpty()) {
+        final var error = "No operator found with name: " + operatorName;
+        log.error("{}{} [FAILED] {}", indent, indent, error);
+        return OperatorResult.failure(error, Map.of("operatorName", operatorName));
+      }
+
+      final var op = opOpt.get();
 
       log.info("{}├─ [START] {} (inputs: {})",
           indent,
-          child.operatorName(),
+          operatorName,
           child.inputsToKeys().keySet());
 
       final var inputs = new HashMap<String, Object>();
@@ -80,10 +89,18 @@ public class InvokeTool {
     log.info("{}└─ Operator chain completed", indent);
     modelCallLogger.logLedger(ledger);
 
+    final var finalValue = ledger.values().get(ledger.finalOutputKey());
+    if (finalValue == null) {
+      return OperatorResult.failure(
+          "Final output key not found in ledger values: " + ledger.finalOutputKey(),
+          ledger.values()
+      );
+    }
+
     return OperatorResult.success(
         "Successfully invoked operator chain",
-        Map.of("task", ledger.values().get("task")),
-        Map.of("result", ledger.values().get(ledger.finalOutputKey()))
+        Map.of("task", ledger.values().getOrDefault("task", "unknown")),
+        Map.of("result", finalValue)
     );
   }
 
