@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 public enum AnthropicChatModelSpec implements ModelSpecEnum {
   CLAUDE_OPUS_4_5_LATEST("claude-opus-4-5-latest"),
   CLAUDE_SONNET_4_LATEST("claude-sonnet-4-latest"),
-  CLAUDE_HAIKU_3_5_LATEST("claude-3-5-haiku-latest");
+  CLAUDE_3_5_HAIKU_LATEST("claude-3-5-haiku-latest");
 
   private final String modelName;
 

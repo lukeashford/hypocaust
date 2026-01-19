@@ -78,7 +78,7 @@ public class CreativeTextGenerationOperator extends BaseOperator {
   private String generateTitle(String prompt, String generatedText) {
     try {
       final var chatClient = ChatClient.builder(
-              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_HAIKU_3_5_LATEST))
+              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST))
           .build();
 
       final var systemPrompt = """

@@ -128,7 +128,7 @@ public class ImageGenerationOperator extends BaseOperator {
   private TitleAndAlt generateTitleAndAlt(String prompt) {
     try {
       final var chatClient = ChatClient.builder(
-              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_HAIKU_3_5_LATEST))
+              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST))
           .build();
 
       final var systemPrompt = """
