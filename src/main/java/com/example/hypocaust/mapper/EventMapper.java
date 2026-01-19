@@ -38,12 +38,28 @@ public interface EventMapper {
 
   default ArtifactScheduledEvent toArtifactScheduledEvent(EventEntity entity) {
     var payload = (ArtifactScheduledEvent.ArtifactScheduledEventPayload) entity.getPayload();
-    return new ArtifactScheduledEvent(entity.getProjectId(), payload.artifactId());
+    return new ArtifactScheduledEvent(
+        entity.getProjectId(),
+        payload.artifactId(),
+        payload.kind(),
+        payload.title(),
+        payload.subtitle(),
+        payload.alt()
+    );
   }
 
   default ArtifactCreatedEvent toArtifactCreatedEvent(EventEntity entity) {
     var payload = (ArtifactCreatedEvent.ArtifactCreatedEventPayload) entity.getPayload();
-    return new ArtifactCreatedEvent(entity.getProjectId(), payload.artifactId());
+    return new ArtifactCreatedEvent(
+        entity.getProjectId(),
+        payload.artifactId(),
+        payload.kind(),
+        payload.title(),
+        payload.subtitle(),
+        payload.alt(),
+        payload.storageKey(),
+        payload.content()
+    );
   }
 
   default ArtifactCancelledEvent toArtifactCancelledEvent(EventEntity entity) {
