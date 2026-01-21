@@ -26,4 +26,10 @@ public class EventController {
     log.debug("SSE subscription request for project {} with lastEventId: {}", id, lastEventId);
     return eventService.subscribeToEvents(id, lastEventId);
   }
+
+  @GetMapping(value = Routes.PROJECT_LOGS, produces = "text/plain")
+  public String getProjectLogs(@PathVariable UUID id) {
+    log.debug("Fetching logs for project {}", id);
+    return eventService.getProjectLogs(id);
+  }
 }

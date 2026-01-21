@@ -40,7 +40,7 @@ on boot)
 
 * **Artifacts are first-class**  
   The right pane shows artifacts (PLAN/ANALYSIS/SCRIPT/IMAGES/DECK). JSON (inline) or files (single
-  download endpoint `/artifacts/{id}`).
+  download endpoint `/artifacts/{id}/content`).
 
 * **Plan → Clarify → Execute**  
   Assistant emits plans, asks missing info, then continues. User changes trigger **selective (
@@ -206,8 +206,8 @@ PostgreSQL `bigserial` on `seq` field guarantees ordered event delivery. SSE `id
 * `POST /runs` → start a run; can include inline user message (common path)
 * `GET /threads/{id}/events` → **SSE** stream (each frame mirrors `event_log` row; supports
   `Last-Event-ID`)
-* `GET /artifacts/{id}` → download files (images/PDF). JSON artifacts returned inline via
-  `GET /threads/{id}`
+* `GET /artifacts/{id}` → get artifact metadata
+* `GET /artifacts/{id}/content` → download files (images/PDF) or get JSON content
 
 > Client needs only one fetch (`GET /threads/{id}`) and one stream (`/events`). Everything else is
 > optional sugar.
@@ -276,7 +276,7 @@ drift early.
 * **Tools**: Add `tool`, `tool_binding`, `tool_call` with JSON-Schema validation
 * **RAG**: Add `corpus/document` + vector store; reference in messages/artifacts
 * **Auth/multi-tenant**: Add `org_id`, `user_id` columns and scope queries
-* **Cloud storage**: Switch `GET /artifacts/{id}` to proxy/pre-sign S3
+* **Cloud storage**: Switch `GET /artifacts/{id}/content` to proxy/pre-sign S3
 
 ---
 

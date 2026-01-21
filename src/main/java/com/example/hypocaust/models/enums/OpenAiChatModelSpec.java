@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum OpenAiChatModelSpec implements ModelSpecEnum {
   GPT_5("gpt-5"),
+  GPT_5_2("gpt-5.2"),
   GPT_4O("gpt-4o"),
   GPT_4O_MINI("gpt-4o-mini"),
   O3("o3");

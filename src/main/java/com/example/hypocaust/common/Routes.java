@@ -12,8 +12,9 @@ public final class Routes {
   // Task routes
   public static final String TASKS = "/tasks";
 
-  // Project routes (for SSE subscription)
+  // Project routes (for SSE subscription and event history)
   public static final String PROJECT_EVENTS = "/projects/{id}/events";
+  public static final String PROJECT_LOGS = "/projects/{id}/logs";
 
   // Artifact routes
   public static final String ARTIFACTS = "/artifacts";

@@ -1,6 +1,8 @@
 package com.example.hypocaust.operator;
 
 import com.example.hypocaust.db.ArtifactEntity;
+import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.example.hypocaust.service.ArtifactService;
 import com.example.hypocaust.service.StorageService;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.OpenAiImageOptions;
@@ -25,6 +28,7 @@ public class ImageGenerationOperator extends BaseOperator {
   private final ArtifactService artifactService;
   private final StorageService storageService;
   private final ObjectMapper objectMapper;
+  private final ModelRegistry modelRegistry;
 
   @Override
   protected OperatorResult doExecute(Map<String, Object> normalizedInputs) {
@@ -36,10 +40,15 @@ public class ImageGenerationOperator extends BaseOperator {
 
     log.info("Generating image with prompt: {}", prompt);
 
-    // Schedule the artifact first
+    // Generate title and alt text using a small, fast model
+    final var titleAndAlt = generateTitleAndAlt(prompt);
+
+    // Schedule the artifact first with the generated title
     final var artifactId = artifactService.schedule(
         ArtifactEntity.Kind.IMAGE,
-        "Generated Image",
+        titleAndAlt.title(),
+        titleAndAlt.subtitle(),
+        titleAndAlt.alt(),
         "image/png"
     );
 
@@ -54,8 +63,8 @@ public class ImageGenerationOperator extends BaseOperator {
 
       // Create the image prompt (DALL-E 3 doesn't support negative prompts directly,
       // so we incorporate it into the main prompt if provided)
-      final var fullPrompt = negativePrompt.isEmpty() 
-          ? prompt 
+      final var fullPrompt = negativePrompt.isEmpty()
+          ? prompt
           : prompt + ". Avoid: " + negativePrompt;
 
       final var imagePrompt = new ImagePrompt(fullPrompt, options);
@@ -111,6 +120,58 @@ public class ImageGenerationOperator extends BaseOperator {
     } catch (Exception e) {
       log.error("Failed to generate image: {}", e.getMessage(), e);
       return OperatorResult.failure("Image generation failed: " + e.getMessage(), normalizedInputs);
+    }
+  }
+
+  private record TitleAndAlt(String title, String subtitle, String alt) {}
+
+  private TitleAndAlt generateTitleAndAlt(String prompt) {
+    try {
+      final var chatClient = ChatClient.builder(
+              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST))
+          .build();
+
+      final var systemPrompt = """
+          Generate a short, descriptive title, subtitle, and alt text for an AI-generated image.
+
+          Return your response in exactly this format (one line each, no extra text):
+          TITLE: [A concise, engaging title, max 6 words]
+          SUBTITLE: [A brief subtitle describing the style or mood, max 8 words]
+          ALT: [Descriptive alt text for accessibility, max 20 words]
+          """;
+
+      final var response = chatClient.prompt()
+          .system(systemPrompt)
+          .user("Image prompt: " + prompt)
+          .call()
+          .content();
+
+      if (response == null || response.isBlank()) {
+        log.warn("Failed to generate title/alt, using defaults");
+        return new TitleAndAlt("Generated Image", null, prompt);
+      }
+
+      String title = "Generated Image";
+      String subtitle = null;
+      String alt = prompt;
+
+      for (String line : response.split("\n")) {
+        line = line.trim();
+        if (line.startsWith("TITLE:")) {
+          title = line.substring("TITLE:".length()).trim();
+        } else if (line.startsWith("SUBTITLE:")) {
+          subtitle = line.substring("SUBTITLE:".length()).trim();
+        } else if (line.startsWith("ALT:")) {
+          alt = line.substring("ALT:".length()).trim();
+        }
+      }
+
+      log.debug("Generated title: {}, subtitle: {}, alt: {}", title, subtitle, alt);
+      return new TitleAndAlt(title, subtitle, alt);
+
+    } catch (Exception e) {
+      log.warn("Error generating title/alt, using defaults: {}", e.getMessage());
+      return new TitleAndAlt("Generated Image", null, prompt);
     }
   }
 

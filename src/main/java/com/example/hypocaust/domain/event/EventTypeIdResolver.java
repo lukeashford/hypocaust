@@ -4,20 +4,28 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DatabindContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
+import java.util.HashMap;
 import java.util.Map;
 
 class EventTypeIdResolver extends TypeIdResolverBase {
 
-  private static final Map<EventType, Class<? extends Event<?>>> TYPE_TO_CLASS = Map.of(
-      EventType.RUN_SCHEDULED, RunScheduledEvent.class,
-      EventType.RUN_STARTED, RunStartedEvent.class,
-      EventType.RUN_COMPLETED, RunCompletedEvent.class,
-      EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEvent.class,
-      EventType.ARTIFACT_CREATED, ArtifactCreatedEvent.class,
-      EventType.ARTIFACT_CANCELLED, ArtifactCancelledEvent.class,
-      EventType.TOOL_CALLING, ToolCallingEvent.class,
-      EventType.ERROR, ErrorEvent.class
-  );
+  private static final Map<EventType, Class<? extends Event<?>>> TYPE_TO_CLASS;
+
+  static {
+    Map<EventType, Class<? extends Event<?>>> map = new HashMap<>();
+    map.put(EventType.RUN_SCHEDULED, RunScheduledEvent.class);
+    map.put(EventType.RUN_STARTED, RunStartedEvent.class);
+    map.put(EventType.RUN_COMPLETED, RunCompletedEvent.class);
+    map.put(EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEvent.class);
+    map.put(EventType.ARTIFACT_CREATED, ArtifactCreatedEvent.class);
+    map.put(EventType.ARTIFACT_CANCELLED, ArtifactCancelledEvent.class);
+    map.put(EventType.TOOL_CALLING, ToolCallingEvent.class);
+    map.put(EventType.ERROR, ErrorEvent.class);
+    map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.class);
+    map.put(EventType.OPERATOR_FINISHED, OperatorFinishedEvent.class);
+    map.put(EventType.OPERATOR_FAILED, OperatorFailedEvent.class);
+    TYPE_TO_CLASS = Map.copyOf(map);
+  }
 
   private static final Map<Class<?>, EventType> CLASS_TO_TYPE =
       TYPE_TO_CLASS.entrySet().stream()

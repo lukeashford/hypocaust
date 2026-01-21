@@ -17,16 +17,23 @@ import java.util.Map;
 
 class PayloadTypeIdResolver extends TypeIdResolverBase {
 
-  private static final Map<EventType, Class<? extends EventPayload>> TYPE_TO_CLASS = Map.of(
-      EventType.RUN_SCHEDULED, RunScheduledEventPayload.class,
-      EventType.RUN_STARTED, RunStartedEventPayload.class,
-      EventType.RUN_COMPLETED, RunCompletedEventPayload.class,
-      EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEventPayload.class,
-      EventType.ARTIFACT_CREATED, ArtifactCreatedEventPayload.class,
-      EventType.ARTIFACT_CANCELLED, ArtifactCancelledEventPayload.class,
-      EventType.TOOL_CALLING, ToolCallingEventPayload.class,
-      EventType.ERROR, ErrorEventPayload.class
-  );
+  private static final Map<EventType, Class<? extends EventPayload>> TYPE_TO_CLASS;
+
+  static {
+    Map<EventType, Class<? extends EventPayload>> map = new java.util.HashMap<>();
+    map.put(EventType.RUN_SCHEDULED, RunScheduledEventPayload.class);
+    map.put(EventType.RUN_STARTED, RunStartedEventPayload.class);
+    map.put(EventType.RUN_COMPLETED, RunCompletedEventPayload.class);
+    map.put(EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEventPayload.class);
+    map.put(EventType.ARTIFACT_CREATED, ArtifactCreatedEventPayload.class);
+    map.put(EventType.ARTIFACT_CANCELLED, ArtifactCancelledEventPayload.class);
+    map.put(EventType.TOOL_CALLING, ToolCallingEventPayload.class);
+    map.put(EventType.ERROR, ErrorEventPayload.class);
+    map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.Payload.class);
+    map.put(EventType.OPERATOR_FINISHED, OperatorFinishedEvent.Payload.class);
+    map.put(EventType.OPERATOR_FAILED, OperatorFailedEvent.Payload.class);
+    TYPE_TO_CLASS = Map.copyOf(map);
+  }
 
   private static final Map<Class<?>, EventType> CLASS_TO_TYPE =
       TYPE_TO_CLASS.entrySet().stream()

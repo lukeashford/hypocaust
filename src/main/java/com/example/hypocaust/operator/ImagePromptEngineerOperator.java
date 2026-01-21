@@ -1,6 +1,7 @@
 package com.example.hypocaust.operator;
 
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,9 @@ public class ImagePromptEngineerOperator extends BaseOperator {
     final var mood = (String) normalizedInputs.get("mood");
     final var technicalParams = (String) normalizedInputs.get("technicalParams");
 
+    // Use GPT-4o for prompt engineering tasks
     final var chatClient = ChatClient.builder(
-            modelRegistry.get("gpt-4o"))
+            modelRegistry.get(OpenAiChatModelSpec.GPT_4O))
         .build();
 
     final var systemPrompt = """

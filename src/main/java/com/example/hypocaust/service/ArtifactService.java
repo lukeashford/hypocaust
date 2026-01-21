@@ -5,7 +5,7 @@ import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.db.ArtifactEntity.Status;
 import com.example.hypocaust.domain.event.ArtifactCreatedEvent;
 import com.example.hypocaust.domain.event.ArtifactScheduledEvent;
-import com.example.hypocaust.dto.ArtifactMetadataDto;
+import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactNotReadyException;
 import com.example.hypocaust.mapper.ArtifactMapper;
@@ -40,11 +40,11 @@ public class ArtifactService {
   }
 
   /**
-   * Get metadata DTOs for all artifacts in a project
+   * Get DTOs for all artifacts in a project
    */
-  public List<ArtifactMetadataDto> getProjectArtifactMetadata(UUID projectId) {
+  public List<ArtifactDto> getProjectArtifactsAsDto(UUID projectId) {
     return getProjectArtifacts(projectId).stream()
-        .map(artifactMapper::toMetadataDto)
+        .map(artifactMapper::toDto)
         .toList();
   }
 
@@ -58,10 +58,10 @@ public class ArtifactService {
   }
 
   /**
-   * Get metadata DTO for an artifact by ID
+   * Get DTO for an artifact by ID
    */
-  public ArtifactMetadataDto getArtifactMetadata(UUID artifactId) {
-    return artifactMapper.toMetadataDto(getArtifact(artifactId));
+  public ArtifactDto getArtifactDto(UUID artifactId) {
+    return artifactMapper.toDto(getArtifact(artifactId));
   }
 
   /**
@@ -94,6 +94,17 @@ public class ArtifactService {
       String title,
       String mime
   ) {
+    return schedule(kind, title, null, null, mime);
+  }
+
+  @Transactional
+  public UUID schedule(
+      Kind kind,
+      String title,
+      String subtitle,
+      String alt,
+      String mime
+  ) {
     final var projectId = RunContextHolder.getProjectId();
     final var runId = RunContextHolder.getRunId();
     log.debug("Scheduling artifact for project {}: {}", projectId, title);
@@ -104,6 +115,8 @@ public class ArtifactService {
         kind,
         Status.SCHEDULED,
         title,
+        subtitle,
+        alt,
         mime,
         null,
         null,
@@ -111,33 +124,101 @@ public class ArtifactService {
         null
     );
     artifactRepository.save(artifact);
-    eventService.publish(new ArtifactScheduledEvent(projectId, artifact.getId()));
+    eventService.publish(new ArtifactScheduledEvent(
+        projectId,
+        artifact.getId(),
+        artifact.getKind(),
+        artifact.getTitle(),
+        artifact.getSubtitle(),
+        artifact.getAlt()
+    ));
 
     return artifact.getId();
   }
 
   @Transactional
   public void updateArtifact(UUID artifactId, JsonNode content, JsonNode metadata) {
+    updateArtifact(artifactId, null, null, null, content, metadata);
+  }
+
+  @Transactional
+  public void updateArtifact(
+      UUID artifactId,
+      String title,
+      String subtitle,
+      String alt,
+      JsonNode content,
+      JsonNode metadata
+  ) {
     log.debug("Updating artifact {}.\nContent: {} \nMetadata: {}", artifactId, content, metadata);
     final var artifact = getArtifact(artifactId);
+    if (title != null) {
+      artifact.setTitle(title);
+    }
+    if (subtitle != null) {
+      artifact.setSubtitle(subtitle);
+    }
+    if (alt != null) {
+      artifact.setAlt(alt);
+    }
     artifact.setContent(content);
     artifact.setMetadata(metadata);
     artifact.setStatus(Status.CREATED);
     artifactRepository.save(artifact);
 
-    eventService.publish(new ArtifactCreatedEvent(artifact.getProjectId(), artifact.getId()));
+    eventService.publish(new ArtifactCreatedEvent(
+        artifact.getProjectId(),
+        artifact.getId(),
+        artifact.getKind(),
+        artifact.getTitle(),
+        artifact.getSubtitle(),
+        artifact.getAlt(),
+        artifact.getStorageKey(),
+        artifact.getContent()
+    ));
   }
 
   @Transactional
   public void updateArtifactWithStorage(UUID artifactId, String storageKey, JsonNode content, JsonNode metadata) {
+    updateArtifactWithStorage(artifactId, null, null, null, storageKey, content, metadata);
+  }
+
+  @Transactional
+  public void updateArtifactWithStorage(
+      UUID artifactId,
+      String title,
+      String subtitle,
+      String alt,
+      String storageKey,
+      JsonNode content,
+      JsonNode metadata
+  ) {
     log.debug("Updating artifact {} with storage key: {}", artifactId, storageKey);
     final var artifact = getArtifact(artifactId);
+    if (title != null) {
+      artifact.setTitle(title);
+    }
+    if (subtitle != null) {
+      artifact.setSubtitle(subtitle);
+    }
+    if (alt != null) {
+      artifact.setAlt(alt);
+    }
     artifact.setStorageKey(storageKey);
     artifact.setContent(content);
     artifact.setMetadata(metadata);
     artifact.setStatus(Status.CREATED);
     artifactRepository.save(artifact);
 
-    eventService.publish(new ArtifactCreatedEvent(artifact.getProjectId(), artifact.getId()));
+    eventService.publish(new ArtifactCreatedEvent(
+        artifact.getProjectId(),
+        artifact.getId(),
+        artifact.getKind(),
+        artifact.getTitle(),
+        artifact.getSubtitle(),
+        artifact.getAlt(),
+        artifact.getStorageKey(),
+        artifact.getContent()
+    ));
   }
 }

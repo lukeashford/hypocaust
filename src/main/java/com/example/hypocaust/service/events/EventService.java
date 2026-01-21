@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +22,6 @@ public class EventService {
   private final SseHub sseHub;
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
-  private final ApplicationEventPublisher applicationEventPublisher;
 
   @Transactional
   public void publish(Event<?> event, boolean doPersist) {
@@ -33,7 +31,6 @@ public class EventService {
       eventLogRepository.save(entity);
     }
     sseHub.broadcast(event);
-    applicationEventPublisher.publishEvent(event);
   }
 
   @Transactional
@@ -46,6 +43,22 @@ public class EventService {
 
     log.debug("SSE subscription for project {} with lastEventId: {}", projectId, lastEventId);
     return sseHub.subscribe(projectId, replayEvents);
+  }
+
+  public String getProjectLogs(UUID projectId) {
+    log.debug("Fetching event history for project {}", projectId);
+    return eventLogRepository.findByProjectIdOrderById(projectId)
+        .stream()
+        .map(eventMapper::toDomain)
+        .map(this::formatEvent)
+        .collect(Collectors.joining("\n"));
+  }
+
+  private String formatEvent(Event<?> event) {
+    return String.format("[%s] %s: %s",
+        event.getOccurredAt(),
+        event.getType().getValue(),
+        event.getPayload());
   }
 
   private List<Event<?>> findEventsSince(UUID projectId, UUID lastEventId) {
