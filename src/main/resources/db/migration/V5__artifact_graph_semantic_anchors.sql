@@ -121,4 +121,6 @@ ALTER TABLE event
                                             'branch.created', 'branch.switched',
                                             'commit.created',
                                             'tool.calling',
+                                            'operator.started', 'operator.finished',
+                                            'operator.failed',
                                             'error'));
