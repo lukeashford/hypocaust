@@ -37,6 +37,16 @@ public class ArtifactEntity extends BaseEntity {
   private UUID runId;
 
   /**
+   * The branch this artifact was created on
+   */
+  private UUID branchId;
+
+  /**
+   * The commit that created this artifact
+   */
+  private UUID commitId;
+
+  /**
    * The type of content this artifact represents - STRUCTURED_JSON: JSON data, text, analysis
    * results - IMAGE: Visual content (PNG, JPG, etc.) - PDF: Document files including presentations
    * - AUDIO: Sound files and recordings - VIDEO: Video content
@@ -98,6 +108,45 @@ public class ArtifactEntity extends BaseEntity {
    * ID of the artifact that this one superseded/replaced, if any
    */
   private UUID supersededById;
+
+  // =====================================================
+  // Semantic Anchor Fields
+  // =====================================================
+
+  /**
+   * Semantic anchor description - the natural language identity of this artifact.
+   * Example: "A golden retriever wearing a top hat, sitting on a park bench"
+   */
+  private String anchorDescription;
+
+  /**
+   * Optional role within the project.
+   * Example: "hero-image", "background-music", "opening-scene"
+   */
+  private String anchorRole;
+
+  /**
+   * Searchable tags for this artifact.
+   * Example: ["dog", "park", "whimsical"]
+   */
+  @Column(columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
+  private JsonNode anchorTags;
+
+  /**
+   * Version number within this anchor's version chain.
+   * Starts at 1 for new artifacts, increments for each superseding version.
+   */
+  @Builder.Default
+  private Integer version = 1;
+
+  /**
+   * UUIDs of artifacts this artifact was derived from.
+   * Stored as JSON array of UUID strings.
+   */
+  @Column(columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
+  private JsonNode derivedFrom;
 
   public enum Kind {
     STRUCTURED_JSON, IMAGE, PDF, AUDIO, VIDEO

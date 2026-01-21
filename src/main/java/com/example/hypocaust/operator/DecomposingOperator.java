@@ -1,9 +1,11 @@
 package com.example.hypocaust.operator;
 
+import com.example.hypocaust.domain.ArtifactNode;
 import com.example.hypocaust.models.ModelProperties;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.service.ArtifactGraphService;
 import com.example.hypocaust.tool.InvokeTool;
 import com.example.hypocaust.tool.ModelSearchTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
@@ -28,6 +30,7 @@ public class DecomposingOperator extends BaseOperator {
   private final InvokeTool invokeTool;
   private final WorkflowSearchTool workflowSearchTool;
   private final ModelSearchTool modelSearchTool;
+  private final ArtifactGraphService artifactGraphService;
 
   @Value("${app.decomposer.max-branch-factor:3}")
   private int maxBranchFactor;
@@ -39,7 +42,8 @@ public class DecomposingOperator extends BaseOperator {
       ObjectMapper mapper,
       @Lazy InvokeTool invokeTool,
       WorkflowSearchTool workflowSearchTool,
-      ModelSearchTool modelSearchTool
+      ModelSearchTool modelSearchTool,
+      @Lazy ArtifactGraphService artifactGraphService
   ) {
     this.operatorRegistry = operatorRegistry;
     this.modelRegistry = modelRegistry;
@@ -48,31 +52,56 @@ public class DecomposingOperator extends BaseOperator {
     this.invokeTool = invokeTool;
     this.workflowSearchTool = workflowSearchTool;
     this.modelSearchTool = modelSearchTool;
+    this.artifactGraphService = artifactGraphService;
   }
 
   private SystemMessage buildSystemMessage() {
     return new SystemMessage("""
         # DecomposingOperator
-        
+
         You solve tasks through recursive decomposition. You are either a **leaf** that invokes a single operator, or a **decomposer** that delegates subtasks to child DecomposingOperators.
-        
+
         ## Decision Algorithm
-        
-        Given a task and candidate operators from semantic search:
-        
+
+        Given a task, existing artifacts (if any), and candidate operators from semantic search:
+
         1. **Leaf Case – Direct Match**: If exactly ONE candidate operator can fully solve this task → invoke it directly via the `invoke` tool with a single-child ledger.
-        
+
         2. **Leaf Case – No Match**: If the task is atomic (cannot be meaningfully split) but no candidate fits → respond with exactly: `No operator found for atomic task: <task description>`
-        
+
         3. **Decomposer Case**: If the task requires multiple steps or is too complex for any single operator:
            - Call `workflowSearchTool` to retrieve similar past workflows for guidance
            - Call `modelSearchTool` if creative model selection is relevant
            - Decompose into subtasks (max %d children), each delegated to a DecomposingOperator
            - If a child returns a "No operator found" failure, **re-attempt decomposition** with an alternative breakdown
-        
+
+        ## Artifact Graph Awareness
+
+        When existing artifacts are provided, you can reference them using `@anchor:` prefix:
+
+        - `@anchor:woman in red dress at cafe` - resolves to the artifact with that description
+        - Artifacts have semantic anchors (descriptions) that serve as their natural language identity
+        - When modifying existing artifacts, reference them via `@anchor:` in your ledger
+        - Unchanged artifacts are automatically preserved
+
+        ### Modification Pattern
+        When the task involves modifying an existing artifact:
+        {
+          "values": {
+            "existingImage": "@anchor:woman in red dress at cafe",
+            "modificationTask": "Regenerate {{existingImage}} but make her blonde"
+          },
+          "children": [{
+            "operatorName": "DecomposingOperator",
+            "inputsToKeys": { "task": "modificationTask" },
+            "outputsToKeys": { "result": "modifiedImage" }
+          }],
+          "finalOutputKey": "modifiedImage"
+        }
+
         ## OperatorLedger Structure
         record OperatorLedger(
-            Map<String, Object> values,       // Initial inputs + templates with {{key}} placeholders
+            Map<String, Object> values,       // Initial inputs + templates with {{key}} or @anchor: references
             List<ChildConfig> children,       // Ordered operator invocations
             String finalOutputKey             // Key holding the final result
         ) {
@@ -82,17 +111,17 @@ public class DecomposingOperator extends BaseOperator {
               Map<String, String> outputsToKeys
           ) {}
         }
-        
-        - **values**: Append-only map; duplicate keys cause errors. Use `{{keyName}}` to reference prior outputs.
+
+        - **values**: Append-only map; duplicate keys cause errors. Use `{{keyName}}` to reference prior outputs, `@anchor:description` to reference existing artifacts.
         - **children**: As a leaf, contains ONE tool operator. As a decomposer, contains ONLY `DecomposingOperator` entries.
         - **finalOutputKey**: Must reference a key populated during execution.
-        
+
         ## Examples
-        
+
         ### Leaf – Direct Match
         Task: "Create a giant blue gummi bear"
         Candidate `GummiBearOperator` matches directly.
-        
+
         {
           "values": { "color": "blue", "size": "giant" },
           "children": [{
@@ -102,17 +131,17 @@ public class DecomposingOperator extends BaseOperator {
           }],
           "finalOutputKey": "newGummiBear"
         }
-        
+
         ### Leaf – No Match
         Task: "Translate this text to Klingon"
         No candidate operator handles Klingon translation; task is atomic.
-        
+
         Response: `No operator found for atomic task: Translate this text to Klingon`
-        
+
         ### Decomposer – Complex Task
         Task: "Create a brand video: write a script about our product, generate voiceover, and compile with stock footage"
         No single operator suffices; decompose into subtasks for child DecomposingOperators.
-        
+
         {
           "values": {
             "productInfo": "Our product is...",
@@ -139,20 +168,46 @@ public class DecomposingOperator extends BaseOperator {
           ],
           "finalOutputKey": "finalVideo"
         }
-        
+
+        ### Modification – Existing Artifact
+        Task: "Make her blonde and then generate a video"
+        Existing artifact: woman in red dress at cafe
+
+        {
+          "values": {
+            "originalImage": "@anchor:woman in red dress at cafe",
+            "regenerateTask": "Regenerate {{originalImage}} with blonde hair instead of original hair color. Keep everything else identical.",
+            "videoTask": "Generate a 5-second video based on {{blondeImage}}"
+          },
+          "children": [
+            {
+              "operatorName": "DecomposingOperator",
+              "inputsToKeys": { "task": "regenerateTask" },
+              "outputsToKeys": { "result": "blondeImage" }
+            },
+            {
+              "operatorName": "DecomposingOperator",
+              "inputsToKeys": { "task": "videoTask" },
+              "outputsToKeys": { "result": "video" }
+            }
+          ],
+          "finalOutputKey": "video"
+        }
+
         ## Constraints
-        
+
         - **Type Safety**: Wire operators only when output/input types match exactly. Never assume coercion.
         - **Max Children**: %d per ledger.
         - **Context Isolation**: Child DecomposingOperators receive self-contained task descriptions with all necessary context embedded via `{{placeholder}}` references.
         - **Semantic Key Names**: Use descriptive names (`searchResults`, `brandAnalysis`) not generic ones (`output1`, `temp`).
-        
+        - **Anchor References**: Use `@anchor:` only for existing artifacts provided in the input.
+
         ## Execution
-        
+
         1. **Design** your OperatorLedger based on the decision algorithm
         2. **Execute** by calling the `invoke` tool with your ledger
         3. **Self-Healing**: If an operator in your ledger fails, analyze the error returned by the invoke tool and propose a new ledger with corrected parameters or an alternative strategy, but only if you are confident you can actually correct the error.
-        
+
         The recursion terminates when every branch reaches a leaf that either successfully invokes an operator or returns a "No operator found" failure.
         """.formatted(maxBranchFactor, maxBranchFactor));
   }
@@ -192,6 +247,9 @@ public class DecomposingOperator extends BaseOperator {
     for (final var spec : candidates) {
       candArray.add(mapper.valueToTree(spec));
     }
+
+    // Include existing artifacts if we have an execution context
+    addExistingArtifactsToPayload(root);
 
     final var userMessage = new UserMessage(root.toPrettyString());
     final var prompt = new Prompt(List.of(buildSystemMessage(), userMessage));
@@ -242,5 +300,47 @@ public class DecomposingOperator extends BaseOperator {
   @Override
   public OperatorSpec spec() {
     return OPERATOR_SPEC;
+  }
+
+  /**
+   * Add existing artifacts to the payload if we have execution context.
+   * This gives the LLM visibility into what artifacts already exist.
+   */
+  private void addExistingArtifactsToPayload(com.fasterxml.jackson.databind.node.ObjectNode root) {
+    List<ArtifactNode> existingArtifacts = List.of();
+
+    // Try to get artifacts from ExecutionContext first
+    if (ExecutionContextHolder.hasContext()) {
+      existingArtifacts = ExecutionContextHolder.getCurrentArtifacts();
+    } else if (RunContextHolder.getContext() != null) {
+      // Fall back to loading from ArtifactGraphService
+      try {
+        var projectId = RunContextHolder.getProjectId();
+        var graph = artifactGraphService.buildGraph(projectId);
+        existingArtifacts = graph.getCurrentArtifacts();
+      } catch (Exception e) {
+        // Ignore - we'll just proceed without artifact context
+      }
+    }
+
+    if (!existingArtifacts.isEmpty()) {
+      var artifactsArray = root.putArray("existingArtifacts");
+      for (var artifact : existingArtifacts) {
+        var artifactNode = mapper.createObjectNode();
+        artifactNode.put("anchor", artifact.anchor().description());
+        artifactNode.put("kind", artifact.kind().name());
+        artifactNode.put("version", artifact.version());
+        if (artifact.anchor().role() != null) {
+          artifactNode.put("role", artifact.anchor().role());
+        }
+        if (!artifact.anchor().tags().isEmpty()) {
+          var tagsArray = artifactNode.putArray("tags");
+          for (var tag : artifact.anchor().tags()) {
+            tagsArray.add(tag);
+          }
+        }
+        artifactsArray.add(artifactNode);
+      }
+    }
   }
 }

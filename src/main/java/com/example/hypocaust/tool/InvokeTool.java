@@ -1,10 +1,14 @@
 package com.example.hypocaust.tool;
 
+import com.example.hypocaust.domain.ArtifactNode;
 import com.example.hypocaust.domain.OperatorLedger;
+import com.example.hypocaust.exception.AnchorNotFoundException;
 import com.example.hypocaust.logging.ModelCallLogger;
+import com.example.hypocaust.operator.ExecutionContextHolder;
 import com.example.hypocaust.operator.RunContextHolder;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.service.ArtifactGraphService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -19,8 +23,11 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InvokeTool {
 
+  private static final String ANCHOR_PREFIX = "@anchor:";
+
   private final OperatorRegistry operatorRegistry;
   private final ModelCallLogger modelCallLogger;
+  private final ArtifactGraphService artifactGraphService;
 
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([^}]+)}}");
 
@@ -51,9 +58,8 @@ public class InvokeTool {
         final var inputKey = child.inputsToKeys().get(inputName);
         var inputValue = ledger.values().get(inputKey);
 
-        if (inputValue instanceof String) {
-          inputValue = resolvePlaceholders(ledger.values(), (String) inputValue);
-        }
+        // Resolve @anchor: references and placeholders
+        inputValue = resolveValue(ledger.values(), inputValue);
         inputs.put(inputName, inputValue);
       }
 
@@ -104,6 +110,73 @@ public class InvokeTool {
     );
   }
 
+  /**
+   * Resolve a value, handling both @anchor: references and {{placeholder}} patterns.
+   */
+  private Object resolveValue(Map<String, Object> context, Object value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value instanceof String strValue) {
+      // Check for @anchor: prefix
+      if (strValue.startsWith(ANCHOR_PREFIX)) {
+        return resolveAnchor(strValue);
+      }
+
+      // Resolve placeholders
+      return resolvePlaceholders(context, strValue);
+    }
+
+    return value;
+  }
+
+  /**
+   * Resolve an @anchor: reference to an ArtifactNode.
+   * The anchor query is the part after "@anchor:".
+   */
+  private ArtifactNode resolveAnchor(String anchorRef) {
+    var anchorQuery = anchorRef.substring(ANCHOR_PREFIX.length()).trim();
+    log.debug("Resolving anchor reference: '{}'", anchorQuery);
+
+    // Check if ExecutionContext is available
+    if (!ExecutionContextHolder.hasContext()) {
+      // Fall back to using ArtifactGraphService directly with RunContextHolder
+      var projectId = RunContextHolder.getProjectId();
+      try {
+        var node = artifactGraphService.resolveAnchor(projectId, anchorQuery);
+        log.info("Resolved anchor '{}' to artifact: {} (v{})",
+            anchorQuery, node.id(), node.version());
+        return node;
+      } catch (AnchorNotFoundException e) {
+        log.warn("Failed to resolve anchor '{}': {}", anchorQuery, e.getMessage());
+        throw e;
+      }
+    }
+
+    // Use ExecutionContext for resolution
+    var context = ExecutionContextHolder.getContext();
+    var results = context.findByDescription(anchorQuery);
+
+    if (!results.isEmpty()) {
+      var node = results.get(0);
+      log.info("Resolved anchor '{}' to artifact: {} (v{})",
+          anchorQuery, node.id(), node.version());
+      return node;
+    }
+
+    // Fall back to ArtifactGraphService for semantic search
+    try {
+      var node = artifactGraphService.resolveAnchor(context.projectId(), anchorQuery);
+      log.info("Resolved anchor '{}' to artifact: {} (v{})",
+          anchorQuery, node.id(), node.version());
+      return node;
+    } catch (AnchorNotFoundException e) {
+      log.warn("Failed to resolve anchor '{}': {}", anchorQuery, e.getMessage());
+      throw e;
+    }
+  }
+
   private String resolvePlaceholders(Map<String, Object> context, String template) {
     if (template == null || !template.contains("{{")) {
       return template; // Early exit if no placeholders
@@ -112,7 +185,14 @@ public class InvokeTool {
     return PLACEHOLDER_PATTERN.matcher(template).replaceAll(matchResult -> {
       final var key = matchResult.group(1).trim();
       final var value = context.get(key);
-      return value != null ? Matcher.quoteReplacement(value.toString()) : matchResult.group(0);
+      if (value == null) {
+        return matchResult.group(0);
+      }
+      // If the value is an ArtifactNode, convert to a useful string representation
+      if (value instanceof ArtifactNode node) {
+        return Matcher.quoteReplacement(node.anchor().description());
+      }
+      return Matcher.quoteReplacement(value.toString());
     });
   }
 }
