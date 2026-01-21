@@ -71,7 +71,10 @@ public class CreativeTextGenerationOperator extends BaseOperator {
     return OperatorResult.success(
         "Successfully generated text",
         normalizedInputs,
-        Map.of("generatedText", text)
+        Map.of(
+            "generatedText", text,
+            "artifactId", artifactId.toString()
+        )
     );
   }
 
@@ -119,7 +122,8 @@ public class CreativeTextGenerationOperator extends BaseOperator {
             ParamSpec.integer("maxLength", "Maximum length in words", 500)
         ),
         List.of(
-            ParamSpec.string(OUTPUT_KEY, "Generated text content", true)
+            ParamSpec.string(OUTPUT_KEY, "Generated text content", true),
+            ParamSpec.string("artifactId", "ID of the created artifact", true)
         )
     );
   }

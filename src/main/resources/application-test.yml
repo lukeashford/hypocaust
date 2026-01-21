@@ -49,15 +49,19 @@ app:
     anthropic:
       api-key: test-anthropic-key  # Mock API key for testing
       chat:
-        claude-sonnet-4-latest: # Claude Sonnet 4; see model-id/aliases for exact limits & ‘thinking’ behavior.
-          maxTokens: 4096                   # output cap; increase as needed
+        claude-opus-4-5-20251101: # Claude Opus 4.5; most capable for complex reasoning and decomposition.
+          maxTokens: 8192
+          temperature: 0.7
+
+        claude-sonnet-4-20250514: # Claude Sonnet 4; balanced performance for orchestration.
+          maxTokens: 4096
           temperature: 0.7
           topP: 1.0
-          # Thinking (billable) – enable only when you truly need it
-          thinking:
-            budgetTokens: 0
-    orchestration:
-      model-name: "gpt-4o"
+
+        claude-3-5-haiku-latest: # Claude Haiku 3.5; fast and efficient for simple tasks like title generation.
+          maxTokens: 1024
+          temperature: 0.5
+          topP: 1.0
 
 management:
   endpoints:

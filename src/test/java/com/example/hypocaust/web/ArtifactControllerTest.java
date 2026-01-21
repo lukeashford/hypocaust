@@ -74,7 +74,7 @@ class ArtifactControllerTest {
   void testGetArtifactContentJson() throws Exception {
     UUID artifactId = UUID.randomUUID();
     ObjectNode contentNode = objectMapper.createObjectNode().put("hello", "world");
-    
+
     ArtifactEntity entity = ArtifactEntity.builder()
         .kind(Kind.STRUCTURED_JSON)
         .status(Status.CREATED)
@@ -98,7 +98,7 @@ class ArtifactControllerTest {
   void testGetArtifactContentFile() throws Exception {
     UUID artifactId = UUID.randomUUID();
     byte[] content = "fake-image-bytes".getBytes();
-    
+
     ArtifactEntity entity = ArtifactEntity.builder()
         .kind(Kind.IMAGE)
         .status(Status.CREATED)
@@ -109,7 +109,8 @@ class ArtifactControllerTest {
     ReflectionTestUtils.setField(entity, "id", artifactId);
 
     when(artifactService.getArtifact(artifactId)).thenReturn(entity);
-    when(artifactService.downloadArtifact(artifactId)).thenReturn(new ByteArrayInputStream(content));
+    when(artifactService.downloadArtifact(artifactId)).thenReturn(
+        new ByteArrayInputStream(content));
 
     MvcResult mvcResult = mockMvc.perform(get("/artifacts/{artifactId}/content", artifactId))
         .andExpect(request().asyncStarted())
@@ -118,14 +119,15 @@ class ArtifactControllerTest {
     mockMvc.perform(asyncDispatch(mvcResult))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.IMAGE_PNG))
-        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"test.png\""))
+        .andExpect(
+            header().string(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"test.png\""))
         .andExpect(content().bytes(content));
   }
 
   @Test
   void testGetArtifactContentNotReady() throws Exception {
     UUID artifactId = UUID.randomUUID();
-    
+
     ArtifactEntity entity = ArtifactEntity.builder()
         .kind(Kind.IMAGE)
         .status(Status.SCHEDULED)
@@ -136,5 +138,13 @@ class ArtifactControllerTest {
 
     mockMvc.perform(get("/artifacts/{artifactId}/content", artifactId))
         .andExpect(status().isAccepted()); // ArtifactNotReadyException -> 202
+  }
+
+  @Test
+  void testGetArtifactWithInvalidId() throws Exception {
+    mockMvc.perform(get("/artifacts/undefined"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.message").value("Invalid value 'undefined' for parameter 'artifactId'"));
   }
 }

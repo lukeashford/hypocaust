@@ -90,17 +90,17 @@ public class DecomposingOperator extends BaseOperator {
         ## Examples
         
         ### Leaf – Direct Match
-        Task: "Generate an image of a sunset over mountains"
-        Candidate `ImageGenerationOperator` matches directly.
+        Task: "Create a giant blue gummi bear"
+        Candidate `GummiBearOperator` matches directly.
         
         {
-          "values": { "prompt": "a sunset over mountains" },
+          "values": { "color": "blue", "size": "giant" },
           "children": [{
-            "operatorName": "ImageGenerationOperator",
-            "inputsToKeys": { "prompt": "prompt" },
-            "outputsToKeys": { "image": "generatedImage" }
+            "operatorName": "GummiBearOperator",
+            "inputsToKeys": { "color": "color", "size": "size" },
+            "outputsToKeys": { "gummiBearId": "newGummiBear" }
           }],
-          "finalOutputKey": "generatedImage"
+          "finalOutputKey": "newGummiBear"
         }
         
         ### Leaf – No Match

@@ -15,7 +15,7 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("projectId", response.body.project_id);
+  client.global.set("projectId", response.body.projectId);
 %}
 
 ### 2. Start SSE connection (subscribe to events)

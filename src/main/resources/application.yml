@@ -26,7 +26,6 @@ app:
     platforms-path: ${PLATFORMS_PATH:src/main/resources/rag/platforms}
     workflows-path: ${WORKFLOWS_PATH:src/main/resources/rag/workflows}
   llm:
-    orchestration-model-name: "claude-sonnet-4-20250514"
     decomposing-model-name: "claude-opus-4-5-20251101"
 
     openai:
@@ -75,7 +74,6 @@ app:
         claude-opus-4-5-20251101: # Claude Opus 4.5; most capable for complex reasoning and decomposition.
           maxTokens: 8192
           temperature: 0.7
-          topP: 1.0
 
         claude-sonnet-4-20250514: # Claude Sonnet 4; balanced performance for orchestration.
           maxTokens: 4096

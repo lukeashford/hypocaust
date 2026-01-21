@@ -36,4 +36,10 @@ class EventControllerTest {
         .andExpect(content().contentTypeCompatibleWith("text/plain"))
         .andExpect(content().string(mockLogs));
   }
+
+  @Test
+  void testGetProjectLogsWithInvalidId() throws Exception {
+    mockMvc.perform(get("/projects/undefined/logs"))
+        .andExpect(status().isBadRequest());
+  }
 }
