@@ -12,6 +12,7 @@ import com.example.hypocaust.operator.Operator;
 import com.example.hypocaust.operator.OperatorSpec;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.service.ArtifactGraphService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +33,16 @@ class InvokeToolTest {
   private ModelCallLogger modelCallLogger;
 
   @Mock
+  private ArtifactGraphService artifactGraphService;
+
+  @Mock
   private Operator mockOperator;
 
   private InvokeTool invokeTool;
 
   @BeforeEach
   void setUp() {
-    invokeTool = new InvokeTool(operatorRegistry, modelCallLogger);
+    invokeTool = new InvokeTool(operatorRegistry, modelCallLogger, artifactGraphService);
   }
 
   @Test

@@ -109,20 +109,16 @@ public class ArtifactService {
     final var runId = RunContextHolder.getRunId();
     log.debug("Scheduling artifact for project {}: {}", projectId, title);
 
-    final var artifact = new ArtifactEntity(
-        projectId,
-        runId,
-        kind,
-        Status.SCHEDULED,
-        title,
-        subtitle,
-        alt,
-        mime,
-        null,
-        null,
-        null,
-        null
-    );
+    final var artifact = ArtifactEntity.builder()
+        .projectId(projectId)
+        .runId(runId)
+        .kind(kind)
+        .status(Status.SCHEDULED)
+        .title(title)
+        .subtitle(subtitle)
+        .alt(alt)
+        .mime(mime)
+        .build();
     artifactRepository.save(artifact);
     eventService.publish(new ArtifactScheduledEvent(
         projectId,
@@ -179,7 +175,8 @@ public class ArtifactService {
   }
 
   @Transactional
-  public void updateArtifactWithStorage(UUID artifactId, String storageKey, JsonNode content, JsonNode metadata) {
+  public void updateArtifactWithStorage(UUID artifactId, String storageKey, JsonNode content,
+      JsonNode metadata) {
     updateArtifactWithStorage(artifactId, null, null, null, storageKey, content, metadata);
   }
 
