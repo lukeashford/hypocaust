@@ -5,6 +5,8 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.fragments.GenerationFragments;
 import com.example.hypocaust.service.ArtifactService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -14,14 +16,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
+/**
+ * Operator that generates creative text content from prompts.
+ *
+ * <p>Uses GPT-5.2 for creative writing (quality matters for creative output) and
+ * Claude Haiku for title generation (simple extraction task).
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class CreativeTextGenerationOperator extends BaseOperator {
 
-  private final ModelRegistry modelRegistry;
+  // Model configuration
+  private static final OpenAiChatModelSpec CREATIVE_WRITING_MODEL = OpenAiChatModelSpec.GPT_5_2;
+  private static final AnthropicChatModelSpec TITLE_GENERATION_MODEL =
+      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
 
   private static final String OUTPUT_KEY = "generatedText";
+
+  private final ModelRegistry modelRegistry;
   private final ArtifactService artifactService;
   private final ObjectMapper objectMapper;
 
@@ -41,15 +54,15 @@ public class CreativeTextGenerationOperator extends BaseOperator {
         null
     );
 
-    // Use GPT-5.2 for creative writing tasks
-    final var chatClient = ChatClient.builder(
-            modelRegistry.get(OpenAiChatModelSpec.GPT_5_2))
+    // Build the system prompt from the fragment
+    final var systemPrompt = PromptBuilder.create()
+        .with(GenerationFragments.creativeWriting())
+        .param("style", style)
+        .param("maxLength", maxLength)
         .build();
 
-    final var systemPrompt = String.format(
-        "You are a creative writer. Generate content in a %s style. " +
-            "Keep your response under %d words.",
-        style, maxLength);
+    final var chatClient = ChatClient.builder(modelRegistry.get(CREATIVE_WRITING_MODEL))
+        .build();
 
     final var text = chatClient.prompt()
         .system(systemPrompt)
@@ -80,14 +93,13 @@ public class CreativeTextGenerationOperator extends BaseOperator {
 
   private String generateTitle(String prompt, String generatedText) {
     try {
-      final var chatClient = ChatClient.builder(
-              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST))
+      // Build the system prompt from the fragment
+      final var systemPrompt = PromptBuilder.create()
+          .with(GenerationFragments.writingTitleGeneration())
           .build();
 
-      final var systemPrompt = """
-          Generate a short, engaging title for this creative writing piece.
-          Return ONLY the title, nothing else. Max 8 words.
-          """;
+      final var chatClient = ChatClient.builder(modelRegistry.get(TITLE_GENERATION_MODEL))
+          .build();
 
       final var userPrompt = String.format(
           "Original prompt: %s\n\nGenerated text (first 200 chars): %s",

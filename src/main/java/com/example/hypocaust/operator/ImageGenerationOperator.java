@@ -4,6 +4,8 @@ import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.fragments.GenerationFragments;
 import com.example.hypocaust.service.ArtifactService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,10 +21,21 @@ import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.stereotype.Component;
 
+/**
+ * Operator that generates images using DALL-E 3 from text prompts.
+ *
+ * <p>Uses Claude Haiku for title/alt text generation as this is a simple extraction task.
+ * Image generation itself uses DALL-E 3.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ImageGenerationOperator extends BaseOperator {
+
+  // Model configuration
+  private static final AnthropicChatModelSpec TITLE_GENERATION_MODEL =
+      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+  private static final String IMAGE_GENERATION_MODEL = "dall-e-3";
 
   private final OpenAiImageModel imageModel;
   private final ArtifactService artifactService;
@@ -40,7 +53,7 @@ public class ImageGenerationOperator extends BaseOperator {
 
     log.info("Generating image with prompt: {}", prompt);
 
-    // Generate title and alt text using a small, fast model
+    // Generate title and alt text using Haiku
     final var titleAndAlt = generateTitleAndAlt(prompt);
 
     // Schedule the artifact first with the generated title
@@ -55,7 +68,7 @@ public class ImageGenerationOperator extends BaseOperator {
     try {
       // Build image options
       final var options = OpenAiImageOptions.builder()
-          .model("dall-e-3")
+          .model(IMAGE_GENERATION_MODEL)
           .quality(quality)
           .height(parseHeight(size))
           .width(parseWidth(size))
@@ -94,7 +107,7 @@ public class ImageGenerationOperator extends BaseOperator {
       metadata.put("prompt", prompt);
       metadata.put("size", size);
       metadata.put("quality", quality);
-      metadata.put("model", "dall-e-3");
+      metadata.put("model", IMAGE_GENERATION_MODEL);
       metadata.put("originalUrl", imageUrl);  // Keep the original URL for reference
       if (!negativePrompt.isEmpty()) {
         metadata.put("negativePrompt", negativePrompt);
@@ -127,18 +140,13 @@ public class ImageGenerationOperator extends BaseOperator {
 
   private TitleAndAlt generateTitleAndAlt(String prompt) {
     try {
-      final var chatClient = ChatClient.builder(
-              modelRegistry.get(AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST))
+      // Build the system prompt from the fragment
+      final var systemPrompt = PromptBuilder.create()
+          .with(GenerationFragments.imageTitleGeneration())
           .build();
 
-      final var systemPrompt = """
-          Generate a short, descriptive title, subtitle, and alt text for an AI-generated image.
-
-          Return your response in exactly this format (one line each, no extra text):
-          TITLE: [A concise, engaging title, max 6 words]
-          SUBTITLE: [A brief subtitle describing the style or mood, max 8 words]
-          ALT: [Descriptive alt text for accessibility, max 20 words]
-          """;
+      final var chatClient = ChatClient.builder(modelRegistry.get(TITLE_GENERATION_MODEL))
+          .build();
 
       final var response = chatClient.prompt()
           .system(systemPrompt)
