@@ -25,19 +25,26 @@ Unchanged. A project is a container for runs, commits, and artifacts.
 A run belongs to a project and executes a task.
 
 ```java
-record Run(
-    UUID id,
-    UUID projectId,
-    UUID baseCommitId,    // The commit this run started from (null for first run)
-    UUID commitId,        // The commit produced by this run (null until committed)
-    String task,
-    Status status,        // QUEUED, RUNNING, COMPLETED, FAILED
-    Instant startedAt,
-    Instant completedAt
-)
+// RunEntity.java changes
+@Entity
+class RunEntity extends BaseEntity {
+    UUID projectId;           // Existing
+    String task;              // Existing
+    Status status;            // Existing: QUEUED, RUNNING, COMPLETED, FAILED
+    String reason;            // Existing
+    Instant startedAt;        // Existing
+    Instant completedAt;      // Existing
+
+    // NEW FIELDS:
+    UUID baseCommitId;        // The commit this run started from (null for first run)
+    UUID commitId;            // The commit produced by this run (null until committed)
+}
 ```
 
-**Key change**: `baseCommitId` tracks where the run branched from. `commitId` is set atomically with status=COMPLETED.
+**Key changes**:
+- `baseCommitId` tracks where the run started from (which commit's state)
+- `commitId` is set atomically with status=COMPLETED (transactional requirement)
+- A run with `commitId != null` MUST have `status == COMPLETED` (invariant)
 
 ### Commit
 
@@ -695,17 +702,21 @@ List<Artifact> getArtifactsAtCommit(UUID commitId) {
 | `domain/ArtifactGraph.java` | Replaced by simpler list-based approach |
 | `domain/ArtifactNode.java` | Replaced by simplified Artifact |
 | `domain/ArtifactRelation.java` | Not needed |
+| `domain/ArtifactUpdate.java` | Replaced by ArtifactChange with names |
+| `domain/RelationType.java` | No artifact relations in new design |
 | `domain/SemanticAnchor.java` | Replaced by name + description |
 | `domain/Provenance.java` | Merged into Artifact fields |
 | `domain/ExecutionContext.java` | Replaced by RunContext |
 | `operator/ExecutionContextHolder.java` | Replaced by enhanced RunContextHolder |
 | `service/ArtifactGraphService.java` | Replaced by ArtifactVersionManagementService |
 | `service/BranchService.java` | No branches |
+| `service/CommitService.java` | Merged into ArtifactVersionManagementService |
 | `repo/BranchRepository.java` | No branches |
 | `repo/AnchorEmbeddingRepository.java` | No embeddings |
 | `repo/ArtifactRelationRepository.java` | No relations |
 | `exception/BranchNotFoundException.java` | No branches |
 | `exception/AnchorNotFoundException.java` | Replaced by ArtifactNotFoundException |
+| `ledger-prompt.md` | Superseded by this document |
 
 ### Files to MODIFY
 
@@ -713,17 +724,23 @@ List<Artifact> getArtifactsAtCommit(UUID commitId) {
 |------|---------|
 | `db/CommitEntity.java` | Remove `branchId`, add `projectId`, add `message` |
 | `db/ArtifactEntity.java` | Add `name`, `description`, `prompt`, `model`, `deleted`. Remove `anchorDescription`, `anchorRole`, `anchorTags`, `supersededById`, `branchId`, `derivedFrom` |
-| `domain/CommitDelta.java` | Change to use `ArtifactChange` with names, add `deleted` list |
-| `domain/PendingChanges.java` | Rewrite to use name-based tracking, add `edited` and `deleted` |
-| `operator/RunContextHolder.java` | Enhance with full RunContext, add artifact hooks |
-| `service/TaskService.java` | Require projectId, handle baseCommitId, call commit at end |
-| `service/ArtifactService.java` | Remove schedule/update methods, keep only read methods |
-| `dto/CreateTaskRequestDto.java` | Add `projectId`, `commitId` |
-| `repo/ArtifactRepository.java` | Add queries by name+version, by commitId |
-| `repo/CommitRepository.java` | Add queries by projectId, remove branch queries |
-| `operator/ImageGenerationOperator.java` | Use RunContext hooks instead of ArtifactService |
+| `db/RunEntity.java` | Add `baseCommitId` (commit this run started from), `commitId` (commit produced by this run) |
+| `domain/Commit.java` | Remove `branchId`, add `projectId`, add `message` |
+| `domain/CommitDelta.java` | Change to use `ArtifactChange` with names, rename `updated` to `edited`, rename `removed` to `deleted` (List<String> of names) |
+| `domain/PendingChanges.java` | Rewrite to use name-based tracking with `added`, `edited`, `deleted` |
+| `operator/RunContextHolder.java` | Enhance with full RunContext, add artifact hooks (addArtifact, editArtifact, deleteArtifact) |
+| `tool/InvokeTool.java` | Change `@anchor:` resolution from semantic search to name-based lookup; remove dependency on ArtifactGraphService and ExecutionContextHolder |
+| `service/TaskService.java` | Require projectId (throw if missing), handle baseCommitId, call commit at end of run transactionally |
+| `service/ArtifactService.java` | Remove `schedule()` and `updateArtifact()` methods - keep only read methods (`getArtifact`, `downloadArtifact`) |
+| `dto/CreateTaskRequestDto.java` | Add `projectId` (required), `commitId` (optional) |
+| `dto/TaskResponseDto.java` | Return `runId` instead of (or in addition to) `projectId` |
+| `repo/ArtifactRepository.java` | Add queries by name+version, by commitId. Remove anchor-based and branch-based queries |
+| `repo/CommitRepository.java` | Add queries by projectId (e.g., `findTopByProjectIdOrderByTimestampDesc`), remove branch queries |
+| `operator/ImageGenerationOperator.java` | Use RunContext hooks instead of ArtifactService. Require `artifactName` and `description` as inputs |
+| `operator/DecomposingOperator.java` | Integrate with TaskProgressService for publishing subtasks |
 | `domain/event/EventType.java` | Add `RUN_CREATED`, `ARTIFACT_DELETED`, `TASK_PROGRESS_UPDATED` |
-| `web/ArtifactController.java` | Change to accept runId, delegate to version service |
+| `web/ArtifactController.java` | Change to accept runId, delegate to ArtifactVersionManagementService |
+| `web/TaskController.java` | Update to validate projectId, return runId in response |
 
 ### Files to CREATE
 
@@ -794,6 +811,34 @@ ALTER TABLE event ADD CONSTRAINT event_type_check CHECK (type IN (
 
 ---
 
+## Artifact Reference Syntax
+
+The current implementation uses `@anchor:description` to resolve artifacts by semantic description. This changes to name-based references.
+
+### Current (to be removed)
+```
+@anchor:woman in red dress at cafe  →  semantic search  →  ArtifactNode
+```
+
+### New (to implement)
+```
+@artifact:hero_image  →  direct name lookup  →  Artifact
+```
+
+Or simply use the artifact name directly in inputs without special syntax, since names are now explicit:
+```json
+{
+  "values": {
+    "targetArtifact": "hero_image",
+    "editTask": "Make the hero's hair blonde"
+  }
+}
+```
+
+The `InvokeTool` should be simplified to just resolve artifact names from the current state (base commit + pending changes) via `RunContext.getArtifactByName(name)`.
+
+---
+
 ## Implementation Order
 
 1. **Database migration** - Simplify schema
@@ -808,6 +853,28 @@ ALTER TABLE event ADD CONSTRAINT event_type_check CHECK (type IN (
 10. **API changes** - ProjectController, updated task/artifact endpoints
 11. **TaskProgressService** - Progress tracking
 12. **Events** - New event types and SSE integration
+
+---
+
+## Files That Stay Unchanged
+
+These files are not affected by this refactoring:
+
+| File | Reason |
+|------|--------|
+| `db/ProjectEntity.java` | No changes needed |
+| `db/EventEntity.java` | No changes needed |
+| `domain/ArtifactKind.java` | Simple enum, still needed (consider unifying with `ArtifactEntity.Kind` later) |
+| `domain/OperatorLedger.java` | Ledger structure unchanged |
+| `operator/BaseOperator.java` | Operator base class unchanged |
+| `operator/ImagePromptEngineerOperator.java` | Pure LLM operator, no artifact handling |
+| `operator/CreativeTextGenerationOperator.java` | Pure LLM operator, no artifact handling |
+| `service/StorageService.java` | Storage abstraction unchanged |
+| `service/EmbeddingService.java` | Still needed for operator registry (not artifacts) |
+| `service/events/EventService.java` | Event publishing unchanged |
+| `service/events/SseHub.java` | SSE infrastructure unchanged |
+| `prompt/*` | Prompt system unchanged |
+| `models/*` | Model registry unchanged |
 
 ---
 
