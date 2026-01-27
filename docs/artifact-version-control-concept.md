@@ -208,14 +208,16 @@ class TaskExecutionContext {
 
   /**
    * Schedule a new artifact for creation.
+   * Generates a unique name from the description using a small LLM.
+   * If the generated name conflicts, retries with an exclusion list until a unique name is found.
    * Emits artifact.added event with name, kind, description, externalUrl, inlineContent, metadata.
-   * @throws ArtifactExistsException if name already exists in predecessor's state or pending
+   * @return the generated artifact name (for use in subsequent updatePendingArtifact calls)
    */
-  void addArtifact(PendingArtifact artifact);
+  String addArtifact(PendingArtifact artifact);
 
   /**
    * Schedule an edit to an existing artifact (creates new version).
-   * Emits artifact.edited event with name, kind, description, externalUrl, inlineContent, metadata.
+   * Emits artifact.updated event with name, kind, description, externalUrl, inlineContent, metadata.
    * @throws ArtifactNotFoundException if name doesn't exist in predecessor's state
    * @throws ArtifactTypeMismatchException if pending artifact kind differs from existing
    */
@@ -223,7 +225,7 @@ class TaskExecutionContext {
 
   /**
    * Schedule an artifact for deletion (soft delete).
-   * Emits artifact.deleted event with name.
+   * Emits artifact.removed event with name.
    * @throws ArtifactNotFoundException if name doesn't exist in predecessor's state
    */
   void deleteArtifact(String name);
@@ -239,7 +241,7 @@ class TaskExecutionContext {
 
   /**
    * Cancel a pending artifact that was previously scheduled.
-   * Marks as cancelled in pending (will emit artifact.discarded during commit).
+   * Emits artifact.removed event with name.
    * @throws IllegalStateException if no pending artifact with this name exists
    */
   void cancelPendingArtifact(String name);
@@ -274,9 +276,8 @@ class TaskExecutionContext {
 }
 
 record PendingArtifact(
-    String name,
     Kind kind,
-    String description,
+    String description,      // Required: used to generate the artifact name
     String prompt,
     String model,
     String externalUrl,      // URL to download from (for images)
@@ -315,7 +316,7 @@ class TaskExecutionContextHolder {
 
   static UUID getTaskExecutionId();
 
-  static void addArtifact(PendingArtifact artifact);
+  static String addArtifact(PendingArtifact artifact);
 
   static void editArtifact(String name, PendingArtifact newVersion);
 
@@ -443,13 +444,12 @@ abstract class BaseOperator implements Operator {
 
 ### ImageGenerationOperator (Adjusted)
 
-Creates new images. The operator names the file (using a small LLM to generate a meaningful name
-from the description). Calls `TaskExecutionContext.addArtifact()` when scheduling and
+Creates new images. Calls `TaskExecutionContext.addArtifact()` when scheduling and
 `updatePendingArtifact()` when generation completes.
 
-The artifact naming uses a retry loop: if the generated name already exists (either in predecessor
-state or pending changes), the LLM is asked to generate a new name that avoids the conflicting
-names. This ensures unique names without manual intervention.
+The artifact naming is fully centralized in `TaskExecutionContext.addArtifact()`: the name is
+generated from the description using a small LLM, with automatic retry on conflicts. Operators
+don't need to worry about name generation or collision handling.
 
 ```java
 
@@ -458,15 +458,18 @@ protected OperatorResult doExecute(Map<String, Object> inputs) {
   var prompt = (String) inputs.get("prompt");
   var description = (String) inputs.get("description");    // Required
 
-  // Generate artifact name with retry loop for conflicts
-  var artifactName = addArtifactWithRetry(description, prompt);
+  var artifactName = TaskExecutionContextHolder.addArtifact(PendingArtifact.builder()
+      .kind(Kind.IMAGE)
+      .description(description)
+      .prompt(prompt)
+      .model("dall-e-3")
+      .build());
 
   // Generate image (async call to image service)
   var imageUrl = generateImage(prompt);
 
   // Update the pending artifact with the generated URL - emits ARTIFACT_UPDATED event
   TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
-      .name(artifactName)
       .kind(Kind.IMAGE)
       .description(description)
       .prompt(prompt)
@@ -477,62 +480,14 @@ protected OperatorResult doExecute(Map<String, Object> inputs) {
   return OperatorResult.success("Generated image: " + artifactName,
       Map.of("artifactName", artifactName));
 }
-
-/**
- * Generate artifact name and add to pending, with retry on name conflicts.
- * On conflict, asks LLM to generate a name not in the exclusion list.
- */
-private String addArtifactWithRetry(String description, String prompt) {
-  var excludedNames = new ArrayList<String>();
-  var maxRetries = 5;
-
-  for (int i = 0; i < maxRetries; i++) {
-    var artifactName = generateArtifactName(description, excludedNames);
-
-    try {
-      // Schedule artifact creation - emits ARTIFACT_ADDED event
-      TaskExecutionContextHolder.addArtifact(PendingArtifact.builder()
-          .name(artifactName)
-          .kind(Kind.IMAGE)
-          .description(description)
-          .prompt(prompt)
-          .model("dall-e-3")
-          .build());
-      return artifactName;
-    } catch (ArtifactExistsException e) {
-      // Name already exists, add to exclusion list and retry
-      excludedNames.add(artifactName);
-    }
-  }
-
-  throw new IllegalStateException(
-      "Failed to generate unique artifact name after " + maxRetries + " attempts");
-}
-
-private String generateArtifactName(String description, List<String> excludedNames) {
-  var systemPrompt = "Generate a short snake_case artifact name (2-4 words) for this image description. Reply with just the name.";
-
-  if (!excludedNames.isEmpty()) {
-    systemPrompt +=
-        " The name must NOT be any of the following: " + String.join(", ", excludedNames);
-  }
-
-  return chatClient.prompt()
-      .system(systemPrompt)
-      .user(description)
-      .call()
-      .content()
-      .trim();
-}
 ```
 
 **Key points**:
 
-- Operator generates the artifact name from the description
-- Uses a retry loop: `generateArtifactName()` → `addArtifact()` → catch `ArtifactExistsException` →
-  retry with excluded names list
-- On conflict, the LLM is prompted to avoid already-taken names
-- Calls `addArtifact()` to schedule, then `updatePendingArtifact()` when generation completes
+- `addArtifact()` generates a unique name from the description and returns it
+- Name conflict retry loop is internal to `addArtifact()`, not operator's concern
+- Calls `addArtifact()` to schedule (returns name), then `updatePendingArtifact()` when generation
+  completes
 - Both calls emit SSE events so the frontend can track progress
 
 ### ImageEditOperator (New)
@@ -738,6 +693,15 @@ Events contain sufficient payload for the frontend to update its artifact displa
 additional API calls. The philosophy: tell the frontend all info you have so it can add cards,
 show skeletons while no external URL or inline content is set, and update artifacts as you go.
 
+**Artifact event simplification**: The frontend only needs to know whether to add a card, change
+one, or remove it. Therefore, artifact events are reduced to three types:
+
+- `artifact.added` - a new artifact card should appear
+- `artifact.updated` - an existing artifact card should be updated (covers both edits to existing
+  artifacts and progress updates to pending artifacts)
+- `artifact.removed` - an artifact card should be removed (covers deletion, cancellation, and
+  discarding of incomplete artifacts on commit)
+
 ```
 GET /task-executions/{taskExecutionId}/events
 
@@ -750,10 +714,8 @@ Streams:
 - taskexecution.failed      { reason }
 
 - artifact.added            { name, kind, description, externalUrl, inlineContent, metadata }
-- artifact.edited           { name, kind, description, externalUrl, inlineContent, metadata }
-- artifact.deleted          { name }
-- artifact.updated          { name, kind, description, externalUrl, inlineContent, metadata }
-- artifact.discarded        { name, reason }  // Emitted on commit for cancelled/failed artifacts
+- artifact.updated          { name, description, externalUrl, inlineContent, metadata }
+- artifact.removed          { name }
 
 - task.progress.updated     { taskTree }
 
@@ -768,13 +730,14 @@ Streams:
 
 The artifact events directly correspond to `TaskExecutionContext` methods:
 
-| Context Method            | Event Emitted        | When                                       |
-|---------------------------|----------------------|--------------------------------------------|
-| `addArtifact()`           | `artifact.added`     | New artifact scheduled                     |
-| `editArtifact()`          | `artifact.edited`    | Edit to existing artifact scheduled        |
-| `deleteArtifact()`        | `artifact.deleted`   | Artifact marked for deletion               |
-| `updatePendingArtifact()` | `artifact.updated`   | Pending artifact updated (e.g., URL ready) |
-| (on commit)               | `artifact.discarded` | Cancelled/failed artifacts discarded       |
+| Context Method            | Event Emitted      | When                                         |
+|---------------------------|--------------------|----------------------------------------------|
+| `addArtifact()`           | `artifact.added`   | New artifact scheduled                       |
+| `editArtifact()`          | `artifact.updated` | Edit to existing artifact scheduled          |
+| `updatePendingArtifact()` | `artifact.updated` | Pending artifact updated (e.g., URL ready)   |
+| `deleteArtifact()`        | `artifact.removed` | Artifact marked for deletion                 |
+| `cancelPendingArtifact()` | `artifact.removed` | Pending artifact cancelled                   |
+| (on commit)               | `artifact.removed` | Incomplete artifacts discarded during commit |
 
 **Event payload philosophy**: Each event includes all available fields (name, kind, description,
 externalUrl, inlineContent, metadata). Fields may be null initially (e.g., externalUrl before
@@ -782,7 +745,7 @@ generation completes). The frontend can:
 
 - Show a skeleton card when `artifact.added` arrives with null externalUrl
 - Update the card with the actual image when `artifact.updated` arrives with the URL
-- Remove/mark cards when `artifact.discarded` arrives during commit
+- Remove cards when `artifact.removed` arrives
 
 ---
 
@@ -851,17 +814,17 @@ GET /task-executions/{taskExecutionId}/tasks
    └─ DecomposingOperator.execute(task, "0")  // Root todoPath
    │   └─ Operators call TaskExecutionContext hooks:
    │   │   - addArtifact() → emits artifact.added
-   │   │   - editArtifact() → emits artifact.edited
-   │   │   - deleteArtifact() → emits artifact.deleted
+   │   │   - editArtifact() → emits artifact.updated
+   │   │   - deleteArtifact() → emits artifact.removed
    │   │   - updatePendingArtifact() → emits artifact.updated
-   │   │   - cancelPendingArtifact() → marks as cancelled (no event yet)
+   │   │   - cancelPendingArtifact() → emits artifact.removed
    │   └─ Changes accumulate in pending
    └─ On success: complete()
    └─ On failure: fail() and discard all pending
 
 3. COMPLETION (transactional)
-   └─ For each cancelled/failed pending artifact:
-   │   └─ Emit artifact.discarded { name, reason }
+   └─ For each cancelled pending artifact:
+   │   └─ Emit artifact.removed { name }
    │   └─ Remove from pending
    └─ If pending.hasChanges():
    │   └─ Generate message from task
@@ -964,53 +927,51 @@ List<Artifact> getArtifactsAtTaskExecution(UUID taskExecutionId) {
 
 ### Files to MODIFY
 
-| File                                    | Changes                                                                                                                                                                                                                     |
-|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `db/RunEntity.java`                     | Rename to `TaskExecutionEntity`, add `predecessorId`, `message`, `delta` fields                                                                                                                                             |
-| `db/ArtifactEntity.java`                | Add `name`, `description`, `prompt`, `model`, `deleted`. Remove `version`, `anchorDescription`, `anchorRole`, `anchorTags`, `supersededById`, `branchId`, `derivedFrom`. Change `commitId` to `taskExecutionId`             |
-| `domain/Run.java`                       | Rename to `TaskExecution`, add `predecessorId`, `message`, `delta` fields                                                                                                                                                   |
-| `domain/PendingChanges.java`            | Rewrite to use name-based tracking with `added`, `edited`, `deleted`                                                                                                                                                        |
-| `domain/OperatorLedger.java`            | Add `todo` field to `OperatorLedgerChild` record for human-readable task description                                                                                                                                        |
-| `operator/RunContextHolder.java`        | Rename to `TaskExecutionContextHolder`, enhance with full TaskExecutionContext, add artifact hooks (add, edit, delete, update, cancel)                                                                                      |
-| `operator/BaseOperator.java`            | Change signature to `execute(Map<String, Object> inputs, String todoPath)`. Add error handling wrapper with consistent failure result pattern                                                                               |
-| `tool/InvokeTool.java`                  | Publish subtasks at start of invoke(); implement path propagation (single child: same path, multiple children: extend path); pass todoPath to operators; update task status during execution                                |
-| `service/TaskService.java`              | Require projectId (throw if missing), handle predecessorId, call complete at end of TaskExecution transactionally                                                                                                           |
-| `service/ArtifactService.java`          | Remove `schedule()` and `updateArtifact()` methods - keep only read methods (`getArtifact`, `downloadArtifact`)                                                                                                             |
-| `dto/CreateTaskRequestDto.java`         | Add `projectId` (required), `predecessorId` (optional)                                                                                                                                                                      |
-| `dto/TaskResponseDto.java`              | Return `taskExecutionId` instead of (or in addition to) `projectId`                                                                                                                                                         |
-| `repo/ArtifactRepository.java`          | Add queries by name, by taskExecutionId. Remove anchor-based and branch-based queries                                                                                                                                       |
-| `repo/RunRepository.java`               | Rename to `TaskExecutionRepository`, add queries by projectId                                                                                                                                                               |
-| `operator/ImageGenerationOperator.java` | Use TaskExecutionContext hooks (add + update). Generate artifact name with retry loop on conflict                                                                                                                           |
-| `operator/DecomposingOperator.java`     | Build ledger with todo wordings for each child; do not publish subtasks directly (InvokeTool handles this)                                                                                                                  |
-| `domain/event/EventType.java`           | Add new event types: `artifact.added`, `artifact.edited`, `artifact.deleted`, `artifact.updated`, `artifact.discarded`, `taskexecution.started`, `taskexecution.completed`, `taskexecution.failed`, `task.progress.updated` |
-| `web/ArtifactController.java`           | Change to accept taskExecutionId, delegate to ArtifactVersionManagementService                                                                                                                                              |
-| `web/TaskController.java`               | Update to validate projectId, return taskExecutionId in response                                                                                                                                                            |
-| `web/EventController.java`              | Change SSE endpoint from `/projects/{projectId}/events` to `/task-executions/{taskExecutionId}/events`                                                                                                                      |
+| File                                    | Changes                                                                                                                                                                                                         |
+|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `db/RunEntity.java`                     | Rename to `TaskExecutionEntity`, add `predecessorId`, `message`, `delta` fields                                                                                                                                 |
+| `db/ArtifactEntity.java`                | Add `name`, `description`, `prompt`, `model`, `deleted`. Remove `version`, `anchorDescription`, `anchorRole`, `anchorTags`, `supersededById`, `branchId`, `derivedFrom`. Change `commitId` to `taskExecutionId` |
+| `domain/Run.java`                       | Rename to `TaskExecution`, add `predecessorId`, `message`, `delta` fields                                                                                                                                       |
+| `domain/PendingChanges.java`            | Rewrite to use name-based tracking with `added`, `edited`, `deleted`                                                                                                                                            |
+| `domain/OperatorLedger.java`            | Add `todo` field to `OperatorLedgerChild` record for human-readable task description                                                                                                                            |
+| `operator/RunContextHolder.java`        | Rename to `TaskExecutionContextHolder`, enhance with full TaskExecutionContext, add artifact hooks (add, edit, delete, update, cancel). addArtifact() generates names from description with conflict retry      |
+| `operator/BaseOperator.java`            | Change signature to `execute(Map<String, Object> inputs, String todoPath)`. Add error handling wrapper with consistent failure result pattern                                                                   |
+| `tool/InvokeTool.java`                  | Publish subtasks at start of invoke(); implement path propagation (single child: same path, multiple children: extend path); pass todoPath to operators; update task status during execution                    |
+| `service/TaskService.java`              | Require projectId (throw if missing), handle predecessorId, call complete at end of TaskExecution transactionally                                                                                               |
+| `service/ArtifactService.java`          | Remove `schedule()` and `updateArtifact()` methods - keep only read methods (`getArtifact`, `downloadArtifact`)                                                                                                 |
+| `dto/CreateTaskRequestDto.java`         | Add `projectId` (required), `predecessorId` (optional)                                                                                                                                                          |
+| `dto/TaskResponseDto.java`              | Return `taskExecutionId` instead of (or in addition to) `projectId`                                                                                                                                             |
+| `repo/ArtifactRepository.java`          | Add queries by name, by taskExecutionId. Remove anchor-based and branch-based queries                                                                                                                           |
+| `repo/RunRepository.java`               | Rename to `TaskExecutionRepository`, add queries by projectId                                                                                                                                                   |
+| `operator/ImageGenerationOperator.java` | Use TaskExecutionContext hooks (add + update).                                                                                                                                                                  |
+| `operator/DecomposingOperator.java`     | Build ledger with todo wordings for each child; do not publish subtasks directly (InvokeTool handles this)                                                                                                      |
+| `domain/event/EventType.java`           | Add new event types: `artifact.added`, `artifact.updated`, `artifact.removed`, `taskexecution.started`, `taskexecution.completed`, `taskexecution.failed`, `task.progress.updated`                              |
+| `web/ArtifactController.java`           | Change to accept taskExecutionId, delegate to ArtifactVersionManagementService                                                                                                                                  |
+| `web/TaskController.java`               | Update to validate projectId, return taskExecutionId in response                                                                                                                                                |
+| `web/EventController.java`              | Change SSE endpoint from `/projects/{projectId}/events` to `/task-executions/{taskExecutionId}/events`                                                                                                          |
 
 ### Files to CREATE
 
-| File                                            | Purpose                                                  |
-|-------------------------------------------------|----------------------------------------------------------|
-| `service/ArtifactVersionManagementService.java` | Central version control service                          |
-| `domain/TaskExecutionContext.java`              | Enhanced context with artifact hooks + progress          |
-| `domain/TaskExecutionDelta.java`                | What changed in a TaskExecution                          |
-| `domain/PendingArtifact.java`                   | Pending artifact record                                  |
-| `domain/ArtifactDto.java`                       | Frontend-ready artifact view with pending status         |
-| `domain/TaskTree.java`                          | Task progress tree structure                             |
-| `domain/TaskItem.java`                          | Single task item with status                             |
-| `domain/ArtifactChange.java`                    | Change record for TaskExecution delta                    |
-| `tool/ProjectContextTool.java`                  | Project context queries for operators                    |
-| `operator/ImageEditOperator.java`               | Image editing via nano banana                            |
-| `operator/DeleteArtifactOperator.java`          | Soft-delete artifacts                                    |
-| `exception/ArtifactTypeMismatchException.java`  | Thrown when edit type doesn't match                      |
-| `domain/event/ArtifactAddedEvent.java`          | Event: new artifact scheduled                            |
-| `domain/event/ArtifactEditedEvent.java`         | Event: edit to existing artifact scheduled               |
-| `domain/event/ArtifactDeletedEvent.java`        | Event: artifact marked for deletion                      |
-| `domain/event/ArtifactUpdatedEvent.java`        | Event: pending artifact updated (e.g., URL ready)        |
-| `domain/event/ArtifactDiscardedEvent.java`      | Event: cancelled/failed artifact discarded during commit |
-| `domain/event/TaskProgressUpdatedEvent.java`    | Event: task progress tree updated                        |
-| `web/ProjectController.java`                    | Project creation endpoint                                |
-| `web/TaskProgressController.java`               | Task progress endpoint                                   |
+| File                                            | Purpose                                            |
+|-------------------------------------------------|----------------------------------------------------|
+| `service/ArtifactVersionManagementService.java` | Central version control service                    |
+| `domain/TaskExecutionContext.java`              | Enhanced context with artifact hooks + progress    |
+| `domain/TaskExecutionDelta.java`                | What changed in a TaskExecution                    |
+| `domain/PendingArtifact.java`                   | Pending artifact record                            |
+| `domain/ArtifactDto.java`                       | Frontend-ready artifact view with pending status   |
+| `domain/TaskTree.java`                          | Task progress tree structure                       |
+| `domain/TaskItem.java`                          | Single task item with status                       |
+| `domain/ArtifactChange.java`                    | Change record for TaskExecution delta              |
+| `tool/ProjectContextTool.java`                  | Project context queries for operators              |
+| `operator/ImageEditOperator.java`               | Image editing via nano banana                      |
+| `operator/DeleteArtifactOperator.java`          | Soft-delete artifacts                              |
+| `exception/ArtifactTypeMismatchException.java`  | Thrown when edit type doesn't match                |
+| `domain/event/ArtifactAddedEvent.java`          | Event: new artifact scheduled                      |
+| `domain/event/ArtifactUpdatedEvent.java`        | Event: artifact edited or pending artifact updated |
+| `domain/event/ArtifactRemovedEvent.java`        | Event: artifact deleted, cancelled, or discarded   |
+| `domain/event/TaskProgressUpdatedEvent.java`    | Event: task progress tree updated                  |
+| `web/ProjectController.java`                    | Project creation endpoint                          |
+| `web/TaskProgressController.java`               | Task progress endpoint                             |
 
 ### Database Migration
 
@@ -1068,10 +1029,8 @@ ALTER TABLE event DROP CONSTRAINT IF EXISTS event_type_check;
 ALTER TABLE event
     ADD CONSTRAINT event_type_check CHECK (type IN (
                                                     'artifact.added',
-                                                    'artifact.edited',
-                                                    'artifact.deleted',
                                                     'artifact.updated',
-                                                    'artifact.discarded',
+                                                    'artifact.removed',
                                                     'taskexecution.started',
                                                     'taskexecution.completed',
                                                     'taskexecution.failed',
