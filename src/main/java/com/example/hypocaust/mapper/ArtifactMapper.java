@@ -8,8 +8,7 @@ import org.mapstruct.Mapping;
 @Mapper(config = GlobalMapperConfig.class)
 public interface ArtifactMapper {
 
+  @Mapping(target = "url", expression = "java(entity.getStorageKey() != null ? \"/artifacts/\" + entity.getId() + \"/content\" : null)")
+  @Mapping(target = "isPending", constant = "false")
   ArtifactDto toDto(ArtifactEntity entity);
-
-  @Mapping(target = "storageKey", ignore = true)
-  ArtifactEntity toEntity(ArtifactDto dto);
 }

@@ -1,18 +1,17 @@
 package com.example.hypocaust.domain.event;
 
-import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventEventPayload;
+import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import java.util.UUID;
 
-public abstract sealed class ArtifactEvent<T extends ArtifactEventEventPayload> extends Event<T>
-    permits ArtifactScheduledEvent, ArtifactCreatedEvent, ArtifactCancelledEvent {
+public abstract sealed class ArtifactEvent<T extends ArtifactEventPayload> extends Event<T>
+    permits ArtifactAddedEvent, ArtifactUpdatedEvent, ArtifactRemovedEvent {
 
   protected ArtifactEvent(UUID projectId, T payload) {
     super(projectId, payload);
   }
 
-  public interface ArtifactEventEventPayload extends EventPayload {
+  public interface ArtifactEventPayload extends EventPayload {
 
-    UUID artifactId();
-
+    String name();
   }
 }

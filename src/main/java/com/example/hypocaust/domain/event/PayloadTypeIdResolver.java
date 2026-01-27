@@ -1,13 +1,8 @@
 package com.example.hypocaust.domain.event;
 
-import com.example.hypocaust.domain.event.ArtifactCancelledEvent.ArtifactCancelledEventPayload;
-import com.example.hypocaust.domain.event.ArtifactCreatedEvent.ArtifactCreatedEventPayload;
-import com.example.hypocaust.domain.event.ArtifactScheduledEvent.ArtifactScheduledEventPayload;
+import com.example.hypocaust.domain.event.ArtifactAddedEvent.Payload;
 import com.example.hypocaust.domain.event.ErrorEvent.ErrorEventPayload;
 import com.example.hypocaust.domain.event.Event.EventPayload;
-import com.example.hypocaust.domain.event.RunCompletedEvent.RunCompletedEventPayload;
-import com.example.hypocaust.domain.event.RunScheduledEvent.RunScheduledEventPayload;
-import com.example.hypocaust.domain.event.RunStartedEvent.RunStartedEventPayload;
 import com.example.hypocaust.domain.event.ToolCallingEvent.ToolCallingEventPayload;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DatabindContext;
@@ -21,12 +16,13 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   static {
     Map<EventType, Class<? extends EventPayload>> map = new java.util.HashMap<>();
-    map.put(EventType.RUN_SCHEDULED, RunScheduledEventPayload.class);
-    map.put(EventType.RUN_STARTED, RunStartedEventPayload.class);
-    map.put(EventType.RUN_COMPLETED, RunCompletedEventPayload.class);
-    map.put(EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEventPayload.class);
-    map.put(EventType.ARTIFACT_CREATED, ArtifactCreatedEventPayload.class);
-    map.put(EventType.ARTIFACT_CANCELLED, ArtifactCancelledEventPayload.class);
+    map.put(EventType.ARTIFACT_ADDED, ArtifactAddedEvent.Payload.class);
+    map.put(EventType.ARTIFACT_UPDATED, ArtifactUpdatedEvent.Payload.class);
+    map.put(EventType.ARTIFACT_REMOVED, ArtifactRemovedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_FAILED, TaskExecutionFailedEvent.Payload.class);
+    map.put(EventType.TASK_PROGRESS_UPDATED, TaskProgressUpdatedEvent.Payload.class);
     map.put(EventType.TOOL_CALLING, ToolCallingEventPayload.class);
     map.put(EventType.ERROR, ErrorEventPayload.class);
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.Payload.class);

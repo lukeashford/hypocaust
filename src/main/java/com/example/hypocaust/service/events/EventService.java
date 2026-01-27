@@ -3,6 +3,7 @@ package com.example.hypocaust.service.events;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.mapper.EventMapper;
 import com.example.hypocaust.repo.EventLogRepository;
+import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ public class EventService {
   private final SseHub sseHub;
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
+  private final TaskExecutionRepository taskExecutionRepository;
 
   @Transactional
   public void publish(Event<?> event, boolean doPersist) {
@@ -42,6 +44,23 @@ public class EventService {
     final var replayEvents = findEventsSince(projectId, lastEventId);
 
     log.debug("SSE subscription for project {} with lastEventId: {}", projectId, lastEventId);
+    return sseHub.subscribe(projectId, replayEvents);
+  }
+
+  /**
+   * Subscribe to SSE events for a TaskExecution.
+   * Looks up the projectId from the taskExecutionId and subscribes to that project's events.
+   */
+  public SseEmitter subscribeToTaskExecutionEvents(UUID taskExecutionId, UUID lastEventId) {
+    var taskExecution = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "TaskExecution not found: " + taskExecutionId));
+
+    var projectId = taskExecution.getProjectId();
+    final var replayEvents = findEventsSince(projectId, lastEventId);
+
+    log.debug("SSE subscription for TaskExecution {} (project {}) with lastEventId: {}",
+        taskExecutionId, projectId, lastEventId);
     return sseHub.subscribe(projectId, replayEvents);
   }
 

@@ -13,68 +13,47 @@ import org.springframework.stereotype.Repository;
 public interface ArtifactRepository extends JpaRepository<ArtifactEntity, UUID> {
 
   /**
-   * Find all artifacts for a specific project, ordered by creation time
+   * Find all artifacts for a specific project, ordered by creation time.
    */
   List<ArtifactEntity> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
 
   /**
-   * Find all artifacts for a branch, ordered by creation time.
+   * Find artifact by TaskExecution ID and name.
    */
-  List<ArtifactEntity> findByBranchIdOrderByCreatedAtDesc(UUID branchId);
+  Optional<ArtifactEntity> findByTaskExecutionIdAndName(UUID taskExecutionId, String name);
 
   /**
-   * Find artifacts by project that have not been superseded.
-   * These are the "current" artifacts.
+   * Find all artifacts created in a specific TaskExecution.
    */
-  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.supersededById IS NULL")
-  List<ArtifactEntity> findCurrentArtifactsByProject(@Param("projectId") UUID projectId);
+  List<ArtifactEntity> findByTaskExecutionId(UUID taskExecutionId);
 
   /**
-   * Find artifacts by branch that have not been superseded.
+   * Find all artifacts with a given name in a project (all versions).
    */
-  @Query("SELECT a FROM ArtifactEntity a WHERE a.branchId = :branchId AND a.supersededById IS NULL")
-  List<ArtifactEntity> findCurrentArtifactsByBranch(@Param("branchId") UUID branchId);
+  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.name = :name ORDER BY a.createdAt DESC")
+  List<ArtifactEntity> findByProjectIdAndName(@Param("projectId") UUID projectId, @Param("name") String name);
 
   /**
-   * Find artifact by anchor role within a project.
+   * Find non-deleted artifacts for a project.
    */
-  Optional<ArtifactEntity> findByProjectIdAndAnchorRoleAndSupersededByIdIsNull(
-      UUID projectId, String anchorRole);
+  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.deleted = false ORDER BY a.createdAt DESC")
+  List<ArtifactEntity> findActiveByProjectId(@Param("projectId") UUID projectId);
 
   /**
-   * Find artifact by anchor role within a branch.
+   * Find all artifacts with a given name in a project that are not deleted (current versions).
    */
-  Optional<ArtifactEntity> findByBranchIdAndAnchorRoleAndSupersededByIdIsNull(
-      UUID branchId, String anchorRole);
+  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.name = :name AND a.deleted = false ORDER BY a.createdAt DESC")
+  List<ArtifactEntity> findActiveByProjectIdAndName(@Param("projectId") UUID projectId, @Param("name") String name);
 
   /**
-   * Full-text search on anchor descriptions.
+   * Find all distinct artifact names for a project.
    */
-  @Query(value = """
-      SELECT * FROM artifact
-      WHERE project_id = :projectId
-        AND anchor_description IS NOT NULL
-        AND superseded_by_id IS NULL
-        AND to_tsvector('english', anchor_description) @@ plainto_tsquery('english', :query)
-      ORDER BY ts_rank(to_tsvector('english', anchor_description), plainto_tsquery('english', :query)) DESC
-      """, nativeQuery = true)
-  List<ArtifactEntity> searchByAnchorDescription(
-      @Param("projectId") UUID projectId,
-      @Param("query") String query);
+  @Query("SELECT DISTINCT a.name FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.name IS NOT NULL")
+  List<String> findDistinctNamesByProjectId(@Param("projectId") UUID projectId);
 
   /**
-   * Find all versions of an artifact by the same anchor description.
+   * Check if an artifact name exists in a project.
    */
-  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.anchorDescription = :description ORDER BY a.version DESC")
-  List<ArtifactEntity> findVersionsByAnchorDescription(
-      @Param("projectId") UUID projectId,
-      @Param("description") String description);
-
-  /**
-   * Find the latest version of an artifact by anchor description.
-   */
-  @Query("SELECT a FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.anchorDescription = :description AND a.supersededById IS NULL")
-  Optional<ArtifactEntity> findCurrentByAnchorDescription(
-      @Param("projectId") UUID projectId,
-      @Param("description") String description);
+  @Query("SELECT COUNT(a) > 0 FROM ArtifactEntity a WHERE a.projectId = :projectId AND a.name = :name")
+  boolean existsByProjectIdAndName(@Param("projectId") UUID projectId, @Param("name") String name);
 }

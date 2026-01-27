@@ -1,23 +1,24 @@
 package com.example.hypocaust.dto;
 
 import com.example.hypocaust.db.ArtifactEntity;
-import com.fasterxml.jackson.databind.JsonNode;
-import java.time.Instant;
-import java.util.UUID;
 
+/**
+ * Frontend-ready artifact view with pending status.
+ *
+ * @param name        Semantic artifact name
+ * @param kind        Type of artifact (IMAGE, STRUCTURED_JSON, etc.)
+ * @param description Human-readable description of the artifact
+ * @param url         Resolved URL for frontend display
+ * @param isPending   True if from pending changes, not yet persisted
+ * @param status      SCHEDULED, CREATED, CANCELLED (for pending artifacts)
+ */
 public record ArtifactDto(
-    UUID id,
-    UUID projectId,
-    UUID runId,
+    String name,
     ArtifactEntity.Kind kind,
-    ArtifactEntity.Status status,
-    String title,
-    String subtitle,
-    String alt,
-    String mime,
-    JsonNode metadata,           // dims, duration, etc.
-    Instant createdAt,
-    UUID supersededById
+    String description,
+    String url,
+    boolean isPending,
+    ArtifactEntity.Status status
 ) {
 
 }

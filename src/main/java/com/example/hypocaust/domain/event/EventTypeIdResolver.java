@@ -13,12 +13,13 @@ class EventTypeIdResolver extends TypeIdResolverBase {
 
   static {
     Map<EventType, Class<? extends Event<?>>> map = new HashMap<>();
-    map.put(EventType.RUN_SCHEDULED, RunScheduledEvent.class);
-    map.put(EventType.RUN_STARTED, RunStartedEvent.class);
-    map.put(EventType.RUN_COMPLETED, RunCompletedEvent.class);
-    map.put(EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEvent.class);
-    map.put(EventType.ARTIFACT_CREATED, ArtifactCreatedEvent.class);
-    map.put(EventType.ARTIFACT_CANCELLED, ArtifactCancelledEvent.class);
+    map.put(EventType.ARTIFACT_ADDED, ArtifactAddedEvent.class);
+    map.put(EventType.ARTIFACT_UPDATED, ArtifactUpdatedEvent.class);
+    map.put(EventType.ARTIFACT_REMOVED, ArtifactRemovedEvent.class);
+    map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.class);
+    map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.class);
+    map.put(EventType.TASKEXECUTION_FAILED, TaskExecutionFailedEvent.class);
+    map.put(EventType.TASK_PROGRESS_UPDATED, TaskProgressUpdatedEvent.class);
     map.put(EventType.TOOL_CALLING, ToolCallingEvent.class);
     map.put(EventType.ERROR, ErrorEvent.class);
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.class);

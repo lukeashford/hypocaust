@@ -1,13 +1,12 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.domain.ArtifactNode;
+import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.fragments.DecompositionFragments;
-import com.example.hypocaust.service.ArtifactGraphService;
 import com.example.hypocaust.tool.InvokeTool;
 import com.example.hypocaust.tool.ModelSearchTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
@@ -45,7 +44,6 @@ public class DecomposingOperator extends BaseOperator {
   private final InvokeTool invokeTool;
   private final WorkflowSearchTool workflowSearchTool;
   private final ModelSearchTool modelSearchTool;
-  private final ArtifactGraphService artifactGraphService;
 
   public DecomposingOperator(
       @Lazy OperatorRegistry operatorRegistry,
@@ -53,8 +51,7 @@ public class DecomposingOperator extends BaseOperator {
       ObjectMapper mapper,
       @Lazy InvokeTool invokeTool,
       WorkflowSearchTool workflowSearchTool,
-      ModelSearchTool modelSearchTool,
-      @Lazy ArtifactGraphService artifactGraphService
+      ModelSearchTool modelSearchTool
   ) {
     this.operatorRegistry = operatorRegistry;
     this.modelRegistry = modelRegistry;
@@ -62,7 +59,6 @@ public class DecomposingOperator extends BaseOperator {
     this.invokeTool = invokeTool;
     this.workflowSearchTool = workflowSearchTool;
     this.modelSearchTool = modelSearchTool;
-    this.artifactGraphService = artifactGraphService;
   }
 
   private SystemMessage buildSystemMessage() {
@@ -176,17 +172,12 @@ public class DecomposingOperator extends BaseOperator {
    * This gives the LLM visibility into what artifacts already exist.
    */
   private void addExistingArtifactsToPayload(com.fasterxml.jackson.databind.node.ObjectNode root) {
-    List<ArtifactNode> existingArtifacts = List.of();
+    List<ArtifactDto> existingArtifacts = List.of();
 
-    // Try to get artifacts from ExecutionContext first
-    if (ExecutionContextHolder.hasContext()) {
-      existingArtifacts = ExecutionContextHolder.getCurrentArtifacts();
-    } else if (RunContextHolder.getContext() != null) {
-      // Fall back to loading from ArtifactGraphService
+    // Get artifacts from TaskExecutionContext
+    if (TaskExecutionContextHolder.hasContext()) {
       try {
-        var projectId = RunContextHolder.getProjectId();
-        var graph = artifactGraphService.buildGraph(projectId);
-        existingArtifacts = graph.getCurrentArtifacts();
+        existingArtifacts = TaskExecutionContextHolder.getContext().getCurrentArtifacts();
       } catch (Exception e) {
         // Ignore - we'll just proceed without artifact context
       }
@@ -196,17 +187,12 @@ public class DecomposingOperator extends BaseOperator {
       var artifactsArray = root.putArray("existingArtifacts");
       for (var artifact : existingArtifacts) {
         var artifactNode = mapper.createObjectNode();
-        artifactNode.put("anchor", artifact.anchor().description());
+        artifactNode.put("name", artifact.name());
         artifactNode.put("kind", artifact.kind().name());
-        artifactNode.put("version", artifact.version());
-        if (artifact.anchor().role() != null) {
-          artifactNode.put("role", artifact.anchor().role());
-        }
-        if (!artifact.anchor().tags().isEmpty()) {
-          var tagsArray = artifactNode.putArray("tags");
-          for (var tag : artifact.anchor().tags()) {
-            tagsArray.add(tag);
-          }
+        artifactNode.put("description", artifact.description());
+        artifactNode.put("isPending", artifact.isPending());
+        if (artifact.status() != null) {
+          artifactNode.put("status", artifact.status().name());
         }
         artifactsArray.add(artifactNode);
       }

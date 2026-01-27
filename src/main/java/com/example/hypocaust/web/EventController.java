@@ -18,6 +18,22 @@ public class EventController {
 
   private final EventService eventService;
 
+  /**
+   * Subscribe to SSE events for a TaskExecution.
+   * This is the new endpoint per the concept document.
+   */
+  @GetMapping(value = Routes.TASK_EXECUTION_EVENTS)
+  public SseEmitter getTaskExecutionEvents(
+      @PathVariable UUID taskExecutionId,
+      @RequestHeader(value = "Last-Event-ID", required = false) UUID lastEventId) {
+
+    log.debug("SSE subscription request for TaskExecution {} with lastEventId: {}", taskExecutionId, lastEventId);
+    return eventService.subscribeToTaskExecutionEvents(taskExecutionId, lastEventId);
+  }
+
+  /**
+   * Subscribe to SSE events for a project (legacy endpoint, kept for backwards compatibility).
+   */
   @GetMapping(value = Routes.PROJECT_EVENTS)
   public SseEmitter getEvents(
       @PathVariable UUID id,

@@ -8,17 +8,29 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum EventType {
-  ARTIFACT_SCHEDULED("artifact.scheduled"),
-  ARTIFACT_CREATED("artifact.created"),
-  ARTIFACT_CANCELLED("artifact.cancelled"),
-  ERROR("error"),
-  RUN_SCHEDULED("run.scheduled"),
-  RUN_STARTED("run.started"),
-  RUN_COMPLETED("run.completed"),
+  // Artifact events (simplified)
+  ARTIFACT_ADDED("artifact.added"),
+  ARTIFACT_UPDATED("artifact.updated"),
+  ARTIFACT_REMOVED("artifact.removed"),
+
+  // TaskExecution events
+  TASKEXECUTION_STARTED("taskexecution.started"),
+  TASKEXECUTION_COMPLETED("taskexecution.completed"),
+  TASKEXECUTION_FAILED("taskexecution.failed"),
+
+  // Task progress events
+  TASK_PROGRESS_UPDATED("task.progress.updated"),
+
+  // Tool events
   TOOL_CALLING("tool.calling"),
+
+  // Operator events
   OPERATOR_STARTED("operator.started"),
   OPERATOR_FINISHED("operator.finished"),
-  OPERATOR_FAILED("operator.failed");
+  OPERATOR_FAILED("operator.failed"),
+
+  // Error events
+  ERROR("error");
 
   private final String value;
 

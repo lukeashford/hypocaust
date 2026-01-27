@@ -1,14 +1,14 @@
 package com.example.hypocaust.tool;
 
-import com.example.hypocaust.domain.ArtifactNode;
 import com.example.hypocaust.domain.OperatorLedger;
-import com.example.hypocaust.exception.AnchorNotFoundException;
+import com.example.hypocaust.domain.TaskItem;
+import com.example.hypocaust.domain.TaskStatus;
+import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.logging.ModelCallLogger;
-import com.example.hypocaust.operator.ExecutionContextHolder;
-import com.example.hypocaust.operator.RunContextHolder;
+import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
-import com.example.hypocaust.service.ArtifactGraphService;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -23,57 +23,96 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InvokeTool {
 
-  private static final String ANCHOR_PREFIX = "@anchor:";
+  private static final String ARTIFACT_PREFIX = "@artifact:";
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([^}]+)}}");
 
   private final OperatorRegistry operatorRegistry;
   private final ModelCallLogger modelCallLogger;
-  private final ArtifactGraphService artifactGraphService;
-
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([^}]+)}}");
 
   @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
   public OperatorResult invoke(OperatorLedger ledger) {
-    final var indent = RunContextHolder.getIndent();
-    log.info("{}┌─ Starting operator chain with {} children", indent, ledger.children().size());
+    return invoke(ledger, "0");
+  }
 
-    for (final var child : ledger.children()) {
+  public OperatorResult invoke(OperatorLedger ledger, String todoPath) {
+    final var indent = TaskExecutionContextHolder.getIndent();
+    log.info("{}Starting operator chain with {} children at path {}",
+        indent, ledger.children().size(), todoPath);
+
+    // Path propagation logic:
+    // - Multiple children: extend the path (e.g., "0.1" -> "0.1.0", "0.1.1", ...)
+    // - Single child: propagate the same path (no subtask publishing)
+    boolean singleChild = ledger.children().size() == 1;
+
+    if (!singleChild) {
+      // Publish all subtasks at once at the beginning
+      var subtasks = new ArrayList<TaskItem>();
+      for (int i = 0; i < ledger.children().size(); i++) {
+        var child = ledger.children().get(i);
+        var childPath = todoPath + "." + i;
+        var description = child.todo() != null ? child.todo() : child.operatorName();
+        subtasks.add(new TaskItem(childPath, description, TaskStatus.PENDING));
+      }
+      TaskExecutionContextHolder.getContext().publishSubtasks(todoPath, subtasks);
+    }
+
+    for (int i = 0; i < ledger.children().size(); i++) {
+      final var child = ledger.children().get(i);
       final var operatorName = child.operatorName();
       final var opOpt = operatorRegistry.get(operatorName);
 
+      // Single child keeps the same path; multiple children extend it
+      final var childPath = singleChild ? todoPath : todoPath + "." + i;
+
       if (opOpt.isEmpty()) {
         final var error = "No operator found with name: " + operatorName;
-        log.error("{}{} [FAILED] {}", indent, indent, error);
+        log.error("{} [FAILED] {}", indent, error);
+        if (!singleChild) {
+          TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.FAILED);
+        }
         return OperatorResult.failure(error, Map.of("operatorName", operatorName));
       }
 
       final var op = opOpt.get();
 
-      log.info("{}├─ [START] {} (inputs: {})",
+      log.info("{}[START] {} (inputs: {})",
           indent,
           operatorName,
           child.inputsToKeys().keySet());
+
+      if (!singleChild) {
+        TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.IN_PROGRESS);
+      }
 
       final var inputs = new HashMap<String, Object>();
       for (final var inputName : op.spec().getInputKeys()) {
         final var inputKey = child.inputsToKeys().get(inputName);
         var inputValue = ledger.values().get(inputKey);
 
-        // Resolve @anchor: references and placeholders
+        // Resolve @artifact: references and placeholders
         inputValue = resolveValue(ledger.values(), inputValue);
         inputs.put(inputName, inputValue);
       }
 
       // Increment depth before executing child operator
-      RunContextHolder.incrementDepth();
-      final var result = op.execute(inputs);
-      RunContextHolder.decrementDepth();
+      TaskExecutionContextHolder.incrementDepth();
+      // Pass the todoPath to the operator
+      final var result = op.execute(inputs, childPath);
+      TaskExecutionContextHolder.decrementDepth();
 
       if (!result.ok()) {
-        log.error("{}├─ [FAILED] {}: {}", indent, child.operatorName(), result.message());
+        log.error("{}[FAILED] {}: {}", indent, child.operatorName(), result.message());
+        if (!singleChild) {
+          TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.FAILED);
+        }
         return result;
       }
 
-      log.info("{}├─ [DONE] {}", indent, child.operatorName());
+      log.info("{}[DONE] {}", indent, child.operatorName());
+
+      if (!singleChild) {
+        TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.COMPLETED);
+      }
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -92,7 +131,7 @@ public class InvokeTool {
     }
 
     // Log the final ledger state
-    log.info("{}└─ Operator chain completed", indent);
+    log.info("{}Operator chain completed", indent);
     modelCallLogger.logLedger(ledger);
 
     final var finalValue = ledger.values().get(ledger.finalOutputKey());
@@ -111,7 +150,7 @@ public class InvokeTool {
   }
 
   /**
-   * Resolve a value, handling both @anchor: references and {{placeholder}} patterns.
+   * Resolve a value, handling both @artifact: references and {{placeholder}} patterns.
    */
   private Object resolveValue(Map<String, Object> context, Object value) {
     if (value == null) {
@@ -119,9 +158,9 @@ public class InvokeTool {
     }
 
     if (value instanceof String strValue) {
-      // Check for @anchor: prefix
-      if (strValue.startsWith(ANCHOR_PREFIX)) {
-        return resolveAnchor(strValue);
+      // Check for @artifact: prefix (name-based lookup)
+      if (strValue.startsWith(ARTIFACT_PREFIX)) {
+        return resolveArtifact(strValue);
       }
 
       // Resolve placeholders
@@ -132,49 +171,15 @@ public class InvokeTool {
   }
 
   /**
-   * Resolve an @anchor: reference to an ArtifactNode.
-   * The anchor query is the part after "@anchor:".
+   * Resolve an @artifact: reference to an artifact name.
+   * The artifact name is the part after "@artifact:".
    */
-  private ArtifactNode resolveAnchor(String anchorRef) {
-    var anchorQuery = anchorRef.substring(ANCHOR_PREFIX.length()).trim();
-    log.debug("Resolving anchor reference: '{}'", anchorQuery);
+  private String resolveArtifact(String artifactRef) {
+    var artifactName = artifactRef.substring(ARTIFACT_PREFIX.length()).trim();
+    log.debug("Resolving artifact reference: '{}'", artifactName);
 
-    // Check if ExecutionContext is available
-    if (!ExecutionContextHolder.hasContext()) {
-      // Fall back to using ArtifactGraphService directly with RunContextHolder
-      var projectId = RunContextHolder.getProjectId();
-      try {
-        var node = artifactGraphService.resolveAnchor(projectId, anchorQuery);
-        log.info("Resolved anchor '{}' to artifact: {} (v{})",
-            anchorQuery, node.id(), node.version());
-        return node;
-      } catch (AnchorNotFoundException e) {
-        log.warn("Failed to resolve anchor '{}': {}", anchorQuery, e.getMessage());
-        throw e;
-      }
-    }
-
-    // Use ExecutionContext for resolution
-    var context = ExecutionContextHolder.getContext();
-    var results = context.findByDescription(anchorQuery);
-
-    if (!results.isEmpty()) {
-      var node = results.get(0);
-      log.info("Resolved anchor '{}' to artifact: {} (v{})",
-          anchorQuery, node.id(), node.version());
-      return node;
-    }
-
-    // Fall back to ArtifactGraphService for semantic search
-    try {
-      var node = artifactGraphService.resolveAnchor(context.projectId(), anchorQuery);
-      log.info("Resolved anchor '{}' to artifact: {} (v{})",
-          anchorQuery, node.id(), node.version());
-      return node;
-    } catch (AnchorNotFoundException e) {
-      log.warn("Failed to resolve anchor '{}': {}", anchorQuery, e.getMessage());
-      throw e;
-    }
+    // Simply return the artifact name - the calling operator will look it up
+    return artifactName;
   }
 
   private String resolvePlaceholders(Map<String, Object> context, String template) {
@@ -188,9 +193,9 @@ public class InvokeTool {
       if (value == null) {
         return matchResult.group(0);
       }
-      // If the value is an ArtifactNode, convert to a useful string representation
-      if (value instanceof ArtifactNode node) {
-        return Matcher.quoteReplacement(node.anchor().description());
+      // If the value is an ArtifactDto, return its description
+      if (value instanceof ArtifactDto dto) {
+        return Matcher.quoteReplacement(dto.description());
       }
       return Matcher.quoteReplacement(value.toString());
     });

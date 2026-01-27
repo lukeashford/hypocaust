@@ -9,10 +9,18 @@ public final class Routes {
     // Utility class - prevent instantiation
   }
 
+  // Project routes
+  public static final String PROJECTS = "/projects";
+
   // Task routes
   public static final String TASKS = "/tasks";
 
-  // Project routes (for SSE subscription and event history)
+  // TaskExecution routes
+  public static final String TASK_EXECUTION_EVENTS = "/task-executions/{taskExecutionId}/events";
+  public static final String TASK_EXECUTION_ARTIFACTS = "/task-executions/{taskExecutionId}/artifacts";
+  public static final String TASK_EXECUTION_TASKS = "/task-executions/{taskExecutionId}/tasks";
+
+  // Legacy project routes (kept for backwards compatibility, may be removed later)
   public static final String PROJECT_EVENTS = "/projects/{id}/events";
   public static final String PROJECT_LOGS = "/projects/{id}/logs";
 
