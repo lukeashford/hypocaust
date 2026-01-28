@@ -21,37 +21,38 @@ Create `TaskProgressController.java`:
 
 ---
 
-## 2. Move Ledger Description to InvokeTool + Fix Todo Field
+2. Reorganize Ledger Documentation + Fix Todo Field
 
-### 2a. Move ledger structure documentation
+2a. Move ledger technical documentation to InvokeTool
 
-The `OperatorLedger` structure and its `ChildConfig` should be documented in `InvokeTool`'s class
-javadoc or `@Tool` description, since that's where it's consumed. This keeps documentation close to
-usage.
+Currently, DecompositionFragments contains both:
 
-The ledger structure:
+- Conceptual guidance: when to decompose, how to think about subtasks, decomposition strategy
+- Technical specification: the OperatorLedger JSON structure, field names, formatting rules
 
-```java
-record OperatorLedger(
-    String summary,           // What the operator accomplished
-    List<ChildConfig> next    // Child operators to invoke
-)
+Move the technical specification to InvokeTool's class javadoc or @Tool description. This includes:
 
-record ChildConfig(
-    String operator,          // Operator class name
-    Map<String, Object>inputs,
-String todo               // Human-readable task description for progress UI
-)
-```
+- The OperatorLedger record structure (summary, next)
+- The ChildConfig structure (operator, inputs, todo)
+- JSON formatting requirements
+- The @artifact:name reference syntax
 
-### 2b. DecomposingOperator must populate `todo`
+Keep the conceptual guidance in DecompositionFragments:
 
-Currently `DecomposingOperator` doesn't set the `todo` field when building `ChildConfig`. The
-prompts in `DecompositionFragments` should instruct the LLM to always provide a `todo` value
-describing what each child task will accomplish (e.g., "Generate hero portrait", "Edit background to
-add sunset").
+- When to decompose vs. execute directly
+- How to analyze a task and identify subtasks
+- References to "use the InvokeTool" when describing how to express decomposition
 
-Update the prompt fragments to require `todo` in the JSON schema and provide examples.
+This way, when someone edits InvokeTool, they'll see and update the ledger contract. The DO prompts
+focus on strategy, not syntax.
+This isn't a task to rewrite the instructions. Actually, what we have works very well. This is just
+a refactor. Don't change the facts, just where it's described.
+
+2b. DecomposingOperator must populate todo
+Update DecompositionFragments to instruct the LLM that each child task needs a todo field - a short,
+human-readable description for the progress UI (e.g., "Generate hero portrait", "Edit background to
+add sunset"). The prompt should explain why this matters (user visibility), while the technical
+schema in InvokeTool shows where it goes.
 
 ---
 
