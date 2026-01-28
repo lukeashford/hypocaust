@@ -169,10 +169,11 @@ public class TaskService {
 
       if (result.ok()) {
         // Complete the TaskExecution with pending changes
-        versionService.complete(taskExecutionId, task, context.getPending());
+        TaskExecutionEntity completedExecution = versionService.complete(taskExecutionId, task, context.getPending());
 
         boolean hasChanges = context.getPending().hasChanges();
-        String commitMessage = hasChanges ? versionService.generateMessage(task) : null;
+        // Use the commit message from the completed execution (already generated in complete())
+        String commitMessage = hasChanges ? completedExecution.getCommitMessage() : null;
 
         eventService.publish(new TaskExecutionCompletedEvent(projectId, hasChanges, commitMessage));
         log.info("Task completed successfully for project {}", projectId);

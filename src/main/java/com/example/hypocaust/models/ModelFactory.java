@@ -4,13 +4,16 @@ import com.example.hypocaust.exception.ModelException;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiEmbeddingModelSpec;
+import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,6 +22,7 @@ public class ModelFactory {
 
   private final ModelProperties modelProperties;
   private final OpenAiApi openAiApi;
+  private final OpenAiImageApi openAiImageApi;
   private final AnthropicApi anthropicApi;
 
   public OpenAiChatModel createOpenAiChatModel(
@@ -71,5 +75,20 @@ public class ModelFactory {
         .anthropicApi(anthropicApi)
         .defaultOptions(options)
         .build();
+  }
+
+  public OpenAiImageModel createOpenAiImageModel(
+      OpenAiImageModelSpec model) throws ModelException {
+    if (modelProperties.getOpenAi() == null || modelProperties.getOpenAi().getImage() == null) {
+      throw new ModelException("No OpenAI image configuration found");
+    }
+
+    final var options = modelProperties.getOpenAi().getImage().get(model);
+    if (options == null) {
+      throw new ModelException("No image model configuration found for " + model);
+    }
+    options.setModel(model.getModelName());
+
+    return new OpenAiImageModel(openAiImageApi, options);
   }
 }

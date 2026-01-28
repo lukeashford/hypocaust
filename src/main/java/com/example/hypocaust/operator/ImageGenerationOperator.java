@@ -3,6 +3,7 @@ package com.example.hypocaust.operator;
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.domain.PendingArtifact;
+import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +13,6 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.image.ImagePrompt;
-import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ public class ImageGenerationOperator extends BaseOperator {
 
   private static final OpenAiImageModelSpec IMAGE_MODEL = OpenAiImageModelSpec.DALL_E_3;
 
-  private final OpenAiImageModel imageModel;
+  private final ModelRegistry modelRegistry;
   private final ObjectMapper objectMapper;
 
   @Override
@@ -70,7 +70,7 @@ public class ImageGenerationOperator extends BaseOperator {
           : prompt + ". Avoid: " + negativePrompt;
 
       final var imagePrompt = new ImagePrompt(fullPrompt, options);
-      final var response = imageModel.call(imagePrompt);
+      final var response = modelRegistry.get(IMAGE_MODEL).call(imagePrompt);
 
       if (response.getResults().isEmpty()) {
         // Cancel the pending artifact since generation failed
