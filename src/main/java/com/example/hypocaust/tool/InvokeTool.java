@@ -18,6 +18,36 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
 
+/**
+ * Tool for invoking operator chains defined via OperatorLedger.
+ *
+ * <h2>OperatorLedger Structure</h2>
+ * <pre>
+ * record OperatorLedger(
+ *     Map&lt;String, Object&gt; values,       // Initial inputs + templates with {{key}} references
+ *     List&lt;ChildConfig&gt; children,       // Ordered operator invocations
+ *     String finalOutputKey             // Key holding the final result
+ * ) {
+ *   record ChildConfig(
+ *       String operatorName,            // Operator to invoke
+ *       String todo,                    // Human-readable task description (REQUIRED)
+ *       Map&lt;String, String&gt; inputsToKeys,
+ *       Map&lt;String, String&gt; outputsToKeys
+ *   ) {}
+ * }
+ * </pre>
+ *
+ * <h2>Value Resolution</h2>
+ * <ul>
+ *   <li>{@code {{keyName}}} - References a value from the ledger's values map</li>
+ *   <li>{@code @artifact:name} - References an artifact by its semantic name</li>
+ * </ul>
+ *
+ * <h2>Task Progress Integration</h2>
+ * <p>The {@code todo} field in ChildConfig is used to populate the task progress tree.
+ * Each child's todo becomes the human-readable description shown to users during execution.
+ * For example: "Generate hero portrait image", "Compile final video".
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -67,9 +97,7 @@ public class InvokeTool {
       if (opOpt.isEmpty()) {
         final var error = "No operator found with name: " + operatorName;
         log.error("{} [FAILED] {}", indent, error);
-        if (!singleChild) {
-          TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.FAILED);
-        }
+        updateStatus(childPath, singleChild, TaskStatus.FAILED);
         return OperatorResult.failure(error, Map.of("operatorName", operatorName));
       }
 
@@ -80,9 +108,7 @@ public class InvokeTool {
           operatorName,
           child.inputsToKeys().keySet());
 
-      if (!singleChild) {
-        TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.IN_PROGRESS);
-      }
+      updateStatus(childPath, singleChild, TaskStatus.IN_PROGRESS);
 
       final var inputs = new HashMap<String, Object>();
       for (final var inputName : op.spec().getInputKeys()) {
@@ -102,17 +128,13 @@ public class InvokeTool {
 
       if (!result.ok()) {
         log.error("{}[FAILED] {}: {}", indent, child.operatorName(), result.message());
-        if (!singleChild) {
-          TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.FAILED);
-        }
+        updateStatus(childPath, singleChild, TaskStatus.FAILED);
         return result;
       }
 
       log.info("{}[DONE] {}", indent, child.operatorName());
 
-      if (!singleChild) {
-        TaskExecutionContextHolder.getContext().updateTaskStatus(childPath, TaskStatus.COMPLETED);
-      }
+      updateStatus(childPath, singleChild, TaskStatus.COMPLETED);
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -171,14 +193,36 @@ public class InvokeTool {
   }
 
   /**
-   * Resolve an @artifact: reference to an artifact name.
-   * The artifact name is the part after "@artifact:".
+   * Resolve an @artifact: reference to the full artifact structure.
+   * Returns PendingArtifact if found in pending changes, otherwise ArtifactDto from current state.
+   *
+   * @param artifactRef the artifact reference string (e.g., "@artifact:hero_image")
+   * @return the artifact structure (PendingArtifact or ArtifactDto), or the name string if not found
    */
-  private String resolveArtifact(String artifactRef) {
+  private Object resolveArtifact(String artifactRef) {
     var artifactName = artifactRef.substring(ARTIFACT_PREFIX.length()).trim();
     log.debug("Resolving artifact reference: '{}'", artifactName);
 
-    // Simply return the artifact name - the calling operator will look it up
+    var ctx = TaskExecutionContextHolder.getContext();
+
+    // First check pending changes
+    var pending = ctx.getPending().getPendingArtifact(artifactName);
+    if (pending.isPresent()) {
+      log.debug("Resolved '{}' to pending artifact", artifactName);
+      return pending.get();
+    }
+
+    // Then check current artifacts
+    var currentArtifacts = ctx.getCurrentArtifacts();
+    for (var artifact : currentArtifacts) {
+      if (artifactName.equals(artifact.name())) {
+        log.debug("Resolved '{}' to current artifact", artifactName);
+        return artifact;
+      }
+    }
+
+    // Not found - return the name for downstream handling
+    log.warn("Artifact reference '{}' not found, returning name only", artifactName);
     return artifactName;
   }
 
@@ -199,5 +243,15 @@ public class InvokeTool {
       }
       return Matcher.quoteReplacement(value.toString());
     });
+  }
+
+  /**
+   * Helper method to update task status only for multiple-child ledgers.
+   * Eliminates repeated conditional checks throughout the invoke loop.
+   */
+  private void updateStatus(String path, boolean singleChild, TaskStatus status) {
+    if (!singleChild) {
+      TaskExecutionContextHolder.getContext().updateTaskStatus(path, status);
+    }
   }
 }

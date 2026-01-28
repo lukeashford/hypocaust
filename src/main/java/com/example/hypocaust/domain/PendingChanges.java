@@ -3,12 +3,14 @@ package com.example.hypocaust.domain;
 import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.db.ArtifactEntity.Status;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 /**
  * Accumulator for changes made during a TaskExecution.
@@ -21,8 +23,45 @@ public class PendingChanges {
   private final Map<String, PendingArtifact> edited = new LinkedHashMap<>();
   private final Set<String> deleted = new LinkedHashSet<>();
 
+  // Callback for generating unique artifact names from descriptions
+  private BiFunction<String, Set<String>, String> nameGenerator;
+
   /**
-   * Add a new artifact.
+   * Set the name generator callback.
+   *
+   * @param generator function that takes (description, existingNames) and returns a unique name
+   */
+  public void setNameGenerator(BiFunction<String, Set<String>, String> generator) {
+    this.nameGenerator = generator;
+  }
+
+  /**
+   * Add a new artifact, generating a unique name from its description.
+   * Uses the configured name generator callback.
+   *
+   * @return the generated artifact name
+   * @throws IllegalStateException if no name generator is configured
+   */
+  public synchronized String add(PendingArtifact artifact) {
+    if (nameGenerator == null) {
+      throw new IllegalStateException("Name generator not configured");
+    }
+
+    // Gather all existing names
+    Set<String> existingNames = new HashSet<>(added.keySet());
+    existingNames.addAll(edited.keySet());
+
+    // Generate unique name
+    String name = nameGenerator.apply(artifact.description(), existingNames);
+
+    // Store with generated name
+    added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
+
+    return name;
+  }
+
+  /**
+   * Add a new artifact with an explicit name.
    */
   public synchronized void addArtifact(String name, PendingArtifact artifact) {
     added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
@@ -221,5 +260,47 @@ public class PendingChanges {
       return Optional.ofNullable(edited.get(name).kind());
     }
     return Optional.empty();
+  }
+
+  // =====================================================
+  // Atomic Compound Methods (fix check-then-act race conditions)
+  // =====================================================
+
+  /**
+   * Atomically update a pending artifact if it exists.
+   * Fixes race condition where isPending() and updatePendingArtifact() are called separately.
+   *
+   * @return true if the artifact was pending and was updated, false otherwise
+   */
+  public synchronized boolean updateIfPending(String name, PendingArtifact newVersion) {
+    if (added.containsKey(name)) {
+      added.put(name, newVersion.withName(name));
+      return true;
+    }
+    if (edited.containsKey(name)) {
+      edited.put(name, newVersion.withName(name));
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Atomically cancel a pending artifact if it exists.
+   * Fixes race condition where isPending() and cancelPendingArtifact() are called separately.
+   *
+   * @return true if the artifact was pending and was cancelled, false otherwise
+   */
+  public synchronized boolean cancelIfPending(String name) {
+    if (added.containsKey(name)) {
+      PendingArtifact artifact = added.get(name);
+      added.put(name, artifact.withStatus(Status.CANCELLED));
+      return true;
+    }
+    if (edited.containsKey(name)) {
+      PendingArtifact artifact = edited.get(name);
+      edited.put(name, artifact.withStatus(Status.CANCELLED));
+      return true;
+    }
+    return false;
   }
 }

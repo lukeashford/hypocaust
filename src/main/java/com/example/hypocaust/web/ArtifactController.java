@@ -78,10 +78,23 @@ public class ArtifactController {
     };
 
     return ResponseEntity.ok()
-        .contentType(MediaType.parseMediaType(artifact.getMime()))
+        .contentType(getMimeTypeForKind(artifact.getKind()))
         .header(HttpHeaders.CONTENT_DISPOSITION,
             String.format("inline; filename=\"%s\"",
                 artifact.getName() != null ? artifact.getName() : artifact.getId().toString()))
         .body(responseBody);
+  }
+
+  /**
+   * Derive MIME type from artifact kind.
+   */
+  private MediaType getMimeTypeForKind(Kind kind) {
+    return switch (kind) {
+      case IMAGE -> MediaType.IMAGE_PNG;
+      case PDF -> MediaType.APPLICATION_PDF;
+      case AUDIO -> MediaType.parseMediaType("audio/mpeg");
+      case VIDEO -> MediaType.parseMediaType("video/mp4");
+      case STRUCTURED_JSON -> MediaType.APPLICATION_JSON;
+    };
   }
 }

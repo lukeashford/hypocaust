@@ -4,6 +4,7 @@ import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
+import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +27,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ImageEditOperator extends BaseOperator {
 
-  private static final String IMAGE_EDIT_MODEL = "dall-e-3";
+  private static final OpenAiImageModelSpec IMAGE_MODEL = OpenAiImageModelSpec.DALL_E_3;
 
   private final ProjectContextTool projectContext;
   private final OpenAiImageModel imageModel;
@@ -77,14 +78,14 @@ public class ImageEditOperator extends BaseOperator {
         .kind(Kind.IMAGE)
         .description(artifact.getDescription())
         .prompt(task)
-        .model(IMAGE_EDIT_MODEL)
+        .model(IMAGE_MODEL.getModelName())
         .status(ArtifactEntity.Status.SCHEDULED)
         .build());
 
     try {
       // Build image options for regeneration with edit prompt
       final var options = OpenAiImageOptions.builder()
-          .model(IMAGE_EDIT_MODEL)
+          .model(IMAGE_MODEL.getModelName())
           .quality(quality)
           .height(parseDimension(size, 1))
           .width(parseDimension(size, 0))
@@ -115,7 +116,7 @@ public class ImageEditOperator extends BaseOperator {
       metadata.put("originalPrompt", originalPrompt);
       metadata.put("size", size);
       metadata.put("quality", quality);
-      metadata.put("model", IMAGE_EDIT_MODEL);
+      metadata.put("model", IMAGE_MODEL.getModelName());
 
       // Update pending artifact with result
       TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
@@ -123,7 +124,7 @@ public class ImageEditOperator extends BaseOperator {
           .kind(Kind.IMAGE)
           .description(artifact.getDescription())
           .prompt(task)
-          .model(IMAGE_EDIT_MODEL)
+          .model(IMAGE_MODEL.getModelName())
           .externalUrl(newImageUrl)
           .metadata(metadata)
           .status(ArtifactEntity.Status.CREATED)

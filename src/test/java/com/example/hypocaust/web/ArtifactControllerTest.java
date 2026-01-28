@@ -17,7 +17,6 @@ import com.example.hypocaust.service.ArtifactService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.ByteArrayInputStream;
-import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,28 +44,20 @@ class ArtifactControllerTest {
   void testGetArtifactMetadata() throws Exception {
     UUID artifactId = UUID.randomUUID();
     ArtifactDto dto = new ArtifactDto(
-        artifactId,
-        UUID.randomUUID(),
-        UUID.randomUUID(),
+        "test_image",
         Kind.IMAGE,
-        Status.CREATED,
-        "Test Image",
-        "A test subtitle",
-        "Alt text for the image",
-        "image/png",
-        null,
-        Instant.now(),
-        null
+        "A test image description",
+        "/artifacts/" + artifactId + "/content",
+        false,
+        Status.CREATED
     );
 
     when(artifactService.getArtifactDto(artifactId)).thenReturn(dto);
 
     mockMvc.perform(get("/artifacts/{artifactId}", artifactId))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(artifactId.toString()))
-        .andExpect(jsonPath("$.title").value("Test Image"))
-        .andExpect(jsonPath("$.subtitle").value("A test subtitle"))
-        .andExpect(jsonPath("$.alt").value("Alt text for the image"))
+        .andExpect(jsonPath("$.name").value("test_image"))
+        .andExpect(jsonPath("$.description").value("A test image description"))
         .andExpect(jsonPath("$.kind").value("IMAGE"));
   }
 
@@ -102,8 +93,7 @@ class ArtifactControllerTest {
     ArtifactEntity entity = ArtifactEntity.builder()
         .kind(Kind.IMAGE)
         .status(Status.CREATED)
-        .mime("image/png")
-        .title("test.png")
+        .name("test_image")
         .storageKey("some-key")
         .build();
     ReflectionTestUtils.setField(entity, "id", artifactId);
@@ -120,7 +110,7 @@ class ArtifactControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.IMAGE_PNG))
         .andExpect(
-            header().string(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"test.png\""))
+            header().string(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"test_image\""))
         .andExpect(content().bytes(content));
   }
 

@@ -53,6 +53,7 @@ public final class DecompositionFragments {
             ) {
               record ChildConfig(
                   String operatorName,            // Operator to invoke
+                  String todo,                    // Human-readable task description (REQUIRED)
                   Map<String, String> inputsToKeys,
                   Map<String, String> outputsToKeys
               ) {}
@@ -60,6 +61,7 @@ public final class DecompositionFragments {
 
             - **values**: Append-only map; duplicate keys cause errors. Use `{{keyName}}` to reference prior outputs.
             - **children**: As a leaf, contains ONE tool operator. As a decomposer, contains ONLY `DecomposingOperator` entries.
+            - **todo**: REQUIRED field. Human-readable description of what this child does (e.g., "Generate hero portrait image"). Shown to users in task progress.
             - **finalOutputKey**: Must reference a key populated during execution.
 
             ## Examples
@@ -72,6 +74,7 @@ public final class DecompositionFragments {
               "values": { "color": "blue", "size": "giant" },
               "children": [{
                 "operatorName": "GummiBearOperator",
+                "todo": "Create giant blue gummi bear",
                 "inputsToKeys": { "color": "color", "size": "size" },
                 "outputsToKeys": { "gummiBearId": "newGummiBear" }
               }],
@@ -98,16 +101,19 @@ public final class DecompositionFragments {
               "children": [
                 {
                   "operatorName": "DecomposingOperator",
+                  "todo": "Write brand script",
                   "inputsToKeys": { "task": "scriptTask" },
                   "outputsToKeys": { "result": "script" }
                 },
                 {
                   "operatorName": "DecomposingOperator",
+                  "todo": "Generate voiceover audio",
                   "inputsToKeys": { "task": "voiceoverTask" },
                   "outputsToKeys": { "result": "voiceover" }
                 },
                 {
                   "operatorName": "DecomposingOperator",
+                  "todo": "Compile final video",
                   "inputsToKeys": { "task": "videoTask" },
                   "outputsToKeys": { "result": "finalVideo" }
                 }
@@ -169,6 +175,7 @@ public final class DecompositionFragments {
               },
               "children": [{
                 "operatorName": "DecomposingOperator",
+                "todo": "Modify image to blonde hair",
                 "inputsToKeys": { "task": "modificationTask" },
                 "outputsToKeys": { "result": "modifiedImage" }
               }],
@@ -188,11 +195,13 @@ public final class DecompositionFragments {
               "children": [
                 {
                   "operatorName": "DecomposingOperator",
+                  "todo": "Regenerate with blonde hair",
                   "inputsToKeys": { "task": "regenerateTask" },
                   "outputsToKeys": { "result": "blondeImage" }
                 },
                 {
                   "operatorName": "DecomposingOperator",
+                  "todo": "Generate 5-second video",
                   "inputsToKeys": { "task": "videoTask" },
                   "outputsToKeys": { "result": "video" }
                 }

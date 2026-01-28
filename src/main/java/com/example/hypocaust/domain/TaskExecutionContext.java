@@ -195,12 +195,11 @@ public class TaskExecutionContext {
    * @throws IllegalStateException if no pending artifact with this name exists
    */
   public void updatePendingArtifact(String name, PendingArtifact newVersion) {
-    if (!pending.isPending(name)) {
+    // Use atomic method to avoid race condition
+    boolean updated = pending.updateIfPending(name, newVersion);
+    if (!updated) {
       throw new IllegalStateException("No pending artifact with name: " + name);
     }
-
-    // Update pending
-    pending.updatePendingArtifact(name, newVersion);
 
     // Emit event
     if (onArtifactUpdated != null) {
@@ -221,12 +220,11 @@ public class TaskExecutionContext {
    * @throws IllegalStateException if no pending artifact with this name exists
    */
   public void cancelPendingArtifact(String name) {
-    if (!pending.isPending(name)) {
+    // Use atomic method to avoid race condition
+    boolean cancelled = pending.cancelIfPending(name);
+    if (!cancelled) {
       throw new IllegalStateException("No pending artifact with name: " + name);
     }
-
-    // Cancel pending
-    pending.cancelPendingArtifact(name);
 
     // Emit event
     if (onArtifactRemoved != null) {

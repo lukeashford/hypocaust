@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -44,17 +45,27 @@ public class ArtifactVersionManagementService {
 
   /**
    * Complete a TaskExecution with its pending changes.
-   * Called by TaskService at TaskExecution completion.
+   * This is the high-level orchestration method that calls materialize() and commitExecution().
    *
-   * @param taskExecutionId The TaskExecution to complete
-   * @param task            The original task (for message generation)
-   * @param pending         The accumulated changes
+   * @param taskExecutionId   The TaskExecution to complete
+   * @param task              The original task (for message generation)
+   * @param pending           The accumulated changes
+   * @param onArtifactRemoved Callback for artifact.removed events (for cancelled artifacts)
    * @return The completed TaskExecution, with delta if there were changes
    */
   @Transactional
-  public TaskExecutionEntity complete(UUID taskExecutionId, String task, PendingChanges pending) {
+  public TaskExecutionEntity complete(UUID taskExecutionId, String task, PendingChanges pending,
+      Consumer<String> onArtifactRemoved) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
         .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
+
+    // Emit artifact.removed for all cancelled artifacts
+    for (PendingArtifact cancelled : pending.getCancelled()) {
+      log.info("Emitting artifact.removed for cancelled artifact: {}", cancelled.name());
+      if (onArtifactRemoved != null) {
+        onArtifactRemoved.accept(cancelled.name());
+      }
+    }
 
     if (!pending.hasChanges()) {
       // No changes - just complete without delta
@@ -65,15 +76,53 @@ public class ArtifactVersionManagementService {
     // Generate commit message
     String commitMessage = generateMessage(task);
 
-    // Materialize artifacts
-    for (PendingArtifact artifact : pending.getActivePending()) {
-      materializeArtifact(artifact, taskExecutionId, taskExecution.getProjectId());
-    }
+    // Materialize all pending artifacts
+    materialize(pending, taskExecutionId, taskExecution.getProjectId());
 
-    // Build delta
+    // Build delta and commit
     TaskExecutionDelta delta = pending.toTaskExecutionDelta();
+    return commitExecution(taskExecutionId, delta, commitMessage);
+  }
 
-    // Complete with changes
+  /**
+   * Complete a TaskExecution with its pending changes (without artifact.removed callback).
+   * Convenience overload for backwards compatibility.
+   */
+  @Transactional
+  public TaskExecutionEntity complete(UUID taskExecutionId, String task, PendingChanges pending) {
+    return complete(taskExecutionId, task, pending, null);
+  }
+
+  /**
+   * Materialize all pending artifacts by downloading external content and storing in database.
+   * This is separated from commitExecution() for clearer responsibility.
+   *
+   * @param pending           The accumulated changes containing artifacts to materialize
+   * @param taskExecutionId   The TaskExecution these artifacts belong to
+   * @param projectId         The project these artifacts belong to
+   */
+  @Transactional
+  public void materialize(PendingChanges pending, UUID taskExecutionId, UUID projectId) {
+    for (PendingArtifact artifact : pending.getActivePending()) {
+      materializeArtifact(artifact, taskExecutionId, projectId);
+    }
+  }
+
+  /**
+   * Commit a TaskExecution with a pre-built delta.
+   * Separated from materialize() for clearer responsibility.
+   *
+   * @param taskExecutionId The TaskExecution to commit
+   * @param delta           The changes delta
+   * @param commitMessage   The commit message
+   * @return The completed TaskExecution
+   */
+  @Transactional
+  public TaskExecutionEntity commitExecution(UUID taskExecutionId, TaskExecutionDelta delta,
+      String commitMessage) {
+    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
+
     taskExecution.complete("Task completed successfully", commitMessage, delta);
     return taskExecutionRepository.save(taskExecution);
   }

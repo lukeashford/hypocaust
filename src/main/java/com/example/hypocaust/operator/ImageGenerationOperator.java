@@ -3,6 +3,7 @@ package com.example.hypocaust.operator;
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.domain.PendingArtifact;
+import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,7 +27,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ImageGenerationOperator extends BaseOperator {
 
-  private static final String IMAGE_GENERATION_MODEL = "dall-e-3";
+  private static final OpenAiImageModelSpec IMAGE_MODEL = OpenAiImageModelSpec.DALL_E_3;
 
   private final OpenAiImageModel imageModel;
   private final ObjectMapper objectMapper;
@@ -47,7 +48,7 @@ public class ImageGenerationOperator extends BaseOperator {
         .kind(Kind.IMAGE)
         .description(description != null ? description : prompt)
         .prompt(prompt)
-        .model(IMAGE_GENERATION_MODEL)
+        .model(IMAGE_MODEL.getModelName())
         .status(ArtifactEntity.Status.SCHEDULED)
         .build());
 
@@ -56,7 +57,7 @@ public class ImageGenerationOperator extends BaseOperator {
     try {
       // Build image options
       final var options = OpenAiImageOptions.builder()
-          .model(IMAGE_GENERATION_MODEL)
+          .model(IMAGE_MODEL.getModelName())
           .quality(quality)
           .height(parseHeight(size))
           .width(parseWidth(size))
@@ -87,7 +88,7 @@ public class ImageGenerationOperator extends BaseOperator {
       metadata.put("prompt", prompt);
       metadata.put("size", size);
       metadata.put("quality", quality);
-      metadata.put("model", IMAGE_GENERATION_MODEL);
+      metadata.put("model", IMAGE_MODEL.getModelName());
       if (!negativePrompt.isEmpty()) {
         metadata.put("negativePrompt", negativePrompt);
       }
@@ -99,7 +100,7 @@ public class ImageGenerationOperator extends BaseOperator {
           .kind(Kind.IMAGE)
           .description(description != null ? description : prompt)
           .prompt(prompt)
-          .model(IMAGE_GENERATION_MODEL)
+          .model(IMAGE_MODEL.getModelName())
           .externalUrl(imageUrl)
           .metadata(metadata)
           .status(ArtifactEntity.Status.CREATED)

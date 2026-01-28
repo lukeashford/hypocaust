@@ -3,6 +3,7 @@ package com.example.hypocaust.service;
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.domain.TaskExecutionContextConfig;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
@@ -108,70 +109,42 @@ public class TaskService {
   public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
     log.info("Starting task execution {} for project {}", taskExecutionId, projectId);
 
-    // Create TaskExecutionContext with all callbacks
+    // Build context configuration with all callbacks
+    TaskExecutionContextConfig config = TaskExecutionContextConfig.builder()
+        .onArtifactAdded(data -> eventService.publish(new ArtifactAddedEvent(projectId,
+            data.name(), data.kind(), data.description(),
+            data.externalUrl(), data.inlineContent(), data.metadata())))
+        .onArtifactUpdated(data -> eventService.publish(new ArtifactUpdatedEvent(projectId,
+            data.name(), data.description(),
+            data.externalUrl(), data.inlineContent(), data.metadata())))
+        .onArtifactRemoved(data -> eventService.publish(new ArtifactRemovedEvent(projectId, data.name())))
+        .onTaskProgressUpdated(taskTree -> eventService.publish(new TaskProgressUpdatedEvent(projectId, taskTree)))
+        .artifactExistsChecker(name -> predecessorId != null
+            && versionService.artifactExistsAtTaskExecution(predecessorId, name))
+        .artifactKindGetter(name -> predecessorId == null
+            ? Optional.empty()
+            : versionService.getArtifactKindAtTaskExecution(predecessorId, name))
+        .artifactNamesGetter(unused -> {
+          if (predecessorId == null) {
+            return Set.of();
+          }
+          Set<String> names = new HashSet<>();
+          for (ArtifactEntity artifact : versionService.getArtifactsAtTaskExecution(predecessorId)) {
+            if (!artifact.isDeleted()) {
+              names.add(artifact.getName());
+            }
+          }
+          return names;
+        })
+        .nameGenerator(request -> generateArtifactName(request.description(), request.existingNames()))
+        .currentArtifactsGetter(unused -> predecessorId == null
+            ? java.util.List.of()
+            : versionService.getArtifactsAtTaskExecution(predecessorId))
+        .build();
+
+    // Create and configure context
     TaskExecutionContext context = new TaskExecutionContext(projectId, taskExecutionId, predecessorId);
-
-    // Set up event callbacks
-    context.setOnArtifactAdded(data -> {
-      eventService.publish(new ArtifactAddedEvent(projectId,
-          data.name(), data.kind(), data.description(),
-          data.externalUrl(), data.inlineContent(), data.metadata()));
-    });
-
-    context.setOnArtifactUpdated(data -> {
-      eventService.publish(new ArtifactUpdatedEvent(projectId,
-          data.name(), data.description(),
-          data.externalUrl(), data.inlineContent(), data.metadata()));
-    });
-
-    context.setOnArtifactRemoved(data -> {
-      eventService.publish(new ArtifactRemovedEvent(projectId, data.name()));
-    });
-
-    context.setOnTaskProgressUpdated(taskTree -> {
-      eventService.publish(new TaskProgressUpdatedEvent(projectId, taskTree));
-    });
-
-    // Set up artifact existence checker
-    context.setArtifactExistsChecker(name -> {
-      if (predecessorId == null) {
-        return false;
-      }
-      return versionService.artifactExistsAtTaskExecution(predecessorId, name);
-    });
-
-    // Set up artifact kind getter
-    context.setArtifactKindGetter(name -> {
-      if (predecessorId == null) {
-        return Optional.empty();
-      }
-      return versionService.getArtifactKindAtTaskExecution(predecessorId, name);
-    });
-
-    // Set up artifact names getter
-    context.setArtifactNamesGetter(unused -> {
-      if (predecessorId == null) {
-        return Set.of();
-      }
-      Set<String> names = new HashSet<>();
-      for (ArtifactEntity artifact : versionService.getArtifactsAtTaskExecution(predecessorId)) {
-        if (!artifact.isDeleted()) {
-          names.add(artifact.getName());
-        }
-      }
-      return names;
-    });
-
-    // Set up name generator
-    context.setNameGenerator(request -> generateArtifactName(request.description(), request.existingNames()));
-
-    // Set up current artifacts getter
-    context.setCurrentArtifactsGetter(unused -> {
-      if (predecessorId == null) {
-        return java.util.List.of();
-      }
-      return versionService.getArtifactsAtTaskExecution(predecessorId);
-    });
+    config.applyTo(context);
 
     // Set the context for this thread
     TaskExecutionContextHolder.setContext(context);

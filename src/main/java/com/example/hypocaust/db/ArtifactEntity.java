@@ -128,28 +128,14 @@ public class ArtifactEntity extends BaseEntity {
   private boolean deleted = false;
 
   // =====================================================
-  // Legacy Fields (kept for backwards compatibility during migration)
+  // Display Fields
   // =====================================================
 
   /**
-   * Human-readable title or description of the artifact.
+   * Human-readable title for display in the UI.
+   * Distinct from 'name' which is the programmatic identifier.
    */
   private String title;
-
-  /**
-   * Subtitle displayed below the title.
-   */
-  private String subtitle;
-
-  /**
-   * Alt text for image artifacts, used for accessibility.
-   */
-  private String alt;
-
-  /**
-   * MIME type for proper content handling (image/png, application/pdf, etc.)
-   */
-  private String mime;
 
   public enum Kind {
     STRUCTURED_JSON, IMAGE, PDF, AUDIO, VIDEO

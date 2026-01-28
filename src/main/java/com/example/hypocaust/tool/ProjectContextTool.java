@@ -25,6 +25,7 @@ public class ProjectContextTool {
 
   private static final AnthropicChatModelSpec CONTEXT_MODEL =
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+  private static final int MAX_QUESTION_LENGTH = 1000;
 
   private final ArtifactVersionManagementService versionService;
   private final ModelRegistry modelRegistry;
@@ -45,6 +46,13 @@ public class ProjectContextTool {
    */
   @Tool(name = "ask_project_context", description = "Answer questions about project artifacts, their descriptions, prompts, and version history")
   public String ask(String question) {
+    if (question == null || question.isBlank()) {
+      throw new IllegalArgumentException("Question cannot be empty");
+    }
+    if (question.length() > MAX_QUESTION_LENGTH) {
+      throw new IllegalArgumentException("Question exceeds maximum length of " + MAX_QUESTION_LENGTH + " characters");
+    }
+
     var ctx = TaskExecutionContextHolder.getContext();
     var projectId = ctx.getProjectId();
     var taskExecutionId = ctx.getTaskExecutionId();
