@@ -7,8 +7,6 @@ import com.example.hypocaust.domain.ArtifactChange;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.domain.PendingChanges;
 import com.example.hypocaust.domain.TaskExecutionDelta;
-import com.example.hypocaust.models.ModelRegistry;
-import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.ArtifactRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.net.URI;
@@ -18,142 +16,69 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Central service for all version control operations.
+ * Service for artifact version management operations.
+ * Handles artifact materialization and resolution, but NOT task execution lifecycle.
+ * Task execution lifecycle (commit/fail) is managed by TaskService.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ArtifactVersionManagementService {
 
-  private static final AnthropicChatModelSpec MESSAGE_GENERATION_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
-
   private final TaskExecutionRepository taskExecutionRepository;
   private final ArtifactRepository artifactRepository;
   private final StorageService storageService;
-  private final ModelRegistry modelRegistry;
 
-  // === TaskExecution Completion Operations ===
-
-  /**
-   * Complete a TaskExecution with its pending changes.
-   * This is the high-level orchestration method that calls materialize() and commitExecution().
-   *
-   * @param taskExecutionId   The TaskExecution to complete
-   * @param task              The original task (for message generation)
-   * @param pending           The accumulated changes
-   * @param onArtifactRemoved Callback for artifact.removed events (for cancelled artifacts)
-   * @return The completed TaskExecution, with delta if there were changes
-   */
-  @Transactional
-  public TaskExecutionEntity complete(UUID taskExecutionId, String task, PendingChanges pending,
-      Consumer<String> onArtifactRemoved) {
-    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
-
-    // Emit artifact.removed for all cancelled artifacts
-    for (PendingArtifact cancelled : pending.getCancelled()) {
-      log.info("Emitting artifact.removed for cancelled artifact: {}", cancelled.name());
-      if (onArtifactRemoved != null) {
-        onArtifactRemoved.accept(cancelled.name());
-      }
-    }
-
-    if (!pending.hasChanges()) {
-      // No changes - just complete without delta
-      taskExecution.complete("Task completed successfully");
-      return taskExecutionRepository.save(taskExecution);
-    }
-
-    // Generate commit message
-    String commitMessage = generateMessage(task);
-
-    // Materialize all pending artifacts
-    materialize(pending, taskExecutionId, taskExecution.getProjectId());
-
-    // Build delta and commit
-    TaskExecutionDelta delta = pending.toTaskExecutionDelta();
-    return commitExecution(taskExecutionId, delta, commitMessage);
-  }
-
-  /**
-   * Complete a TaskExecution with its pending changes (without artifact.removed callback).
-   * Convenience overload for backwards compatibility.
-   */
-  @Transactional
-  public TaskExecutionEntity complete(UUID taskExecutionId, String task, PendingChanges pending) {
-    return complete(taskExecutionId, task, pending, null);
-  }
+  // === Artifact Materialization Operations ===
 
   /**
    * Materialize all pending artifacts by downloading external content and storing in database.
-   * This is separated from commitExecution() for clearer responsibility.
+   * Returns the delta representing what changed, or null if no changes.
    *
-   * @param pending           The accumulated changes containing artifacts to materialize
-   * @param taskExecutionId   The TaskExecution these artifacts belong to
-   * @param projectId         The project these artifacts belong to
+   * @param pending         The accumulated changes containing artifacts to materialize
+   * @param taskExecutionId The TaskExecution these artifacts belong to
+   * @param projectId       The project these artifacts belong to
+   * @return The delta of changes, or null if no changes
    */
   @Transactional
-  public void materialize(PendingChanges pending, UUID taskExecutionId, UUID projectId) {
+  public TaskExecutionDelta materialize(PendingChanges pending, UUID taskExecutionId, UUID projectId) {
+    if (!pending.hasChanges()) {
+      log.info("No pending changes to materialize");
+      return null;
+    }
+
     for (PendingArtifact artifact : pending.getActivePending()) {
       materializeArtifact(artifact, taskExecutionId, projectId);
     }
+
+    TaskExecutionDelta delta = pending.toTaskExecutionDelta();
+    log.info("Materialized {} artifacts (added: {}, edited: {}, deleted: {})",
+        pending.getActivePending().size(),
+        delta.added().size(),
+        delta.edited().size(),
+        delta.deleted().size());
+
+    return delta;
   }
 
   /**
-   * Commit a TaskExecution with a pre-built delta.
-   * Separated from materialize() for clearer responsibility.
+   * Discard all pending changes without persisting.
+   * Called when a task execution fails.
    *
-   * @param taskExecutionId The TaskExecution to commit
-   * @param delta           The changes delta
-   * @param commitMessage   The commit message
-   * @return The completed TaskExecution
+   * @param pending The pending changes to discard
    */
-  @Transactional
-  public TaskExecutionEntity commitExecution(UUID taskExecutionId, TaskExecutionDelta delta,
-      String commitMessage) {
-    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
-
-    taskExecution.complete("Task completed successfully", commitMessage, delta);
-    return taskExecutionRepository.save(taskExecution);
-  }
-
-  /**
-   * Generate a summary message from a task using a small LLM.
-   */
-  public String generateMessage(String task) {
-    try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(MESSAGE_GENERATION_MODEL))
-          .build();
-
-      String response = chatClient.prompt()
-          .system("""
-              Generate a brief commit message (1 sentence, max 100 chars) summarizing what was done.
-              Focus on the outcome, not the process. Start with a verb like "Added", "Created", "Updated".
-              """)
-          .user("Task: " + task)
-          .call()
-          .content();
-
-      if (response != null && !response.isBlank()) {
-        // Truncate if too long
-        return response.length() > 100 ? response.substring(0, 100) : response.trim();
-      }
-    } catch (Exception e) {
-      log.warn("Failed to generate commit message, using default: {}", e.getMessage());
+  public void discardPending(PendingChanges pending) {
+    if (pending.hasChanges()) {
+      log.info("Discarding {} pending artifacts due to task failure",
+          pending.getActivePending().size());
     }
-
-    // Fallback
-    return "Completed task";
+    // No actual work needed - the pending changes are simply not persisted
   }
 
   // === Artifact Resolution ===

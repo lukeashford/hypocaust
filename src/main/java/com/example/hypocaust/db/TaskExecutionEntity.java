@@ -35,8 +35,6 @@ public class TaskExecutionEntity extends BaseEntity {
   @Column(nullable = false)
   private Status status;
 
-  private String reason;
-
   private Instant startedAt;
 
   private Instant completedAt;
@@ -70,26 +68,27 @@ public class TaskExecutionEntity extends BaseEntity {
     this.status = Status.RUNNING;
   }
 
-  public void complete(String reason) {
-    this.completedAt = Instant.now();
-    this.status = Status.COMPLETED;
-    this.reason = reason;
-  }
-
   /**
-   * Complete with artifact changes.
+   * Complete with optional artifact changes.
+   *
+   * @param commitMessage Summary of what was done (LLM-generated for success)
+   * @param delta         The changes delta (null if no artifact changes)
    */
-  public void complete(String reason, String commitMessage, TaskExecutionDelta delta) {
+  public void complete(String commitMessage, TaskExecutionDelta delta) {
     this.completedAt = Instant.now();
     this.status = Status.COMPLETED;
-    this.reason = reason;
     this.commitMessage = commitMessage;
     this.delta = delta;
   }
 
-  public void fail(String reason) {
+  /**
+   * Mark as failed with error message.
+   *
+   * @param commitMessage The error message describing why it failed
+   */
+  public void fail(String commitMessage) {
     this.completedAt = Instant.now();
     this.status = Status.FAILED;
-    this.reason = reason;
+    this.commitMessage = commitMessage;
   }
 }

@@ -2,8 +2,11 @@ package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.domain.PendingArtifact;
+import com.example.hypocaust.domain.PendingChanges;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextConfig;
+import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
@@ -48,6 +51,9 @@ public class TaskService {
       """;
 
   private static final AnthropicChatModelSpec NAME_GENERATION_MODEL =
+      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+
+  private static final AnthropicChatModelSpec MESSAGE_GENERATION_MODEL =
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
 
   private final ProjectRepository projectRepository;
@@ -168,30 +174,107 @@ public class TaskService {
       final var result = decomposingOperator.execute(Map.of("task", augmentedTask), "0");
 
       if (result.ok()) {
-        // Complete the TaskExecution with pending changes
-        TaskExecutionEntity completedExecution = versionService.complete(taskExecutionId, task, context.getPending());
-
-        boolean hasChanges = context.getPending().hasChanges();
-        // Use the commit message from the completed execution (already generated in complete())
-        String commitMessage = hasChanges ? completedExecution.getCommitMessage() : null;
-
-        eventService.publish(new TaskExecutionCompletedEvent(projectId, hasChanges, commitMessage));
+        commitExecution(taskExecutionId, projectId, task, context.getPending());
         log.info("Task completed successfully for project {}", projectId);
       } else {
-        taskExecution.fail(result.message());
-        taskExecutionRepository.save(taskExecution);
-        eventService.publish(new TaskExecutionFailedEvent(projectId, result.message()));
+        failExecution(taskExecutionId, projectId, result.message(), context.getPending());
         log.error("Task failed for project {}: {}", projectId, result.message());
       }
     } catch (Exception e) {
-      taskExecution.fail(e.getMessage());
-      taskExecutionRepository.save(taskExecution);
-      eventService.publish(new TaskExecutionFailedEvent(projectId, e.getMessage()));
+      failExecution(taskExecutionId, projectId, e.getMessage(), context.getPending());
       log.error("Error executing task for project {}: {}", projectId, e.getMessage(), e);
     } finally {
       // Always clear the context when done
       TaskExecutionContextHolder.clear();
     }
+  }
+
+  /**
+   * Commit a successful task execution.
+   * Materializes pending artifacts, generates commit message, and publishes completion event.
+   *
+   * @param taskExecutionId The TaskExecution to commit
+   * @param projectId       The project ID (for events)
+   * @param task            The original task description (for message generation)
+   * @param pending         The accumulated pending changes
+   */
+  @Transactional
+  public void commitExecution(UUID taskExecutionId, UUID projectId, String task, PendingChanges pending) {
+    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(() -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+
+    // Emit artifact.removed events for cancelled artifacts
+    for (PendingArtifact cancelled : pending.getCancelled()) {
+      log.info("Emitting artifact.removed for cancelled artifact: {}", cancelled.name());
+      eventService.publish(new ArtifactRemovedEvent(projectId, cancelled.name()));
+    }
+
+    // Materialize artifacts and get delta
+    TaskExecutionDelta delta = versionService.materialize(pending, taskExecutionId, projectId);
+
+    // Generate commit message
+    String commitMessage = generateCommitMessage(task);
+
+    // Complete the task execution
+    taskExecution.complete(commitMessage, delta);
+    taskExecutionRepository.save(taskExecution);
+
+    // Publish completion event
+    eventService.publish(new TaskExecutionCompletedEvent(projectId, delta != null, commitMessage));
+  }
+
+  /**
+   * Fail a task execution.
+   * Discards pending artifacts and publishes failure event.
+   *
+   * @param taskExecutionId The TaskExecution to fail
+   * @param projectId       The project ID (for events)
+   * @param errorMessage    The error message describing the failure
+   * @param pending         The accumulated pending changes to discard
+   */
+  @Transactional
+  public void failExecution(UUID taskExecutionId, UUID projectId, String errorMessage, PendingChanges pending) {
+    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(() -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+
+    // Discard any pending changes
+    versionService.discardPending(pending);
+
+    // Fail the task execution with error message as commitMessage
+    taskExecution.fail(errorMessage);
+    taskExecutionRepository.save(taskExecution);
+
+    // Publish failure event
+    eventService.publish(new TaskExecutionFailedEvent(projectId, errorMessage));
+  }
+
+  /**
+   * Generate a commit message summarizing the task using an LLM.
+   */
+  private String generateCommitMessage(String task) {
+    try {
+      ChatClient chatClient = ChatClient.builder(modelRegistry.get(MESSAGE_GENERATION_MODEL))
+          .build();
+
+      String response = chatClient.prompt()
+          .system("""
+              Generate a brief commit message (1 sentence, max 100 chars) summarizing what was done.
+              Focus on the outcome, not the process. Start with a verb like "Added", "Created", "Updated".
+              """)
+          .user("Task: " + task)
+          .call()
+          .content();
+
+      if (response != null && !response.isBlank()) {
+        // Truncate if too long
+        return response.length() > 100 ? response.substring(0, 100) : response.trim();
+      }
+    } catch (Exception e) {
+      log.warn("Failed to generate commit message, using default: {}", e.getMessage());
+    }
+
+    // Fallback
+    return "Completed task";
   }
 
   /**
