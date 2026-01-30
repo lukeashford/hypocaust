@@ -1,8 +1,8 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Status;
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactNotReadyException;
 import com.example.hypocaust.mapper.ArtifactMapper;
@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for artifact read operations.
- * Write operations (create, edit, delete) are handled via TaskExecutionContext hooks
- * and materialized by ArtifactVersionManagementService at TaskExecution completion.
+ * Service for artifact read operations. Write operations (create, edit, delete) are handled via
+ * TaskExecutionContext hooks and materialized by ArtifactVersionManagementService at TaskExecution
+ * completion.
  */
 @Service
 @RequiredArgsConstructor
@@ -39,28 +39,28 @@ public class ArtifactService {
   }
 
   /**
-   * Get DTOs for all artifacts in a project
+   * Get domain objects for all artifacts in a project
    */
-  public List<ArtifactDto> getProjectArtifactsAsDto(UUID projectId) {
+  public List<Artifact> getProjectArtifactsAsDomain(UUID projectId) {
     return getProjectArtifacts(projectId).stream()
-        .map(artifactMapper::toDto)
+        .map(artifactMapper::toDomain)
         .toList();
   }
 
   /**
-   * Get artifacts at a specific TaskExecution (point-in-time view).
-   * Returns the artifacts that were visible at that TaskExecution.
+   * Get artifacts at a specific TaskExecution (point-in-time view). Returns the artifacts that were
+   * visible at that TaskExecution.
    */
   public List<ArtifactEntity> getArtifactsAtTaskExecution(UUID taskExecutionId) {
     return versionService.getArtifactsAtTaskExecution(taskExecutionId);
   }
 
   /**
-   * Get DTOs for artifacts at a specific TaskExecution.
+   * Get domain objects for artifacts at a specific TaskExecution.
    */
-  public List<ArtifactDto> getArtifactsAtTaskExecutionAsDto(UUID taskExecutionId) {
+  public List<Artifact> getArtifactsAtTaskExecutionAsDomain(UUID taskExecutionId) {
     return getArtifactsAtTaskExecution(taskExecutionId).stream()
-        .map(artifactMapper::toDto)
+        .map(artifactMapper::toDomain)
         .toList();
   }
 
@@ -74,10 +74,10 @@ public class ArtifactService {
   }
 
   /**
-   * Get DTO for an artifact by ID
+   * Get domain object for an artifact by ID
    */
-  public ArtifactDto getArtifactDto(UUID artifactId) {
-    return artifactMapper.toDto(getArtifact(artifactId));
+  public Artifact getArtifactDomain(UUID artifactId) {
+    return artifactMapper.toDomain(getArtifact(artifactId));
   }
 
   /**
@@ -92,7 +92,7 @@ public class ArtifactService {
           String.format("Artifact %s does not have a storage key", artifactId));
     }
 
-    if (artifact.getStatus() != Status.CREATED) {
+    if (artifact.getStatus() != ArtifactStatus.CREATED) {
       throw new ArtifactNotReadyException(
           String.format("Artifact %s is not ready (status: %s)",
               artifactId, artifact.getStatus()));

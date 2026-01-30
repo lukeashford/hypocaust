@@ -33,7 +33,7 @@ public class SseHub {
 
   private final ObjectMapper objectMapper;
 
-  private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> projectEmitters = new ConcurrentHashMap<>();
+  private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> executionEmitters = new ConcurrentHashMap<>();
   private final Map<SseEmitter, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
   private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(
       Math.max(4, Runtime.getRuntime().availableProcessors()));
@@ -48,42 +48,42 @@ public class SseHub {
   private int shutdownTimeout;
 
   /**
-   * Subscribe to events for a specific project.
+   * Subscribe to events for a specific task execution.
    *
-   * @param projectId the project to subscribe to
+   * @param executionId the task execution to subscribe to
    * @param replayEvents optional list of events to replay for reconnecting clients
    * @return SSE emitter for the connection
    */
-  public SseEmitter subscribe(UUID projectId, @Nullable List<Event<?>> replayEvents) {
-    log.debug("New SSE subscription for project: {}", projectId);
+  public SseEmitter subscribe(UUID executionId, @Nullable List<Event<?>> replayEvents) {
+    log.debug("New SSE subscription for execution: {}", executionId);
 
     final var emitter = new SseEmitter(emitterTimeout);
 
     // Replay missed events if provided
     if (replayEvents != null && !replayEvents.isEmpty()) {
-      log.debug("Replaying {} events for project {}", replayEvents.size(), projectId);
+      log.debug("Replaying {} events for execution {}", replayEvents.size(), executionId);
       replayEvents(emitter, replayEvents);
     }
 
     // Add to live subscribers
-    projectEmitters.computeIfAbsent(projectId, k -> new CopyOnWriteArrayList<>()).add(emitter);
-    log.info("Active SSE connections for project {}: {}",
-        projectId, projectEmitters.get(projectId).size());
+    executionEmitters.computeIfAbsent(executionId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+    log.info("Active SSE connections for execution {}: {}",
+        executionId, executionEmitters.get(executionId).size());
 
     // Setup cleanup callbacks
     emitter.onCompletion(() -> {
-      log.debug("SSE connection completed for project: {}", projectId);
-      removeEmitter(projectId, emitter);
+      log.debug("SSE connection completed for execution: {}", executionId);
+      removeEmitter(executionId, emitter);
     });
 
     emitter.onError(throwable -> {
-      log.warn("SSE error for project {}: {}", projectId, throwable.getMessage());
-      removeEmitter(projectId, emitter);
+      log.warn("SSE error for execution {}: {}", executionId, throwable.getMessage());
+      removeEmitter(executionId, emitter);
     });
 
     emitter.onTimeout(() -> {
-      log.debug("SSE timeout for project: {}", projectId);
-      removeEmitter(projectId, emitter);
+      log.debug("SSE timeout for execution: {}", executionId);
+      removeEmitter(executionId, emitter);
     });
 
     // Start heartbeat
@@ -93,21 +93,25 @@ public class SseHub {
   }
 
   /**
-   * Broadcast an event to all subscribers of a project.
+   * Broadcast an event to all subscribers of a task execution.
    *
+   * @param executionId the task execution ID
    * @param event the event to broadcast
    */
-  public void broadcast(Event<?> event) {
-    final var projectId = event.getProjectId();
-    final var emitters = projectEmitters.get(projectId);
+  public void broadcast(UUID executionId, Event<?> event) {
+    if (executionId == null) {
+      log.trace("No executionId provided, skipping broadcast");
+      return;
+    }
+    final var emitters = executionEmitters.get(executionId);
 
     if (emitters == null || emitters.isEmpty()) {
-      log.trace("No subscribers for project {}, skipping broadcast", projectId);
+      log.trace("No subscribers for execution {}, skipping broadcast", executionId);
       return;
     }
 
-    log.debug("Broadcasting {} event to {} subscribers of project {}",
-        event.type().getValue(), emitters.size(), projectId);
+    log.debug("Broadcasting {} event to {} subscribers of execution {}",
+        event.type().getValue(), emitters.size(), executionId);
 
     final var failedEmitters = new CopyOnWriteArrayList<SseEmitter>();
 
@@ -115,7 +119,7 @@ public class SseHub {
       try {
         sendEvent(emitter, event);
       } catch (IOException e) {
-        log.debug("Failed to send SSE event to emitter for project {}: {}", projectId,
+        log.debug("Failed to send SSE event to emitter for execution {}: {}", executionId,
             e.getMessage());
         failedEmitters.add(emitter);
       }
@@ -123,7 +127,7 @@ public class SseHub {
 
     // Clean up failed connections
     for (final var failedEmitter : failedEmitters) {
-      removeEmitter(projectId, failedEmitter);
+      removeEmitter(executionId, failedEmitter);
     }
   }
 
@@ -145,21 +149,21 @@ public class SseHub {
   /**
    * Send a single event to an emitter with proper formatting.
    * <p>
-   * The event is sent with: - name: event type (e.g., "artifact.scheduled") - id: thread sequence
-   * for ordering - data: full event as JSON
+   * The event is sent with: - fileName: event type (e.g., "artifact.scheduled") - id: thread
+   * sequence for ordering - data: full event as JSON
    */
   private void sendEvent(SseEmitter emitter, Event<?> event) throws IOException {
     // Serialize the entire event object to JSON
     final var eventJson = objectMapper.writeValueAsString(event);
 
-    // The event name should match the type value for frontend routing
+    // The event fileName should match the type value for frontend routing
     final var eventName = event.type().getValue();
 
-    log.trace("Sending SSE event: name={}, id={}", eventName, event.getProjectSeq());
+    log.trace("Sending SSE event: fileName={}, id={}", eventName, event.getTaskExecutionSeq());
 
     // Build and send the SSE event
     final var sseEvent = SseEmitter.event()
-        .id(event.getProjectSeq().toString())
+        .id(event.getTaskExecutionSeq().toString())
         .name(eventName)
         .data(eventJson)
         .reconnectTime(3000L);
@@ -170,13 +174,13 @@ public class SseHub {
   /**
    * Remove an emitter from tracking and cancel its heartbeat.
    */
-  private void removeEmitter(UUID projectId, SseEmitter emitter) {
-    final var emitters = projectEmitters.get(projectId);
+  private void removeEmitter(UUID executionId, SseEmitter emitter) {
+    final var emitters = executionEmitters.get(executionId);
     if (emitters != null) {
       emitters.remove(emitter);
       if (emitters.isEmpty()) {
-        projectEmitters.remove(projectId);
-        log.debug("No more subscribers for project {}, removed from tracking", projectId);
+        executionEmitters.remove(executionId);
+        log.debug("No more subscribers for execution {}, removed from tracking", executionId);
       }
     }
     cancelHeartbeat(emitter);
@@ -223,7 +227,7 @@ public class SseHub {
     log.info("Shutting down SSE hub...");
 
     // Complete all active connections
-    projectEmitters.values().forEach(emitters ->
+    executionEmitters.values().forEach(emitters ->
         emitters.forEach(emitter -> {
           try {
             emitter.complete();

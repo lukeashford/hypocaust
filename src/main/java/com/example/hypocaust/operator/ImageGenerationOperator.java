@@ -1,7 +1,7 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Kind;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 /**
  * Operator that generates images using DALL-E 3 from text prompts.
  *
- * <p>Uses TaskExecutionContext hooks to schedule artifacts and track progress.
- * Image storage happens at TaskExecution completion time, not during generation.
+ * <p>Uses TaskExecutionContext hooks to schedule artifacts and track progress. Image storage
+ * happens at TaskExecution completion time, not during generation.
  */
 @Component
 @RequiredArgsConstructor
@@ -43,16 +43,17 @@ public class ImageGenerationOperator extends BaseOperator {
 
     log.info("Generating image with prompt: {}", prompt);
 
-    // Schedule the artifact - generates unique name from description
+    // Schedule the artifact - generates unique fileName from description
     final var artifactName = TaskExecutionContextHolder.addArtifact(PendingArtifact.builder()
-        .kind(Kind.IMAGE)
+        .kind(ArtifactKind.IMAGE)
+        .title(description != null ? description : prompt)
         .description(description != null ? description : prompt)
         .prompt(prompt)
         .model(IMAGE_MODEL.getModelName())
-        .status(ArtifactEntity.Status.SCHEDULED)
+        .status(ArtifactStatus.GESTATING)
         .build());
 
-    log.info("Scheduled artifact with name: {}", artifactName);
+    log.info("Scheduled artifact with fileName: {}", artifactName);
 
     try {
       // Build image options
@@ -97,16 +98,17 @@ public class ImageGenerationOperator extends BaseOperator {
       // The actual download and storage happens at TaskExecution completion time
       TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
           .name(artifactName)
-          .kind(Kind.IMAGE)
+          .kind(ArtifactKind.IMAGE)
+          .title(description != null ? description : prompt)
           .description(description != null ? description : prompt)
           .prompt(prompt)
           .model(IMAGE_MODEL.getModelName())
           .externalUrl(imageUrl)
           .metadata(metadata)
-          .status(ArtifactEntity.Status.CREATED)
+          .status(ArtifactStatus.CREATED)
           .build());
 
-      log.info("Successfully generated image, artifact name: {}", artifactName);
+      log.info("Successfully generated image, artifact fileName: {}", artifactName);
 
       return OperatorResult.success(
           "Generated image: " + artifactName,
@@ -141,9 +143,11 @@ public class ImageGenerationOperator extends BaseOperator {
         "Generates images using DALL-E 3 from text prompts",
         List.of(
             ParamSpec.string("prompt", "The text prompt describing the image to generate", true),
-            ParamSpec.string("description", "Human-readable description of the artifact (used to generate name)", true),
+            ParamSpec.string("description",
+                "Human-readable description of the artifact (used to generate fileName)", true),
             ParamSpec.string("negativePrompt", "Elements to avoid in the generated image", ""),
-            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)", "1024x1024"),
+            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)",
+                "1024x1024"),
             ParamSpec.string("quality", "Image quality (standard or hd)", "standard")
         ),
         List.of(

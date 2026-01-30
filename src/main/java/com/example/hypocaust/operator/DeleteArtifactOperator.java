@@ -9,8 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Operator that soft-deletes artifacts.
- * Lightweight operator that just marks for deletion via TaskExecutionContext.
+ * Operator that soft-deletes artifacts. Lightweight operator that just marks for deletion via
+ * TaskExecutionContext.
  */
 @Component
 @RequiredArgsConstructor
@@ -31,19 +31,21 @@ public class DeleteArtifactOperator extends BaseOperator {
     if (artifactNameInput != null && !artifactNameInput.isBlank()) {
       artifactName = artifactNameInput;
     } else {
-      // Use ProjectContextTool to resolve artifact name from task description
+      // Use ProjectContextTool to resolve artifact fileName from task description
       artifactName = projectContext.ask(
-          "What artifact name should be deleted for: " + task + "? Reply with just the name, nothing else.");
+          "What artifact fileName should be deleted for: " + task
+              + "? Reply with just the fileName, nothing else.");
       if (artifactName != null) {
         artifactName = artifactName.trim();
       }
     }
 
     if (artifactName == null || artifactName.isBlank()) {
-      return OperatorResult.failure("Could not determine which artifact to delete", normalizedInputs);
+      return OperatorResult.failure("Could not determine which artifact to delete",
+          normalizedInputs);
     }
 
-    log.info("Resolved artifact name for deletion: {}", artifactName);
+    log.info("Resolved artifact fileName for deletion: {}", artifactName);
 
     // Mark for deletion - emits ARTIFACT_REMOVED event
     // Throws ArtifactNotFoundException if doesn't exist (caught by BaseOperator)
@@ -66,7 +68,8 @@ public class DeleteArtifactOperator extends BaseOperator {
         "Soft-deletes an artifact by marking it for removal",
         List.of(
             ParamSpec.string("task", "The task describing what to delete", true),
-            ParamSpec.string("artifactName", "Name of the artifact to delete (optional, resolved from task if not provided)", "")
+            ParamSpec.string("artifactName",
+                "Name of the artifact to delete (optional, resolved from task if not provided)", "")
         ),
         List.of(
             ParamSpec.string("artifactName", "Name of the deleted artifact", true)

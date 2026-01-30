@@ -1,7 +1,7 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Kind;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.models.ModelRegistry;
@@ -19,8 +19,8 @@ import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.stereotype.Component;
 
 /**
- * Operator that edits existing images using DALL-E 3.
- * Uses TaskExecutionContext.editArtifact() to create a new version.
+ * Operator that edits existing images using DALL-E 3. Uses TaskExecutionContext.editArtifact() to
+ * create a new version.
  */
 @Component
 @RequiredArgsConstructor
@@ -43,30 +43,31 @@ public class ImageEditOperator extends BaseOperator {
     log.info("Editing image for task: {}", task);
 
     // Resolve which artifact to edit
-    String artifactName;
+    String resolvedName;
     if (artifactNameInput != null && !artifactNameInput.isBlank()) {
-      artifactName = artifactNameInput;
+      resolvedName = artifactNameInput;
     } else {
-      // Use ProjectContextTool to resolve artifact name from task description
-      artifactName = projectContext.ask(
-          "What is the artifact name for: " + task + "? Reply with just the name, nothing else.");
-      if (artifactName != null) {
-        artifactName = artifactName.trim();
-      }
+      // Use ProjectContextTool to resolve artifact fileName from task description
+      String response = projectContext.ask(
+          "What is the artifact fileName for: " + task
+              + "? Reply with just the fileName, nothing else.");
+      resolvedName = response != null ? response.trim() : null;
     }
+
+    final String artifactName = resolvedName;
 
     if (artifactName == null || artifactName.isBlank()) {
       return OperatorResult.failure("Could not determine which artifact to edit", normalizedInputs);
     }
 
-    log.info("Resolved artifact name: {}", artifactName);
+    log.info("Resolved artifact fileName: {}", artifactName);
 
     // Get the current artifact
     var artifact = projectContext.getArtifactByName(artifactName)
         .orElseThrow(() -> new ArtifactNotFoundException("Artifact not found: " + artifactName));
 
     // Verify it's an image
-    if (artifact.getKind() != Kind.IMAGE) {
+    if (artifact.getKind() != ArtifactKind.IMAGE) {
       return OperatorResult.failure(
           "Cannot edit non-image artifact: " + artifactName + " is " + artifact.getKind(),
           normalizedInputs);
@@ -75,11 +76,12 @@ public class ImageEditOperator extends BaseOperator {
     // Schedule edit - emits ARTIFACT_UPDATED event
     TaskExecutionContextHolder.editArtifact(artifactName, PendingArtifact.builder()
         .name(artifactName)
-        .kind(Kind.IMAGE)
+        .kind(ArtifactKind.IMAGE)
+        .title(artifact.getTitle())
         .description(artifact.getDescription())
         .prompt(task)
         .model(IMAGE_MODEL.getModelName())
-        .status(ArtifactEntity.Status.SCHEDULED)
+        .status(ArtifactStatus.GESTATING)
         .build());
 
     try {
@@ -121,13 +123,14 @@ public class ImageEditOperator extends BaseOperator {
       // Update pending artifact with result
       TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
           .name(artifactName)
-          .kind(Kind.IMAGE)
+          .kind(ArtifactKind.IMAGE)
+          .title(artifact.getTitle())
           .description(artifact.getDescription())
           .prompt(task)
           .model(IMAGE_MODEL.getModelName())
           .externalUrl(newImageUrl)
           .metadata(metadata)
-          .status(ArtifactEntity.Status.CREATED)
+          .status(ArtifactStatus.CREATED)
           .build());
 
       log.info("Successfully edited image: {}", artifactName);
@@ -161,8 +164,10 @@ public class ImageEditOperator extends BaseOperator {
         "Edits existing images by generating a new version with modifications",
         List.of(
             ParamSpec.string("task", "The edit task describing what changes to make", true),
-            ParamSpec.string("artifactName", "Name of the artifact to edit (optional, resolved from task if not provided)", ""),
-            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)", "1024x1024"),
+            ParamSpec.string("artifactName",
+                "Name of the artifact to edit (optional, resolved from task if not provided)", ""),
+            ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)",
+                "1024x1024"),
             ParamSpec.string("quality", "Image quality (standard or hd)", "standard")
         ),
         List.of(

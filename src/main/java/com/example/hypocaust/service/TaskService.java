@@ -1,19 +1,15 @@
 package com.example.hypocaust.service;
 
-import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.domain.PendingChanges;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.domain.TaskExecutionContextConfig;
+import com.example.hypocaust.domain.TaskExecutionContextFactory;
 import com.example.hypocaust.domain.TaskExecutionDelta;
-import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
-import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
-import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
@@ -24,10 +20,7 @@ import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.ProjectRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for handling task submission and execution.
- * Manages the TaskExecution lifecycle including version control integration.
+ * Service for handling task submission and execution. Manages the TaskExecution lifecycle including
+ * version control integration.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,9 +43,6 @@ public class TaskService {
       If this task is not about generating a picture, fail early and do nothing.
       """;
 
-  private static final AnthropicChatModelSpec NAME_GENERATION_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
-
   private static final AnthropicChatModelSpec MESSAGE_GENERATION_MODEL =
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
 
@@ -63,6 +53,7 @@ public class TaskService {
   private final ModelCallLogger modelCallLogger;
   private final EventService eventService;
   private final ArtifactVersionManagementService versionService;
+  private final TaskExecutionContextFactory contextFactory;
   private final ModelRegistry modelRegistry;
 
   @Transactional
@@ -107,7 +98,8 @@ public class TaskService {
 
     // Kick off execution asynchronously
     final UUID finalPredecessorId = predecessorId;
-    runExecutorService.submit(() -> executeTask(projectId, taskExecutionId, finalPredecessorId, task));
+    runExecutorService.submit(
+        () -> executeTask(projectId, taskExecutionId, finalPredecessorId, task));
 
     return TaskResponseDto.accepted(projectId, taskExecutionId);
   }
@@ -115,42 +107,9 @@ public class TaskService {
   public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
     log.info("Starting task execution {} for project {}", taskExecutionId, projectId);
 
-    // Build context configuration with all callbacks
-    TaskExecutionContextConfig config = TaskExecutionContextConfig.builder()
-        .onArtifactAdded(data -> eventService.publish(new ArtifactAddedEvent(projectId,
-            data.name(), data.kind(), data.description(),
-            data.externalUrl(), data.inlineContent(), data.metadata())))
-        .onArtifactUpdated(data -> eventService.publish(new ArtifactUpdatedEvent(projectId,
-            data.name(), data.description(),
-            data.externalUrl(), data.inlineContent(), data.metadata())))
-        .onArtifactRemoved(data -> eventService.publish(new ArtifactRemovedEvent(projectId, data.name())))
-        .onTaskProgressUpdated(taskTree -> eventService.publish(new TaskProgressUpdatedEvent(projectId, taskTree)))
-        .artifactExistsChecker(name -> predecessorId != null
-            && versionService.artifactExistsAtTaskExecution(predecessorId, name))
-        .artifactKindGetter(name -> predecessorId == null
-            ? Optional.empty()
-            : versionService.getArtifactKindAtTaskExecution(predecessorId, name))
-        .artifactNamesGetter(unused -> {
-          if (predecessorId == null) {
-            return Set.of();
-          }
-          Set<String> names = new HashSet<>();
-          for (ArtifactEntity artifact : versionService.getArtifactsAtTaskExecution(predecessorId)) {
-            if (!artifact.isDeleted()) {
-              names.add(artifact.getName());
-            }
-          }
-          return names;
-        })
-        .nameGenerator(request -> generateArtifactName(request.description(), request.existingNames()))
-        .currentArtifactsGetter(unused -> predecessorId == null
-            ? java.util.List.of()
-            : versionService.getArtifactsAtTaskExecution(predecessorId))
-        .build();
-
-    // Create and configure context
-    TaskExecutionContext context = new TaskExecutionContext(projectId, taskExecutionId, predecessorId);
-    config.applyTo(context);
+    // Create context
+    TaskExecutionContext context = contextFactory.create(projectId, taskExecutionId,
+        predecessorId);
 
     // Set the context for this thread
     TaskExecutionContextHolder.setContext(context);
@@ -160,12 +119,13 @@ public class TaskService {
 
     // Update status to RUNNING
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+        .orElseThrow(
+            () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
     try {
       taskExecution.start();
       taskExecutionRepository.save(taskExecution);
-      eventService.publish(new TaskExecutionStartedEvent(projectId));
+      eventService.publish(new TaskExecutionStartedEvent(taskExecutionId));
 
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
@@ -190,23 +150,25 @@ public class TaskService {
   }
 
   /**
-   * Commit a successful task execution.
-   * Materializes pending artifacts, generates commit message, and publishes completion event.
+   * Commit a successful task execution. Materializes pending artifacts, generates commit message,
+   * and publishes completion event.
    *
    * @param taskExecutionId The TaskExecution to commit
-   * @param projectId       The project ID (for events)
-   * @param task            The original task description (for message generation)
-   * @param pending         The accumulated pending changes
+   * @param projectId The project ID (for events)
+   * @param task The original task description (for message generation)
+   * @param pending The accumulated pending changes
    */
   @Transactional
-  public void commitExecution(UUID taskExecutionId, UUID projectId, String task, PendingChanges pending) {
+  public void commitExecution(UUID taskExecutionId, UUID projectId, String task,
+      PendingChanges pending) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+        .orElseThrow(
+            () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
     // Emit artifact.removed events for cancelled artifacts
     for (PendingArtifact cancelled : pending.getCancelled()) {
       log.info("Emitting artifact.removed for cancelled artifact: {}", cancelled.name());
-      eventService.publish(new ArtifactRemovedEvent(projectId, cancelled.name()));
+      eventService.publish(new ArtifactRemovedEvent(taskExecutionId, cancelled.name()));
     }
 
     // Materialize artifacts and get delta
@@ -220,22 +182,24 @@ public class TaskService {
     taskExecutionRepository.save(taskExecution);
 
     // Publish completion event
-    eventService.publish(new TaskExecutionCompletedEvent(projectId, delta != null, commitMessage));
+    eventService.publish(
+        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, commitMessage));
   }
 
   /**
-   * Fail a task execution.
-   * Discards pending artifacts and publishes failure event.
+   * Fail a task execution. Discards pending artifacts and publishes failure event.
    *
    * @param taskExecutionId The TaskExecution to fail
-   * @param projectId       The project ID (for events)
-   * @param errorMessage    The error message describing the failure
-   * @param pending         The accumulated pending changes to discard
+   * @param projectId The project ID (for events)
+   * @param errorMessage The error message describing the failure
+   * @param pending The accumulated pending changes to discard
    */
   @Transactional
-  public void failExecution(UUID taskExecutionId, UUID projectId, String errorMessage, PendingChanges pending) {
+  public void failExecution(UUID taskExecutionId, UUID projectId, String errorMessage,
+      PendingChanges pending) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+        .orElseThrow(
+            () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
     // Discard any pending changes
     versionService.discardPending(pending);
@@ -245,7 +209,7 @@ public class TaskService {
     taskExecutionRepository.save(taskExecution);
 
     // Publish failure event
-    eventService.publish(new TaskExecutionFailedEvent(projectId, errorMessage));
+    eventService.publish(new TaskExecutionFailedEvent(taskExecutionId, errorMessage));
   }
 
   /**
@@ -275,76 +239,6 @@ public class TaskService {
 
     // Fallback
     return "Completed task";
-  }
-
-  /**
-   * Generate a unique artifact name from description using a small LLM.
-   */
-  private String generateArtifactName(String description, Set<String> existingNames) {
-    try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(NAME_GENERATION_MODEL))
-          .build();
-
-      StringBuilder prompt = new StringBuilder();
-      prompt.append("Generate a short, snake_case artifact name for: ").append(description);
-      if (!existingNames.isEmpty()) {
-        prompt.append("\n\nThe following names are already taken, choose a different one: ");
-        prompt.append(String.join(", ", existingNames));
-      }
-
-      String response = chatClient.prompt()
-          .system("""
-              Generate a short snake_case name for an artifact (max 30 chars).
-              Use only lowercase letters, numbers, and underscores.
-              Reply with ONLY the name, nothing else.
-              Examples: hero_portrait, forest_background, main_script
-              """)
-          .user(prompt.toString())
-          .call()
-          .content();
-
-      if (response != null && !response.isBlank()) {
-        String name = response.trim().toLowerCase()
-            .replaceAll("[^a-z0-9_]", "_")
-            .replaceAll("_+", "_")
-            .replaceAll("^_|_$", "");
-
-        // Truncate if too long
-        if (name.length() > 30) {
-          name = name.substring(0, 30);
-        }
-
-        // If name is still taken, append a number
-        String baseName = name;
-        int counter = 2;
-        while (existingNames.contains(name)) {
-          name = baseName + "_" + counter;
-          counter++;
-        }
-
-        return name;
-      }
-    } catch (Exception e) {
-      log.warn("Failed to generate artifact name via LLM: {}", e.getMessage());
-    }
-
-    // Fallback: generate from description
-    String name = description.toLowerCase()
-        .replaceAll("[^a-z0-9]+", "_")
-        .replaceAll("^_|_$", "");
-    if (name.length() > 30) {
-      name = name.substring(0, 30);
-    }
-
-    // If name is taken, append a number
-    String baseName = name;
-    int counter = 2;
-    while (existingNames.contains(name)) {
-      name = baseName + "_" + counter;
-      counter++;
-    }
-
-    return name;
   }
 
   private String truncateTitle(String task) {

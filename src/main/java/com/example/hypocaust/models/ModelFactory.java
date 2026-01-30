@@ -89,6 +89,7 @@ public class ModelFactory {
     }
     options.setModel(model.getModelName());
 
-    return new OpenAiImageModel(openAiImageApi, options);
+    return new OpenAiImageModel(openAiImageApi, options,
+        new org.springframework.retry.support.RetryTemplate());
   }
 }

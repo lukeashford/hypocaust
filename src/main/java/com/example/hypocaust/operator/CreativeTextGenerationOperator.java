@@ -1,13 +1,14 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.db.ArtifactEntity.Kind;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
+import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.fragments.GenerationFragments;
-import com.example.hypocaust.service.ArtifactService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +20,8 @@ import org.springframework.stereotype.Component;
 /**
  * Operator that generates creative text content from prompts.
  *
- * <p>Uses GPT-5.2 for creative writing (quality matters for creative output) and
- * Claude Haiku for title generation (simple extraction task).
+ * <p>Uses GPT-5.2 for creative writing (quality matters for creative output) and Claude Haiku for
+ * title generation (simple extraction task).
  */
 @Component
 @RequiredArgsConstructor
@@ -35,7 +36,6 @@ public class CreativeTextGenerationOperator extends BaseOperator {
   private static final String OUTPUT_KEY = "generatedText";
 
   private final ModelRegistry modelRegistry;
-  private final ArtifactService artifactService;
   private final ObjectMapper objectMapper;
 
   @Override
@@ -45,14 +45,15 @@ public class CreativeTextGenerationOperator extends BaseOperator {
     final var style = (String) normalizedInputs.get("style");
     final var maxLength = (Integer) normalizedInputs.get("maxLength");
 
+    final var ctx = TaskExecutionContextHolder.getContext();
+
     // Schedule artifact with a placeholder title initially
-    final var artifactId = artifactService.schedule(
-        Kind.STRUCTURED_JSON,
-        "Creative Writing",
-        style + " style",
-        null,
-        null
-    );
+    final var artifactName = ctx.addArtifact(PendingArtifact.builder()
+        .kind(ArtifactKind.STRUCTURED_JSON)
+        .title("Creative Writing")
+        .description(style + " style")
+        .status(ArtifactStatus.GESTATING)
+        .build());
 
     // Build the system prompt from the fragment
     final var systemPrompt = PromptBuilder.create()
@@ -79,14 +80,22 @@ public class CreativeTextGenerationOperator extends BaseOperator {
 
     final var content = objectMapper.createObjectNode()
         .put(OUTPUT_KEY, text);
-    artifactService.updateArtifact(artifactId, title, style + " style", null, content, null);
+
+    ctx.updatePendingArtifact(artifactName, PendingArtifact.builder()
+        .name(artifactName)
+        .kind(ArtifactKind.STRUCTURED_JSON)
+        .title(title)
+        .description(style + " style")
+        .inlineContent(content)
+        .status(ArtifactStatus.CREATED)
+        .build());
 
     return OperatorResult.success(
         "Successfully generated text",
         normalizedInputs,
         Map.of(
             "generatedText", text,
-            "artifactId", artifactId.toString()
+            "artifactName", artifactName
         )
     );
   }

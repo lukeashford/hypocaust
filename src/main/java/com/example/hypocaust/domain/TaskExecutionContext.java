@@ -1,13 +1,10 @@
 package com.example.hypocaust.domain;
 
 import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Kind;
-import com.example.hypocaust.db.ArtifactEntity.Status;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
-import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
 import com.example.hypocaust.service.ArtifactNameGeneratorService;
@@ -58,14 +55,13 @@ public class TaskExecutionContext {
     pending.addArtifact(name, artifact);
 
     // Emit event
-    eventService.publish(new ArtifactAddedEvent(taskExecutionId, new ArtifactDto(
+    eventService.publish(new ArtifactAddedEvent(taskExecutionId, new Artifact(
         name,
         artifact.kind(),
         artifact.externalUrl(),
         artifact.inlineContent(),
         artifact.title(),
         artifact.description(),
-        true,
         artifact.status(),
         artifact.metadata()
     )));
@@ -88,7 +84,7 @@ public class TaskExecutionContext {
 
     // Verify type matches
     if (newVersion.kind() != null) {
-      Optional<Kind> existingKind = predecessorId != null
+      Optional<ArtifactKind> existingKind = predecessorId != null
           ? versionService.getArtifactKindAtTaskExecution(predecessorId, name)
           : Optional.empty();
       if (existingKind.isPresent() && !existingKind.get().equals(newVersion.kind())) {
@@ -100,14 +96,13 @@ public class TaskExecutionContext {
     pending.editArtifact(name, newVersion);
 
     // Emit event
-    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new ArtifactDto(
+    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new Artifact(
         name,
         newVersion.kind(),
         newVersion.externalUrl(),
         newVersion.inlineContent(),
         newVersion.title(),
         newVersion.description(),
-        true,
         newVersion.status(),
         newVersion.metadata()
     )));
@@ -147,14 +142,13 @@ public class TaskExecutionContext {
     }
 
     // Emit event
-    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new ArtifactDto(
+    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new Artifact(
         name,
         newVersion.kind(),
         newVersion.externalUrl(),
         newVersion.inlineContent(),
         newVersion.title(),
         newVersion.description(),
-        true,
         newVersion.status(),
         newVersion.metadata()
     )));
@@ -195,8 +189,8 @@ public class TaskExecutionContext {
   /**
    * Get current artifact state (predecessor, adjusted by pending).
    */
-  public List<ArtifactDto> getCurrentArtifacts() {
-    List<ArtifactDto> result = new ArrayList<>();
+  public List<Artifact> getCurrentArtifacts() {
+    List<Artifact> result = new ArrayList<>();
 
     // Get artifacts from predecessor
     if (predecessorId != null) {
@@ -213,27 +207,25 @@ public class TaskExecutionContext {
         if (pendingEdit.isPresent() && !pending.isAdded(entity.getFileName())) {
           // Return the pending version
           PendingArtifact pa = pendingEdit.get();
-          result.add(new ArtifactDto(
+          result.add(new Artifact(
               pa.name(),
               pa.kind(),
               pa.externalUrl(),
               pa.inlineContent(),
               pa.title(),
               pa.description(),
-              true,
               pa.status(),
               pa.metadata()
           ));
         } else {
           // Return the existing version
-          result.add(new ArtifactDto(
+          result.add(new Artifact(
               entity.getFileName(),
               entity.getKind(),
               entity.getStorageKey() != null ? "/artifacts/" + entity.getId() + "/content" : null,
               entity.getContent(),
               entity.getTitle(),
               entity.getDescription(),
-              false,
               entity.getStatus(),
               entity.getMetadata()
           ));
@@ -243,15 +235,14 @@ public class TaskExecutionContext {
 
     // Add pending new artifacts
     for (PendingArtifact pa : pending.getAdded()) {
-      if (pa.status() != Status.CANCELLED) {
-        result.add(new ArtifactDto(
+      if (pa.status() != ArtifactStatus.CANCELLED) {
+        result.add(new Artifact(
             pa.name(),
             pa.kind(),
             pa.externalUrl(),
             pa.inlineContent(),
             pa.title(),
             pa.description(),
-            true,
             pa.status(),
             pa.metadata()
         ));
@@ -291,7 +282,7 @@ public class TaskExecutionContext {
   private String generateUniqueName(String description) {
     Set<String> existingNames = predecessorId != null
         ? versionService.getArtifactsAtTaskExecution(predecessorId).stream()
-        .filter(a -> a.getStatus() != Status.DELETED)
+        .filter(a -> a.getStatus() != ArtifactStatus.DELETED)
         .map(ArtifactEntity::getFileName)
         .collect(Collectors.toSet())
         : new java.util.HashSet<>();

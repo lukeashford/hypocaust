@@ -1,9 +1,9 @@
 package com.example.hypocaust.tool;
 
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.OperatorLedger;
 import com.example.hypocaust.domain.TaskItem;
 import com.example.hypocaust.domain.TaskStatus;
-import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.logging.ModelCallLogger;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
@@ -40,7 +40,7 @@ import org.springframework.stereotype.Component;
  * <h2>Value Resolution</h2>
  * <ul>
  *   <li>{@code {{keyName}}} - References a value from the ledger's values map</li>
- *   <li>{@code @artifact:name} - References an artifact by its semantic name</li>
+ *   <li>{@code @artifact:fileName} - References an artifact by its semantic fileName</li>
  * </ul>
  *
  * <h2>Task Progress Integration</h2>
@@ -95,7 +95,7 @@ public class InvokeTool {
       final var childPath = singleChild ? todoPath : todoPath + "." + i;
 
       if (opOpt.isEmpty()) {
-        final var error = "No operator found with name: " + operatorName;
+        final var error = "No operator found with fileName: " + operatorName;
         log.error("{} [FAILED] {}", indent, error);
         updateStatus(childPath, singleChild, TaskStatus.FAILED);
         return OperatorResult.failure(error, Map.of("operatorName", operatorName));
@@ -180,7 +180,7 @@ public class InvokeTool {
     }
 
     if (value instanceof String strValue) {
-      // Check for @artifact: prefix (name-based lookup)
+      // Check for @artifact: prefix (fileName-based lookup)
       if (strValue.startsWith(ARTIFACT_PREFIX)) {
         return resolveArtifact(strValue);
       }
@@ -193,11 +193,12 @@ public class InvokeTool {
   }
 
   /**
-   * Resolve an @artifact: reference to the full artifact structure.
-   * Returns PendingArtifact if found in pending changes, otherwise ArtifactDto from current state.
+   * Resolve an @artifact: reference to the full artifact structure. Returns PendingArtifact if
+   * found in pending changes, otherwise ArtifactDto from current state.
    *
    * @param artifactRef the artifact reference string (e.g., "@artifact:hero_image")
-   * @return the artifact structure (PendingArtifact or ArtifactDto), or the name string if not found
+   * @return the artifact structure (PendingArtifact or ArtifactDto), or the fileName string if not
+   * found
    */
   private Object resolveArtifact(String artifactRef) {
     var artifactName = artifactRef.substring(ARTIFACT_PREFIX.length()).trim();
@@ -215,14 +216,14 @@ public class InvokeTool {
     // Then check current artifacts
     var currentArtifacts = ctx.getCurrentArtifacts();
     for (var artifact : currentArtifacts) {
-      if (artifactName.equals(artifact.name())) {
+      if (artifactName.equals(artifact.fileName())) {
         log.debug("Resolved '{}' to current artifact", artifactName);
         return artifact;
       }
     }
 
-    // Not found - return the name for downstream handling
-    log.warn("Artifact reference '{}' not found, returning name only", artifactName);
+    // Not found - return the fileName for downstream handling
+    log.warn("Artifact reference '{}' not found, returning fileName only", artifactName);
     return artifactName;
   }
 
@@ -237,8 +238,8 @@ public class InvokeTool {
       if (value == null) {
         return matchResult.group(0);
       }
-      // If the value is an ArtifactDto, return its description
-      if (value instanceof ArtifactDto dto) {
+      // If the value is an Artifact, return its description
+      if (value instanceof Artifact dto) {
         return Matcher.quoteReplacement(dto.description());
       }
       return Matcher.quoteReplacement(value.toString());
@@ -246,8 +247,8 @@ public class InvokeTool {
   }
 
   /**
-   * Helper method to update task status only for multiple-child ledgers.
-   * Eliminates repeated conditional checks throughout the invoke loop.
+   * Helper method to update task status only for multiple-child ledgers. Eliminates repeated
+   * conditional checks throughout the invoke loop.
    */
   private void updateStatus(String path, boolean singleChild, TaskStatus status) {
     if (!singleChild) {

@@ -2,6 +2,7 @@ package com.example.hypocaust.tool;
 
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
@@ -15,8 +16,8 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
 
 /**
- * A tool (not an operator) that provides project context to operators.
- * Answers questions in natural language about artifacts and version history.
+ * A tool (not an operator) that provides project context to operators. Answers questions in natural
+ * language about artifacts and version history.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,16 +34,13 @@ public class ProjectContextTool {
   /**
    * Answer a question about project artifacts or version history.
    *
-   * Examples:
-   * - "What is this project about?"
-   * - "What is the artifact name for the picture of our protagonist wearing a suit?"
-   * - "What prompt was used for the forest_background artifact?"
-   * - "List all current artifacts"
-   * - "Show me the version history of hero_image"
+   * Examples: - "What is this project about?" - "What is the artifact fileName for the picture of
+   * our protagonist wearing a suit?" - "What prompt was used for the forest_background artifact?" -
+   * "List all current artifacts" - "Show me the version history of hero_image"
    *
-   * We are explicitly limiting your access to version history to save you space in your
-   * context. You can ask this anything, even to dump the whole history graph, but if you use this
-   * wisely and ask a good question, you get a good answer without blowing up your context.
+   * We are explicitly limiting your access to version history to save you space in your context.
+   * You can ask this anything, even to dump the whole history graph, but if you use this wisely and
+   * ask a good question, you get a good answer without blowing up your context.
    */
   @Tool(name = "ask_project_context", description = "Answer questions about project artifacts, their descriptions, prompts, and version history")
   public String ask(String question) {
@@ -50,7 +48,8 @@ public class ProjectContextTool {
       throw new IllegalArgumentException("Question cannot be empty");
     }
     if (question.length() > MAX_QUESTION_LENGTH) {
-      throw new IllegalArgumentException("Question exceeds maximum length of " + MAX_QUESTION_LENGTH + " characters");
+      throw new IllegalArgumentException(
+          "Question exceeds maximum length of " + MAX_QUESTION_LENGTH + " characters");
     }
 
     var ctx = TaskExecutionContextHolder.getContext();
@@ -73,7 +72,7 @@ public class ProjectContextTool {
     contextBuilder.append("Current artifacts:\n");
     for (ArtifactEntity artifact : artifacts) {
       contextBuilder.append(String.format("- %s (%s): %s\n",
-          artifact.getName(),
+          artifact.getFileName(),
           artifact.getKind(),
           artifact.getDescription() != null ? artifact.getDescription() : "no description"));
       if (artifact.getPrompt() != null) {
@@ -88,7 +87,8 @@ public class ProjectContextTool {
     for (TaskExecutionEntity te : history) {
       contextBuilder.append(String.format("- [%s] %s: %s\n",
           te.getStatus(),
-          te.getTask() != null ? te.getTask().substring(0, Math.min(50, te.getTask().length())) : "no task",
+          te.getTask() != null ? te.getTask().substring(0, Math.min(50, te.getTask().length()))
+              : "no task",
           te.getCommitMessage() != null ? te.getCommitMessage() : "no changes"));
     }
 
@@ -114,7 +114,7 @@ public class ProjectContextTool {
   }
 
   /**
-   * Get an artifact by name from the current state.
+   * Get an artifact by fileName from the current state.
    */
   public Optional<ArtifactEntity> getArtifactByName(String name) {
     var ctx = TaskExecutionContextHolder.getContext();
@@ -126,7 +126,7 @@ public class ProjectContextTool {
 
     List<ArtifactEntity> artifacts = versionService.getArtifactsAtTaskExecution(predecessorId);
     return artifacts.stream()
-        .filter(a -> name.equals(a.getName()) && !a.isDeleted())
+        .filter(a -> name.equals(a.getFileName()) && a.getStatus() != ArtifactStatus.DELETED)
         .findFirst();
   }
 }

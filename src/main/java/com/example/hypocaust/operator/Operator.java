@@ -26,4 +26,13 @@ public interface Operator {
    * @return the result of the operation including outputs, metrics, and status
    */
   OperatorResult execute(Map<String, Object> rawInputs);
+
+  /**
+   * Executes the operator with the provided context, input parameters and a todoPath.
+   *
+   * @param rawInputs the input parameters
+   * @param todoPath the path in the task tree
+   * @return the result of the operation
+   */
+  OperatorResult execute(Map<String, Object> rawInputs, String todoPath);
 }

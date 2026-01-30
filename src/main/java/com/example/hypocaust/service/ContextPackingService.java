@@ -31,7 +31,7 @@ public final class ContextPackingService {
   /**
    * Builds a context that fits within the model's token limits.
    *
-   * @param modelName the model name
+   * @param modelName the model fileName
    * @param systemMessage the system message (always included)
    * @param chronologicalHistory the message history in chronological order
    * @return the packed messages that fit within the context window

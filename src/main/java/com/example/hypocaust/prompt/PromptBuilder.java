@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
  * Fluent builder for composing system prompts from reusable fragments.
  *
  * <p>Fragments are deduplicated by ID and ordered by priority, then combined
- * with configurable separators. Placeholders in the form {{key}} are resolved
- * from the provided parameters.
+ * with configurable separators. Placeholders in the form {{key}} are resolved from the provided
+ * parameters.
  *
  * <p>Example usage:
  * <pre>{@code
@@ -71,10 +71,10 @@ public final class PromptBuilder {
   }
 
   /**
-   * Sets a parameter value for placeholder resolution.
-   * Placeholders in the form {{key}} will be replaced with the value.
+   * Sets a parameter value for placeholder resolution. Placeholders in the form {{key}} will be
+   * replaced with the value.
    *
-   * @param key   the parameter name
+   * @param key the parameter fileName
    * @param value the parameter value
    * @return this builder for chaining
    */
@@ -108,9 +108,9 @@ public final class PromptBuilder {
   }
 
   /**
-   * Builds the final prompt string by combining all fragments.
-   * Fragments are sorted by priority (ascending), deduplicated by ID,
-   * and concatenated with the separator. Placeholders are resolved.
+   * Builds the final prompt string by combining all fragments. Fragments are sorted by priority
+   * (ascending), deduplicated by ID, and concatenated with the separator. Placeholders are
+   * resolved.
    *
    * @return the complete prompt string
    */
@@ -127,8 +127,8 @@ public final class PromptBuilder {
   }
 
   /**
-   * Returns the list of fragment IDs in the current builder state, sorted by priority.
-   * Useful for debugging and testing.
+   * Returns the list of fragment IDs in the current builder state, sorted by priority. Useful for
+   * debugging and testing.
    *
    * @return list of fragment IDs
    */

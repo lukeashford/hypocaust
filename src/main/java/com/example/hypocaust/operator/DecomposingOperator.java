@@ -1,6 +1,7 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
@@ -11,6 +12,7 @@ import com.example.hypocaust.tool.InvokeTool;
 import com.example.hypocaust.tool.ModelSearchTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
@@ -21,8 +23,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
- * Recursive task decomposition operator that either directly invokes a single operator
- * (leaf case) or decomposes complex tasks into subtasks managed by child DecomposingOperators.
+ * Recursive task decomposition operator that either directly invokes a single operator (leaf case)
+ * or decomposes complex tasks into subtasks managed by child DecomposingOperators.
  *
  * <p>Uses Claude Opus for complex reasoning and decomposition decisions. Includes
  * self-correction capability to revise ledgers when children fail.
@@ -168,11 +170,11 @@ public class DecomposingOperator extends BaseOperator {
   }
 
   /**
-   * Add existing artifacts to the payload if we have execution context.
-   * This gives the LLM visibility into what artifacts already exist.
+   * Add existing artifacts to the payload if we have execution context. This gives the LLM
+   * visibility into what artifacts already exist.
    */
-  private void addExistingArtifactsToPayload(com.fasterxml.jackson.databind.node.ObjectNode root) {
-    List<ArtifactDto> existingArtifacts = List.of();
+  private void addExistingArtifactsToPayload(ObjectNode root) {
+    List<Artifact> existingArtifacts = List.of();
 
     // Get artifacts from TaskExecutionContext
     if (TaskExecutionContextHolder.hasContext()) {
@@ -187,10 +189,10 @@ public class DecomposingOperator extends BaseOperator {
       var artifactsArray = root.putArray("existingArtifacts");
       for (var artifact : existingArtifacts) {
         var artifactNode = mapper.createObjectNode();
-        artifactNode.put("name", artifact.name());
+        artifactNode.put("fileName", artifact.fileName());
         artifactNode.put("kind", artifact.kind().name());
         artifactNode.put("description", artifact.description());
-        artifactNode.put("isPending", artifact.isPending());
+        artifactNode.put("isPending", artifact.status() == ArtifactStatus.GESTATING);
         if (artifact.status() != null) {
           artifactNode.put("status", artifact.status().name());
         }

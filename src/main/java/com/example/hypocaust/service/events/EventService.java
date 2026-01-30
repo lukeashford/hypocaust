@@ -29,10 +29,17 @@ public class EventService {
   public void publish(Event<?> event, boolean doPersist) {
     log.debug("Publishing event: {}", event);
     final var entity = eventMapper.toEntity(event);
+
+    UUID executionId = null;
+    if (com.example.hypocaust.operator.TaskExecutionContextHolder.hasContext()) {
+      executionId = com.example.hypocaust.operator.TaskExecutionContextHolder.getTaskExecutionId();
+      entity.setTaskExecutionId(executionId);
+    }
+
     if (doPersist) {
       eventLogRepository.save(entity);
     }
-    sseHub.broadcast(event);
+    sseHub.broadcast(executionId, event);
   }
 
   @Transactional
@@ -41,32 +48,36 @@ public class EventService {
   }
 
   public SseEmitter subscribeToEvents(UUID projectId, UUID lastEventId) {
-    final var replayEvents = findEventsSince(projectId, lastEventId);
+    var latestExecutionId = taskExecutionRepository.findTopByProjectIdOrderByStartedAtDesc(
+            projectId)
+        .map(com.example.hypocaust.db.TaskExecutionEntity::getId)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "No executions found for project: " + projectId));
 
-    log.debug("SSE subscription for project {} with lastEventId: {}", projectId, lastEventId);
-    return sseHub.subscribe(projectId, replayEvents);
+    log.debug("SSE legacy subscription for project {} redirected to latest execution {}", projectId,
+        latestExecutionId);
+    return subscribeToTaskExecutionEvents(latestExecutionId, lastEventId);
   }
 
   /**
    * Subscribe to SSE events for a TaskExecution.
-   * Looks up the projectId from the taskExecutionId and subscribes to that project's events.
    */
   public SseEmitter subscribeToTaskExecutionEvents(UUID taskExecutionId, UUID lastEventId) {
-    var taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new ResponseStatusException(
-            HttpStatus.NOT_FOUND, "TaskExecution not found: " + taskExecutionId));
+    if (!taskExecutionRepository.existsById(taskExecutionId)) {
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "TaskExecution not found: " + taskExecutionId);
+    }
 
-    var projectId = taskExecution.getProjectId();
-    final var replayEvents = findEventsSince(projectId, lastEventId);
+    final var replayEvents = findEventsForExecutionSince(taskExecutionId, lastEventId);
 
-    log.debug("SSE subscription for TaskExecution {} (project {}) with lastEventId: {}",
-        taskExecutionId, projectId, lastEventId);
-    return sseHub.subscribe(projectId, replayEvents);
+    log.debug("SSE subscription for TaskExecution {} with lastEventId: {}",
+        taskExecutionId, lastEventId);
+    return sseHub.subscribe(taskExecutionId, replayEvents);
   }
 
   public String getProjectLogs(UUID projectId) {
     log.debug("Fetching event history for project {}", projectId);
-    return eventLogRepository.findByProjectIdOrderById(projectId)
+    return eventLogRepository.findByTaskExecutionIdOrderById(projectId)
         .stream()
         .map(eventMapper::toDomain)
         .map(this::formatEvent)
@@ -80,22 +91,23 @@ public class EventService {
         event.getPayload());
   }
 
-  private List<Event<?>> findEventsSince(UUID projectId, UUID lastEventId) {
+  private List<Event<?>> findEventsForExecutionSince(UUID taskExecutionId, UUID lastEventId) {
     if (lastEventId == null) {
-      // No lastEventId means this is a new connection - replay all events
-      return eventLogRepository.findByProjectIdOrderById(projectId)
+      // No lastEventId means this is a new connection - replay all events for this execution
+      return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
           .parallelStream()
           .map(eventMapper::toDomain)
           .collect(Collectors.toUnmodifiableList());
     }
 
-    if (!eventLogRepository.existsByIdAndProjectId(lastEventId, projectId)) {
+    if (!eventLogRepository.existsByIdAndTaskExecutionId(lastEventId, taskExecutionId)) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Last-Event-ID not found for project: " + lastEventId);
+          "Last-Event-ID not found for execution: " + lastEventId);
     }
 
-    return eventLogRepository.findByProjectIdAndIdGreaterThanOrderById(projectId, lastEventId)
+    return eventLogRepository.findByTaskExecutionIdAndIdGreaterThanOrderById(taskExecutionId,
+            lastEventId)
         .parallelStream()
         .map(eventMapper::toDomain)
         .collect(Collectors.toUnmodifiableList());

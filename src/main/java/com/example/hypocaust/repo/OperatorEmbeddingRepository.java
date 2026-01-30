@@ -18,9 +18,9 @@ import org.springframework.stereotype.Repository;
 public interface OperatorEmbeddingRepository extends JpaRepository<OperatorEmbedding, UUID> {
 
   /**
-   * Finds an operator embedding by its exact operator name.
+   * Finds an operator embedding by its exact operator fileName.
    *
-   * @param operatorName the name of the operator to search for
+   * @param operatorName the fileName of the operator to search for
    * @return optional operator embedding if found
    */
   Optional<OperatorEmbedding> findByOperatorName(String operatorName);

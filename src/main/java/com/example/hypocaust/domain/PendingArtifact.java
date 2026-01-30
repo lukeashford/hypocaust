@@ -1,7 +1,5 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.db.ArtifactEntity.Kind;
-import com.example.hypocaust.db.ArtifactEntity.Status;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 
@@ -23,7 +21,7 @@ import lombok.Builder;
 @Builder
 public record PendingArtifact(
     String name,
-    Kind kind,
+    ArtifactKind kind,
     String title,
     String description,
     String prompt,
@@ -31,7 +29,7 @@ public record PendingArtifact(
     String externalUrl,
     JsonNode inlineContent,
     JsonNode metadata,
-    Status status
+    ArtifactStatus status
 ) {
 
   /**
@@ -45,7 +43,7 @@ public record PendingArtifact(
   /**
    * Creates a copy with the given status.
    */
-  public PendingArtifact withStatus(Status newStatus) {
+  public PendingArtifact withStatus(ArtifactStatus newStatus) {
     return new PendingArtifact(name, kind, title, description, prompt, model, externalUrl,
         inlineContent, metadata, newStatus);
   }

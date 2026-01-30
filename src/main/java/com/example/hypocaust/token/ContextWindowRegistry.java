@@ -8,7 +8,7 @@ public interface ContextWindowRegistry {
   /**
    * Gets the context window size for the specified model.
    *
-   * @param modelName the name of the model
+   * @param modelName the fileName of the model
    * @return the context window size in tokens
    */
   int getContextWindow(String modelName);

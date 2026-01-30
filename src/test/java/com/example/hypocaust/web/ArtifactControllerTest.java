@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Kind;
-import com.example.hypocaust.db.ArtifactEntity.Status;
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.service.ArtifactService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -43,20 +43,22 @@ class ArtifactControllerTest {
   @Test
   void testGetArtifactMetadata() throws Exception {
     UUID artifactId = UUID.randomUUID();
-    ArtifactDto dto = new ArtifactDto(
+    Artifact dto = new Artifact(
         "test_image",
-        Kind.IMAGE,
-        "A test image description",
+        ArtifactKind.IMAGE,
         "/artifacts/" + artifactId + "/content",
-        false,
-        Status.CREATED
+        null,
+        "A test image title",
+        "A test image description",
+        ArtifactStatus.CREATED,
+        null
     );
 
-    when(artifactService.getArtifactDto(artifactId)).thenReturn(dto);
+    when(artifactService.getArtifactDomain(artifactId)).thenReturn(dto);
 
     mockMvc.perform(get("/artifacts/{artifactId}", artifactId))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.name").value("test_image"))
+        .andExpect(jsonPath("$.fileName").value("test_image"))
         .andExpect(jsonPath("$.description").value("A test image description"))
         .andExpect(jsonPath("$.kind").value("IMAGE"));
   }
@@ -67,8 +69,8 @@ class ArtifactControllerTest {
     ObjectNode contentNode = objectMapper.createObjectNode().put("hello", "world");
 
     ArtifactEntity entity = ArtifactEntity.builder()
-        .kind(Kind.STRUCTURED_JSON)
-        .status(Status.CREATED)
+        .kind(ArtifactKind.STRUCTURED_JSON)
+        .status(ArtifactStatus.CREATED)
         .content(contentNode)
         .build();
     ReflectionTestUtils.setField(entity, "id", artifactId);
@@ -91,9 +93,9 @@ class ArtifactControllerTest {
     byte[] content = "fake-image-bytes".getBytes();
 
     ArtifactEntity entity = ArtifactEntity.builder()
-        .kind(Kind.IMAGE)
-        .status(Status.CREATED)
-        .name("test_image")
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.CREATED)
+        .fileName("test_image")
         .storageKey("some-key")
         .build();
     ReflectionTestUtils.setField(entity, "id", artifactId);
@@ -119,8 +121,8 @@ class ArtifactControllerTest {
     UUID artifactId = UUID.randomUUID();
 
     ArtifactEntity entity = ArtifactEntity.builder()
-        .kind(Kind.IMAGE)
-        .status(Status.SCHEDULED)
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.GESTATING)
         .build();
     ReflectionTestUtils.setField(entity, "id", artifactId);
 

@@ -1,6 +1,7 @@
 package com.example.hypocaust.mapper;
 
 import com.example.hypocaust.db.EventEntity;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
@@ -14,7 +15,6 @@ import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
 import com.example.hypocaust.domain.event.ToolCallingEvent;
-import com.example.hypocaust.dto.ArtifactDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ObjectFactory;
 
@@ -26,14 +26,14 @@ public interface EventMapper {
   default ArtifactAddedEvent toArtifactAddedEvent(EventEntity entity) {
     return new ArtifactAddedEvent(
         entity.getTaskExecutionId(),
-        (ArtifactDto) entity.getPayload()
+        (Artifact) entity.getPayload()
     );
   }
 
   default ArtifactUpdatedEvent toArtifactUpdatedEvent(EventEntity entity) {
     return new ArtifactUpdatedEvent(
         entity.getTaskExecutionId(),
-        (ArtifactDto) entity.getPayload()
+        (Artifact) entity.getPayload()
     );
   }
 

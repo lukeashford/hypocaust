@@ -1,7 +1,5 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.db.ArtifactEntity.Kind;
-import com.example.hypocaust.db.ArtifactEntity.Status;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -55,7 +53,7 @@ public class PendingChanges {
     String name = nameGenerator.apply(artifact.description(), existingNames);
 
     // Store with generated fileName
-    added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
+    added.put(name, artifact.withName(name).withStatus(ArtifactStatus.GESTATING));
 
     return name;
   }
@@ -64,14 +62,14 @@ public class PendingChanges {
    * Add a new artifact with an explicit fileName.
    */
   public synchronized void addArtifact(String name, PendingArtifact artifact) {
-    added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
+    added.put(name, artifact.withName(name).withStatus(ArtifactStatus.GESTATING));
   }
 
   /**
    * Edit an existing artifact (creates new version).
    */
   public synchronized void editArtifact(String name, PendingArtifact artifact) {
-    edited.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
+    edited.put(name, artifact.withName(name).withStatus(ArtifactStatus.GESTATING));
   }
 
   /**
@@ -98,10 +96,10 @@ public class PendingChanges {
   public synchronized void cancelPendingArtifact(String name) {
     if (added.containsKey(name)) {
       PendingArtifact artifact = added.get(name);
-      added.put(name, artifact.withStatus(Status.CANCELLED));
+      added.put(name, artifact.withStatus(ArtifactStatus.CANCELLED));
     } else if (edited.containsKey(name)) {
       PendingArtifact artifact = edited.get(name);
-      edited.put(name, artifact.withStatus(Status.CANCELLED));
+      edited.put(name, artifact.withStatus(ArtifactStatus.CANCELLED));
     }
   }
 
@@ -180,12 +178,12 @@ public class PendingChanges {
   public synchronized List<PendingArtifact> getActivePending() {
     List<PendingArtifact> active = new ArrayList<>();
     for (PendingArtifact artifact : added.values()) {
-      if (artifact.status() != Status.CANCELLED) {
+      if (artifact.status() != ArtifactStatus.CANCELLED) {
         active.add(artifact);
       }
     }
     for (PendingArtifact artifact : edited.values()) {
-      if (artifact.status() != Status.CANCELLED) {
+      if (artifact.status() != ArtifactStatus.CANCELLED) {
         active.add(artifact);
       }
     }
@@ -198,12 +196,12 @@ public class PendingChanges {
   public synchronized List<PendingArtifact> getCancelled() {
     List<PendingArtifact> cancelled = new ArrayList<>();
     for (PendingArtifact artifact : added.values()) {
-      if (artifact.status() == Status.CANCELLED) {
+      if (artifact.status() == ArtifactStatus.CANCELLED) {
         cancelled.add(artifact);
       }
     }
     for (PendingArtifact artifact : edited.values()) {
-      if (artifact.status() == Status.CANCELLED) {
+      if (artifact.status() == ArtifactStatus.CANCELLED) {
         cancelled.add(artifact);
       }
     }
@@ -216,9 +214,9 @@ public class PendingChanges {
   public synchronized boolean hasChanges() {
     // Filter out cancelled artifacts when checking for changes
     boolean hasActiveAdded = added.values().stream()
-        .anyMatch(a -> a.status() != Status.CANCELLED);
+        .anyMatch(a -> a.status() != ArtifactStatus.CANCELLED);
     boolean hasActiveEdited = edited.values().stream()
-        .anyMatch(a -> a.status() != Status.CANCELLED);
+        .anyMatch(a -> a.status() != ArtifactStatus.CANCELLED);
     return hasActiveAdded || hasActiveEdited || !deleted.isEmpty();
   }
 
@@ -227,12 +225,12 @@ public class PendingChanges {
    */
   public synchronized TaskExecutionDelta toTaskExecutionDelta() {
     List<ArtifactChange> addedChanges = added.entrySet().stream()
-        .filter(e -> e.getValue().status() != Status.CANCELLED)
+        .filter(e -> e.getValue().status() != ArtifactStatus.CANCELLED)
         .map(e -> new ArtifactChange(e.getKey()))
         .toList();
 
     List<ArtifactChange> editedChanges = edited.entrySet().stream()
-        .filter(e -> e.getValue().status() != Status.CANCELLED)
+        .filter(e -> e.getValue().status() != ArtifactStatus.CANCELLED)
         .map(e -> new ArtifactChange(e.getKey()))
         .toList();
 
@@ -251,7 +249,7 @@ public class PendingChanges {
   /**
    * Get the kind of a pending artifact.
    */
-  public synchronized Optional<Kind> getPendingKind(String name) {
+  public synchronized Optional<ArtifactKind> getPendingKind(String name) {
     if (added.containsKey(name)) {
       return Optional.ofNullable(added.get(name).kind());
     }
@@ -292,12 +290,12 @@ public class PendingChanges {
   public synchronized boolean cancelIfPending(String name) {
     if (added.containsKey(name)) {
       PendingArtifact artifact = added.get(name);
-      added.put(name, artifact.withStatus(Status.CANCELLED));
+      added.put(name, artifact.withStatus(ArtifactStatus.CANCELLED));
       return true;
     }
     if (edited.containsKey(name)) {
       PendingArtifact artifact = edited.get(name);
-      edited.put(name, artifact.withStatus(Status.CANCELLED));
+      edited.put(name, artifact.withStatus(ArtifactStatus.CANCELLED));
       return true;
     }
     return false;

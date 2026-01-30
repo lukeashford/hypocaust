@@ -2,7 +2,7 @@
 -- Removes: branches, commits, embeddings, relations
 -- Renames: run -> task_execution
 -- Adds: predecessor_id, message, delta to task_execution
--- Adds: name, description, prompt, model, deleted, task_execution_id to artifact
+-- Adds: fileName, description, prompt, model, deleted, task_execution_id to artifact
 
 -- =====================================================
 -- DROP BRANCH AND COMMIT RELATED TABLES
@@ -39,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_task_execution_predecessor ON task_execution (pre
 -- =====================================================
 -- Add new columns
 ALTER TABLE artifact
-    ADD COLUMN IF NOT EXISTS name VARCHAR(100);
+    ADD COLUMN IF NOT EXISTS file_name VARCHAR(100);
 ALTER TABLE artifact
     ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE artifact

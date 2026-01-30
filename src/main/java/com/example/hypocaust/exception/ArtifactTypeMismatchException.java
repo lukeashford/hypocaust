@@ -1,6 +1,6 @@
 package com.example.hypocaust.exception;
 
-import com.example.hypocaust.db.ArtifactEntity.Kind;
+import com.example.hypocaust.domain.ArtifactKind;
 import lombok.Getter;
 
 /**
@@ -10,10 +10,11 @@ import lombok.Getter;
 public class ArtifactTypeMismatchException extends RuntimeException {
 
   private final String artifactName;
-  private final Kind expectedKind;
-  private final Kind actualKind;
+  private final ArtifactKind expectedKind;
+  private final ArtifactKind actualKind;
 
-  public ArtifactTypeMismatchException(String artifactName, Kind expectedKind, Kind actualKind) {
+  public ArtifactTypeMismatchException(String artifactName, ArtifactKind expectedKind,
+      ArtifactKind actualKind) {
     super(String.format("Type mismatch for artifact '%s': expected %s but got %s",
         artifactName, expectedKind, actualKind));
     this.artifactName = artifactName;

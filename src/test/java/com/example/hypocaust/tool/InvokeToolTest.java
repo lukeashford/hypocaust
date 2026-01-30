@@ -12,7 +12,6 @@ import com.example.hypocaust.operator.Operator;
 import com.example.hypocaust.operator.OperatorSpec;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
 import com.example.hypocaust.operator.result.OperatorResult;
-import com.example.hypocaust.service.ArtifactGraphService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,16 +32,13 @@ class InvokeToolTest {
   private ModelCallLogger modelCallLogger;
 
   @Mock
-  private ArtifactGraphService artifactGraphService;
-
-  @Mock
   private Operator mockOperator;
 
   private InvokeTool invokeTool;
 
   @BeforeEach
   void setUp() {
-    invokeTool = new InvokeTool(operatorRegistry, modelCallLogger, artifactGraphService);
+    invokeTool = new InvokeTool(operatorRegistry, modelCallLogger);
   }
 
   @Test
@@ -62,7 +58,7 @@ class InvokeToolTest {
 
     // Then
     assertFalse(result.ok());
-    assertTrue(result.message().contains("No operator found with name: " + operatorName));
+    assertTrue(result.message().contains("No operator found with fileName: " + operatorName));
   }
 
   @Test

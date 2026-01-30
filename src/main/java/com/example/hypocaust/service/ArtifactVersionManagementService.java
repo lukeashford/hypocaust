@@ -1,9 +1,10 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Status;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.ArtifactChange;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.domain.PendingChanges;
 import com.example.hypocaust.domain.TaskExecutionDelta;
@@ -22,9 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for artifact version management operations.
- * Handles artifact materialization and resolution, but NOT task execution lifecycle.
- * Task execution lifecycle (commit/fail) is managed by TaskService.
+ * Service for artifact version management operations. Handles artifact materialization and
+ * resolution, but NOT task execution lifecycle. Task execution lifecycle (commit/fail) is managed
+ * by TaskService.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,13 +42,14 @@ public class ArtifactVersionManagementService {
    * Materialize all pending artifacts by downloading external content and storing in database.
    * Returns the delta representing what changed, or null if no changes.
    *
-   * @param pending         The accumulated changes containing artifacts to materialize
+   * @param pending The accumulated changes containing artifacts to materialize
    * @param taskExecutionId The TaskExecution these artifacts belong to
-   * @param projectId       The project these artifacts belong to
+   * @param projectId The project these artifacts belong to
    * @return The delta of changes, or null if no changes
    */
   @Transactional
-  public TaskExecutionDelta materialize(PendingChanges pending, UUID taskExecutionId, UUID projectId) {
+  public TaskExecutionDelta materialize(PendingChanges pending, UUID taskExecutionId,
+      UUID projectId) {
     if (!pending.hasChanges()) {
       log.info("No pending changes to materialize");
       return null;
@@ -68,8 +70,7 @@ public class ArtifactVersionManagementService {
   }
 
   /**
-   * Discard all pending changes without persisting.
-   * Called when a task execution fails.
+   * Discard all pending changes without persisting. Called when a task execution fails.
    *
    * @param pending The pending changes to discard
    */
@@ -84,8 +85,8 @@ public class ArtifactVersionManagementService {
   // === Artifact Resolution ===
 
   /**
-   * Get the current artifacts for a TaskExecution by traversing history.
-   * Walks from the TaskExecution back through predecessors, progressively building state.
+   * Get the current artifacts for a TaskExecution by traversing history. Walks from the
+   * TaskExecution back through predecessors, progressively building state.
    */
   public List<ArtifactEntity> getArtifactsAtTaskExecution(UUID taskExecutionId) {
     // Build TaskExecution chain from root to target
@@ -93,8 +94,9 @@ public class ArtifactVersionManagementService {
     UUID current = taskExecutionId;
 
     while (current != null) {
-      TaskExecutionEntity taskExecution = taskExecutionRepository.findById(current)
-          .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + current));
+      final UUID currentId = current;
+      TaskExecutionEntity taskExecution = taskExecutionRepository.findById(currentId)
+          .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + currentId));
       chain.add(0, taskExecution);  // Prepend to get oldest first
       current = taskExecution.getPredecessorId();
     }
@@ -111,7 +113,7 @@ public class ArtifactVersionManagementService {
       // Add new artifacts
       for (ArtifactChange added : delta.added()) {
         ArtifactEntity artifact = artifactRepository
-            .findByTaskExecutionIdAndName(taskExecution.getId(), added.name())
+            .findByTaskExecutionIdAndFileName(taskExecution.getId(), added.name())
             .orElse(null);
         if (artifact != null) {
           state.put(added.name(), artifact);
@@ -121,7 +123,7 @@ public class ArtifactVersionManagementService {
       // Apply edits (new versions)
       for (ArtifactChange edited : delta.edited()) {
         ArtifactEntity artifact = artifactRepository
-            .findByTaskExecutionIdAndName(taskExecution.getId(), edited.name())
+            .findByTaskExecutionIdAndFileName(taskExecution.getId(), edited.name())
             .orElse(null);
         if (artifact != null) {
           state.put(edited.name(), artifact);
@@ -138,13 +140,13 @@ public class ArtifactVersionManagementService {
   }
 
   /**
-   * Get artifacts for a TaskExecution.
-   * If TaskExecution is completed with changes: return artifacts at that snapshot.
-   * If TaskExecution is in progress: return predecessor artifacts.
+   * Get artifacts for a TaskExecution. If TaskExecution is completed with changes: return artifacts
+   * at that snapshot. If TaskExecution is in progress: return predecessor artifacts.
    */
   public List<ArtifactEntity> getArtifactsForTaskExecution(UUID taskExecutionId) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
+        .orElseThrow(
+            () -> new IllegalArgumentException("TaskExecution not found: " + taskExecutionId));
 
     if (taskExecution.getStatus() == TaskExecutionEntity.Status.COMPLETED
         && taskExecution.getDelta() != null) {
@@ -176,17 +178,17 @@ public class ArtifactVersionManagementService {
   }
 
   /**
-   * Get all versions of an artifact by name (across TaskExecutions).
+   * Get all versions of an artifact by fileName (across TaskExecutions).
    */
   public List<ArtifactEntity> getVersionHistory(UUID projectId, String artifactName) {
-    return artifactRepository.findByProjectIdAndName(projectId, artifactName);
+    return artifactRepository.findByProjectIdAndFileName(projectId, artifactName);
   }
 
   // === Used by completion process ===
 
   /**
-   * Download and store a pending artifact.
-   * Called during completion for artifacts that have external URLs.
+   * Download and store a pending artifact. Called during completion for artifacts that have
+   * external URLs.
    */
   @Transactional
   public void materializeArtifact(PendingArtifact pending, UUID taskExecutionId, UUID projectId) {
@@ -200,7 +202,8 @@ public class ArtifactVersionManagementService {
           data = stream.readAllBytes();
         }
 
-        String mimeType = pending.kind() == ArtifactEntity.Kind.IMAGE ? "image/png" : "application/octet-stream";
+        String mimeType =
+            pending.kind() == ArtifactKind.IMAGE ? "image/png" : "application/octet-stream";
         storageKey = storageService.store(data, mimeType, pending.name());
         log.info("Downloaded and stored artifact {} with key {}", pending.name(), storageKey);
       } catch (Exception e) {
@@ -212,7 +215,8 @@ public class ArtifactVersionManagementService {
     ArtifactEntity artifact = ArtifactEntity.builder()
         .projectId(projectId)
         .taskExecutionId(taskExecutionId)
-        .name(pending.name())
+        .fileName(pending.name())
+        .title(pending.title())
         .kind(pending.kind())
         .description(pending.description())
         .prompt(pending.prompt())
@@ -220,8 +224,7 @@ public class ArtifactVersionManagementService {
         .storageKey(storageKey)
         .content(pending.inlineContent())
         .metadata(pending.metadata())
-        .status(Status.CREATED)
-        .deleted(false)
+        .status(ArtifactStatus.CREATED)
         .build();
 
     artifactRepository.save(artifact);
@@ -231,20 +234,22 @@ public class ArtifactVersionManagementService {
   // === Helper methods for checking artifact existence ===
 
   /**
-   * Check if an artifact name exists in a TaskExecution's state.
+   * Check if an artifact fileName exists in a TaskExecution's state.
    */
   public boolean artifactExistsAtTaskExecution(UUID taskExecutionId, String name) {
     List<ArtifactEntity> artifacts = getArtifactsAtTaskExecution(taskExecutionId);
-    return artifacts.stream().anyMatch(a -> name.equals(a.getName()) && !a.isDeleted());
+    return artifacts.stream()
+        .anyMatch(a -> name.equals(a.getFileName()) && a.getStatus() != ArtifactStatus.DELETED);
   }
 
   /**
    * Get the kind of an artifact at a TaskExecution.
    */
-  public Optional<ArtifactEntity.Kind> getArtifactKindAtTaskExecution(UUID taskExecutionId, String name) {
+  public Optional<ArtifactKind> getArtifactKindAtTaskExecution(UUID taskExecutionId,
+      String name) {
     List<ArtifactEntity> artifacts = getArtifactsAtTaskExecution(taskExecutionId);
     return artifacts.stream()
-        .filter(a -> name.equals(a.getName()) && !a.isDeleted())
+        .filter(a -> name.equals(a.getFileName()) && a.getStatus() != ArtifactStatus.DELETED)
         .map(ArtifactEntity::getKind)
         .findFirst();
   }

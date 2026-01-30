@@ -5,8 +5,8 @@ import com.example.hypocaust.domain.TaskExecutionContext;
 import java.util.UUID;
 
 /**
- * Thread-local holder for TaskExecutionContext.
- * Provides convenience methods for common operations.
+ * Thread-local holder for TaskExecutionContext. Provides convenience methods for common
+ * operations.
  */
 public final class TaskExecutionContextHolder {
 
@@ -56,7 +56,7 @@ public final class TaskExecutionContextHolder {
   /**
    * Schedule a new artifact for creation.
    *
-   * @return the generated artifact name
+   * @return the generated artifact fileName
    */
   public static String addArtifact(PendingArtifact artifact) {
     return getContext().addArtifact(artifact);
@@ -107,8 +107,8 @@ public final class TaskExecutionContextHolder {
   }
 
   /**
-   * Get indentation string for the current depth level.
-   * Returns "  " (2 spaces) for each level of nesting.
+   * Get indentation string for the current depth level. Returns "  " (2 spaces) for each level of
+   * nesting.
    */
   public static String getIndent() {
     return "  ".repeat(operatorDepth.get());

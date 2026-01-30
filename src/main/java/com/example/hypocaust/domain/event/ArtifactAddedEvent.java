@@ -1,11 +1,11 @@
 package com.example.hypocaust.domain.event;
 
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.domain.Artifact;
 import java.util.UUID;
 
-public final class ArtifactAddedEvent extends ArtifactEvent<ArtifactDto> {
+public final class ArtifactAddedEvent extends ArtifactEvent<Artifact> {
 
-  public ArtifactAddedEvent(UUID taskExecutionId, ArtifactDto payload) {
+  public ArtifactAddedEvent(UUID taskExecutionId, Artifact payload) {
     super(taskExecutionId, payload);
   }
 

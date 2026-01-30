@@ -1,9 +1,9 @@
 package com.example.hypocaust.domain.event;
 
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ErrorEvent.ErrorEventPayload;
 import com.example.hypocaust.domain.event.Event.EventPayload;
 import com.example.hypocaust.domain.event.ToolCallingEvent.ToolCallingEventPayload;
-import com.example.hypocaust.dto.ArtifactDto;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DatabindContext;
 import com.fasterxml.jackson.databind.JavaType;
@@ -18,8 +18,8 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   static {
     Map<EventType, Class<? extends EventPayload>> map = new HashMap<>();
-    map.put(EventType.ARTIFACT_ADDED, ArtifactDto.class);
-    map.put(EventType.ARTIFACT_UPDATED, ArtifactDto.class);
+    map.put(EventType.ARTIFACT_ADDED, Artifact.class);
+    map.put(EventType.ARTIFACT_UPDATED, Artifact.class);
     map.put(EventType.ARTIFACT_REMOVED, ArtifactRemovedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.Payload.class);

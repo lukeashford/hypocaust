@@ -9,9 +9,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EventLogRepository extends JpaRepository<EventEntity, UUID> {
 
-  List<EventEntity> findByProjectIdOrderById(UUID projectId);
+  List<EventEntity> findByTaskExecutionIdOrderById(UUID taskExecutionId);
 
-  List<EventEntity> findByProjectIdAndIdGreaterThanOrderById(UUID projectId, UUID id);
+  List<EventEntity> findByTaskExecutionIdAndIdGreaterThanOrderById(UUID taskExecutionId, UUID id);
 
-  boolean existsByIdAndProjectId(UUID id, UUID projectId);
+  boolean existsByIdAndTaskExecutionId(UUID id, UUID taskExecutionId);
 }
