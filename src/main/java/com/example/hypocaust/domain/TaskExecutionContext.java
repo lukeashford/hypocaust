@@ -3,137 +3,81 @@ package com.example.hypocaust.domain;
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.db.ArtifactEntity.Kind;
 import com.example.hypocaust.db.ArtifactEntity.Status;
+import com.example.hypocaust.domain.event.ArtifactAddedEvent;
+import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
+import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
+import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
 import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
+import com.example.hypocaust.service.ArtifactNameGeneratorService;
+import com.example.hypocaust.service.ArtifactVersionManagementService;
+import com.example.hypocaust.service.events.EventService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
- * Thread-local context for the current TaskExecution.
- * Replaces both RunContextHolder and ExecutionContext with a unified approach.
- * Also incorporates task progress tracking (previously in TaskProgressService).
+ * Thread-local context for the current TaskExecution. Replaces both RunContextHolder and
+ * ExecutionContext with a unified approach. Also incorporates task progress tracking (previously in
+ * TaskProgressService).
  */
 @Getter
+@RequiredArgsConstructor
 public class TaskExecutionContext {
 
   private final UUID projectId;
   private final UUID taskExecutionId;
   private final UUID predecessorId;
-  private final PendingChanges pending;
-  private final TaskTree taskProgress;
 
-  // Callbacks for event emission
-  private Consumer<ArtifactAddedEventData> onArtifactAdded;
-  private Consumer<ArtifactUpdatedEventData> onArtifactUpdated;
-  private Consumer<ArtifactRemovedEventData> onArtifactRemoved;
-  private Consumer<TaskTree> onTaskProgressUpdated;
+  private final EventService eventService;
+  private final ArtifactVersionManagementService versionService;
+  private final ArtifactNameGeneratorService nameGeneratorService;
 
-  // Function to check if artifact exists in predecessor state
-  private Function<String, Boolean> artifactExistsChecker;
-
-  // Function to get artifact kind from predecessor state
-  private Function<String, Optional<Kind>> artifactKindGetter;
-
-  // Function to get all artifact names from predecessor state
-  private Function<Void, Set<String>> artifactNamesGetter;
-
-  // Function to generate artifact name from description
-  private Function<NameGenerationRequest, String> nameGenerator;
-
-  // Function to get current artifacts (for getCurrentArtifacts method)
-  private Function<Void, List<ArtifactEntity>> currentArtifactsGetter;
-
-  public TaskExecutionContext(UUID projectId, UUID taskExecutionId, UUID predecessorId) {
-    this.projectId = projectId;
-    this.taskExecutionId = taskExecutionId;
-    this.predecessorId = predecessorId;
-    this.pending = new PendingChanges();
-    this.taskProgress = new TaskTree();
-  }
-
-  // === Event callback setters ===
-
-  public void setOnArtifactAdded(Consumer<ArtifactAddedEventData> callback) {
-    this.onArtifactAdded = callback;
-  }
-
-  public void setOnArtifactUpdated(Consumer<ArtifactUpdatedEventData> callback) {
-    this.onArtifactUpdated = callback;
-  }
-
-  public void setOnArtifactRemoved(Consumer<ArtifactRemovedEventData> callback) {
-    this.onArtifactRemoved = callback;
-  }
-
-  public void setOnTaskProgressUpdated(Consumer<TaskTree> callback) {
-    this.onTaskProgressUpdated = callback;
-  }
-
-  public void setArtifactExistsChecker(Function<String, Boolean> checker) {
-    this.artifactExistsChecker = checker;
-  }
-
-  public void setArtifactKindGetter(Function<String, Optional<Kind>> getter) {
-    this.artifactKindGetter = getter;
-  }
-
-  public void setArtifactNamesGetter(Function<Void, Set<String>> getter) {
-    this.artifactNamesGetter = getter;
-  }
-
-  public void setNameGenerator(Function<NameGenerationRequest, String> generator) {
-    this.nameGenerator = generator;
-  }
-
-  public void setCurrentArtifactsGetter(Function<Void, List<ArtifactEntity>> getter) {
-    this.currentArtifactsGetter = getter;
-  }
-
-  // === Artifact Hooks (called by operators) ===
+  private final PendingChanges pending = new PendingChanges();
+  private final TaskTree taskProgress = new TaskTree();
 
   /**
-   * Schedule a new artifact for creation.
-   * Generates a unique name from the description using a small LLM.
-   * If the generated name conflicts, retries with an exclusion list until a unique name is found.
-   * Emits artifact.added event with name, kind, description, externalUrl, inlineContent, metadata.
+   * Schedule a new artifact for creation. Generates a unique fileName from the description using a
+   * small LLM. If the generated fileName conflicts, retries with an exclusion list until a unique
+   * fileName is found. Emits artifact.added event with fileName, kind, description, externalUrl,
+   * inlineContent, metadata.
    *
-   * @return the generated artifact name (for use in subsequent updatePendingArtifact calls)
+   * @return the generated artifact fileName (for use in subsequent updatePendingArtifact calls)
    */
   public String addArtifact(PendingArtifact artifact) {
-    // Generate unique name from description
+    // Generate unique fileName from description
     String name = generateUniqueName(artifact.description());
 
     // Add to pending changes
     pending.addArtifact(name, artifact);
 
     // Emit event
-    if (onArtifactAdded != null) {
-      onArtifactAdded.accept(new ArtifactAddedEventData(
-          name,
-          artifact.kind(),
-          artifact.description(),
-          artifact.externalUrl(),
-          artifact.inlineContent(),
-          artifact.metadata()
-      ));
-    }
+    eventService.publish(new ArtifactAddedEvent(taskExecutionId, new ArtifactDto(
+        name,
+        artifact.kind(),
+        artifact.externalUrl(),
+        artifact.inlineContent(),
+        artifact.title(),
+        artifact.description(),
+        true,
+        artifact.status(),
+        artifact.metadata()
+    )));
 
     return name;
   }
 
   /**
-   * Schedule an edit to an existing artifact (creates new version).
-   * Emits artifact.updated event with name, kind, description, externalUrl, inlineContent, metadata.
+   * Schedule an edit to an existing artifact (creates new version). Emits artifact.updated event
+   * with fileName, kind, description, externalUrl, inlineContent, metadata.
    *
-   * @throws ArtifactNotFoundException     if name doesn't exist in predecessor's state
+   * @throws ArtifactNotFoundException if fileName doesn't exist in predecessor's state
    * @throws ArtifactTypeMismatchException if pending artifact kind differs from existing
    */
   public void editArtifact(String name, PendingArtifact newVersion) {
@@ -142,9 +86,11 @@ public class TaskExecutionContext {
       throw new ArtifactNotFoundException("Artifact not found: " + name);
     }
 
-    // Verify type matches if kind getter is available
-    if (artifactKindGetter != null && newVersion.kind() != null) {
-      Optional<Kind> existingKind = artifactKindGetter.apply(name);
+    // Verify type matches
+    if (newVersion.kind() != null) {
+      Optional<Kind> existingKind = predecessorId != null
+          ? versionService.getArtifactKindAtTaskExecution(predecessorId, name)
+          : Optional.empty();
       if (existingKind.isPresent() && !existingKind.get().equals(newVersion.kind())) {
         throw new ArtifactTypeMismatchException(name, existingKind.get(), newVersion.kind());
       }
@@ -154,22 +100,23 @@ public class TaskExecutionContext {
     pending.editArtifact(name, newVersion);
 
     // Emit event
-    if (onArtifactUpdated != null) {
-      onArtifactUpdated.accept(new ArtifactUpdatedEventData(
-          name,
-          newVersion.description(),
-          newVersion.externalUrl(),
-          newVersion.inlineContent(),
-          newVersion.metadata()
-      ));
-    }
+    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new ArtifactDto(
+        name,
+        newVersion.kind(),
+        newVersion.externalUrl(),
+        newVersion.inlineContent(),
+        newVersion.title(),
+        newVersion.description(),
+        true,
+        newVersion.status(),
+        newVersion.metadata()
+    )));
   }
 
   /**
-   * Schedule an artifact for deletion (soft delete).
-   * Emits artifact.removed event with name.
+   * Schedule an artifact for deletion (soft delete). Emits artifact.removed event with fileName.
    *
-   * @throws ArtifactNotFoundException if name doesn't exist in predecessor's state
+   * @throws ArtifactNotFoundException if fileName doesn't exist in predecessor's state
    */
   public void deleteArtifact(String name) {
     // Verify artifact exists
@@ -181,59 +128,57 @@ public class TaskExecutionContext {
     pending.deleteArtifact(name);
 
     // Emit event
-    if (onArtifactRemoved != null) {
-      onArtifactRemoved.accept(new ArtifactRemovedEventData(name));
-    }
+    eventService.publish(new ArtifactRemovedEvent(taskExecutionId, name));
   }
 
   /**
-   * Update a pending artifact that was previously scheduled via addArtifact or editArtifact.
-   * Does NOT introduce a new change - just updates the pending entry.
-   * Emits artifact.updated event with name, kind, description, externalUrl, inlineContent, metadata.
-   * Used by operators to update progress (e.g., streaming text tokens, image generation completion).
+   * Update a pending artifact that was previously scheduled via addArtifact or editArtifact. Does
+   * NOT introduce a new change - just updates the pending entry. Emits artifact.updated event with
+   * fileName, kind, description, externalUrl, inlineContent, metadata. Used by operators to update
+   * progress (e.g., streaming text tokens, image generation completion).
    *
-   * @throws IllegalStateException if no pending artifact with this name exists
+   * @throws IllegalStateException if no pending artifact with this fileName exists
    */
   public void updatePendingArtifact(String name, PendingArtifact newVersion) {
     // Use atomic method to avoid race condition
     boolean updated = pending.updateIfPending(name, newVersion);
     if (!updated) {
-      throw new IllegalStateException("No pending artifact with name: " + name);
+      throw new IllegalStateException("No pending artifact with fileName: " + name);
     }
 
     // Emit event
-    if (onArtifactUpdated != null) {
-      onArtifactUpdated.accept(new ArtifactUpdatedEventData(
-          name,
-          newVersion.description(),
-          newVersion.externalUrl(),
-          newVersion.inlineContent(),
-          newVersion.metadata()
-      ));
-    }
+    eventService.publish(new ArtifactUpdatedEvent(taskExecutionId, new ArtifactDto(
+        name,
+        newVersion.kind(),
+        newVersion.externalUrl(),
+        newVersion.inlineContent(),
+        newVersion.title(),
+        newVersion.description(),
+        true,
+        newVersion.status(),
+        newVersion.metadata()
+    )));
   }
 
   /**
-   * Cancel a pending artifact that was previously scheduled.
-   * Emits artifact.removed event with name.
+   * Cancel a pending artifact that was previously scheduled. Emits artifact.removed event with
+   * fileName.
    *
-   * @throws IllegalStateException if no pending artifact with this name exists
+   * @throws IllegalStateException if no pending artifact with this fileName exists
    */
   public void cancelPendingArtifact(String name) {
     // Use atomic method to avoid race condition
     boolean cancelled = pending.cancelIfPending(name);
     if (!cancelled) {
-      throw new IllegalStateException("No pending artifact with name: " + name);
+      throw new IllegalStateException("No pending artifact with fileName: " + name);
     }
 
     // Emit event
-    if (onArtifactRemoved != null) {
-      onArtifactRemoved.accept(new ArtifactRemovedEventData(name));
-    }
+    eventService.publish(new ArtifactRemovedEvent(taskExecutionId, name));
   }
 
   /**
-   * Check if an artifact name exists in current state.
+   * Check if an artifact fileName exists in current state.
    */
   public boolean artifactExists(String name) {
     // Check pending first
@@ -242,11 +187,9 @@ public class TaskExecutionContext {
     }
 
     // Check predecessor state
-    if (artifactExistsChecker != null) {
-      return artifactExistsChecker.apply(name) && !pending.isDeleted(name);
-    }
-
-    return false;
+    return predecessorId != null
+        && versionService.artifactExistsAtTaskExecution(predecessorId, name)
+        && !pending.isDeleted(name);
   }
 
   /**
@@ -256,36 +199,43 @@ public class TaskExecutionContext {
     List<ArtifactDto> result = new ArrayList<>();
 
     // Get artifacts from predecessor
-    if (currentArtifactsGetter != null) {
-      List<ArtifactEntity> predecessorArtifacts = currentArtifactsGetter.apply(null);
+    if (predecessorId != null) {
+      List<ArtifactEntity> predecessorArtifacts = versionService.getArtifactsAtTaskExecution(
+          predecessorId);
       for (ArtifactEntity entity : predecessorArtifacts) {
         // Skip deleted artifacts
-        if (pending.isDeleted(entity.getName())) {
+        if (pending.isDeleted(entity.getFileName())) {
           continue;
         }
 
         // Check if there's a pending edit
-        Optional<PendingArtifact> pendingEdit = pending.getPendingArtifact(entity.getName());
-        if (pendingEdit.isPresent() && !pending.isAdded(entity.getName())) {
+        Optional<PendingArtifact> pendingEdit = pending.getPendingArtifact(entity.getFileName());
+        if (pendingEdit.isPresent() && !pending.isAdded(entity.getFileName())) {
           // Return the pending version
           PendingArtifact pa = pendingEdit.get();
           result.add(new ArtifactDto(
               pa.name(),
               pa.kind(),
-              pa.description(),
               pa.externalUrl(),
+              pa.inlineContent(),
+              pa.title(),
+              pa.description(),
               true,
-              pa.status()
+              pa.status(),
+              pa.metadata()
           ));
         } else {
           // Return the existing version
           result.add(new ArtifactDto(
-              entity.getName(),
+              entity.getFileName(),
               entity.getKind(),
-              entity.getDescription(),
               entity.getStorageKey() != null ? "/artifacts/" + entity.getId() + "/content" : null,
+              entity.getContent(),
+              entity.getTitle(),
+              entity.getDescription(),
               false,
-              entity.getStatus()
+              entity.getStatus(),
+              entity.getMetadata()
           ));
         }
       }
@@ -297,10 +247,13 @@ public class TaskExecutionContext {
         result.add(new ArtifactDto(
             pa.name(),
             pa.kind(),
-            pa.description(),
             pa.externalUrl(),
+            pa.inlineContent(),
+            pa.title(),
+            pa.description(),
             true,
-            pa.status()
+            pa.status(),
+            pa.metadata()
         ));
       }
     }
@@ -311,15 +264,11 @@ public class TaskExecutionContext {
   // === Task Progress (thread-local) ===
 
   /**
-   * Publish subtasks for a path.
-   * Called by operators to declare their planned work.
+   * Publish subtasks for a path. Called by operators to declare their planned work.
    */
   public void publishSubtasks(String pathPrefix, List<TaskItem> subtasks) {
     taskProgress.addSubtasks(pathPrefix, subtasks);
-
-    if (onTaskProgressUpdated != null) {
-      onTaskProgressUpdated.accept(taskProgress);
-    }
+    eventService.publish(new TaskProgressUpdatedEvent(taskExecutionId, taskProgress));
   }
 
   /**
@@ -327,10 +276,7 @@ public class TaskExecutionContext {
    */
   public void updateTaskStatus(String taskId, TaskStatus status) {
     taskProgress.updateStatus(taskId, status);
-
-    if (onTaskProgressUpdated != null) {
-      onTaskProgressUpdated.accept(taskProgress);
-    }
+    eventService.publish(new TaskProgressUpdatedEvent(taskExecutionId, taskProgress));
   }
 
   /**
@@ -343,51 +289,17 @@ public class TaskExecutionContext {
   // === Helper methods ===
 
   private String generateUniqueName(String description) {
-    if (nameGenerator == null) {
-      // Fallback: generate simple name from description
-      return sanitizeName(description);
-    }
-
-    Set<String> existingNames = artifactNamesGetter != null
-        ? artifactNamesGetter.apply(null)
-        : Set.of();
+    Set<String> existingNames = predecessorId != null
+        ? versionService.getArtifactsAtTaskExecution(predecessorId).stream()
+        .filter(a -> a.getStatus() != Status.DELETED)
+        .map(ArtifactEntity::getFileName)
+        .collect(Collectors.toSet())
+        : new java.util.HashSet<>();
 
     // Add pending names to exclusion list
-    existingNames = new java.util.HashSet<>(existingNames);
     existingNames.addAll(pending.getAddedNames());
     existingNames.addAll(pending.getEditedNames());
 
-    return nameGenerator.apply(new NameGenerationRequest(description, existingNames));
+    return nameGeneratorService.generateUniqueName(description, existingNames);
   }
-
-  private String sanitizeName(String description) {
-    // Simple fallback: convert description to snake_case
-    return description.toLowerCase()
-        .replaceAll("[^a-z0-9]+", "_")
-        .replaceAll("^_+|_+$", "")
-        .substring(0, Math.min(50, description.length()));
-  }
-
-  // === Event data records ===
-
-  public record ArtifactAddedEventData(
-      String name,
-      Kind kind,
-      String description,
-      String externalUrl,
-      com.fasterxml.jackson.databind.JsonNode inlineContent,
-      com.fasterxml.jackson.databind.JsonNode metadata
-  ) {}
-
-  public record ArtifactUpdatedEventData(
-      String name,
-      String description,
-      String externalUrl,
-      com.fasterxml.jackson.databind.JsonNode inlineContent,
-      com.fasterxml.jackson.databind.JsonNode metadata
-  ) {}
-
-  public record ArtifactRemovedEventData(String name) {}
-
-  public record NameGenerationRequest(String description, Set<String> existingNames) {}
 }

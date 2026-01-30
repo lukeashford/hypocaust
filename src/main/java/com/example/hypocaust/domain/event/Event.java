@@ -17,17 +17,18 @@ import lombok.Getter;
 )
 @JsonTypeIdResolver(EventTypeIdResolver.class)
 public abstract sealed class Event<T extends EventPayload>
-    permits ArtifactEvent, TaskExecutionEvent, ToolEvent, ErrorEvent, OperatorEvent, TaskProgressEvent {
+    permits ArtifactEvent, TaskExecutionEvent, ToolEvent, ErrorEvent, OperatorEvent,
+    TaskProgressEvent {
 
-  private final UUID projectId;
-  private final UUID projectSeq;
+  private final UUID taskExecutionId;
+  private final UUID taskExecutionSeq;
   private final T payload;
   private final Instant occurredAt;
   private final EventType type;
 
-  protected Event(UUID projectId, T payload) {
-    this.projectId = projectId;
-    this.projectSeq = UuidCreator.getTimeOrderedEpoch();
+  protected Event(UUID taskExecutionId, T payload) {
+    this.taskExecutionId = taskExecutionId;
+    this.taskExecutionSeq = UuidCreator.getTimeOrderedEpoch();
     this.payload = payload;
     this.occurredAt = Instant.now();
     this.type = type();

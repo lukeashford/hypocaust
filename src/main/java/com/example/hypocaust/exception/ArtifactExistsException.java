@@ -3,7 +3,7 @@ package com.example.hypocaust.exception;
 import lombok.Getter;
 
 /**
- * Thrown when attempting to create an artifact with a name that already exists.
+ * Thrown when attempting to create an artifact with a fileName that already exists.
  */
 @Getter
 public class ArtifactExistsException extends RuntimeException {

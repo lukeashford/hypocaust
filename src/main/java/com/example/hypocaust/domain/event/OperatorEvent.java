@@ -7,8 +7,8 @@ import java.util.UUID;
 public abstract sealed class OperatorEvent<T extends OperatorEventPayload> extends Event<T>
     permits OperatorStartedEvent, OperatorFinishedEvent, OperatorFailedEvent {
 
-  protected OperatorEvent(UUID projectId, T payload) {
-    super(projectId, payload);
+  protected OperatorEvent(UUID taskExecutionId, T payload) {
+    super(taskExecutionId, payload);
   }
 
   public interface OperatorEventPayload extends EventPayload {

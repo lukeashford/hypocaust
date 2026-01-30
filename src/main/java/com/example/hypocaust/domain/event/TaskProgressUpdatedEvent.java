@@ -3,10 +3,11 @@ package com.example.hypocaust.domain.event;
 import com.example.hypocaust.domain.TaskTree;
 import java.util.UUID;
 
-public final class TaskProgressUpdatedEvent extends TaskProgressEvent<TaskProgressUpdatedEvent.Payload> {
+public final class TaskProgressUpdatedEvent extends
+    TaskProgressEvent<TaskProgressUpdatedEvent.Payload> {
 
-  public TaskProgressUpdatedEvent(UUID projectId, TaskTree taskTree) {
-    super(projectId, new Payload(taskTree));
+  public TaskProgressUpdatedEvent(UUID taskExecutionId, TaskTree taskTree) {
+    super(taskExecutionId, new Payload(taskTree));
   }
 
   @Override

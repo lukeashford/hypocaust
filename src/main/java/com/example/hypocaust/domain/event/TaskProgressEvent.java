@@ -6,8 +6,8 @@ import java.util.UUID;
 public abstract sealed class TaskProgressEvent<T extends TaskProgressEventPayload> extends Event<T>
     permits TaskProgressUpdatedEvent {
 
-  protected TaskProgressEvent(UUID projectId, T payload) {
-    super(projectId, payload);
+  protected TaskProgressEvent(UUID taskExecutionId, T payload) {
+    super(taskExecutionId, payload);
   }
 
   public interface TaskProgressEventPayload extends EventPayload {

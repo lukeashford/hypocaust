@@ -3,7 +3,7 @@ package com.example.hypocaust.dto;
 import java.time.Instant;
 import java.util.UUID;
 
-public record RunDto(
+public record TaskExecutionDto(
     UUID id,
     UUID projectId,
     String task,

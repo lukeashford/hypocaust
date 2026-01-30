@@ -1,6 +1,6 @@
 package com.example.hypocaust.logging;
 
-import com.example.hypocaust.operator.RunContextHolder;
+import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -16,8 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Logger for structured model call/response logging to files.
- * Creates directory structure: logs/{projectId}/{runId}/{sequence}-{call|response}.json
+ * Logger for structured model call/response logging to files. Creates directory structure:
+ * logs/{projectId}/{runId}/{sequence}-{call|response}.json
  */
 @Component
 @Slf4j
@@ -25,7 +25,8 @@ public class ModelCallLogger {
 
   private static final String LOG_BASE_DIR = "logs";
   private final ObjectMapper objectMapper;
-  private final ThreadLocal<AtomicInteger> callSequence = ThreadLocal.withInitial(() -> new AtomicInteger(0));
+  private final ThreadLocal<AtomicInteger> callSequence = ThreadLocal.withInitial(
+      () -> new AtomicInteger(0));
 
   public ModelCallLogger() {
     this.objectMapper = new ObjectMapper()
@@ -39,8 +40,8 @@ public class ModelCallLogger {
    */
   public void logCall(String operatorName, Object request) {
     try {
-      final var projectId = RunContextHolder.getProjectId();
-      final var runId = RunContextHolder.getRunId();
+      final var projectId = TaskExecutionContextHolder.getProjectId();
+      final var runId = TaskExecutionContextHolder.getTaskExecutionId();
 
       if (projectId == null || runId == null) {
         log.debug("Skipping model call log - no run context available");
@@ -70,8 +71,8 @@ public class ModelCallLogger {
    */
   public void logResponse(String operatorName, Object response) {
     try {
-      final var projectId = RunContextHolder.getProjectId();
-      final var runId = RunContextHolder.getRunId();
+      final var projectId = TaskExecutionContextHolder.getProjectId();
+      final var runId = TaskExecutionContextHolder.getTaskExecutionId();
 
       if (projectId == null || runId == null) {
         log.debug("Skipping model response log - no run context available");
@@ -101,8 +102,8 @@ public class ModelCallLogger {
    */
   public void logLedger(Object ledger) {
     try {
-      final var projectId = RunContextHolder.getProjectId();
-      final var runId = RunContextHolder.getRunId();
+      final var projectId = TaskExecutionContextHolder.getProjectId();
+      final var runId = TaskExecutionContextHolder.getTaskExecutionId();
 
       if (projectId == null || runId == null) {
         log.debug("Skipping ledger log - no run context available");
@@ -143,7 +144,15 @@ public class ModelCallLogger {
   }
 
   // Log entry records
-  record ModelCallEntry(Instant timestamp, String operator, int sequence, Object request) {}
-  record ModelResponseEntry(Instant timestamp, String operator, int sequence, Object response) {}
-  record LedgerEntry(Instant timestamp, Object ledger) {}
+  record ModelCallEntry(Instant timestamp, String operator, int sequence, Object request) {
+
+  }
+
+  record ModelResponseEntry(Instant timestamp, String operator, int sequence, Object response) {
+
+  }
+
+  record LedgerEntry(Instant timestamp, Object ledger) {
+
+  }
 }

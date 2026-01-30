@@ -4,8 +4,8 @@ import java.util.UUID;
 
 public final class ArtifactRemovedEvent extends ArtifactEvent<ArtifactRemovedEvent.Payload> {
 
-  public ArtifactRemovedEvent(UUID projectId, String name) {
-    super(projectId, new Payload(name));
+  public ArtifactRemovedEvent(UUID taskExecutionId, String name) {
+    super(taskExecutionId, new Payload(name));
   }
 
   @Override
@@ -13,7 +13,7 @@ public final class ArtifactRemovedEvent extends ArtifactEvent<ArtifactRemovedEve
     return EventType.ARTIFACT_REMOVED;
   }
 
-  public record Payload(String name) implements ArtifactEventPayload {
+  public record Payload(String fileName) implements ArtifactEventPayload {
 
   }
 }

@@ -29,7 +29,7 @@ public class TaskProgressController {
    * @param taskExecutionId the TaskExecution ID
    * @return list of task progress items as TaskItem DTOs
    */
-  @GetMapping(Routes.TASK_EXECUTION_TASKS)
+  @GetMapping(Routes.TASK_EXECUTION_TODOLIST)
   public ResponseEntity<List<TaskItem>> getTaskProgress(@PathVariable UUID taskExecutionId) {
     log.info("Fetching task progress for TaskExecution: {}", taskExecutionId);
 

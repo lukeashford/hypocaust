@@ -13,8 +13,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Accumulator for changes made during a TaskExecution.
- * Uses name-based tracking for artifacts.
+ * Accumulator for changes made during a TaskExecution. Uses fileName-based tracking for artifacts.
  * Thread-safe for concurrent modifications.
  */
 public class PendingChanges {
@@ -27,20 +26,21 @@ public class PendingChanges {
   private BiFunction<String, Set<String>, String> nameGenerator;
 
   /**
-   * Set the name generator callback.
+   * Set the fileName generator callback.
    *
-   * @param generator function that takes (description, existingNames) and returns a unique name
+   * @param generator function that takes (description, existingNames) and returns a unique
+   * fileName
    */
   public void setNameGenerator(BiFunction<String, Set<String>, String> generator) {
     this.nameGenerator = generator;
   }
 
   /**
-   * Add a new artifact, generating a unique name from its description.
-   * Uses the configured name generator callback.
+   * Add a new artifact, generating a unique fileName from its description. Uses the configured
+   * fileName generator callback.
    *
-   * @return the generated artifact name
-   * @throws IllegalStateException if no name generator is configured
+   * @return the generated artifact fileName
+   * @throws IllegalStateException if no fileName generator is configured
    */
   public synchronized String add(PendingArtifact artifact) {
     if (nameGenerator == null) {
@@ -51,17 +51,17 @@ public class PendingChanges {
     Set<String> existingNames = new HashSet<>(added.keySet());
     existingNames.addAll(edited.keySet());
 
-    // Generate unique name
+    // Generate unique fileName
     String name = nameGenerator.apply(artifact.description(), existingNames);
 
-    // Store with generated name
+    // Store with generated fileName
     added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
 
     return name;
   }
 
   /**
-   * Add a new artifact with an explicit name.
+   * Add a new artifact with an explicit fileName.
    */
   public synchronized void addArtifact(String name, PendingArtifact artifact) {
     added.put(name, artifact.withName(name).withStatus(Status.SCHEDULED));
@@ -127,7 +127,7 @@ public class PendingChanges {
   }
 
   /**
-   * Get a pending artifact by name.
+   * Get a pending artifact by fileName.
    */
   public synchronized Optional<PendingArtifact> getPendingArtifact(String name) {
     if (added.containsKey(name)) {
@@ -223,8 +223,7 @@ public class PendingChanges {
   }
 
   /**
-   * Build a TaskExecutionDelta from these pending changes.
-   * Only includes non-cancelled artifacts.
+   * Build a TaskExecutionDelta from these pending changes. Only includes non-cancelled artifacts.
    */
   public synchronized TaskExecutionDelta toTaskExecutionDelta() {
     List<ArtifactChange> addedChanges = added.entrySet().stream()
@@ -267,8 +266,8 @@ public class PendingChanges {
   // =====================================================
 
   /**
-   * Atomically update a pending artifact if it exists.
-   * Fixes race condition where isPending() and updatePendingArtifact() are called separately.
+   * Atomically update a pending artifact if it exists. Fixes race condition where isPending() and
+   * updatePendingArtifact() are called separately.
    *
    * @return true if the artifact was pending and was updated, false otherwise
    */
@@ -285,8 +284,8 @@ public class PendingChanges {
   }
 
   /**
-   * Atomically cancel a pending artifact if it exists.
-   * Fixes race condition where isPending() and cancelPendingArtifact() are called separately.
+   * Atomically cancel a pending artifact if it exists. Fixes race condition where isPending() and
+   * cancelPendingArtifact() are called separately.
    *
    * @return true if the artifact was pending and was cancelled, false otherwise
    */

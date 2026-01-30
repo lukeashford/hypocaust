@@ -1,27 +1,16 @@
 package com.example.hypocaust.domain.event;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.example.hypocaust.dto.ArtifactDto;
 import java.util.UUID;
 
-public final class ArtifactUpdatedEvent extends ArtifactEvent<ArtifactUpdatedEvent.Payload> {
+public final class ArtifactUpdatedEvent extends ArtifactEvent<ArtifactDto> {
 
-  public ArtifactUpdatedEvent(UUID projectId, String name, String description,
-      String externalUrl, JsonNode inlineContent, JsonNode metadata) {
-    super(projectId, new Payload(name, description, externalUrl, inlineContent, metadata));
+  public ArtifactUpdatedEvent(UUID taskExecutionId, ArtifactDto payload) {
+    super(taskExecutionId, payload);
   }
 
   @Override
   public EventType type() {
     return EventType.ARTIFACT_UPDATED;
-  }
-
-  public record Payload(
-      String name,
-      String description,
-      String externalUrl,
-      JsonNode inlineContent,
-      JsonNode metadata
-  ) implements ArtifactEventPayload {
-
   }
 }

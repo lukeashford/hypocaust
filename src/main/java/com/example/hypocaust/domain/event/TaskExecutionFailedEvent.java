@@ -2,10 +2,11 @@ package com.example.hypocaust.domain.event;
 
 import java.util.UUID;
 
-public final class TaskExecutionFailedEvent extends TaskExecutionEvent<TaskExecutionFailedEvent.Payload> {
+public final class TaskExecutionFailedEvent extends
+    TaskExecutionEvent<TaskExecutionFailedEvent.Payload> {
 
-  public TaskExecutionFailedEvent(UUID projectId, String reason) {
-    super(projectId, new Payload(reason));
+  public TaskExecutionFailedEvent(UUID taskExecutionId, String reason) {
+    super(taskExecutionId, new Payload(reason));
   }
 
   @Override

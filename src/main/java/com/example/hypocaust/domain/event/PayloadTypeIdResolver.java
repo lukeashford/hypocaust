@@ -1,23 +1,25 @@
 package com.example.hypocaust.domain.event;
 
-import com.example.hypocaust.domain.event.ArtifactAddedEvent.Payload;
 import com.example.hypocaust.domain.event.ErrorEvent.ErrorEventPayload;
 import com.example.hypocaust.domain.event.Event.EventPayload;
 import com.example.hypocaust.domain.event.ToolCallingEvent.ToolCallingEventPayload;
+import com.example.hypocaust.dto.ArtifactDto;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DatabindContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   private static final Map<EventType, Class<? extends EventPayload>> TYPE_TO_CLASS;
 
   static {
-    Map<EventType, Class<? extends EventPayload>> map = new java.util.HashMap<>();
-    map.put(EventType.ARTIFACT_ADDED, ArtifactAddedEvent.Payload.class);
-    map.put(EventType.ARTIFACT_UPDATED, ArtifactUpdatedEvent.Payload.class);
+    Map<EventType, Class<? extends EventPayload>> map = new HashMap<>();
+    map.put(EventType.ARTIFACT_ADDED, ArtifactDto.class);
+    map.put(EventType.ARTIFACT_UPDATED, ArtifactDto.class);
     map.put(EventType.ARTIFACT_REMOVED, ArtifactRemovedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.Payload.class);
@@ -33,7 +35,11 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   private static final Map<Class<?>, EventType> CLASS_TO_TYPE =
       TYPE_TO_CLASS.entrySet().stream()
-          .collect(java.util.stream.Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+          .collect(Collectors.toMap(
+              Map.Entry::getValue,
+              Map.Entry::getKey,
+              (existing, replacement) -> existing // Keep the first one in case of collision
+          ));
 
   @Override
   public String idFromValue(Object value) {

@@ -5,11 +5,12 @@ import java.util.UUID;
 import lombok.Getter;
 
 @Getter
-public abstract sealed class TaskExecutionEvent<T extends TaskExecutionEventPayload> extends Event<T>
+public abstract sealed class TaskExecutionEvent<T extends TaskExecutionEventPayload> extends
+    Event<T>
     permits TaskExecutionStartedEvent, TaskExecutionCompletedEvent, TaskExecutionFailedEvent {
 
-  protected TaskExecutionEvent(UUID projectId, T payload) {
-    super(projectId, payload);
+  protected TaskExecutionEvent(UUID taskExecutionId, T payload) {
+    super(taskExecutionId, payload);
   }
 
   public interface TaskExecutionEventPayload extends EventPayload {

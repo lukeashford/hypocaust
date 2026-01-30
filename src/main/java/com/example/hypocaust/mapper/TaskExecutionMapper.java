@@ -5,7 +5,7 @@ import com.example.hypocaust.dto.RunDto;
 import org.mapstruct.Mapper;
 
 @Mapper(config = GlobalMapperConfig.class)
-public interface RunMapper {
+public interface TaskExecutionMapper {
 
   RunDto toDto(RunEntity entity);
 

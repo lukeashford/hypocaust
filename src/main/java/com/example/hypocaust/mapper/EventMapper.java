@@ -14,6 +14,7 @@ import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
 import com.example.hypocaust.domain.event.ToolCallingEvent;
+import com.example.hypocaust.dto.ArtifactDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ObjectFactory;
 
@@ -23,80 +24,70 @@ public interface EventMapper {
   EventEntity toEntity(Event<?> event);
 
   default ArtifactAddedEvent toArtifactAddedEvent(EventEntity entity) {
-    var payload = (ArtifactAddedEvent.Payload) entity.getPayload();
     return new ArtifactAddedEvent(
-        entity.getProjectId(),
-        payload.name(),
-        payload.kind(),
-        payload.description(),
-        payload.externalUrl(),
-        payload.inlineContent(),
-        payload.metadata()
+        entity.getTaskExecutionId(),
+        (ArtifactDto) entity.getPayload()
     );
   }
 
   default ArtifactUpdatedEvent toArtifactUpdatedEvent(EventEntity entity) {
-    var payload = (ArtifactUpdatedEvent.Payload) entity.getPayload();
     return new ArtifactUpdatedEvent(
-        entity.getProjectId(),
-        payload.name(),
-        payload.description(),
-        payload.externalUrl(),
-        payload.inlineContent(),
-        payload.metadata()
+        entity.getTaskExecutionId(),
+        (ArtifactDto) entity.getPayload()
     );
   }
 
   default ArtifactRemovedEvent toArtifactRemovedEvent(EventEntity entity) {
     var payload = (ArtifactRemovedEvent.Payload) entity.getPayload();
-    return new ArtifactRemovedEvent(entity.getProjectId(), payload.name());
+    return new ArtifactRemovedEvent(entity.getTaskExecutionId(), payload.fileName());
   }
 
   default TaskExecutionStartedEvent toTaskExecutionStartedEvent(EventEntity entity) {
-    return new TaskExecutionStartedEvent(entity.getProjectId());
+    return new TaskExecutionStartedEvent(entity.getTaskExecutionId());
   }
 
   default TaskExecutionCompletedEvent toTaskExecutionCompletedEvent(EventEntity entity) {
     var payload = (TaskExecutionCompletedEvent.Payload) entity.getPayload();
-    return new TaskExecutionCompletedEvent(entity.getProjectId(), payload.hasChanges(), payload.message());
+    return new TaskExecutionCompletedEvent(entity.getTaskExecutionId(), payload.hasChanges(),
+        payload.message());
   }
 
   default TaskExecutionFailedEvent toTaskExecutionFailedEvent(EventEntity entity) {
     var payload = (TaskExecutionFailedEvent.Payload) entity.getPayload();
-    return new TaskExecutionFailedEvent(entity.getProjectId(), payload.reason());
+    return new TaskExecutionFailedEvent(entity.getTaskExecutionId(), payload.reason());
   }
 
   default TaskProgressUpdatedEvent toTaskProgressUpdatedEvent(EventEntity entity) {
     var payload = (TaskProgressUpdatedEvent.Payload) entity.getPayload();
-    return new TaskProgressUpdatedEvent(entity.getProjectId(), payload.taskTree());
+    return new TaskProgressUpdatedEvent(entity.getTaskExecutionId(), payload.taskTree());
   }
 
   default ToolCallingEvent toToolCallingEvent(EventEntity entity) {
     var payload = (ToolCallingEvent.ToolCallingEventPayload) entity.getPayload();
-    return new ToolCallingEvent(entity.getProjectId(), payload.content());
+    return new ToolCallingEvent(entity.getTaskExecutionId(), payload.content());
   }
 
   default ErrorEvent toErrorEvent(EventEntity entity) {
     var payload = (ErrorEvent.ErrorEventPayload) entity.getPayload();
-    return new ErrorEvent(entity.getProjectId(), payload.message());
+    return new ErrorEvent(entity.getTaskExecutionId(), payload.message());
   }
 
   default OperatorStartedEvent toOperatorStartedEvent(EventEntity entity) {
     var payload = (OperatorStartedEvent.Payload) entity.getPayload();
-    return new OperatorStartedEvent(entity.getProjectId(), payload.operatorName(),
-        payload.taskPath(), payload.inputs());
+    return new OperatorStartedEvent(entity.getTaskExecutionId(), payload.operatorName(),
+        payload.inputs(), payload.taskPath());
   }
 
   default OperatorFinishedEvent toOperatorFinishedEvent(EventEntity entity) {
     var payload = (OperatorFinishedEvent.Payload) entity.getPayload();
-    return new OperatorFinishedEvent(entity.getProjectId(), payload.operatorName(),
-        payload.taskPath(), payload.inputs(), payload.outputs());
+    return new OperatorFinishedEvent(entity.getTaskExecutionId(), payload.operatorName(),
+        payload.inputs(), payload.outputs(), payload.taskPath());
   }
 
   default OperatorFailedEvent toOperatorFailedEvent(EventEntity entity) {
     var payload = (OperatorFailedEvent.Payload) entity.getPayload();
-    return new OperatorFailedEvent(entity.getProjectId(), payload.operatorName(),
-        payload.taskPath(), payload.inputs(), payload.reason());
+    return new OperatorFailedEvent(entity.getTaskExecutionId(), payload.operatorName(),
+        payload.inputs(), payload.taskPath(), payload.reason());
   }
 
   @ObjectFactory

@@ -5,8 +5,9 @@ import java.util.UUID;
 
 public final class OperatorStartedEvent extends OperatorEvent<OperatorStartedEvent.Payload> {
 
-  public OperatorStartedEvent(UUID projectId, String operatorName, Map<String, Object> inputs, String taskPath) {
-    super(projectId, new Payload(operatorName, inputs, taskPath));
+  public OperatorStartedEvent(UUID taskExecutionId, String operatorName, Map<String, Object> inputs,
+      String taskPath) {
+    super(taskExecutionId, new Payload(operatorName, inputs, taskPath));
   }
 
   @Override

@@ -6,12 +6,12 @@ import java.util.UUID;
 public abstract sealed class ArtifactEvent<T extends ArtifactEventPayload> extends Event<T>
     permits ArtifactAddedEvent, ArtifactUpdatedEvent, ArtifactRemovedEvent {
 
-  protected ArtifactEvent(UUID projectId, T payload) {
-    super(projectId, payload);
+  protected ArtifactEvent(UUID taskExecutionId, T payload) {
+    super(taskExecutionId, payload);
   }
 
   public interface ArtifactEventPayload extends EventPayload {
 
-    String name();
+    String fileName();
   }
 }

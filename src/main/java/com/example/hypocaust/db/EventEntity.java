@@ -11,6 +11,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -19,13 +20,14 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
+@Setter
 public class EventEntity extends BaseEntity {
 
   @Column(nullable = false)
-  private UUID projectId;
+  private UUID taskExecutionId;
 
   @Column(nullable = false)
-  private UUID projectSeq;
+  private UUID taskExecutionSeq;
 
   @Column(nullable = false)
   private Instant occurredAt;
