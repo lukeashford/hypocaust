@@ -14,12 +14,12 @@ public interface ModelSpecEnum {
   /**
    * Generic fromString method for model enums that eliminates boilerplate code.
    *
-   * @param modelName the model fileName string from configuration
+   * @param modelName the model name string from configuration
    * @param enumClass the enum class to search within
-   * @param modelType descriptive fileName for error messages
+   * @param modelType descriptive name for error messages
    * @param <T> enum type that extends both Enum and ModelSpecEnum
    * @return the matching enum constant
-   * @throws ModelException if the model fileName is not recognized
+   * @throws ModelException if the model name is not recognized
    */
   static <T extends Enum<T> & ModelSpecEnum> T fromString(
       String modelName,

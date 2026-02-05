@@ -74,7 +74,7 @@ public final class PromptBuilder {
    * Sets a parameter value for placeholder resolution. Placeholders in the form {{key}} will be
    * replaced with the value.
    *
-   * @param key the parameter fileName
+   * @param key the parameter name
    * @param value the parameter value
    * @return this builder for chaining
    */

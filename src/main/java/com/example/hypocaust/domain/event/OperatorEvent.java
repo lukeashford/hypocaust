@@ -16,7 +16,5 @@ public abstract sealed class OperatorEvent<T extends OperatorEventPayload> exten
     String operatorName();
 
     Map<String, Object> inputs();
-
-    String taskPath();
   }
 }

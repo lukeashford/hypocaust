@@ -32,7 +32,7 @@ class EventLogRepositoryTest {
   @Test
   void shouldPersistOperatorStartedEvent() {
     UUID projectId = UUID.randomUUID();
-    var event = new OperatorStartedEvent(projectId, "test-op", Map.of("input", "value"), "0");
+    var event = new OperatorStartedEvent(projectId, "test-op", Map.of("input", "value"));
     EventEntity entity = eventMapper.toEntity(event);
 
     EventEntity saved = eventLogRepository.save(entity);
@@ -46,7 +46,7 @@ class EventLogRepositoryTest {
   void shouldPersistOperatorFinishedEvent() {
     UUID projectId = UUID.randomUUID();
     var event = new OperatorFinishedEvent(projectId, "test-op", Map.of("input", "value"),
-        Map.of("output", "result"), "0");
+        Map.of("output", "result"));
     EventEntity entity = eventMapper.toEntity(event);
 
     EventEntity saved = eventLogRepository.save(entity);
@@ -60,7 +60,7 @@ class EventLogRepositoryTest {
   void shouldPersistOperatorFailedEvent() {
     UUID projectId = UUID.randomUUID();
     var event = new OperatorFailedEvent(projectId, "test-op", Map.of("input", "value"),
-        "some failure", "0");
+        "some failure");
     EventEntity entity = eventMapper.toEntity(event);
 
     EventEntity saved = eventLogRepository.save(entity);

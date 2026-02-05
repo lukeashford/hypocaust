@@ -14,10 +14,9 @@ public interface StorageService {
    *
    * @param data the file data as byte array
    * @param contentType the MIME type (e.g., "image/png")
-   * @param filename optional original filename
    * @return storage key that can be used to retrieve the file later
    */
-  String store(byte[] data, String contentType, String filename);
+  String store(byte[] data, String contentType);
 
   /**
    * Store a file from an InputStream.
@@ -25,10 +24,9 @@ public interface StorageService {
    * @param inputStream the input stream containing file data
    * @param contentLength the size of the data in bytes
    * @param contentType the MIME type
-   * @param filename optional original filename
    * @return storage key that can be used to retrieve the file later
    */
-  String store(InputStream inputStream, long contentLength, String contentType, String filename);
+  String store(InputStream inputStream, long contentLength, String contentType);
 
   /**
    * Retrieve a file as an InputStream.
@@ -65,6 +63,16 @@ public interface StorageService {
    * @return pre-signed URL
    */
   String generatePresignedUrl(String storageKey, int expirySeconds);
+
+  /**
+   * Manifest a URL - if already local (a storage key), return as-is. If external, download, hash,
+   * store (dedup by hash), return local storage key.
+   *
+   * @param url the URL to manifest (can be external URL or local storage key)
+   * @param contentType the MIME type for storage
+   * @return local storage key
+   */
+  String manifestUrl(String url, String contentType);
 
   /**
    * Metadata about a stored file.

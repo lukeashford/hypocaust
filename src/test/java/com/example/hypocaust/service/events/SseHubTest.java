@@ -3,6 +3,7 @@ package com.example.hypocaust.service.events;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Field;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,9 +15,20 @@ class SseHubTest {
   private ObjectMapper objectMapper;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     objectMapper = new ObjectMapper();
     sseHub = new SseHub(objectMapper);
+
+    // Set private fields that would normally be injected by @Value
+    setField(sseHub, "heartbeatInterval", 20);
+    setField(sseHub, "emitterTimeout", 0L);
+    setField(sseHub, "shutdownTimeout", 5);
+  }
+
+  private void setField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 
   @Test

@@ -10,17 +10,18 @@ public enum ArtifactStatus {
   GESTATING,
 
   /**
-   * Successfully completed.
+   * Generated, but not yet saved.
    */
   CREATED,
 
   /**
-   * Generation cancelled.
+   * Saved in our storage.
    */
-  CANCELLED,
+  MANIFESTED,
 
   /**
-   * Soft-deleted.
+   * Generation or materialization failed.
    */
-  DELETED
+  FAILED
+
 }

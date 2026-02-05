@@ -6,8 +6,8 @@ import java.util.UUID;
 public final class OperatorFailedEvent extends OperatorEvent<OperatorFailedEvent.Payload> {
 
   public OperatorFailedEvent(UUID taskExecutionId, String operatorName, Map<String, Object> inputs,
-      String reason, String taskPath) {
-    super(taskExecutionId, new Payload(operatorName, inputs, reason, taskPath));
+      String reason) {
+    super(taskExecutionId, new Payload(operatorName, inputs, reason));
   }
 
   @Override
@@ -15,8 +15,7 @@ public final class OperatorFailedEvent extends OperatorEvent<OperatorFailedEvent
     return EventType.OPERATOR_FAILED;
   }
 
-  public record Payload(String operatorName, Map<String, Object> inputs, String reason,
-                        String taskPath) implements
+  public record Payload(String operatorName, Map<String, Object> inputs, String reason) implements
       OperatorEventPayload {
 
   }

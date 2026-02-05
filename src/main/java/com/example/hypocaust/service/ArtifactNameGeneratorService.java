@@ -22,72 +22,70 @@ public class ArtifactNameGeneratorService {
   private final ModelRegistry modelRegistry;
 
   /**
-   * Generate a unique artifact fileName from description using a small LLM.
+   * Generate a unique artifact name from description using a small LLM.
    */
   public String generateUniqueName(String description, Set<String> existingNames) {
     try {
       ChatClient chatClient = ChatClient.builder(modelRegistry.get(NAME_GENERATION_MODEL))
           .build();
 
-      StringBuilder prompt = new StringBuilder();
-      prompt.append("Generate a short, snake_case artifact fileName for: ").append(description);
-      if (!existingNames.isEmpty()) {
-        prompt.append("\n\nThe following names are already taken, choose a different one: ");
-        prompt.append(String.join(", ", existingNames));
-      }
+      for (int i = 0; i < 3; i++) {
+        String response = chatClient.prompt()
+            .system("""
+                Generate a short snake_case name for an artifact (max 30 chars).
+                Use only lowercase letters, numbers, and underscores.
+                Reply with ONLY the name, nothing else.
+                Examples: hero_portrait, forest_background, main_script
+                """)
+            .user(buildUserPrompt(description, existingNames))
+            .call()
+            .content();
 
-      String response = chatClient.prompt()
-          .system("""
-              Generate a short snake_case fileName for an artifact (max 30 chars).
-              Use only lowercase letters, numbers, and underscores.
-              Reply with ONLY the fileName, nothing else.
-              Examples: hero_portrait, forest_background, main_script
-              """)
-          .user(prompt.toString())
-          .call()
-          .content();
-
-      if (response != null && !response.isBlank()) {
-        String name = response.trim().toLowerCase()
-            .replaceAll("[^a-z0-9_]", "_")
-            .replaceAll("_+", "_")
-            .replaceAll("^_|_$", "");
-
-        // Truncate if too long
-        if (name.length() > 30) {
-          name = name.substring(0, 30);
+        if (response != null && !response.isBlank()) {
+          String name = sanitize(response);
+          if (!existingNames.contains(name)) {
+            return name;
+          }
+          log.info("LLM generated an existing name: {}. Attempt {}/3", name, i + 1);
         }
-
-        // If fileName is still taken, append a number
-        String baseName = name;
-        int counter = 2;
-        while (existingNames.contains(name)) {
-          name = baseName + "_" + counter;
-          counter++;
-        }
-
-        return name;
       }
     } catch (Exception e) {
-      log.warn("Failed to generate artifact fileName via LLM: {}", e.getMessage());
+      log.warn("Failed to generate artifact name via LLM: {}", e.getMessage());
     }
 
     // Fallback: generate from description
-    String name = description.toLowerCase()
-        .replaceAll("[^a-z0-9]+", "_")
-        .replaceAll("^_|_$", "");
+    String name = sanitize(description);
     if (name.length() > 30) {
       name = name.substring(0, 30);
     }
 
-    // If fileName is taken, append a number
-    String baseName = name;
+    return appendCounterIfExists(name, existingNames);
+  }
+
+  private String buildUserPrompt(String description, Set<String> existingNames) {
+    StringBuilder prompt = new StringBuilder();
+    prompt.append("The artifact's description: ").append(description);
+    if (!existingNames.isEmpty()) {
+      prompt.append("\n\nThe following names are already taken, choose a different one: ");
+      prompt.append(String.join(", ", existingNames));
+    }
+    return prompt.toString();
+  }
+
+  private String sanitize(String input) {
+    return input.toLowerCase()
+        .replaceAll("[^a-z0-9_]", "_")
+        .replaceAll("_+", "_")
+        .replaceAll("^_|_$", "");
+  }
+
+  private String appendCounterIfExists(String name, Set<String> existingNames) {
+    String result = name;
     int counter = 2;
-    while (existingNames.contains(name)) {
-      name = baseName + "_" + counter;
+    while (existingNames.contains(result)) {
+      result = name + "_" + counter;
       counter++;
     }
-
-    return name;
+    return result;
   }
 }

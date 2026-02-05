@@ -1,7 +1,7 @@
 package com.example.hypocaust.domain;
 
 import com.example.hypocaust.service.ArtifactNameGeneratorService;
-import com.example.hypocaust.service.ArtifactVersionManagementService;
+import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 public class TaskExecutionContextFactory {
 
   private final EventService eventService;
-  private final ArtifactVersionManagementService versionService;
+  private final VersionManagementService versionService;
   private final ArtifactNameGeneratorService nameGeneratorService;
 
   /**

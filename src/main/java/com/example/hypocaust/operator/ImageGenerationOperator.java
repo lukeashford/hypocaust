@@ -1,8 +1,9 @@
 package com.example.hypocaust.operator;
 
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
@@ -43,8 +44,8 @@ public class ImageGenerationOperator extends BaseOperator {
 
     log.info("Generating image with prompt: {}", prompt);
 
-    // Schedule the artifact - generates unique fileName from description
-    final var artifactName = TaskExecutionContextHolder.addArtifact(PendingArtifact.builder()
+    // Schedule the artifact - generates unique name from description
+    final var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
         .kind(ArtifactKind.IMAGE)
         .title(description != null ? description : prompt)
         .description(description != null ? description : prompt)
@@ -53,7 +54,7 @@ public class ImageGenerationOperator extends BaseOperator {
         .status(ArtifactStatus.GESTATING)
         .build());
 
-    log.info("Scheduled artifact with fileName: {}", artifactName);
+    log.info("Scheduled artifact with name: {}", artifactName);
 
     try {
       // Build image options
@@ -74,8 +75,8 @@ public class ImageGenerationOperator extends BaseOperator {
       final var response = modelRegistry.get(IMAGE_MODEL).call(imagePrompt);
 
       if (response.getResults().isEmpty()) {
-        // Cancel the pending artifact since generation failed
-        TaskExecutionContextHolder.cancelPendingArtifact(artifactName);
+        // Rollback the pending artifact since generation failed
+        TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
         return OperatorResult.failure("No image generated", normalizedInputs);
       }
 
@@ -96,19 +97,20 @@ public class ImageGenerationOperator extends BaseOperator {
 
       // Update the pending artifact with the generated URL
       // The actual download and storage happens at TaskExecution completion time
-      TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
-          .name(artifactName)
-          .kind(ArtifactKind.IMAGE)
-          .title(description != null ? description : prompt)
-          .description(description != null ? description : prompt)
-          .prompt(prompt)
-          .model(IMAGE_MODEL.getModelName())
-          .externalUrl(imageUrl)
-          .metadata(metadata)
-          .status(ArtifactStatus.CREATED)
-          .build());
+      TaskExecutionContextHolder.getContext().getArtifacts()
+          .updatePending(Artifact.builder()
+              .name(artifactName)
+              .kind(ArtifactKind.IMAGE)
+              .title(description != null ? description : prompt)
+              .description(description != null ? description : prompt)
+              .prompt(prompt)
+              .model(IMAGE_MODEL.getModelName())
+              .url(imageUrl)
+              .metadata(metadata)
+              .status(ArtifactStatus.CREATED)
+              .build());
 
-      log.info("Successfully generated image, artifact fileName: {}", artifactName);
+      log.info("Successfully generated image, artifact name: {}", artifactName);
 
       return OperatorResult.success(
           "Generated image: " + artifactName,
@@ -117,11 +119,11 @@ public class ImageGenerationOperator extends BaseOperator {
       );
     } catch (Exception e) {
       log.error("Failed to generate image: {}", e.getMessage(), e);
-      // Cancel the pending artifact since generation failed
+      // Rollback the pending artifact since generation failed
       try {
-        TaskExecutionContextHolder.cancelPendingArtifact(artifactName);
-      } catch (Exception cancelEx) {
-        log.warn("Failed to cancel pending artifact: {}", cancelEx.getMessage());
+        TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
+      } catch (Exception rollbackEx) {
+        log.warn("Failed to rollback pending artifact: {}", rollbackEx.getMessage());
       }
       return OperatorResult.failure("Image generation failed: " + e.getMessage(), normalizedInputs);
     }
@@ -144,7 +146,7 @@ public class ImageGenerationOperator extends BaseOperator {
         List.of(
             ParamSpec.string("prompt", "The text prompt describing the image to generate", true),
             ParamSpec.string("description",
-                "Human-readable description of the artifact (used to generate fileName)", true),
+                "Human-readable description of the artifact (used to generate name)", true),
             ParamSpec.string("negativePrompt", "Elements to avoid in the generated image", ""),
             ParamSpec.string("size", "Image size (1024x1024, 1792x1024, or 1024x1792)",
                 "1024x1024"),

@@ -30,33 +30,32 @@ public class EventService {
     log.debug("Publishing event: {}", event);
     final var entity = eventMapper.toEntity(event);
 
-    UUID executionId = null;
-    if (com.example.hypocaust.operator.TaskExecutionContextHolder.hasContext()) {
+    UUID executionId = event.getTaskExecutionId();
+    if (executionId == null
+        && com.example.hypocaust.operator.TaskExecutionContextHolder.hasContext()) {
       executionId = com.example.hypocaust.operator.TaskExecutionContextHolder.getTaskExecutionId();
+    }
+
+    if (executionId != null) {
       entity.setTaskExecutionId(executionId);
     }
 
     if (doPersist) {
       eventLogRepository.save(entity);
     }
+
+    if (executionId != null) {
+      com.example.hypocaust.operator.TaskExecutionContextHolder.getContextByTaskExecutionId(
+              executionId)
+          .ifPresent(ctx -> ctx.updateLastEventId(event.getTaskExecutionSeq()));
+    }
+
     sseHub.broadcast(executionId, event);
   }
 
   @Transactional
   public void publish(Event<?> event) {
     publish(event, true);
-  }
-
-  public SseEmitter subscribeToEvents(UUID projectId, UUID lastEventId) {
-    var latestExecutionId = taskExecutionRepository.findTopByProjectIdOrderByStartedAtDesc(
-            projectId)
-        .map(com.example.hypocaust.db.TaskExecutionEntity::getId)
-        .orElseThrow(() -> new ResponseStatusException(
-            HttpStatus.NOT_FOUND, "No executions found for project: " + projectId));
-
-    log.debug("SSE legacy subscription for project {} redirected to latest execution {}", projectId,
-        latestExecutionId);
-    return subscribeToTaskExecutionEvents(latestExecutionId, lastEventId);
   }
 
   /**
@@ -73,22 +72,6 @@ public class EventService {
     log.debug("SSE subscription for TaskExecution {} with lastEventId: {}",
         taskExecutionId, lastEventId);
     return sseHub.subscribe(taskExecutionId, replayEvents);
-  }
-
-  public String getProjectLogs(UUID projectId) {
-    log.debug("Fetching event history for project {}", projectId);
-    return eventLogRepository.findByTaskExecutionIdOrderById(projectId)
-        .stream()
-        .map(eventMapper::toDomain)
-        .map(this::formatEvent)
-        .collect(Collectors.joining("\n"));
-  }
-
-  private String formatEvent(Event<?> event) {
-    return String.format("[%s] %s: %s",
-        event.getOccurredAt(),
-        event.getType().getValue(),
-        event.getPayload());
   }
 
   private List<Event<?>> findEventsForExecutionSince(UUID taskExecutionId, UUID lastEventId) {

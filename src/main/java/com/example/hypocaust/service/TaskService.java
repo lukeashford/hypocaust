@@ -1,12 +1,10 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.PendingArtifact;
-import com.example.hypocaust.domain.PendingChanges;
+import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
 import com.example.hypocaust.domain.TaskExecutionDelta;
-import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
@@ -52,7 +50,8 @@ public class TaskService {
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
   private final EventService eventService;
-  private final ArtifactVersionManagementService versionService;
+  private final VersionManagementService versionService;
+  private final TodoService todoService;
   private final TaskExecutionContextFactory contextFactory;
   private final ModelRegistry modelRegistry;
 
@@ -76,18 +75,16 @@ public class TaskService {
     }
 
     // Resolve predecessorId: use provided or find most recent completed
+    // null if none exists (which would be fine for an empty project)
     UUID predecessorId = predecessorIdInput;
     if (predecessorId == null) {
-      predecessorId = versionService.getMostRecentTaskExecution(projectId)
-          .map(TaskExecutionEntity::getId)
-          .orElse(null);
+      predecessorId = versionService.getMostRecentTaskExecutionId(projectId).orElse(null);
     }
 
     // Create TaskExecution entity
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
         .task(task)
-        .status(TaskExecutionEntity.Status.QUEUED)
         .predecessorId(predecessorId)
         .build();
     taskExecutionRepository.save(taskExecution);
@@ -130,18 +127,19 @@ public class TaskService {
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
 
-      // Execute with root todoPath "0"
-      final var result = decomposingOperator.execute(Map.of("task", augmentedTask), "0");
+      // Execute with null todoId (root level)
+      final var result = decomposingOperator.execute(Map.of("task", augmentedTask));
 
       if (result.ok()) {
-        commitExecution(taskExecutionId, projectId, task, context.getPending());
+        commitExecution(taskExecutionId, projectId, task, context);
         log.info("Task completed successfully for project {}", projectId);
       } else {
-        failExecution(taskExecutionId, projectId, result.message(), context.getPending());
+        failExecution(taskExecutionId, projectId, result.message(), context.getArtifacts());
         log.error("Task failed for project {}: {}", projectId, result.message());
       }
     } catch (Exception e) {
-      failExecution(taskExecutionId, projectId, e.getMessage(), context.getPending());
+      failExecution(taskExecutionId, projectId, e.getMessage(),
+          context != null ? context.getArtifacts() : null);
       log.error("Error executing task for project {}: {}", projectId, e.getMessage(), e);
     } finally {
       // Always clear the context when done
@@ -156,23 +154,24 @@ public class TaskService {
    * @param taskExecutionId The TaskExecution to commit
    * @param projectId The project ID (for events)
    * @param task The original task description (for message generation)
-   * @param pending The accumulated pending changes
+   * @param context The execution context containing artifacts and todos
    */
   @Transactional
   public void commitExecution(UUID taskExecutionId, UUID projectId, String task,
-      PendingChanges pending) {
+      TaskExecutionContext context) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
         .orElseThrow(
             () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
-    // Emit artifact.removed events for cancelled artifacts
-    for (PendingArtifact cancelled : pending.getCancelled()) {
-      log.info("Emitting artifact.removed for cancelled artifact: {}", cancelled.name());
-      eventService.publish(new ArtifactRemovedEvent(taskExecutionId, cancelled.name()));
-    }
+    ArtifactsContext artifacts = context.getArtifacts();
 
     // Materialize artifacts and get delta
-    TaskExecutionDelta delta = versionService.materialize(pending, taskExecutionId, projectId);
+    TaskExecutionDelta delta = versionService.materialize(artifacts.getChangelist(),
+        taskExecutionId,
+        projectId);
+
+    // Materialize todos
+    todoService.materialize(context.getTodos().getList(), taskExecutionId);
 
     // Generate commit message
     String commitMessage = generateCommitMessage(task);
@@ -187,22 +186,21 @@ public class TaskService {
   }
 
   /**
-   * Fail a task execution. Discards pending artifacts and publishes failure event.
+   * Fail a task execution. Publishes failure event. Pending artifacts are simply not persisted.
    *
    * @param taskExecutionId The TaskExecution to fail
    * @param projectId The project ID (for events)
    * @param errorMessage The error message describing the failure
-   * @param pending The accumulated pending changes to discard
+   * @param artifacts The artifacts context (unused, pending changes are not persisted)
    */
   @Transactional
   public void failExecution(UUID taskExecutionId, UUID projectId, String errorMessage,
-      PendingChanges pending) {
+      ArtifactsContext artifacts) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
         .orElseThrow(
             () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
-    // Discard any pending changes
-    versionService.discardPending(pending);
+    // Pending changes are simply not persisted - no explicit discard needed
 
     // Fail the task execution with error message as commitMessage
     taskExecution.fail(errorMessage);

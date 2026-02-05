@@ -43,11 +43,11 @@ public class ArtifactEntity extends BaseEntity {
   private UUID taskExecutionId;
 
   /**
-   * Semantic file fileName for this artifact. Example: "protagonists_dog", "forest_background",
+   * Semantic file name for this artifact. Example: "protagonists_dog", "forest_background",
    * "script"
    */
-  @Column(length = 100)
-  private String fileName;
+  @Column(length = 100, nullable = false)
+  private String name;
 
   // =====================================================
   // Content Fields
@@ -68,19 +68,19 @@ public class ArtifactEntity extends BaseEntity {
   private String storageKey;
 
   /**
-   * Inline content for structured artifacts (JSON, text). Used when the artifact content can be
-   * stored directly in the database.
+   * Inline inlineContent for structured artifacts (JSON, text). Used when the artifact
+   * inlineContent can be stored directly in the database.
    */
   @Column(columnDefinition = "jsonb")
   @JdbcTypeCode(SqlTypes.JSON)
-  private JsonNode content;
+  private JsonNode inlineContent;
 
   // =====================================================
   // Display Fields
   // =====================================================
 
   /**
-   * Human-readable title for display in the UI. Distinct from 'fileName' which is the programmatic
+   * Human-readable title for display in the UI. Distinct from 'name' which is the programmatic
    * identifier.
    */
   private String title;

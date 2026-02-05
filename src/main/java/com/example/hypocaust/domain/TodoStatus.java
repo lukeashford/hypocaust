@@ -3,7 +3,7 @@ package com.example.hypocaust.domain;
 /**
  * Status of a task item in the progress tree.
  */
-public enum TaskStatus {
+public enum TodoStatus {
   PENDING,
   IN_PROGRESS,
   COMPLETED,

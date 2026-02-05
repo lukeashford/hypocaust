@@ -15,7 +15,7 @@ public class StorageProperties {
   private String provider = "minio";
 
   /**
-   * Default bucket fileName to store artifacts.
+   * Default bucket name to store artifacts.
    */
   private String bucketName = "artifacts";
 

@@ -13,7 +13,7 @@ import com.example.hypocaust.domain.event.OperatorStartedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
-import com.example.hypocaust.domain.event.TaskProgressUpdatedEvent;
+import com.example.hypocaust.domain.event.TodoListUpdatedEvent;
 import com.example.hypocaust.domain.event.ToolCallingEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.ObjectFactory;
@@ -39,7 +39,7 @@ public interface EventMapper {
 
   default ArtifactRemovedEvent toArtifactRemovedEvent(EventEntity entity) {
     var payload = (ArtifactRemovedEvent.Payload) entity.getPayload();
-    return new ArtifactRemovedEvent(entity.getTaskExecutionId(), payload.fileName());
+    return new ArtifactRemovedEvent(entity.getTaskExecutionId(), payload.name());
   }
 
   default TaskExecutionStartedEvent toTaskExecutionStartedEvent(EventEntity entity) {
@@ -57,9 +57,9 @@ public interface EventMapper {
     return new TaskExecutionFailedEvent(entity.getTaskExecutionId(), payload.reason());
   }
 
-  default TaskProgressUpdatedEvent toTaskProgressUpdatedEvent(EventEntity entity) {
-    var payload = (TaskProgressUpdatedEvent.Payload) entity.getPayload();
-    return new TaskProgressUpdatedEvent(entity.getTaskExecutionId(), payload.taskTree());
+  default TodoListUpdatedEvent toTodoListUpdatedEvent(EventEntity entity) {
+    var payload = (TodoListUpdatedEvent.Payload) entity.getPayload();
+    return new TodoListUpdatedEvent(entity.getTaskExecutionId(), payload.todoList());
   }
 
   default ToolCallingEvent toToolCallingEvent(EventEntity entity) {
@@ -75,19 +75,19 @@ public interface EventMapper {
   default OperatorStartedEvent toOperatorStartedEvent(EventEntity entity) {
     var payload = (OperatorStartedEvent.Payload) entity.getPayload();
     return new OperatorStartedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs(), payload.taskPath());
+        payload.inputs());
   }
 
   default OperatorFinishedEvent toOperatorFinishedEvent(EventEntity entity) {
     var payload = (OperatorFinishedEvent.Payload) entity.getPayload();
     return new OperatorFinishedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs(), payload.outputs(), payload.taskPath());
+        payload.inputs(), payload.outputs());
   }
 
   default OperatorFailedEvent toOperatorFailedEvent(EventEntity entity) {
     var payload = (OperatorFailedEvent.Payload) entity.getPayload();
     return new OperatorFailedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs(), payload.taskPath(), payload.reason());
+        payload.inputs(), payload.reason());
   }
 
   @ObjectFactory
@@ -101,7 +101,7 @@ public interface EventMapper {
       case TASKEXECUTION_COMPLETED -> toTaskExecutionCompletedEvent(entity);
       case TASKEXECUTION_FAILED -> toTaskExecutionFailedEvent(entity);
 
-      case TASK_PROGRESS_UPDATED -> toTaskProgressUpdatedEvent(entity);
+      case TASK_PROGRESS_UPDATED -> toTodoListUpdatedEvent(entity);
 
       case TOOL_CALLING -> toToolCallingEvent(entity);
 

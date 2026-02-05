@@ -2,8 +2,8 @@ package com.example.hypocaust.tool;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.OperatorLedger;
-import com.example.hypocaust.domain.TaskItem;
-import com.example.hypocaust.domain.TaskStatus;
+import com.example.hypocaust.domain.Todo;
+import com.example.hypocaust.domain.TodoStatus;
 import com.example.hypocaust.logging.ModelCallLogger;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
@@ -11,6 +11,7 @@ import com.example.hypocaust.operator.result.OperatorResult;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,7 @@ import org.springframework.stereotype.Component;
  * <h2>Value Resolution</h2>
  * <ul>
  *   <li>{@code {{keyName}}} - References a value from the ledger's values map</li>
- *   <li>{@code @artifact:fileName} - References an artifact by its semantic fileName</li>
+ *   <li>{@code @artifact:name} - References an artifact by its semantic name</li>
  * </ul>
  *
  * <h2>Task Progress Integration</h2>
@@ -61,29 +62,35 @@ public class InvokeTool {
 
   @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
   public OperatorResult invoke(OperatorLedger ledger) {
-    return invoke(ledger, "0");
+    return invoke(ledger, null);
   }
 
-  public OperatorResult invoke(OperatorLedger ledger, String todoPath) {
+  public OperatorResult invoke(OperatorLedger ledger, UUID parentTodoId) {
     final var indent = TaskExecutionContextHolder.getIndent();
-    log.info("{}Starting operator chain with {} children at path {}",
-        indent, ledger.children().size(), todoPath);
+    log.info("{}Starting operator chain with {} children under parent {}",
+        indent, ledger.children().size(), parentTodoId);
 
-    // Path propagation logic:
-    // - Multiple children: extend the path (e.g., "0.1" -> "0.1.0", "0.1.1", ...)
-    // - Single child: propagate the same path (no subtask publishing)
+    // ID propagation logic:
+    // - Multiple children: create todos for each, pass their IDs down
+    // - Single child: propagate the same parent ID (no subtask publishing)
     boolean singleChild = ledger.children().size() == 1;
 
+    // Create todos and track their IDs
+    var childTodoIds = new ArrayList<UUID>();
     if (!singleChild) {
       // Publish all subtasks at once at the beginning
-      var subtasks = new ArrayList<TaskItem>();
+      var subtasks = new ArrayList<Todo>();
       for (int i = 0; i < ledger.children().size(); i++) {
         var child = ledger.children().get(i);
-        var childPath = todoPath + "." + i;
+        var todoId = UUID.randomUUID();
+        childTodoIds.add(todoId);
         var description = child.todo() != null ? child.todo() : child.operatorName();
-        subtasks.add(new TaskItem(childPath, description, TaskStatus.PENDING));
+        subtasks.add(new Todo(description, TodoStatus.PENDING));
       }
-      TaskExecutionContextHolder.getContext().publishSubtasks(todoPath, subtasks);
+      TaskExecutionContextHolder.getContext().getTodos().addSubtasks(parentTodoId, subtasks);
+    } else {
+      // Single child keeps the same parent ID
+      childTodoIds.add(parentTodoId);
     }
 
     for (int i = 0; i < ledger.children().size(); i++) {
@@ -91,13 +98,13 @@ public class InvokeTool {
       final var operatorName = child.operatorName();
       final var opOpt = operatorRegistry.get(operatorName);
 
-      // Single child keeps the same path; multiple children extend it
-      final var childPath = singleChild ? todoPath : todoPath + "." + i;
+      // Get the todo ID for this child
+      final var childTodoId = childTodoIds.get(i);
 
       if (opOpt.isEmpty()) {
-        final var error = "No operator found with fileName: " + operatorName;
+        final var error = "No operator found with name: " + operatorName;
         log.error("{} [FAILED] {}", indent, error);
-        updateStatus(childPath, singleChild, TaskStatus.FAILED);
+        updateStatus(childTodoId, singleChild, TodoStatus.FAILED);
         return OperatorResult.failure(error, Map.of("operatorName", operatorName));
       }
 
@@ -108,7 +115,7 @@ public class InvokeTool {
           operatorName,
           child.inputsToKeys().keySet());
 
-      updateStatus(childPath, singleChild, TaskStatus.IN_PROGRESS);
+      updateStatus(childTodoId, singleChild, TodoStatus.IN_PROGRESS);
 
       final var inputs = new HashMap<String, Object>();
       for (final var inputName : op.spec().getInputKeys()) {
@@ -122,19 +129,19 @@ public class InvokeTool {
 
       // Increment depth before executing child operator
       TaskExecutionContextHolder.incrementDepth();
-      // Pass the todoPath to the operator
-      final var result = op.execute(inputs, childPath);
+      // Pass the todoId to the operator
+      final var result = op.execute(inputs, childTodoId);
       TaskExecutionContextHolder.decrementDepth();
 
       if (!result.ok()) {
         log.error("{}[FAILED] {}: {}", indent, child.operatorName(), result.message());
-        updateStatus(childPath, singleChild, TaskStatus.FAILED);
+        updateStatus(childTodoId, singleChild, TodoStatus.FAILED);
         return result;
       }
 
       log.info("{}[DONE] {}", indent, child.operatorName());
 
-      updateStatus(childPath, singleChild, TaskStatus.COMPLETED);
+      updateStatus(childTodoId, singleChild, TodoStatus.COMPLETED);
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -180,7 +187,7 @@ public class InvokeTool {
     }
 
     if (value instanceof String strValue) {
-      // Check for @artifact: prefix (fileName-based lookup)
+      // Check for @artifact: prefix (name-based lookup)
       if (strValue.startsWith(ARTIFACT_PREFIX)) {
         return resolveArtifact(strValue);
       }
@@ -197,34 +204,14 @@ public class InvokeTool {
    * found in pending changes, otherwise ArtifactDto from current state.
    *
    * @param artifactRef the artifact reference string (e.g., "@artifact:hero_image")
-   * @return the artifact structure (PendingArtifact or ArtifactDto), or the fileName string if not
+   * @return the artifact structure (PendingArtifact or ArtifactDto), or the name string if not
    * found
    */
   private Object resolveArtifact(String artifactRef) {
     var artifactName = artifactRef.substring(ARTIFACT_PREFIX.length()).trim();
     log.debug("Resolving artifact reference: '{}'", artifactName);
 
-    var ctx = TaskExecutionContextHolder.getContext();
-
-    // First check pending changes
-    var pending = ctx.getPending().getPendingArtifact(artifactName);
-    if (pending.isPresent()) {
-      log.debug("Resolved '{}' to pending artifact", artifactName);
-      return pending.get();
-    }
-
-    // Then check current artifacts
-    var currentArtifacts = ctx.getCurrentArtifacts();
-    for (var artifact : currentArtifacts) {
-      if (artifactName.equals(artifact.fileName())) {
-        log.debug("Resolved '{}' to current artifact", artifactName);
-        return artifact;
-      }
-    }
-
-    // Not found - return the fileName for downstream handling
-    log.warn("Artifact reference '{}' not found, returning fileName only", artifactName);
-    return artifactName;
+    return TaskExecutionContextHolder.getContext().getArtifacts().get(artifactName);
   }
 
   private String resolvePlaceholders(Map<String, Object> context, String template) {
@@ -250,9 +237,9 @@ public class InvokeTool {
    * Helper method to update task status only for multiple-child ledgers. Eliminates repeated
    * conditional checks throughout the invoke loop.
    */
-  private void updateStatus(String path, boolean singleChild, TaskStatus status) {
-    if (!singleChild) {
-      TaskExecutionContextHolder.getContext().updateTaskStatus(path, status);
+  private void updateStatus(UUID todoId, boolean singleChild, TodoStatus status) {
+    if (!singleChild && todoId != null) {
+      TaskExecutionContextHolder.getContext().getTodos().updateStatus(todoId, status);
     }
   }
 }

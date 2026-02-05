@@ -1,7 +1,5 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.registry.OperatorRegistry;
@@ -12,7 +10,6 @@ import com.example.hypocaust.tool.InvokeTool;
 import com.example.hypocaust.tool.ModelSearchTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
@@ -110,9 +107,6 @@ public class DecomposingOperator extends BaseOperator {
       candArray.add(mapper.valueToTree(spec));
     }
 
-    // Include existing artifacts if we have an execution context
-    addExistingArtifactsToPayload(root);
-
     final var userMessage = new UserMessage(root.toPrettyString());
     final var prompt = new Prompt(List.of(buildSystemMessage(), userMessage));
 
@@ -143,7 +137,7 @@ public class DecomposingOperator extends BaseOperator {
         );
       }
 
-      // If we got here and content is empty or null, that's also a failure
+      // If we got here and inlineContent is empty or null, that's also a failure
       if (content == null || content.isBlank()) {
         return OperatorResult.failure(
             "Decomposition produced no result",
@@ -167,37 +161,5 @@ public class DecomposingOperator extends BaseOperator {
   @Override
   public OperatorSpec spec() {
     return OPERATOR_SPEC;
-  }
-
-  /**
-   * Add existing artifacts to the payload if we have execution context. This gives the LLM
-   * visibility into what artifacts already exist.
-   */
-  private void addExistingArtifactsToPayload(ObjectNode root) {
-    List<Artifact> existingArtifacts = List.of();
-
-    // Get artifacts from TaskExecutionContext
-    if (TaskExecutionContextHolder.hasContext()) {
-      try {
-        existingArtifacts = TaskExecutionContextHolder.getContext().getCurrentArtifacts();
-      } catch (Exception e) {
-        // Ignore - we'll just proceed without artifact context
-      }
-    }
-
-    if (!existingArtifacts.isEmpty()) {
-      var artifactsArray = root.putArray("existingArtifacts");
-      for (var artifact : existingArtifacts) {
-        var artifactNode = mapper.createObjectNode();
-        artifactNode.put("fileName", artifact.fileName());
-        artifactNode.put("kind", artifact.kind().name());
-        artifactNode.put("description", artifact.description());
-        artifactNode.put("isPending", artifact.status() == ArtifactStatus.GESTATING);
-        if (artifact.status() != null) {
-          artifactNode.put("status", artifact.status().name());
-        }
-        artifactsArray.add(artifactNode);
-      }
-    }
   }
 }

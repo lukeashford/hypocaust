@@ -12,6 +12,6 @@ public abstract sealed class ArtifactEvent<T extends ArtifactEventPayload> exten
 
   public interface ArtifactEventPayload extends EventPayload {
 
-    String fileName();
+    String name();
   }
 }

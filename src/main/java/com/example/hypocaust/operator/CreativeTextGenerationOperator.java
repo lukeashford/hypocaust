@@ -1,8 +1,9 @@
 package com.example.hypocaust.operator;
 
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
@@ -18,7 +19,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
- * Operator that generates creative text content from prompts.
+ * Operator that generates creative text inlineContent from prompts.
  *
  * <p>Uses GPT-5.2 for creative writing (quality matters for creative output) and Claude Haiku for
  * title generation (simple extraction task).
@@ -48,7 +49,7 @@ public class CreativeTextGenerationOperator extends BaseOperator {
     final var ctx = TaskExecutionContextHolder.getContext();
 
     // Schedule artifact with a placeholder title initially
-    final var artifactName = ctx.addArtifact(PendingArtifact.builder()
+    final var artifactName = ctx.getArtifacts().add(ArtifactDraft.builder()
         .kind(ArtifactKind.STRUCTURED_JSON)
         .title("Creative Writing")
         .description(style + " style")
@@ -75,13 +76,13 @@ public class CreativeTextGenerationOperator extends BaseOperator {
       return OperatorResult.failure("No text generated", normalizedInputs);
     }
 
-    // Generate a title for the content using Haiku
+    // Generate a title for the inlineContent using Haiku
     final var title = generateTitle(prompt, text);
 
     final var content = objectMapper.createObjectNode()
         .put(OUTPUT_KEY, text);
 
-    ctx.updatePendingArtifact(artifactName, PendingArtifact.builder()
+    ctx.getArtifacts().updatePending(Artifact.builder()
         .name(artifactName)
         .kind(ArtifactKind.STRUCTURED_JSON)
         .title(title)
@@ -136,15 +137,15 @@ public class CreativeTextGenerationOperator extends BaseOperator {
     return new OperatorSpec(
         "CreativeTextGeneration",
         "1.0.0",
-        "Generates creative text content from prompts",
+        "Generates creative text inlineContent from prompts",
         List.of(
             ParamSpec.string("prompt", "The creative prompt or concept", true),
             ParamSpec.string("style", "Writing style (creative, professional, casual)", "creative"),
             ParamSpec.integer("maxLength", "Maximum length in words", 500)
         ),
         List.of(
-            ParamSpec.string(OUTPUT_KEY, "Generated text content", true),
-            ParamSpec.string("artifactId", "ID of the created artifact", true)
+            ParamSpec.string(OUTPUT_KEY, "Generated text inlineContent", true),
+            ParamSpec.string("artifactName", "Name of the created artifact", true)
         )
     );
   }

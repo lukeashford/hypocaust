@@ -31,10 +31,10 @@ public class DeleteArtifactOperator extends BaseOperator {
     if (artifactNameInput != null && !artifactNameInput.isBlank()) {
       artifactName = artifactNameInput;
     } else {
-      // Use ProjectContextTool to resolve artifact fileName from task description
+      // Use ProjectContextTool to resolve artifact name from task description
       artifactName = projectContext.ask(
-          "What artifact fileName should be deleted for: " + task
-              + "? Reply with just the fileName, nothing else.");
+          "What artifact name should be deleted for: " + task
+              + "? Reply with just the name, nothing else.");
       if (artifactName != null) {
         artifactName = artifactName.trim();
       }
@@ -45,7 +45,7 @@ public class DeleteArtifactOperator extends BaseOperator {
           normalizedInputs);
     }
 
-    log.info("Resolved artifact fileName for deletion: {}", artifactName);
+    log.info("Resolved artifact name for deletion: {}", artifactName);
 
     // Mark for deletion - emits ARTIFACT_REMOVED event
     // Throws ArtifactNotFoundException if doesn't exist (caught by BaseOperator)

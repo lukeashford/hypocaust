@@ -4,7 +4,7 @@ import com.example.hypocaust.domain.event.TaskProgressEvent.TaskProgressEventPay
 import java.util.UUID;
 
 public abstract sealed class TaskProgressEvent<T extends TaskProgressEventPayload> extends Event<T>
-    permits TaskProgressUpdatedEvent {
+    permits TodoListUpdatedEvent {
 
   protected TaskProgressEvent(UUID taskExecutionId, T payload) {
     super(taskExecutionId, payload);

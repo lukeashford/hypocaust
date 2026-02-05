@@ -18,12 +18,22 @@ public class HashCalculator {
    *
    * @param text the input text to hash
    * @return hexadecimal string representation of the SHA-256 hash
-   * @throws RuntimeException if SHA-256 algorithm is not available
    */
   public String calculateSha256Hash(String text) {
+    return calculateSha256Hash(text.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Calculates SHA-256 hash of the given byte array.
+   *
+   * @param data the data to hash
+   * @return hexadecimal string representation of the SHA-256 hash
+   * @throws RuntimeException if SHA-256 algorithm is not available
+   */
+  public String calculateSha256Hash(byte[] data) {
     try {
       final var digest = MessageDigest.getInstance("SHA-256");
-      final var hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+      final var hash = digest.digest(data);
       return HexFormat.of().formatHex(hash);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 algorithm not available", e);

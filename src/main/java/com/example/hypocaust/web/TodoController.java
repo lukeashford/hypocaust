@@ -1,9 +1,8 @@
 package com.example.hypocaust.web;
 
 import com.example.hypocaust.common.Routes;
-import com.example.hypocaust.db.TaskProgressEntity;
-import com.example.hypocaust.domain.TaskItem;
-import com.example.hypocaust.repo.TaskProgressRepository;
+import com.example.hypocaust.domain.Todo;
+import com.example.hypocaust.service.TodoService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -19,27 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class TaskProgressController {
+public class TodoController {
 
-  private final TaskProgressRepository taskProgressRepository;
+  private final TodoService todoService;
 
   /**
    * Get all task progress items for a given TaskExecution.
    *
    * @param taskExecutionId the TaskExecution ID
-   * @return list of task progress items as TaskItem DTOs
+   * @return list of task progress items as Todo DTOs
    */
   @GetMapping(Routes.TASK_EXECUTION_TODOLIST)
-  public ResponseEntity<List<TaskItem>> getTaskProgress(@PathVariable UUID taskExecutionId) {
+  public ResponseEntity<List<Todo>> getTodos(@PathVariable UUID taskExecutionId) {
     log.info("Fetching task progress for TaskExecution: {}", taskExecutionId);
-
-    List<TaskProgressEntity> entities = taskProgressRepository
-        .findByTaskExecutionIdOrderByTaskIdAsc(taskExecutionId);
-
-    List<TaskItem> items = entities.stream()
-        .map(e -> new TaskItem(e.getTaskId(), e.getDescription(), e.getStatus()))
-        .toList();
-
-    return ResponseEntity.ok(items);
+    return ResponseEntity.ok(todoService.getTodosForTaskExecution(taskExecutionId));
   }
 }

@@ -24,7 +24,7 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
     map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.Payload.class);
     map.put(EventType.TASKEXECUTION_FAILED, TaskExecutionFailedEvent.Payload.class);
-    map.put(EventType.TASK_PROGRESS_UPDATED, TaskProgressUpdatedEvent.Payload.class);
+    map.put(EventType.TASK_PROGRESS_UPDATED, TodoListUpdatedEvent.Payload.class);
     map.put(EventType.TOOL_CALLING, ToolCallingEventPayload.class);
     map.put(EventType.ERROR, ErrorEventPayload.class);
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.Payload.class);

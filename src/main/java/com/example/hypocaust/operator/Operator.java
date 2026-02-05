@@ -2,6 +2,7 @@ package com.example.hypocaust.operator;
 
 import com.example.hypocaust.operator.result.OperatorResult;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Interface for operators that perform units of work within the system. Each operator declares its
@@ -28,11 +29,11 @@ public interface Operator {
   OperatorResult execute(Map<String, Object> rawInputs);
 
   /**
-   * Executes the operator with the provided context, input parameters and a todoPath.
+   * Executes the operator with the provided context, input parameters and a todo ID.
    *
    * @param rawInputs the input parameters
-   * @param todoPath the path in the task tree
+   * @param todoId the ID of the todo in the task tree
    * @return the result of the operation
    */
-  OperatorResult execute(Map<String, Object> rawInputs, String todoPath);
+  OperatorResult execute(Map<String, Object> rawInputs, UUID todoId);
 }

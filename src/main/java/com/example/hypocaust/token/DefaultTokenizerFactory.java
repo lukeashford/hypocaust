@@ -14,7 +14,7 @@ public final class DefaultTokenizerFactory implements TokenizerFactory {
 
   @Override
   public Tokenizer forModel(final String modelName) {
-    // Map model fileName patterns to appropriate encodings
+    // Map model name patterns to appropriate encodings
     // For most modern OpenAI/Anthropic-like chat models, CL100K_BASE is a reasonable baseline
     final var registry = Encodings.newDefaultEncodingRegistry();
 

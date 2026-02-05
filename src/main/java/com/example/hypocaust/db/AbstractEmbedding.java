@@ -17,7 +17,7 @@ public abstract class AbstractEmbedding extends BaseEntity {
   protected static final int DIM = 1536;
   protected static final String VECTOR_DEF = "vector(1536)";
 
-  @Column(name = "fileName", unique = true, nullable = false)
+  @Column(name = "name", unique = true, nullable = false)
   protected String name;
 
   @Column(name = "embedding", nullable = false, columnDefinition = VECTOR_DEF)

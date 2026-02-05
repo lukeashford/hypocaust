@@ -1,14 +1,12 @@
 package com.example.hypocaust.tool;
 
-import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.ArtifactStatus;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
-import com.example.hypocaust.service.ArtifactVersionManagementService;
+import com.example.hypocaust.service.TaskExecutionService;
+import com.example.hypocaust.service.VersionManagementService;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -28,14 +26,15 @@ public class ProjectContextTool {
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
   private static final int MAX_QUESTION_LENGTH = 1000;
 
-  private final ArtifactVersionManagementService versionService;
+  private final VersionManagementService versionService;
   private final ModelRegistry modelRegistry;
+  private final TaskExecutionService taskExecutionService;
 
   /**
    * Answer a question about project artifacts or version history.
    *
-   * Examples: - "What is this project about?" - "What is the artifact fileName for the picture of
-   * our protagonist wearing a suit?" - "What prompt was used for the forest_background artifact?" -
+   * Examples: - "What is this project about?" - "What is the artifact name for the picture of our
+   * protagonist wearing a suit?" - "What prompt was used for the forest_background artifact?" -
    * "List all current artifacts" - "Show me the version history of hero_image"
    *
    * We are explicitly limiting your access to version history to save you space in your context.
@@ -53,44 +52,35 @@ public class ProjectContextTool {
     }
 
     var ctx = TaskExecutionContextHolder.getContext();
-    var projectId = ctx.getProjectId();
     var taskExecutionId = ctx.getTaskExecutionId();
-    var predecessorId = ctx.getPredecessorId();
 
     // Gather relevant data
-    List<ArtifactEntity> artifacts;
-    if (predecessorId != null) {
-      artifacts = versionService.getArtifactsAtTaskExecution(predecessorId);
-    } else {
-      artifacts = List.of();
-    }
-
-    List<TaskExecutionEntity> history = versionService.getTaskExecutionHistory(projectId);
+    List<Artifact> artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
 
     // Build context for LLM
     StringBuilder contextBuilder = new StringBuilder();
     contextBuilder.append("Current artifacts:\n");
-    for (ArtifactEntity artifact : artifacts) {
+    for (Artifact artifact : artifacts) {
       contextBuilder.append(String.format("- %s (%s): %s\n",
-          artifact.getFileName(),
-          artifact.getKind(),
-          artifact.getDescription() != null ? artifact.getDescription() : "no description"));
-      if (artifact.getPrompt() != null) {
-        contextBuilder.append(String.format("  Prompt: %s\n", artifact.getPrompt()));
+          artifact.name(),
+          artifact.kind(),
+          artifact.description()));
+      if (artifact.prompt() != null) {
+        contextBuilder.append(String.format("  Prompt: %s\n", artifact.prompt()));
       }
-      if (artifact.getModel() != null) {
-        contextBuilder.append(String.format("  Model: %s\n", artifact.getModel()));
+      if (artifact.model() != null) {
+        contextBuilder.append(String.format("  Model: %s\n", artifact.model()));
       }
     }
 
-    contextBuilder.append("\nTask execution history (most recent first):\n");
-    for (TaskExecutionEntity te : history) {
-      contextBuilder.append(String.format("- [%s] %s: %s\n",
-          te.getStatus(),
-          te.getTask() != null ? te.getTask().substring(0, Math.min(50, te.getTask().length()))
-              : "no task",
-          te.getCommitMessage() != null ? te.getCommitMessage() : "no changes"));
-    }
+//    contextBuilder.append("\nTask execution history (most recent first):\n");
+//    for (TaskExecutionEntity te : history) {
+//      contextBuilder.append(String.format("- [%s] %s: %s\n",
+//          te.getStatus(),
+//          te.getTask() != null ? te.getTask().substring(0, Math.min(50, te.getTask().length()))
+//              : "no task",
+//          te.getCommitMessage() != null ? te.getCommitMessage() : "no changes"));
+//    }
 
     // Call small LLM to interpret and answer
     try {
@@ -111,22 +101,5 @@ public class ProjectContextTool {
       log.error("Failed to answer project context question: {}", e.getMessage());
       return "Unable to answer: " + e.getMessage();
     }
-  }
-
-  /**
-   * Get an artifact by fileName from the current state.
-   */
-  public Optional<ArtifactEntity> getArtifactByName(String name) {
-    var ctx = TaskExecutionContextHolder.getContext();
-    var predecessorId = ctx.getPredecessorId();
-
-    if (predecessorId == null) {
-      return Optional.empty();
-    }
-
-    List<ArtifactEntity> artifacts = versionService.getArtifactsAtTaskExecution(predecessorId);
-    return artifacts.stream()
-        .filter(a -> name.equals(a.getFileName()) && a.getStatus() != ArtifactStatus.DELETED)
-        .findFirst();
   }
 }

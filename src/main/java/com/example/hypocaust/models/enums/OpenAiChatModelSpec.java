@@ -20,12 +20,12 @@ public enum OpenAiChatModelSpec implements ModelSpecEnum {
   private final String modelName;
 
   /**
-   * Creates an enum instance from a string model fileName for fail-fast validation. Used by Spring
-   * Boot for YAML string to enum conversion.
+   * Creates an enum instance from a string model name for fail-fast validation. Used by Spring Boot
+   * for YAML string to enum conversion.
    *
-   * @param modelName the model fileName string from configuration
+   * @param modelName the model name string from configuration
    * @return the corresponding enum constant
-   * @throws IllegalArgumentException if the model fileName is not recognized
+   * @throws IllegalArgumentException if the model name is not recognized
    */
   @JsonCreator
   public static OpenAiChatModelSpec fromString(String modelName) throws ModelException {

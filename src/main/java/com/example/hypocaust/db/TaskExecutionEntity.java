@@ -1,6 +1,7 @@
 package com.example.hypocaust.db;
 
 import com.example.hypocaust.domain.TaskExecutionDelta;
+import com.example.hypocaust.domain.TaskExecutionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -33,7 +34,8 @@ public class TaskExecutionEntity extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private Status status;
+  @Builder.Default
+  private TaskExecutionStatus status = TaskExecutionStatus.QUEUED;
 
   private Instant startedAt;
 
@@ -49,7 +51,6 @@ public class TaskExecutionEntity extends BaseEntity {
   /**
    * Auto-generated summary of changes (null if no changes).
    */
-  @Column(name = "message")
   private String commitMessage;
 
   /**
@@ -59,24 +60,20 @@ public class TaskExecutionEntity extends BaseEntity {
   @JdbcTypeCode(SqlTypes.JSON)
   private TaskExecutionDelta delta;
 
-  public enum Status {
-    QUEUED, RUNNING, REQUIRES_ACTION, COMPLETED, FAILED, CANCELLED
-  }
-
   public void start() {
     this.startedAt = Instant.now();
-    this.status = Status.RUNNING;
+    this.status = TaskExecutionStatus.RUNNING;
   }
 
   /**
    * Complete with optional artifact changes.
    *
    * @param commitMessage Summary of what was done (LLM-generated for success)
-   * @param delta         The changes delta (null if no artifact changes)
+   * @param delta The changes delta (null if no artifact changes)
    */
   public void complete(String commitMessage, TaskExecutionDelta delta) {
     this.completedAt = Instant.now();
-    this.status = Status.COMPLETED;
+    this.status = TaskExecutionStatus.COMPLETED;
     this.commitMessage = commitMessage;
     this.delta = delta;
   }
@@ -88,7 +85,7 @@ public class TaskExecutionEntity extends BaseEntity {
    */
   public void fail(String commitMessage) {
     this.completedAt = Instant.now();
-    this.status = Status.FAILED;
+    this.status = TaskExecutionStatus.FAILED;
     this.commitMessage = commitMessage;
   }
 }

@@ -13,7 +13,7 @@ public final class ArtifactRemovedEvent extends ArtifactEvent<ArtifactRemovedEve
     return EventType.ARTIFACT_REMOVED;
   }
 
-  public record Payload(String fileName) implements ArtifactEventPayload {
+  public record Payload(String name) implements ArtifactEventPayload {
 
   }
 }

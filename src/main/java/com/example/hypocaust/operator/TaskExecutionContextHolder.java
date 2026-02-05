@@ -1,8 +1,11 @@
 package com.example.hypocaust.operator;
 
-import com.example.hypocaust.domain.PendingArtifact;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Thread-local holder for TaskExecutionContext. Provides convenience methods for common
@@ -12,6 +15,7 @@ public final class TaskExecutionContextHolder {
 
   private static final ThreadLocal<TaskExecutionContext> contextHolder = new ThreadLocal<>();
   private static final ThreadLocal<Integer> operatorDepth = ThreadLocal.withInitial(() -> 0);
+  private static final ConcurrentHashMap<UUID, TaskExecutionContext> contextsByExecution = new ConcurrentHashMap<>();
 
   private TaskExecutionContextHolder() {
     // Utility class
@@ -20,6 +24,8 @@ public final class TaskExecutionContextHolder {
   public static void setContext(TaskExecutionContext ctx) {
     contextHolder.set(ctx);
     operatorDepth.set(0);
+    // Register for cross-thread lookup
+    contextsByExecution.put(ctx.getTaskExecutionId(), ctx);
   }
 
   public static TaskExecutionContext getContext() {
@@ -35,8 +41,17 @@ public final class TaskExecutionContextHolder {
   }
 
   public static void clear() {
+    TaskExecutionContext ctx = contextHolder.get();
+    if (ctx != null) {
+      contextsByExecution.remove(ctx.getTaskExecutionId());
+    }
     contextHolder.remove();
     operatorDepth.remove();
+  }
+
+  // New method for cross-thread access
+  public static Optional<TaskExecutionContext> getContextByTaskExecutionId(UUID taskExecutionId) {
+    return Optional.ofNullable(contextsByExecution.get(taskExecutionId));
   }
 
   // === Convenience methods ===
@@ -56,45 +71,45 @@ public final class TaskExecutionContextHolder {
   /**
    * Schedule a new artifact for creation.
    *
-   * @return the generated artifact fileName
+   * @return the generated artifact name
    */
-  public static String addArtifact(PendingArtifact artifact) {
-    return getContext().addArtifact(artifact);
+  public static String addArtifact(ArtifactDraft draft) {
+    return getContext().getArtifacts().add(draft);
   }
 
   /**
    * Schedule an edit to an existing artifact.
    */
-  public static void editArtifact(String name, PendingArtifact newVersion) {
-    getContext().editArtifact(name, newVersion);
+  public static void editArtifact(Artifact newVersion) {
+    getContext().getArtifacts().edit(newVersion);
   }
 
   /**
    * Schedule an artifact for deletion.
    */
   public static void deleteArtifact(String name) {
-    getContext().deleteArtifact(name);
+    getContext().getArtifacts().delete(name);
   }
 
   /**
    * Update a pending artifact.
    */
-  public static void updatePendingArtifact(String name, PendingArtifact newVersion) {
-    getContext().updatePendingArtifact(name, newVersion);
+  public static void updateArtifact(Artifact newVersion) {
+    getContext().getArtifacts().updatePending(newVersion);
   }
 
   /**
-   * Cancel a pending artifact.
+   * Rollback a pending artifact (removes from changelist entirely).
    */
-  public static void cancelPendingArtifact(String name) {
-    getContext().cancelPendingArtifact(name);
+  public static void rollbackArtifact(String name) {
+    getContext().getArtifacts().rollbackPending(name);
   }
 
   /**
    * Check if an artifact exists.
    */
   public static boolean artifactExists(String name) {
-    return getContext().artifactExists(name);
+    return getContext().getArtifacts().exists(name);
   }
 
   // === Operator depth tracking (for logging indentation) ===

@@ -1,12 +1,13 @@
 package com.example.hypocaust.operator;
 
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.domain.PendingArtifact;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.service.TaskExecutionService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -32,6 +33,7 @@ public class ImageEditOperator extends BaseOperator {
   private final ProjectContextTool projectContext;
   private final ModelRegistry modelRegistry;
   private final ObjectMapper objectMapper;
+  private final TaskExecutionService taskExecutionService;
 
   @Override
   protected OperatorResult doExecute(Map<String, Object> normalizedInputs) {
@@ -47,10 +49,10 @@ public class ImageEditOperator extends BaseOperator {
     if (artifactNameInput != null && !artifactNameInput.isBlank()) {
       resolvedName = artifactNameInput;
     } else {
-      // Use ProjectContextTool to resolve artifact fileName from task description
+      // Use ProjectContextTool to resolve artifact name from task description
       String response = projectContext.ask(
-          "What is the artifact fileName for: " + task
-              + "? Reply with just the fileName, nothing else.");
+          "What is the artifact name for: " + task
+              + "? Reply with just the name, nothing else.");
       resolvedName = response != null ? response.trim() : null;
     }
 
@@ -60,25 +62,27 @@ public class ImageEditOperator extends BaseOperator {
       return OperatorResult.failure("Could not determine which artifact to edit", normalizedInputs);
     }
 
-    log.info("Resolved artifact fileName: {}", artifactName);
+    log.info("Resolved artifact name: {}", artifactName);
 
     // Get the current artifact
-    var artifact = projectContext.getArtifactByName(artifactName)
+    var artifact = taskExecutionService.getState().artifacts().stream()
+        .filter(a -> artifactName.equals(a.name()))
+        .findFirst()
         .orElseThrow(() -> new ArtifactNotFoundException("Artifact not found: " + artifactName));
 
     // Verify it's an image
-    if (artifact.getKind() != ArtifactKind.IMAGE) {
+    if (artifact.kind() != ArtifactKind.IMAGE) {
       return OperatorResult.failure(
-          "Cannot edit non-image artifact: " + artifactName + " is " + artifact.getKind(),
+          "Cannot edit non-image artifact: " + artifactName + " is " + artifact.kind(),
           normalizedInputs);
     }
 
     // Schedule edit - emits ARTIFACT_UPDATED event
-    TaskExecutionContextHolder.editArtifact(artifactName, PendingArtifact.builder()
+    TaskExecutionContextHolder.editArtifact(Artifact.builder()
         .name(artifactName)
         .kind(ArtifactKind.IMAGE)
-        .title(artifact.getTitle())
-        .description(artifact.getDescription())
+        .title(artifact.title())
+        .description(artifact.description())
         .prompt(task)
         .model(IMAGE_MODEL.getModelName())
         .status(ArtifactStatus.GESTATING)
@@ -94,7 +98,7 @@ public class ImageEditOperator extends BaseOperator {
           .build();
 
       // Combine original prompt with edit instructions
-      String originalPrompt = artifact.getPrompt();
+      String originalPrompt = artifact.prompt();
       String combinedPrompt = originalPrompt != null
           ? originalPrompt + ". Modified: " + task
           : task;
@@ -103,7 +107,7 @@ public class ImageEditOperator extends BaseOperator {
       final var response = modelRegistry.get(IMAGE_MODEL).call(imagePrompt);
 
       if (response.getResults().isEmpty()) {
-        TaskExecutionContextHolder.cancelPendingArtifact(artifactName);
+        TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
         return OperatorResult.failure("No image generated", normalizedInputs);
       }
 
@@ -121,17 +125,18 @@ public class ImageEditOperator extends BaseOperator {
       metadata.put("model", IMAGE_MODEL.getModelName());
 
       // Update pending artifact with result
-      TaskExecutionContextHolder.updatePendingArtifact(artifactName, PendingArtifact.builder()
-          .name(artifactName)
-          .kind(ArtifactKind.IMAGE)
-          .title(artifact.getTitle())
-          .description(artifact.getDescription())
-          .prompt(task)
-          .model(IMAGE_MODEL.getModelName())
-          .externalUrl(newImageUrl)
-          .metadata(metadata)
-          .status(ArtifactStatus.CREATED)
-          .build());
+      TaskExecutionContextHolder.getContext().getArtifacts()
+          .updatePending(Artifact.builder()
+              .name(artifactName)
+              .kind(ArtifactKind.IMAGE)
+              .title(artifact.title())
+              .description(artifact.description())
+              .prompt(task)
+              .model(IMAGE_MODEL.getModelName())
+              .url(newImageUrl)
+              .metadata(metadata)
+              .status(ArtifactStatus.CREATED)
+              .build());
 
       log.info("Successfully edited image: {}", artifactName);
 
@@ -143,9 +148,9 @@ public class ImageEditOperator extends BaseOperator {
     } catch (Exception e) {
       log.error("Failed to edit image: {}", e.getMessage(), e);
       try {
-        TaskExecutionContextHolder.cancelPendingArtifact(artifactName);
-      } catch (Exception cancelEx) {
-        log.warn("Failed to cancel pending artifact: {}", cancelEx.getMessage());
+        TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
+      } catch (Exception rollbackEx) {
+        log.warn("Failed to rollback pending artifact: {}", rollbackEx.getMessage());
       }
       return OperatorResult.failure("Image edit failed: " + e.getMessage(), normalizedInputs);
     }

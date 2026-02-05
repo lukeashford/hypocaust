@@ -19,7 +19,7 @@ class EventTypeIdResolver extends TypeIdResolverBase {
     map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.class);
     map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.class);
     map.put(EventType.TASKEXECUTION_FAILED, TaskExecutionFailedEvent.class);
-    map.put(EventType.TASK_PROGRESS_UPDATED, TaskProgressUpdatedEvent.class);
+    map.put(EventType.TASK_PROGRESS_UPDATED, TodoListUpdatedEvent.class);
     map.put(EventType.TOOL_CALLING, ToolCallingEvent.class);
     map.put(EventType.ERROR, ErrorEvent.class);
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.class);

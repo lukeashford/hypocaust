@@ -6,16 +6,16 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Registry interface for discovering and searching operators by fileName and semantic task
- * matching. Designed for LLM-based recursive problem solving where operators are discovered through
- * semantic similarity rather than rigid parameter matching.
+ * Registry interface for discovering and searching operators by name and semantic task matching.
+ * Designed for LLM-based recursive problem solving where operators are discovered through semantic
+ * similarity rather than rigid parameter matching.
  */
 public interface OperatorRegistry {
 
   /**
-   * Finds an operator by its exact fileName.
+   * Finds an operator by its exact name.
    *
-   * @param name the operator fileName to search for
+   * @param name the operator name to search for
    * @return the operator instance if found, empty otherwise
    */
   Optional<Operator> get(String name);

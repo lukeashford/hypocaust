@@ -24,19 +24,19 @@ public abstract class BaseOperator implements Operator {
   protected EventService eventService;
 
   /**
-   * Template method that wraps execution with error handling. Uses the default todoPath "0".
+   * Template method that wraps execution with error handling. Uses null todoId (root level).
    */
   public final OperatorResult execute(Map<String, Object> rawInputs) {
-    return execute(rawInputs, "0");
+    return execute(rawInputs, (UUID) null);
   }
 
   /**
    * Template method that wraps execution with error handling.
    *
    * @param rawInputs The raw inputs for the operator
-   * @param todoPath The path identifying this operator's position in the task tree (e.g., "0.1.2")
+   * @param todoId The ID of the todo in the task tree (null for root level)
    */
-  public final OperatorResult execute(Map<String, Object> rawInputs, String todoPath) {
+  public final OperatorResult execute(Map<String, Object> rawInputs, UUID todoId) {
     final var taskExecutionId = TaskExecutionContextHolder.getTaskExecutionId();
     final var operatorName = getName();
 
@@ -45,14 +45,14 @@ public abstract class BaseOperator implements Operator {
       final var normalizedInputs = spec().normalize(rawInputs);
 
       eventService.publish(
-          new OperatorStartedEvent(taskExecutionId, operatorName, normalizedInputs, todoPath));
+          new OperatorStartedEvent(taskExecutionId, operatorName, normalizedInputs));
 
       final var validationResult = spec().validate(normalizedInputs);
       if (!validationResult.ok()) {
         final var failure = OperatorResult.failure(validationResult.message(), normalizedInputs);
         eventService.publish(
             new OperatorFailedEvent(taskExecutionId, operatorName, normalizedInputs,
-                failure.message(), todoPath));
+                failure.message()));
         return failure;
       }
 
@@ -61,37 +61,37 @@ public abstract class BaseOperator implements Operator {
       if (result.ok()) {
         eventService.publish(
             new OperatorFinishedEvent(taskExecutionId, operatorName, normalizedInputs,
-                result.outputs(), todoPath));
+                result.outputs()));
       } else {
         eventService.publish(
             new OperatorFailedEvent(taskExecutionId, operatorName, normalizedInputs,
-                result.message(), todoPath));
+                result.message()));
       }
 
       return result;
     } catch (ArtifactNotFoundException e) {
-      return handleException(taskExecutionId, operatorName, rawInputs, todoPath,
+      return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "Artifact not found: " + e.getMessage());
     } catch (ArtifactExistsException e) {
-      return handleException(taskExecutionId, operatorName, rawInputs, todoPath,
+      return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "Artifact already exists: " + e.getArtifactName());
     } catch (ArtifactTypeMismatchException e) {
-      return handleException(taskExecutionId, operatorName, rawInputs, todoPath,
+      return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "Type mismatch: " + e.getMessage());
     } catch (ExternalServiceException e) {
-      return handleException(taskExecutionId, operatorName, rawInputs, todoPath,
+      return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "External service error: " + e.getMessage());
     } catch (Exception e) {
       log.error("Unexpected error in operator {}: {}", operatorName, e.getMessage(), e);
-      return handleException(taskExecutionId, operatorName, rawInputs, todoPath,
+      return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "Unexpected error: " + e.getMessage());
     }
   }
 
   private OperatorResult handleException(UUID taskExecutionId, String operatorName,
-      Map<String, Object> inputs, String todoPath, String message) {
+      Map<String, Object> inputs, UUID todoId, String message) {
     eventService.publish(
-        new OperatorFailedEvent(taskExecutionId, operatorName, inputs, message, todoPath));
+        new OperatorFailedEvent(taskExecutionId, operatorName, inputs, message));
     return OperatorResult.failure(message, inputs);
   }
 

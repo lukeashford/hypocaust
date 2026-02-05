@@ -149,17 +149,17 @@ public class SseHub {
   /**
    * Send a single event to an emitter with proper formatting.
    * <p>
-   * The event is sent with: - fileName: event type (e.g., "artifact.scheduled") - id: thread
-   * sequence for ordering - data: full event as JSON
+   * The event is sent with: - name: event type (e.g., "artifact.scheduled") - path: thread sequence
+   * for ordering - data: full event as JSON
    */
   private void sendEvent(SseEmitter emitter, Event<?> event) throws IOException {
     // Serialize the entire event object to JSON
     final var eventJson = objectMapper.writeValueAsString(event);
 
-    // The event fileName should match the type value for frontend routing
+    // The event name should match the type value for frontend routing
     final var eventName = event.type().getValue();
 
-    log.trace("Sending SSE event: fileName={}, id={}", eventName, event.getTaskExecutionSeq());
+    log.trace("Sending SSE event: name={}, path={}", eventName, event.getTaskExecutionSeq());
 
     // Build and send the SSE event
     final var sseEvent = SseEmitter.event()
