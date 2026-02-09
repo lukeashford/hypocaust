@@ -2,6 +2,7 @@ package com.example.hypocaust.service.events;
 
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.mapper.EventMapper;
+import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.List;
@@ -32,12 +33,17 @@ public class EventService {
 
     UUID executionId = event.getTaskExecutionId();
     if (executionId == null
-        && com.example.hypocaust.operator.TaskExecutionContextHolder.hasContext()) {
-      executionId = com.example.hypocaust.operator.TaskExecutionContextHolder.getTaskExecutionId();
+        && TaskExecutionContextHolder.hasContext()) {
+      executionId = TaskExecutionContextHolder.getTaskExecutionId();
     }
 
     if (executionId != null) {
       entity.setTaskExecutionId(executionId);
+    } else if (TaskExecutionContextHolder.hasContext()) {
+      // No executionId on the event but we have a context
+      var ctx = TaskExecutionContextHolder.getContext();
+      entity.setTaskExecutionId(ctx.getTaskExecutionId());
+      executionId = ctx.getTaskExecutionId();
     }
 
     if (doPersist) {
@@ -45,12 +51,12 @@ public class EventService {
     }
 
     if (executionId != null) {
-      com.example.hypocaust.operator.TaskExecutionContextHolder.getContextByTaskExecutionId(
+      TaskExecutionContextHolder.getContextByTaskExecutionId(
               executionId)
-          .ifPresent(ctx -> ctx.updateLastEventId(event.getTaskExecutionSeq()));
+          .ifPresent(ctx -> ctx.updateLastEventId(entity.getId()));
     }
 
-    sseHub.broadcast(executionId, event);
+    sseHub.broadcast(executionId, entity.getId(), event);
   }
 
   @Transactional
@@ -74,12 +80,13 @@ public class EventService {
     return sseHub.subscribe(taskExecutionId, replayEvents);
   }
 
-  private List<Event<?>> findEventsForExecutionSince(UUID taskExecutionId, UUID lastEventId) {
+  private List<SseHub.ReplayItem> findEventsForExecutionSince(UUID taskExecutionId,
+      UUID lastEventId) {
     if (lastEventId == null) {
       // No lastEventId means this is a new connection - replay all events for this execution
       return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
           .parallelStream()
-          .map(eventMapper::toDomain)
+          .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
           .collect(Collectors.toUnmodifiableList());
     }
 
@@ -92,7 +99,7 @@ public class EventService {
     return eventLogRepository.findByTaskExecutionIdAndIdGreaterThanOrderById(taskExecutionId,
             lastEventId)
         .parallelStream()
-        .map(eventMapper::toDomain)
+        .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
         .collect(Collectors.toUnmodifiableList());
   }
 }

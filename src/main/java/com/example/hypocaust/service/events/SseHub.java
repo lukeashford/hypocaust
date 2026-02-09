@@ -31,6 +31,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 public class SseHub {
 
+  public record ReplayItem(UUID id, Event<?> event) {
+
+  }
+
   private final ObjectMapper objectMapper;
 
   private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> executionEmitters = new ConcurrentHashMap<>();
@@ -54,7 +58,7 @@ public class SseHub {
    * @param replayEvents optional list of events to replay for reconnecting clients
    * @return SSE emitter for the connection
    */
-  public SseEmitter subscribe(UUID executionId, @Nullable List<Event<?>> replayEvents) {
+  public SseEmitter subscribe(UUID executionId, @Nullable List<ReplayItem> replayEvents) {
     log.debug("New SSE subscription for execution: {}", executionId);
 
     final var emitter = new SseEmitter(emitterTimeout);
@@ -98,7 +102,7 @@ public class SseHub {
    * @param executionId the task execution ID
    * @param event the event to broadcast
    */
-  public void broadcast(UUID executionId, Event<?> event) {
+  public void broadcast(UUID executionId, UUID eventId, Event<?> event) {
     if (executionId == null) {
       log.trace("No executionId provided, skipping broadcast");
       return;
@@ -117,7 +121,7 @@ public class SseHub {
 
     for (final var emitter : emitters) {
       try {
-        sendEvent(emitter, event);
+        sendEvent(emitter, eventId, event);
       } catch (IOException e) {
         log.debug("Failed to send SSE event to emitter for execution {}: {}", executionId,
             e.getMessage());
@@ -134,10 +138,10 @@ public class SseHub {
   /**
    * Replay a list of events to a subscriber.
    */
-  private void replayEvents(SseEmitter emitter, List<Event<?>> events) {
+  private void replayEvents(SseEmitter emitter, List<ReplayItem> events) {
     try {
-      for (final var event : events) {
-        sendEvent(emitter, event);
+      for (final var item : events) {
+        sendEvent(emitter, item.id(), item.event());
       }
       log.debug("Successfully replayed {} events", events.size());
     } catch (Exception e) {
@@ -152,18 +156,18 @@ public class SseHub {
    * The event is sent with: - name: event type (e.g., "artifact.scheduled") - path: thread sequence
    * for ordering - data: full event as JSON
    */
-  private void sendEvent(SseEmitter emitter, Event<?> event) throws IOException {
+  private void sendEvent(SseEmitter emitter, UUID eventId, Event<?> event) throws IOException {
     // Serialize the entire event object to JSON
     final var eventJson = objectMapper.writeValueAsString(event);
 
     // The event name should match the type value for frontend routing
     final var eventName = event.type().getValue();
 
-    log.trace("Sending SSE event: name={}, path={}", eventName, event.getTaskExecutionSeq());
+    log.trace("Sending SSE event: name={}, id={}", eventName, eventId);
 
     // Build and send the SSE event
     final var sseEvent = SseEmitter.event()
-        .id(event.getTaskExecutionSeq().toString())
+        .id(eventId.toString())
         .name(eventName)
         .data(eventJson)
         .reconnectTime(3000L);
