@@ -32,18 +32,12 @@ public class EventService {
     final var entity = eventMapper.toEntity(event);
 
     UUID executionId = event.getTaskExecutionId();
-    if (executionId == null
-        && TaskExecutionContextHolder.hasContext()) {
+    if (executionId == null && TaskExecutionContextHolder.hasContext()) {
       executionId = TaskExecutionContextHolder.getTaskExecutionId();
     }
 
     if (executionId != null) {
       entity.setTaskExecutionId(executionId);
-    } else if (TaskExecutionContextHolder.hasContext()) {
-      // No executionId on the event but we have a context
-      var ctx = TaskExecutionContextHolder.getContext();
-      entity.setTaskExecutionId(ctx.getTaskExecutionId());
-      executionId = ctx.getTaskExecutionId();
     }
 
     if (doPersist) {
