@@ -13,6 +13,7 @@ import com.example.hypocaust.repo.ProjectRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -65,10 +66,9 @@ public class TaskService {
 
     // Resolve predecessorId: use provided or find most recent completed
     // null if none exists (which would be fine for an empty project)
-    UUID predecessorId = predecessorIdInput;
-    if (predecessorId == null) {
-      predecessorId = versionService.getMostRecentTaskExecutionId(projectId).orElse(null);
-    }
+    UUID predecessorId = Optional.ofNullable(predecessorIdInput)
+        .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
+            .orElse(null));
 
     // Create TaskExecution entity
     final var taskExecution = TaskExecutionEntity.builder()
