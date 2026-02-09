@@ -19,16 +19,6 @@ public interface Operator {
   OperatorSpec spec();
 
   /**
-   * Executes the operator with the provided context and input parameters. The inputs should be
-   * validated against the spec before calling this method, but implementations should be defensive
-   * and handle invalid inputs gracefully.
-   *
-   * @param rawInputs the input parameters (may need validation and normalization)
-   * @return the result of the operation including outputs, metrics, and status
-   */
-  OperatorResult execute(Map<String, Object> rawInputs);
-
-  /**
    * Executes the operator with the provided context, input parameters and a todo ID.
    *
    * @param rawInputs the input parameters

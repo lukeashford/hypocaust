@@ -62,10 +62,7 @@ public class InvokeTool {
 
   @Tool(name = "invoke", description = "Invoke a chain of operators, as specified in the ledger")
   public OperatorResult invoke(OperatorLedger ledger) {
-    return invoke(ledger, null);
-  }
-
-  public OperatorResult invoke(OperatorLedger ledger, UUID parentTodoId) {
+    final var parentTodoId = TaskExecutionContextHolder.getCurrentTodoId();
     final var indent = TaskExecutionContextHolder.getIndent();
     log.info("{}Starting operator chain with {} children under parent {}",
         indent, ledger.children().size(), parentTodoId);
@@ -78,16 +75,15 @@ public class InvokeTool {
     // Create todos and track their IDs
     var childTodoIds = new ArrayList<UUID>();
     if (!singleChild) {
-      // Publish all subtasks at once at the beginning
-      var subtasks = new ArrayList<Todo>();
-      for (int i = 0; i < ledger.children().size(); i++) {
-        var child = ledger.children().get(i);
-        var todoId = UUID.randomUUID();
-        childTodoIds.add(todoId);
+      // Publish all subtodos at once at the beginning
+      var subtodos = new ArrayList<Todo>();
+      for (var child : ledger.children()) {
         var description = child.todo() != null ? child.todo() : child.operatorName();
-        subtasks.add(new Todo(description, TodoStatus.PENDING));
+        var todo = new Todo(description, TodoStatus.PENDING);
+        subtodos.add(todo);
+        childTodoIds.add(todo.id());
       }
-      TaskExecutionContextHolder.getContext().getTodos().addSubtasks(parentTodoId, subtasks);
+      TaskExecutionContextHolder.getTodos().registerSubtodos(parentTodoId, subtodos);
     } else {
       // Single child keeps the same parent ID
       childTodoIds.add(parentTodoId);
@@ -104,7 +100,9 @@ public class InvokeTool {
       if (opOpt.isEmpty()) {
         final var error = "No operator found with name: " + operatorName;
         log.error("{} [FAILED] {}", indent, error);
-        updateStatus(childTodoId, singleChild, TodoStatus.FAILED);
+        if (!singleChild) {
+          TaskExecutionContextHolder.getTodos().markFailed(childTodoId);
+        }
         return OperatorResult.failure(error, Map.of("operatorName", operatorName));
       }
 
@@ -114,8 +112,6 @@ public class InvokeTool {
           indent,
           operatorName,
           child.inputsToKeys().keySet());
-
-      updateStatus(childTodoId, singleChild, TodoStatus.IN_PROGRESS);
 
       final var inputs = new HashMap<String, Object>();
       for (final var inputName : op.spec().getInputKeys()) {
@@ -135,13 +131,10 @@ public class InvokeTool {
 
       if (!result.ok()) {
         log.error("{}[FAILED] {}: {}", indent, child.operatorName(), result.message());
-        updateStatus(childTodoId, singleChild, TodoStatus.FAILED);
         return result;
       }
 
       log.info("{}[DONE] {}", indent, child.operatorName());
-
-      updateStatus(childTodoId, singleChild, TodoStatus.COMPLETED);
 
       for (final var outputName : op.spec().getOutputKeys()) {
         final var outputKey = child.outputsToKeys().get(outputName);
@@ -231,15 +224,5 @@ public class InvokeTool {
       }
       return Matcher.quoteReplacement(value.toString());
     });
-  }
-
-  /**
-   * Helper method to update task status only for multiple-child ledgers. Eliminates repeated
-   * conditional checks throughout the invoke loop.
-   */
-  private void updateStatus(UUID todoId, boolean singleChild, TodoStatus status) {
-    if (!singleChild && todoId != null) {
-      TaskExecutionContextHolder.getContext().getTodos().updateStatus(todoId, status);
-    }
   }
 }

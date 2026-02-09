@@ -20,26 +20,47 @@ public class TodosContext {
   private final TodoList list = new TodoList();
 
   /**
-   * Add a root-level todo.
+   * Add tasks under a parent (overrides existing children). Pass null for parentId to target the
+   * "ROOT" node.
    */
-  public synchronized void addRoot(Todo todo) {
-    list.addRoot(todo);
+  public void registerSubtodos(UUID parentId, List<Todo> children) {
+    list.setTodos(parentId, children);
     eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
   }
 
   /**
-   * Add subtasks under a parent todo.
+   * Update a todo's status to IN_PROGRESS.
    */
-  public synchronized void addSubtasks(UUID parentId, List<Todo> subtasks) {
-    list.addSubtasks(parentId, subtasks);
-    eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
+  public void markRunning(UUID todoId) {
+    if (todoId != null) {
+      updateStatus(todoId, TodoStatus.IN_PROGRESS);
+    }
+  }
+
+  /**
+   * Update a todo's status to COMPLETED.
+   */
+  public void markCompleted(UUID todoId) {
+    if (todoId != null) {
+      updateStatus(todoId, TodoStatus.COMPLETED);
+    }
+  }
+
+  /**
+   * Update a todo's status to FAILED.
+   */
+  public void markFailed(UUID todoId) {
+    if (todoId != null) {
+      updateStatus(todoId, TodoStatus.FAILED);
+    }
   }
 
   /**
    * Update a todo's status by ID.
    */
-  public synchronized void updateStatus(UUID todoId, TodoStatus status) {
+  public void updateStatus(UUID todoId, TodoStatus status) {
     list.updateStatus(todoId, status);
     eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
   }
+
 }

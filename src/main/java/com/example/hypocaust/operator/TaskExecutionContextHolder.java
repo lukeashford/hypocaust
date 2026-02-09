@@ -3,6 +3,9 @@ package com.example.hypocaust.operator;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.domain.TodosContext;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +18,7 @@ public final class TaskExecutionContextHolder {
 
   private static final ThreadLocal<TaskExecutionContext> contextHolder = new ThreadLocal<>();
   private static final ThreadLocal<Integer> operatorDepth = ThreadLocal.withInitial(() -> 0);
+  private static final ThreadLocal<Deque<UUID>> todoPath = ThreadLocal.withInitial(ArrayDeque::new);
   private static final ConcurrentHashMap<UUID, TaskExecutionContext> contextsByExecution = new ConcurrentHashMap<>();
 
   private TaskExecutionContextHolder() {
@@ -47,6 +51,7 @@ public final class TaskExecutionContextHolder {
     }
     contextHolder.remove();
     operatorDepth.remove();
+    todoPath.remove();
   }
 
   // New method for cross-thread access
@@ -112,6 +117,24 @@ public final class TaskExecutionContextHolder {
     return getContext().getArtifacts().exists(name);
   }
 
+  // === Todo lifecycle convenience methods ===
+
+  public static TodosContext getTodos() {
+    return getContext().getTodos();
+  }
+
+  public static void markCurrentTodoRunning() {
+    getTodos().markRunning(getCurrentTodoId());
+  }
+
+  public static void markCurrentTodoCompleted() {
+    getTodos().markCompleted(getCurrentTodoId());
+  }
+
+  public static void markCurrentTodoFailed() {
+    getTodos().markFailed(getCurrentTodoId());
+  }
+
   // === Operator depth tracking (for logging indentation) ===
 
   /**
@@ -143,6 +166,34 @@ public final class TaskExecutionContextHolder {
     int current = operatorDepth.get();
     if (current > 0) {
       operatorDepth.set(current - 1);
+    }
+  }
+
+  // === Todo path tracking ===
+
+  /**
+   * Get the current todo ID from the stack.
+   */
+  public static UUID getCurrentTodoId() {
+    return todoPath.get().peek();
+  }
+
+  /**
+   * Push a todo ID onto the stack.
+   */
+  public static void pushTodoId(UUID todoId) {
+    if (todoId != null) {
+      todoPath.get().push(todoId);
+    }
+  }
+
+  /**
+   * Pop a todo ID from the stack.
+   */
+  public static void popTodoId() {
+    Deque<UUID> stack = todoPath.get();
+    if (!stack.isEmpty()) {
+      stack.pop();
     }
   }
 }

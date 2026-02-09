@@ -17,6 +17,5 @@ public final class Routes {
 
   // TaskExecution routes
   public static final String TASK_EXECUTION_EVENTS = "/task-executions/{taskExecutionId}/events";
-  public static final String TASK_EXECUTION_TODOLIST = "/task-executions/{taskExecutionId}/todolist";
   public static final String TASK_EXECUTION_STATE = "/task-executions/{taskExecutionId}/state";
 }

@@ -56,7 +56,7 @@ public class TaskExecutionContext {
         taskExecutionId,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges(),
-        todos.getList().getRoots(),
+        todos.getList().toList(),
         lastEventId
     );
   }

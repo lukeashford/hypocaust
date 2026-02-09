@@ -1,47 +1,28 @@
 package com.example.hypocaust.domain;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import lombok.Getter;
 
 /**
- * Hierarchical task progress tree for a TaskExecution. Thread-safe for concurrent modifications.
- * Uses adjacency list pattern with parent references.
+ * Hierarchical task progress tree for a TaskExecution.
  */
 public class TodoList {
 
-  private final Map<UUID, Todo> todosById = new ConcurrentHashMap<>();
-  private final List<Todo> roots = new ArrayList<>();
+  @Getter
+  private List<Todo> topLevel = List.of();
 
   /**
-   * Add a root-level todo (no parent).
+   * Add tasks under a parent, overriding existing children. If parentId is null, it updates the
+   * top-level tasks (the roots of the forest).
    */
-  public synchronized void addRoot(Todo todo) {
-    todosById.put(todo.id(), todo);
-    roots.add(todo);
-  }
-
-  /**
-   * Add subtasks under a parent todo.
-   */
-  public synchronized void addSubtasks(UUID parentId, List<Todo> subtasks) {
-    Todo parent = todosById.get(parentId);
-    if (parent != null) {
-      List<Todo> newChildren = new ArrayList<>(parent.children());
-      for (Todo subtask : subtasks) {
-        todosById.put(subtask.id(), subtask);
-        newChildren.add(subtask);
-      }
-      Todo updatedParent = parent.withChildren(newChildren);
-      todosById.put(parentId, updatedParent);
-      updateInTree(updatedParent);
+  public synchronized void setTodos(UUID parentId, List<Todo> children) {
+    if (parentId == null) {
+      this.topLevel = children;
     } else {
-      // If no parent, add as roots
-      for (Todo subtask : subtasks) {
-        addRoot(subtask);
-      }
+      this.topLevel = topLevel.stream()
+          .map(root -> recursiveSetTasks(root, parentId, children))
+          .toList();
     }
   }
 
@@ -49,72 +30,41 @@ public class TodoList {
    * Update the status of a specific todo by ID.
    */
   public synchronized void updateStatus(UUID id, TodoStatus status) {
-    Todo existing = todosById.get(id);
-    if (existing != null) {
-      Todo updated = existing.withStatus(status);
-      todosById.put(id, updated);
-      updateInTree(updated);
+    this.topLevel = topLevel.stream()
+        .map(root -> recursiveUpdateStatus(root, id, status))
+        .toList();
+  }
+
+  private Todo recursiveSetTasks(Todo node, UUID targetId, List<Todo> newChildren) {
+    if (node.id().equals(targetId)) {
+      return node.toBuilder().children(newChildren).build();
     }
+
+    List<Todo> updated = node.children().stream()
+        .map(child -> recursiveSetTasks(child, targetId, newChildren))
+        .toList();
+
+    // Only return a new instance if children actually changed
+    return updated.equals(node.children())
+        ? node
+        : node.toBuilder().children(updated).build();
   }
 
-  /**
-   * Get a todo by its ID.
-   */
-  public Todo getTodo(UUID id) {
-    return todosById.get(id);
-  }
-
-  /**
-   * Get all todos as a flat list.
-   */
-  public List<Todo> getAllTodos() {
-    return new ArrayList<>(todosById.values());
-  }
-
-  /**
-   * Get root-level todos (those without parents).
-   */
-  public synchronized List<Todo> getRoots() {
-    return new ArrayList<>(roots);
-  }
-
-  /**
-   * Check if the list is empty.
-   */
-  public boolean isEmpty() {
-    return todosById.isEmpty();
-  }
-
-  /**
-   * Get the count of tasks.
-   */
-  public int size() {
-    return todosById.size();
-  }
-
-  /**
-   * Update a todo in the tree structure (roots or as a child).
-   */
-  private void updateInTree(Todo updated) {
-    // Update in roots if present
-    for (int i = 0; i < roots.size(); i++) {
-      if (roots.get(i).id().equals(updated.id())) {
-        roots.set(i, updated);
-        return;
-      }
+  private Todo recursiveUpdateStatus(Todo node, UUID id, TodoStatus status) {
+    if (node.id().equals(id)) {
+      return node.toBuilder().status(status).build();
     }
-    // Otherwise, need to update parent's children list
-    for (Todo todo : todosById.values()) {
-      for (int i = 0; i < todo.children().size(); i++) {
-        if (todo.children().get(i).id().equals(updated.id())) {
-          List<Todo> newChildren = new ArrayList<>(todo.children());
-          newChildren.set(i, updated);
-          Todo updatedParent = todo.withChildren(newChildren);
-          todosById.put(updatedParent.id(), updatedParent);
-          updateInTree(updatedParent);
-          return;
-        }
-      }
-    }
+
+    List<Todo> updated = node.children().stream()
+        .map(child -> recursiveUpdateStatus(child, id, status))
+        .toList();
+
+    return updated.equals(node.children())
+        ? node
+        : node.toBuilder().children(updated).build();
+  }
+
+  public List<Todo> toList() {
+    return topLevel;
   }
 }

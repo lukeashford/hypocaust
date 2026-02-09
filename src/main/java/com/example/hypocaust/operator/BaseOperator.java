@@ -24,13 +24,6 @@ public abstract class BaseOperator implements Operator {
   protected EventService eventService;
 
   /**
-   * Template method that wraps execution with error handling. Uses null todoId (root level).
-   */
-  public final OperatorResult execute(Map<String, Object> rawInputs) {
-    return execute(rawInputs, (UUID) null);
-  }
-
-  /**
    * Template method that wraps execution with error handling.
    *
    * @param rawInputs The raw inputs for the operator
@@ -40,6 +33,8 @@ public abstract class BaseOperator implements Operator {
     final var taskExecutionId = TaskExecutionContextHolder.getTaskExecutionId();
     final var operatorName = getName();
 
+    TaskExecutionContextHolder.pushTodoId(todoId);
+    TaskExecutionContextHolder.markCurrentTodoRunning();
     try {
       // First normalize (apply defaults), then validate
       final var normalizedInputs = spec().normalize(rawInputs);
@@ -53,6 +48,7 @@ public abstract class BaseOperator implements Operator {
         eventService.publish(
             new OperatorFailedEvent(taskExecutionId, operatorName, normalizedInputs,
                 failure.message()));
+        TaskExecutionContextHolder.markCurrentTodoFailed();
         return failure;
       }
 
@@ -62,10 +58,12 @@ public abstract class BaseOperator implements Operator {
         eventService.publish(
             new OperatorFinishedEvent(taskExecutionId, operatorName, normalizedInputs,
                 result.outputs()));
+        TaskExecutionContextHolder.markCurrentTodoCompleted();
       } else {
         eventService.publish(
             new OperatorFailedEvent(taskExecutionId, operatorName, normalizedInputs,
                 result.message()));
+        TaskExecutionContextHolder.markCurrentTodoFailed();
       }
 
       return result;
@@ -85,6 +83,8 @@ public abstract class BaseOperator implements Operator {
       log.error("Unexpected error in operator {}: {}", operatorName, e.getMessage(), e);
       return handleException(taskExecutionId, operatorName, rawInputs, todoId,
           "Unexpected error: " + e.getMessage());
+    } finally {
+      TaskExecutionContextHolder.popTodoId();
     }
   }
 
@@ -92,6 +92,7 @@ public abstract class BaseOperator implements Operator {
       Map<String, Object> inputs, UUID todoId, String message) {
     eventService.publish(
         new OperatorFailedEvent(taskExecutionId, operatorName, inputs, message));
+    TaskExecutionContextHolder.markCurrentTodoFailed();
     return OperatorResult.failure(message, inputs);
   }
 

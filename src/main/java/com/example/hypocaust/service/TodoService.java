@@ -1,66 +1,51 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.TodoEntity;
-import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.Todo;
 import com.example.hypocaust.domain.TodoList;
-import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.mapper.TodoMapper;
 import com.example.hypocaust.repo.TodoRepository;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Slf4j
 public class TodoService {
 
   private final TodoRepository todoRepository;
+  private final TodoMapper todoMapper;
 
-  public List<Todo> getTodosForTaskExecution(UUID taskExecutionId) {
-    // 1. Check if execution is still running
-    Optional<TaskExecutionContext> activeContext =
-        TaskExecutionContextHolder.getContextByTaskExecutionId(taskExecutionId);
-
-    if (activeContext.isPresent()) {
-      // Return from in-memory TodoList (root-level todos with nested children)
-      return activeContext.get().getTodos().getList().getRoots();
-    }
-
-    // 2. Return from database - fetch root entities and map to domain
-    List<TodoEntity> roots = todoRepository.findByTaskExecutionIdAndParentIsNull(taskExecutionId);
-    return roots.stream()
-        .map(this::mapToDomain)
-        .toList();
-  }
-
-  private Todo mapToDomain(TodoEntity entity) {
-    List<Todo> children = entity.getChildren().stream()
-        .map(this::mapToDomain)
-        .toList();
-    return new Todo(entity.getId(), entity.getDescription(), entity.getStatus(), children);
-  }
-
+  /**
+   * Materializes the current state of the TodoList into the database. Leveraging cascade saves, we
+   * only need to save the root entities.
+   */
   @Transactional
   public void materialize(TodoList todoList, UUID taskExecutionId) {
-    for (Todo todo : todoList.getRoots()) {
-      materializeTodo(todo, null, taskExecutionId);
-    }
+    log.info("Materializing {} root todos for task execution {}",
+        todoList.getTopLevel().size(), taskExecutionId);
+
+    // Clean up existing todos for this execution to avoid duplicates if re-materializing
+    todoRepository.deleteByTaskExecutionId(taskExecutionId);
+
+    List<TodoEntity> entities = todoList.getTopLevel().stream()
+        .map(todo -> todoMapper.toEntity(todo, taskExecutionId))
+        .toList();
+
+    todoRepository.saveAll(entities);
   }
 
-  private void materializeTodo(Todo todo, TodoEntity parent, UUID taskExecutionId) {
-    TodoEntity entity = TodoEntity.builder()
-        .taskExecutionId(taskExecutionId)
-        .parent(parent)
-        .description(todo.description())
-        .status(todo.status())
-        .build();
-    todoRepository.save(entity);
-
-    for (Todo child : todo.children()) {
-      materializeTodo(child, entity, taskExecutionId);
-    }
+  /**
+   * Retrieves the domain representation of todos for a task execution.
+   */
+  public List<Todo> getTodosForTaskExecution(UUID taskExecutionId) {
+    return todoRepository.findByTaskExecutionIdAndParentIsNull(taskExecutionId).stream()
+        .map(todoMapper::toDomain)
+        .toList();
   }
 }
