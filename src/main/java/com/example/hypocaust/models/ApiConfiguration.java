@@ -2,7 +2,6 @@ package com.example.hypocaust.models;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.anthropic.api.AnthropicApi;
-import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.context.annotation.Bean;
@@ -29,10 +28,5 @@ public class ApiConfiguration {
     return OpenAiImageApi.builder()
         .apiKey(modelProperties.getOpenAi().getApiKey())
         .build();
-  }
-
-  @Bean
-  public OpenAiImageModel openAiImageModel(OpenAiImageApi openAiImageApi) {
-    return new OpenAiImageModel(openAiImageApi);
   }
 }

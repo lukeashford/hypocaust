@@ -5,9 +5,9 @@ import java.util.UUID;
 
 public final class OperatorFailedEvent extends OperatorEvent<OperatorFailedEvent.Payload> {
 
-  public OperatorFailedEvent(UUID projectId, String operatorName, Map<String, Object> inputs,
+  public OperatorFailedEvent(UUID taskExecutionId, String operatorName, Map<String, Object> inputs,
       String reason) {
-    super(projectId, new Payload(operatorName, inputs, reason));
+    super(taskExecutionId, new Payload(operatorName, inputs, reason));
   }
 
   @Override

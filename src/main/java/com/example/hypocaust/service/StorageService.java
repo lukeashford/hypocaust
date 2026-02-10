@@ -14,10 +14,9 @@ public interface StorageService {
    *
    * @param data the file data as byte array
    * @param contentType the MIME type (e.g., "image/png")
-   * @param filename optional original filename
    * @return storage key that can be used to retrieve the file later
    */
-  String store(byte[] data, String contentType, String filename);
+  String store(byte[] data, String contentType);
 
   /**
    * Store a file from an InputStream.
@@ -25,28 +24,9 @@ public interface StorageService {
    * @param inputStream the input stream containing file data
    * @param contentLength the size of the data in bytes
    * @param contentType the MIME type
-   * @param filename optional original filename
    * @return storage key that can be used to retrieve the file later
    */
-  String store(InputStream inputStream, long contentLength, String contentType, String filename);
-
-  /**
-   * Retrieve a file as an InputStream.
-   *
-   * @param storageKey the key returned from store()
-   * @return input stream of the file data
-   * @throws StorageException if file not found or retrieval fails
-   */
-  InputStream retrieve(String storageKey);
-
-  /**
-   * Get metadata about a stored file.
-   *
-   * @param storageKey the storage key
-   * @return file metadata
-   * @throws StorageException if file not found
-   */
-  FileMetadata getMetadata(String storageKey);
+  String store(InputStream inputStream, long contentLength, String contentType);
 
   /**
    * Delete a file from storage.
@@ -66,15 +46,4 @@ public interface StorageService {
    */
   String generatePresignedUrl(String storageKey, int expirySeconds);
 
-  /**
-   * Metadata about a stored file.
-   */
-  record FileMetadata(
-      String storageKey,
-      String contentType,
-      long size,
-      String etag
-  ) {
-
-  }
 }

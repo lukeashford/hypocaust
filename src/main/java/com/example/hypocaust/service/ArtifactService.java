@@ -1,26 +1,27 @@
 package com.example.hypocaust.service;
 
-import com.example.hypocaust.db.ArtifactEntity;
-import com.example.hypocaust.db.ArtifactEntity.Kind;
-import com.example.hypocaust.db.ArtifactEntity.Status;
-import com.example.hypocaust.domain.event.ArtifactCreatedEvent;
-import com.example.hypocaust.domain.event.ArtifactScheduledEvent;
-import com.example.hypocaust.dto.ArtifactDto;
-import com.example.hypocaust.exception.ArtifactNotFoundException;
-import com.example.hypocaust.exception.ArtifactNotReadyException;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
-import com.example.hypocaust.operator.RunContextHolder;
 import com.example.hypocaust.repo.ArtifactRepository;
-import com.example.hypocaust.service.events.EventService;
-import com.fasterxml.jackson.databind.JsonNode;
-import java.io.InputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service for artifact read operations. Write operations (create, edit, delete) are handled via
+ * TaskExecutionContext hooks and materialized by VersionManagementService at TaskExecution
+ * completion.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,196 +30,69 @@ public class ArtifactService {
 
   private final ArtifactRepository artifactRepository;
   private final StorageService storageService;
-  private final EventService eventService;
   private final ArtifactMapper artifactMapper;
 
   /**
-   * Get all artifacts for a project
+   * Get domain object for an artifact by ID. URL is automatically externalized.
    */
-  public List<ArtifactEntity> getProjectArtifacts(UUID projectId) {
-    return artifactRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+  public Optional<Artifact> getArtifact(UUID artifactId) {
+    return artifactRepository.findById(artifactId).map(artifactMapper::toDomain);
   }
 
   /**
-   * Get DTOs for all artifacts in a project
+   * Get multiple artifacts by their IDs. URLs are automatically externalized.
    */
-  public List<ArtifactDto> getProjectArtifactsAsDto(UUID projectId) {
-    return getProjectArtifacts(projectId).stream()
-        .map(artifactMapper::toDto)
+  public List<Artifact> getArtifacts(Collection<UUID> artifactIds) {
+    if (artifactIds == null || artifactIds.isEmpty()) {
+      return List.of();
+    }
+    return artifactRepository.findAllById(artifactIds).stream()
+        .map(artifactMapper::toDomain)
         .toList();
   }
 
-  /**
-   * Get a specific artifact by ID
-   */
-  public ArtifactEntity getArtifact(UUID artifactId) {
-    return artifactRepository.findById(artifactId)
-        .orElseThrow(() -> new ArtifactNotFoundException(
-            String.format("Artifact %s not found", artifactId)));
-  }
-
-  /**
-   * Get DTO for an artifact by ID
-   */
-  public ArtifactDto getArtifactDto(UUID artifactId) {
-    return artifactMapper.toDto(getArtifact(artifactId));
-  }
-
-  /**
-   * Download file-based artifact from storage
-   */
-  public InputStream downloadArtifact(UUID artifactId) {
-    final var artifact = getArtifact(artifactId);
-
-    // Validate artifact is file-based and has storage key
-    if (artifact.getStorageKey() == null) {
-      throw new IllegalStateException(
-          String.format("Artifact %s does not have a storage key", artifactId));
+  private Artifact downloadArtifact(Artifact pendingArtifact) {
+    if (pendingArtifact.url() == null || pendingArtifact.url()
+        .isBlank()) {
+      throw new IllegalStateException("Artifact URL is blank.");
+    }
+    if (pendingArtifact.status() != ArtifactStatus.CREATED) {
+      throw new IllegalStateException("Artifact is not in CREATED state.");
     }
 
-    if (artifact.getStatus() != Status.CREATED) {
-      throw new ArtifactNotReadyException(
-          String.format("Artifact %s is not ready (status: %s)",
-              artifactId, artifact.getStatus()));
+    final int maxAttempts = 3;
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      try (var stream = new URI(pendingArtifact.url()).toURL().openStream()) {
+        byte[] data = stream.readAllBytes();
+        String mimeType =
+            pendingArtifact.kind() == ArtifactKind.IMAGE ? "image/png" : "application/octet-stream";
+
+        log.info("Downloaded artifact {} with key {} (attempt {})", pendingArtifact.name(),
+            storageService.store(data, mimeType), attempt);
+        return pendingArtifact.withUrl(storageService.store(data, mimeType))
+            .withStatus(ArtifactStatus.MANIFESTED);
+      } catch (IOException e) {
+        try {
+          Thread.sleep(500L * attempt);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+        }
+      } catch (URISyntaxException e) {
+        log.warn("Invalid artifact URL: {}", pendingArtifact.url());
+        return pendingArtifact.withStatus(ArtifactStatus.FAILED);
+      }
     }
 
-    log.info("Downloading artifact {} from storage key: {}",
-        artifactId, artifact.getStorageKey());
-
-    return storageService.retrieve(artifact.getStorageKey());
+    return pendingArtifact.withStatus(ArtifactStatus.FAILED);
   }
 
   @Transactional
-  public UUID schedule(
-      Kind kind,
-      String title,
-      String mime
-  ) {
-    return schedule(kind, title, null, null, mime);
-  }
-
-  @Transactional
-  public UUID schedule(
-      Kind kind,
-      String title,
-      String subtitle,
-      String alt,
-      String mime
-  ) {
-    final var projectId = RunContextHolder.getProjectId();
-    final var runId = RunContextHolder.getRunId();
-    log.debug("Scheduling artifact for project {}: {}", projectId, title);
-
-    final var artifact = new ArtifactEntity(
-        projectId,
-        runId,
-        kind,
-        Status.SCHEDULED,
-        title,
-        subtitle,
-        alt,
-        mime,
-        null,
-        null,
-        null,
-        null
-    );
-    artifactRepository.save(artifact);
-    eventService.publish(new ArtifactScheduledEvent(
-        projectId,
-        artifact.getId(),
-        artifact.getKind(),
-        artifact.getTitle(),
-        artifact.getSubtitle(),
-        artifact.getAlt()
-    ));
-
-    return artifact.getId();
-  }
-
-  @Transactional
-  public void updateArtifact(UUID artifactId, JsonNode content, JsonNode metadata) {
-    updateArtifact(artifactId, null, null, null, content, metadata);
-  }
-
-  @Transactional
-  public void updateArtifact(
-      UUID artifactId,
-      String title,
-      String subtitle,
-      String alt,
-      JsonNode content,
-      JsonNode metadata
-  ) {
-    log.debug("Updating artifact {}.\nContent: {} \nMetadata: {}", artifactId, content, metadata);
-    final var artifact = getArtifact(artifactId);
-    if (title != null) {
-      artifact.setTitle(title);
-    }
-    if (subtitle != null) {
-      artifact.setSubtitle(subtitle);
-    }
-    if (alt != null) {
-      artifact.setAlt(alt);
-    }
-    artifact.setContent(content);
-    artifact.setMetadata(metadata);
-    artifact.setStatus(Status.CREATED);
-    artifactRepository.save(artifact);
-
-    eventService.publish(new ArtifactCreatedEvent(
-        artifact.getProjectId(),
-        artifact.getId(),
-        artifact.getKind(),
-        artifact.getTitle(),
-        artifact.getSubtitle(),
-        artifact.getAlt(),
-        artifact.getStorageKey(),
-        artifact.getContent()
-    ));
-  }
-
-  @Transactional
-  public void updateArtifactWithStorage(UUID artifactId, String storageKey, JsonNode content, JsonNode metadata) {
-    updateArtifactWithStorage(artifactId, null, null, null, storageKey, content, metadata);
-  }
-
-  @Transactional
-  public void updateArtifactWithStorage(
-      UUID artifactId,
-      String title,
-      String subtitle,
-      String alt,
-      String storageKey,
-      JsonNode content,
-      JsonNode metadata
-  ) {
-    log.debug("Updating artifact {} with storage key: {}", artifactId, storageKey);
-    final var artifact = getArtifact(artifactId);
-    if (title != null) {
-      artifact.setTitle(title);
-    }
-    if (subtitle != null) {
-      artifact.setSubtitle(subtitle);
-    }
-    if (alt != null) {
-      artifact.setAlt(alt);
-    }
-    artifact.setStorageKey(storageKey);
-    artifact.setContent(content);
-    artifact.setMetadata(metadata);
-    artifact.setStatus(Status.CREATED);
-    artifactRepository.save(artifact);
-
-    eventService.publish(new ArtifactCreatedEvent(
-        artifact.getProjectId(),
-        artifact.getId(),
-        artifact.getKind(),
-        artifact.getTitle(),
-        artifact.getSubtitle(),
-        artifact.getAlt(),
-        artifact.getStorageKey(),
-        artifact.getContent()
-    ));
+  UUID materialize(Artifact pendingArtifact, UUID projectId, UUID taskExecutionId) {
+    return artifactRepository.save(artifactMapper.toEntity(
+        pendingArtifact.url() == null
+            ? pendingArtifact
+            : downloadArtifact(pendingArtifact),
+        projectId, taskExecutionId)
+    ).getId();
   }
 }

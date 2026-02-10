@@ -5,9 +5,9 @@ import java.util.UUID;
 
 public final class OperatorFinishedEvent extends OperatorEvent<OperatorFinishedEvent.Payload> {
 
-  public OperatorFinishedEvent(UUID projectId, String operatorName, Map<String, Object> inputs,
-      Map<String, Object> outputs) {
-    super(projectId, new Payload(operatorName, inputs, outputs));
+  public OperatorFinishedEvent(UUID taskExecutionId, String operatorName,
+      Map<String, Object> inputs, Map<String, Object> outputs) {
+    super(taskExecutionId, new Payload(operatorName, inputs, outputs));
   }
 
   @Override
@@ -16,7 +16,8 @@ public final class OperatorFinishedEvent extends OperatorEvent<OperatorFinishedE
   }
 
   public record Payload(String operatorName, Map<String, Object> inputs,
-                        Map<String, Object> outputs) implements OperatorEventPayload {
+                        Map<String, Object> outputs) implements
+      OperatorEventPayload {
 
   }
 }

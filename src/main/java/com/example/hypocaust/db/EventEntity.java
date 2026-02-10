@@ -7,30 +7,24 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "event")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
+@NoArgsConstructor
+@Setter
 public class EventEntity extends BaseEntity {
 
   @Column(nullable = false)
-  private UUID projectId;
-
-  @Column(nullable = false)
-  private UUID projectSeq;
+  private UUID taskExecutionId;
 
   @Column(nullable = false)
   private Instant occurredAt;
-
-  private String dedupeKey;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false, columnDefinition = "json")

@@ -6,24 +6,41 @@ Accept: application/json
 GET https://localhost/api/diagnostics/models/health
 Accept: application/json
 
-### Picture Generation Task
-POST https://localhost/tasks
-Content-Type: application/json
-
-{
-  "task": "Generate a picture of an apple."
-}
+### 1. Create a Project
+POST https://localhost/projects
+Accept: application/json
 
 > {%
   client.global.set("projectId", response.body.projectId);
 %}
 
-### 2. Start SSE connection (subscribe to events)
-# Note: This is the SSE endpoint that will stream events for your project
-GET https://localhost/projects/{{projectId}}/events
+### 2. Picture Generation Task
+POST https://localhost/tasks
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "task": "Generate a picture of an apple."
+}
+
+> {%
+  client.global.set("taskExecutionId", response.body.taskExecutionId);
+%}
+
+### 3. Start SSE connection (subscribe to events)
+# Note: This is the SSE endpoint that will stream events for your task execution
+GET https://localhost/task-executions/{{taskExecutionId}}/events
 Accept: text/event-stream
 
-### 3. Get all logs for a project
+### 3. Get all events for a task execution (JSON)
+GET https://localhost/task-executions/{{taskExecutionId}}/events
+Accept: application/json
+
+### 4. Get task execution state
+GET https://localhost/task-executions/{{taskExecutionId}}/state
+Accept: application/json
+
+### 5. Get all logs for a project
 GET https://localhost/projects/{{projectId}}/logs
 Accept: text/plain
 

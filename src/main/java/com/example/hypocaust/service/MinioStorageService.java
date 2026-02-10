@@ -1,23 +1,19 @@
 package com.example.hypocaust.service;
 
+import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.exception.StorageException;
 import com.example.hypocaust.service.storage.StorageProperties;
 import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
-import io.minio.StatObjectResponse;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,8 +22,7 @@ import org.springframework.stereotype.Service;
 /**
  * MinIO implementation of StorageService.
  * <p>
- * Files are organized by date: artifacts/2025/09/30/{uuid}.{ext} This provides: - Easy cleanup of
- * old files - Better performance with many files - Human-readable organization
+ * Uses Content-Addressable Storage (CAS) based on SHA-256 hashes of the file inlineContent.
  */
 @Service
 @ConditionalOnProperty(name = "app.storage.provider", havingValue = "minio", matchIfMissing = true)
@@ -37,6 +32,7 @@ public class MinioStorageService implements StorageService {
 
   private final MinioClient minioClient;
   private final StorageProperties storageProperties;
+  private final HashCalculator hashCalculator;
 
   @PostConstruct
   public void init() {
@@ -72,22 +68,37 @@ public class MinioStorageService implements StorageService {
   }
 
   @Override
-  public String store(byte[] data, String contentType, String filename) {
-    return store(
-        new ByteArrayInputStream(data),
-        data.length,
-        contentType,
-        filename
-    );
+  public String store(byte[] data, String contentType) {
+    String hash = hashCalculator.calculateSha256Hash(data);
+    String extension = getExtensionFromContentType(contentType);
+    String storageKey = generateStorageKey(hash, extension);
+
+    if (exists(storageKey)) {
+      log.info("File already exists in storage, skipping upload: {}", storageKey);
+      return storageKey;
+    }
+
+    putObject(new ByteArrayInputStream(data), data.length, contentType, storageKey);
+    return storageKey;
   }
 
   @Override
-  public String store(InputStream inputStream, long contentLength, String contentType,
-      String filename) {
+  public String store(InputStream inputStream, long contentLength, String contentType) {
     try {
-      // Generate storage key with date-based path
-      final var storageKey = generateStorageKey(filename);
+      // For CAS with InputStream, we must calculate hash first.
+      // For simplicity and since artifacts are generally small, we read into memory.
+      // In a production-grade system with large files, we would use a temporary file.
+      byte[] data = inputStream.readAllBytes();
+      return store(data, contentType);
+    } catch (Exception e) {
+      log.error("Failed to store stream", e);
+      throw new StorageException("Failed to store stream", e);
+    }
+  }
 
+  private void putObject(InputStream inputStream, long contentLength, String contentType,
+      String storageKey) {
+    try {
       log.debug("Storing file: key={}, contentType={}, size={}", storageKey, contentType,
           contentLength);
 
@@ -101,54 +112,23 @@ public class MinioStorageService implements StorageService {
       );
 
       log.info("File stored successfully: {}", storageKey);
-      return storageKey;
-
     } catch (Exception e) {
-      log.error("Failed to store file: {}", filename, e);
-      throw new StorageException("Failed to store file: " + filename, e);
+      log.error("Failed to put object: {}", storageKey, e);
+      throw new StorageException("Failed to put object: " + storageKey, e);
     }
   }
 
-  @Override
-  public InputStream retrieve(String storageKey) {
+  private boolean exists(String storageKey) {
     try {
-      log.debug("Retrieving file: {}", storageKey);
-
-      return minioClient.getObject(
-          GetObjectArgs.builder()
-              .bucket(storageProperties.getBucketName())
-              .object(storageKey)
-              .build()
-      );
-
-    } catch (Exception e) {
-      log.error("Failed to retrieve file: {}", storageKey, e);
-      throw new StorageException("Failed to retrieve file: " + storageKey, e);
-    }
-  }
-
-  @Override
-  public FileMetadata getMetadata(String storageKey) {
-    try {
-      log.debug("Getting metadata for: {}", storageKey);
-
-      StatObjectResponse stat = minioClient.statObject(
+      minioClient.statObject(
           StatObjectArgs.builder()
               .bucket(storageProperties.getBucketName())
               .object(storageKey)
               .build()
       );
-
-      return new FileMetadata(
-          storageKey,
-          stat.contentType(),
-          stat.size(),
-          stat.etag()
-      );
-
+      return true;
     } catch (Exception e) {
-      log.error("Failed to get metadata for: {}", storageKey, e);
-      throw new StorageException("Failed to get metadata: " + storageKey, e);
+      return false;
     }
   }
 
@@ -194,29 +174,31 @@ public class MinioStorageService implements StorageService {
       throw new StorageException("Failed to generate presigned URL: " + storageKey, e);
     }
   }
-
+  
   /**
-   * Generates a storage key with date-based organization. Format:
-   * YYYY/MM/DD/{uuid}.{ext}
-   * <p>
-   * Example: 2025/09/30/a1b2c3d4-e5f6-7890-abcd-ef1234567890.png
-   * <p>
+   * Generates a storage key with hash-based organization. Format: blobs/ab/cd/{hash}.{ext}
    */
-  private String generateStorageKey(String filename) {
-    final var date = LocalDate.now();
-    final var year = date.format(DateTimeFormatter.ofPattern("yyyy"));
-    final var month = date.format(DateTimeFormatter.ofPattern("MM"));
-    final var day = date.format(DateTimeFormatter.ofPattern("dd"));
+  private String generateStorageKey(String hash, String extension) {
+    String prefix1 = hash.substring(0, 2);
+    String prefix2 = hash.substring(2, 4);
+    return String.format("blobs/%s/%s/%s.%s", prefix1, prefix2, hash, extension);
+  }
 
-    // Extract extension from filename, or use default
-    String extension = "bin";
-    if (filename != null && filename.contains(".")) {
-      extension = filename.substring(filename.lastIndexOf(".") + 1);
+  private String getExtensionFromContentType(String contentType) {
+    if (contentType == null) {
+      return "bin";
     }
-
-    final var uuid = UUID.randomUUID();
-
-    return String.format("%s/%s/%s/%s.%s",
-        year, month, day, uuid, extension);
+    return switch (contentType.toLowerCase()) {
+      case "image/png" -> "png";
+      case "image/jpeg", "image/jpg" -> "jpg";
+      case "image/gif" -> "gif";
+      case "application/pdf" -> "pdf";
+      case "application/json" -> "json";
+      case "text/plain" -> "txt";
+      case "audio/mpeg" -> "mp3";
+      case "audio/wav" -> "wav";
+      case "video/mp4" -> "mp4";
+      default -> "bin";
+    };
   }
 }

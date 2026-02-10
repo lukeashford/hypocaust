@@ -1,19 +1,18 @@
 package com.example.hypocaust.service;
 
-import com.example.hypocaust.db.ProjectEntity;
-import com.example.hypocaust.db.RunEntity;
-import com.example.hypocaust.domain.event.RunCompletedEvent;
-import com.example.hypocaust.domain.event.RunScheduledEvent;
-import com.example.hypocaust.domain.event.RunStartedEvent;
+import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.domain.TaskExecutionContextFactory;
+import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
 import com.example.hypocaust.operator.DecomposingOperator;
-import com.example.hypocaust.operator.RunContextHolder;
-import com.example.hypocaust.repo.ProjectRepository;
-import com.example.hypocaust.repo.RunRepository;
+import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for handling task submission and execution. Currently only supports picture generation
- * tasks.
+ * Service for handling task submission and execution. Manages the TaskExecution lifecycle including
+ * version control integration.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,86 +34,105 @@ public class TaskService {
       If this task is not about generating a picture, fail early and do nothing.
       """;
 
-  private final ProjectRepository projectRepository;
-  private final RunRepository runRepository;
+  private final ProjectService projectService;
+  private final TaskExecutionRepository taskExecutionRepository;
   private final DecomposingOperator decomposingOperator;
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
   private final EventService eventService;
+  private final VersionManagementService versionService;
+  private final TaskExecutionContextFactory contextFactory;
+  private final TaskExecutionLifecycleService lifecycleService;
 
   @Transactional
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
+    final var projectId = request.projectId();
+    final var predecessorIdInput = request.predecessorId();
 
     if (task == null || task.isBlank()) {
       return TaskResponseDto.rejected("Task description is required");
     }
 
-    // Create a new project
-    final var project = projectRepository.saveAndFlush(new ProjectEntity());
-    final var projectId = project.getId();
-    log.info("Created project {} for task: {}", projectId, truncateTitle(task));
+    if (projectId == null) {
+      return TaskResponseDto.rejected("Project ID is required");
+    }
 
-    // Kick off the decomposing operator asynchronously
-    runExecutorService.submit(() -> executeTask(projectId, task));
+    // Verify project exists
+    if (!projectService.exists(projectId)) {
+      return TaskResponseDto.rejected("Project not found: " + projectId);
+    }
 
-    return TaskResponseDto.accepted(projectId);
-  }
+    // Resolve predecessorId: use provided or find most recent completed
+    // null if none exists (which would be fine for an empty project)
+    UUID predecessorId = Optional.ofNullable(predecessorIdInput)
+        .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
+            .orElse(null));
 
-  @Transactional
-  public void executeTask(UUID projectId, String task) {
-    log.info("Starting task execution for project: {}", projectId);
-
-    // Create and persist a run entity
-    final var run = RunEntity.builder()
+    // Create TaskExecution entity
+    final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
         .task(task)
-        .status(RunEntity.Status.QUEUED)
+        .predecessorId(predecessorId)
         .build();
-    runRepository.save(run);
-    final var runId = run.getId();
+    taskExecutionRepository.save(taskExecution);
+    final var taskExecutionId = taskExecution.getId();
 
-    log.info("Created run {} for project: {}", runId, projectId);
-    eventService.publish(new RunScheduledEvent(projectId, runId));
+    log.info("Created TaskExecution {} for project {} with predecessor {}",
+        taskExecutionId, projectId, predecessorId);
 
-    // Set the run context for this thread
-    RunContextHolder.setContext(projectId, runId);
+    // Kick off execution asynchronously
+    final UUID finalPredecessorId = predecessorId;
+    runExecutorService.submit(
+        () -> executeTask(projectId, taskExecutionId, finalPredecessorId, task));
 
-    // Reset call sequence counter for this task execution
+    return TaskResponseDto.accepted(projectId, taskExecutionId);
+  }
+
+  public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
+    log.info("Starting task execution {} for project {}", taskExecutionId, projectId);
+
+    // Create context
+    TaskExecutionContext context = contextFactory.create(projectId, taskExecutionId,
+        predecessorId);
+
+    // Set the context for this thread
+    TaskExecutionContextHolder.setContext(context);
+
+    // Reset call sequence counter
     modelCallLogger.resetSequence();
 
+    // Update status to RUNNING
+    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(
+            () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
+
     try {
-      // Start the run
-      run.start();
-      runRepository.save(run);
-      eventService.publish(new RunStartedEvent(projectId, runId));
+      taskExecution.start();
+      taskExecutionRepository.save(taskExecution);
+      eventService.publish(new TaskExecutionStartedEvent(taskExecutionId));
 
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
 
-      final var result = decomposingOperator.execute(Map.of("task", augmentedTask));
+      // Execute with null todoId (root level)
+      final var result = decomposingOperator.execute(Map.of("task", augmentedTask), null);
 
       if (result.ok()) {
-        run.complete("Task completed successfully");
-        runRepository.save(run);
-        eventService.publish(new RunCompletedEvent(projectId, runId));
-        log.info("Task completed successfully for project: {}", projectId);
+        lifecycleService.commitExecution(taskExecutionId, projectId, task, context);
+        log.info("Task completed successfully for project {}", projectId);
       } else {
-        run.fail(result.message());
-        runRepository.save(run);
+        lifecycleService.failExecution(taskExecutionId, projectId, result.message(),
+            context.getArtifacts());
         log.error("Task failed for project {}: {}", projectId, result.message());
       }
     } catch (Exception e) {
-      run.fail(e.getMessage());
-      runRepository.save(run);
+      lifecycleService.failExecution(taskExecutionId, projectId, e.getMessage(),
+          context != null ? context.getArtifacts() : null);
       log.error("Error executing task for project {}: {}", projectId, e.getMessage(), e);
     } finally {
       // Always clear the context when done
-      RunContextHolder.clear();
+      TaskExecutionContextHolder.clear();
     }
-  }
-
-  private String truncateTitle(String task) {
-    return task.length() > 100 ? task.substring(0, 100) + "..." : task;
   }
 }

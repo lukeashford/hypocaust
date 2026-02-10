@@ -4,7 +4,6 @@ import com.example.hypocaust.domain.event.Event.EventPayload;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
-import com.github.f4b6a3.uuid.UuidCreator;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
@@ -17,17 +16,16 @@ import lombok.Getter;
 )
 @JsonTypeIdResolver(EventTypeIdResolver.class)
 public abstract sealed class Event<T extends EventPayload>
-    permits ArtifactEvent, RunEvent, ToolEvent, ErrorEvent, OperatorEvent {
+    permits ArtifactEvent, TaskExecutionEvent, ToolEvent, ErrorEvent, OperatorEvent,
+    TaskProgressEvent {
 
-  private final UUID projectId;
-  private final UUID projectSeq;
+  private final UUID taskExecutionId;
   private final T payload;
   private final Instant occurredAt;
   private final EventType type;
 
-  protected Event(UUID projectId, T payload) {
-    this.projectId = projectId;
-    this.projectSeq = UuidCreator.getTimeOrderedEpoch();
+  protected Event(UUID taskExecutionId, T payload) {
+    this.taskExecutionId = taskExecutionId;
     this.payload = payload;
     this.occurredAt = Instant.now();
     this.type = type();

@@ -1,17 +1,19 @@
 package com.example.hypocaust.mapper;
 
 import com.example.hypocaust.db.EventEntity;
-import com.example.hypocaust.domain.event.ArtifactCancelledEvent;
-import com.example.hypocaust.domain.event.ArtifactCreatedEvent;
-import com.example.hypocaust.domain.event.ArtifactScheduledEvent;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.event.ArtifactAddedEvent;
+import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
+import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.ErrorEvent;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.domain.event.OperatorFailedEvent;
 import com.example.hypocaust.domain.event.OperatorFinishedEvent;
 import com.example.hypocaust.domain.event.OperatorStartedEvent;
-import com.example.hypocaust.domain.event.RunCompletedEvent;
-import com.example.hypocaust.domain.event.RunScheduledEvent;
-import com.example.hypocaust.domain.event.RunStartedEvent;
+import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
+import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
+import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
+import com.example.hypocaust.domain.event.TodoListUpdatedEvent;
 import com.example.hypocaust.domain.event.ToolCallingEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.ObjectFactory;
@@ -21,91 +23,85 @@ public interface EventMapper {
 
   EventEntity toEntity(Event<?> event);
 
-  default RunScheduledEvent toRunScheduledEvent(EventEntity entity) {
-    var payload = (RunScheduledEvent.RunScheduledEventPayload) entity.getPayload();
-    return new RunScheduledEvent(entity.getProjectId(), payload.runId());
-  }
-
-  default RunStartedEvent toRunStartedEvent(EventEntity entity) {
-    var payload = (RunStartedEvent.RunStartedEventPayload) entity.getPayload();
-    return new RunStartedEvent(entity.getProjectId(), payload.runId());
-  }
-
-  default RunCompletedEvent toRunCompletedEvent(EventEntity entity) {
-    var payload = (RunCompletedEvent.RunCompletedEventPayload) entity.getPayload();
-    return new RunCompletedEvent(entity.getProjectId(), payload.runId());
-  }
-
-  default ArtifactScheduledEvent toArtifactScheduledEvent(EventEntity entity) {
-    var payload = (ArtifactScheduledEvent.ArtifactScheduledEventPayload) entity.getPayload();
-    return new ArtifactScheduledEvent(
-        entity.getProjectId(),
-        payload.artifactId(),
-        payload.kind(),
-        payload.title(),
-        payload.subtitle(),
-        payload.alt()
+  default ArtifactAddedEvent toArtifactAddedEvent(EventEntity entity) {
+    return new ArtifactAddedEvent(
+        entity.getTaskExecutionId(),
+        (Artifact) entity.getPayload()
     );
   }
 
-  default ArtifactCreatedEvent toArtifactCreatedEvent(EventEntity entity) {
-    var payload = (ArtifactCreatedEvent.ArtifactCreatedEventPayload) entity.getPayload();
-    return new ArtifactCreatedEvent(
-        entity.getProjectId(),
-        payload.artifactId(),
-        payload.kind(),
-        payload.title(),
-        payload.subtitle(),
-        payload.alt(),
-        payload.storageKey(),
-        payload.content()
+  default ArtifactUpdatedEvent toArtifactUpdatedEvent(EventEntity entity) {
+    return new ArtifactUpdatedEvent(
+        entity.getTaskExecutionId(),
+        (Artifact) entity.getPayload()
     );
   }
 
-  default ArtifactCancelledEvent toArtifactCancelledEvent(EventEntity entity) {
-    var payload = (ArtifactCancelledEvent.ArtifactCancelledEventPayload) entity.getPayload();
-    return new ArtifactCancelledEvent(entity.getProjectId(), payload.artifactId(), payload.kind());
+  default ArtifactRemovedEvent toArtifactRemovedEvent(EventEntity entity) {
+    var payload = (ArtifactRemovedEvent.Payload) entity.getPayload();
+    return new ArtifactRemovedEvent(entity.getTaskExecutionId(), payload.name());
+  }
+
+  default TaskExecutionStartedEvent toTaskExecutionStartedEvent(EventEntity entity) {
+    return new TaskExecutionStartedEvent(entity.getTaskExecutionId());
+  }
+
+  default TaskExecutionCompletedEvent toTaskExecutionCompletedEvent(EventEntity entity) {
+    var payload = (TaskExecutionCompletedEvent.Payload) entity.getPayload();
+    return new TaskExecutionCompletedEvent(entity.getTaskExecutionId(), payload.hasChanges(),
+        payload.message());
+  }
+
+  default TaskExecutionFailedEvent toTaskExecutionFailedEvent(EventEntity entity) {
+    var payload = (TaskExecutionFailedEvent.Payload) entity.getPayload();
+    return new TaskExecutionFailedEvent(entity.getTaskExecutionId(), payload.reason());
+  }
+
+  default TodoListUpdatedEvent toTodoListUpdatedEvent(EventEntity entity) {
+    var payload = (TodoListUpdatedEvent.Payload) entity.getPayload();
+    return new TodoListUpdatedEvent(entity.getTaskExecutionId(), payload.todoList());
   }
 
   default ToolCallingEvent toToolCallingEvent(EventEntity entity) {
     var payload = (ToolCallingEvent.ToolCallingEventPayload) entity.getPayload();
-    return new ToolCallingEvent(entity.getProjectId(), payload.content());
+    return new ToolCallingEvent(entity.getTaskExecutionId(), payload.content());
   }
 
   default ErrorEvent toErrorEvent(EventEntity entity) {
     var payload = (ErrorEvent.ErrorEventPayload) entity.getPayload();
-    return new ErrorEvent(entity.getProjectId(), payload.message());
+    return new ErrorEvent(entity.getTaskExecutionId(), payload.message());
   }
 
   default OperatorStartedEvent toOperatorStartedEvent(EventEntity entity) {
     var payload = (OperatorStartedEvent.Payload) entity.getPayload();
-    return new OperatorStartedEvent(entity.getProjectId(), payload.operatorName(),
+    return new OperatorStartedEvent(entity.getTaskExecutionId(), payload.operatorName(),
         payload.inputs());
   }
 
   default OperatorFinishedEvent toOperatorFinishedEvent(EventEntity entity) {
     var payload = (OperatorFinishedEvent.Payload) entity.getPayload();
-    return new OperatorFinishedEvent(entity.getProjectId(), payload.operatorName(),
-        payload.inputs(),
-        payload.outputs());
+    return new OperatorFinishedEvent(entity.getTaskExecutionId(), payload.operatorName(),
+        payload.inputs(), payload.outputs());
   }
 
   default OperatorFailedEvent toOperatorFailedEvent(EventEntity entity) {
     var payload = (OperatorFailedEvent.Payload) entity.getPayload();
-    return new OperatorFailedEvent(entity.getProjectId(), payload.operatorName(), payload.inputs(),
-        payload.reason());
+    return new OperatorFailedEvent(entity.getTaskExecutionId(), payload.operatorName(),
+        payload.inputs(), payload.reason());
   }
 
   @ObjectFactory
   default Event<?> createEvent(EventEntity entity) {
     return switch (entity.getType()) {
-      case RUN_SCHEDULED -> toRunScheduledEvent(entity);
-      case RUN_STARTED -> toRunStartedEvent(entity);
-      case RUN_COMPLETED -> toRunCompletedEvent(entity);
+      case ARTIFACT_ADDED -> toArtifactAddedEvent(entity);
+      case ARTIFACT_UPDATED -> toArtifactUpdatedEvent(entity);
+      case ARTIFACT_REMOVED -> toArtifactRemovedEvent(entity);
 
-      case ARTIFACT_SCHEDULED -> toArtifactScheduledEvent(entity);
-      case ARTIFACT_CREATED -> toArtifactCreatedEvent(entity);
-      case ARTIFACT_CANCELLED -> toArtifactCancelledEvent(entity);
+      case TASKEXECUTION_STARTED -> toTaskExecutionStartedEvent(entity);
+      case TASKEXECUTION_COMPLETED -> toTaskExecutionCompletedEvent(entity);
+      case TASKEXECUTION_FAILED -> toTaskExecutionFailedEvent(entity);
+
+      case TASK_PROGRESS_UPDATED -> toTodoListUpdatedEvent(entity);
 
       case TOOL_CALLING -> toToolCallingEvent(entity);
 

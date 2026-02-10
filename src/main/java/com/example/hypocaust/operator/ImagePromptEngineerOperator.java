@@ -1,17 +1,29 @@
 package com.example.hypocaust.operator;
 
 import com.example.hypocaust.models.ModelRegistry;
-import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.operator.result.OperatorResult;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.fragments.GenerationFragments;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
+/**
+ * Operator that crafts optimal prompts for AI image generation from simple concepts.
+ *
+ * <p>Uses Claude Haiku for fast, efficient prompt engineering. This is a straightforward
+ * transformation task that doesn't require the reasoning power of larger models.
+ */
 @Component
 @RequiredArgsConstructor
 public class ImagePromptEngineerOperator extends BaseOperator {
+
+  // Model configuration - Haiku for fast, efficient prompt transformation
+  private static final AnthropicChatModelSpec PROMPT_ENGINEERING_MODEL =
+      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
 
   private final ModelRegistry modelRegistry;
 
@@ -23,21 +35,14 @@ public class ImagePromptEngineerOperator extends BaseOperator {
     final var mood = (String) normalizedInputs.get("mood");
     final var technicalParams = (String) normalizedInputs.get("technicalParams");
 
-    // Use GPT-4o for prompt engineering tasks
-    final var chatClient = ChatClient.builder(
-            modelRegistry.get(OpenAiChatModelSpec.GPT_4O))
+    // Build the system prompt from the fragment
+    final var systemPrompt = PromptBuilder.create()
+        .with(GenerationFragments.imagePromptEngineering())
         .build();
 
-    final var systemPrompt = """
-        You are an expert at crafting optimal prompts for AI image generation models like DALL-E and Stable Diffusion.
-        Given a concept, expand it into a detailed, effective prompt that will produce high-quality results.
-        Include relevant artistic details, composition notes, lighting, and technical parameters.
-        Also provide a negative prompt to avoid common issues.
-        
-        Return your response in this format:
-        PROMPT: [detailed positive prompt]
-        NEGATIVE: [negative prompt]
-        """;
+    // Build the chat client with Haiku
+    final var chatClient = ChatClient.builder(modelRegistry.get(PROMPT_ENGINEERING_MODEL))
+        .build();
 
     final var userPrompt = String.format(
         "Concept: %s\n" +

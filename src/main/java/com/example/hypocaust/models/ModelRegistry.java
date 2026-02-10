@@ -4,6 +4,7 @@ import com.example.hypocaust.exception.ModelException;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiChatModelSpec;
 import com.example.hypocaust.models.enums.OpenAiEmbeddingModelSpec;
+import com.example.hypocaust.models.enums.OpenAiImageModelSpec;
 import jakarta.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.Set;
@@ -13,6 +14,7 @@ import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -53,6 +55,12 @@ public class ModelRegistry {
       modelProperties.getAnthropic().getChat().keySet().forEach(modelSpec ->
           registerAnthropicChatModel(beanFactory, modelSpec));
     }
+
+    // Register OpenAI image models
+    if (modelProperties.getOpenAi() != null && modelProperties.getOpenAi().getImage() != null) {
+      modelProperties.getOpenAi().getImage().keySet().forEach(modelSpec ->
+          registerOpenAiImageModel(beanFactory, modelSpec));
+    }
   }
 
   private void registerOpenAiChatModel(ConfigurableListableBeanFactory beanFactory,
@@ -91,6 +99,18 @@ public class ModelRegistry {
     }
   }
 
+  private void registerOpenAiImageModel(ConfigurableListableBeanFactory beanFactory,
+      OpenAiImageModelSpec modelSpec) {
+    try {
+      final var model = modelFactory.createOpenAiImageModel(modelSpec);
+      final var modelName = modelSpec.getModelName();
+      beanFactory.registerSingleton(modelName, model);
+      log.info("Registered OpenAI image model bean: {}", modelName);
+    } catch (ModelException e) {
+      log.error("Failed to register OpenAI image model: {}", modelSpec, e);
+    }
+  }
+
   public ChatModel get(String modelName) {
     return applicationContext.getBean(modelName, ChatModel.class);
   }
@@ -112,5 +132,9 @@ public class ModelRegistry {
 
   public AnthropicChatModel get(AnthropicChatModelSpec model) {
     return applicationContext.getBean(model.getModelName(), AnthropicChatModel.class);
+  }
+
+  public OpenAiImageModel get(OpenAiImageModelSpec model) {
+    return applicationContext.getBean(model.getModelName(), OpenAiImageModel.class);
   }
 }

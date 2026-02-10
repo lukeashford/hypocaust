@@ -1,32 +1,30 @@
 package com.example.hypocaust.domain.event;
 
-import com.example.hypocaust.domain.event.ArtifactCancelledEvent.ArtifactCancelledEventPayload;
-import com.example.hypocaust.domain.event.ArtifactCreatedEvent.ArtifactCreatedEventPayload;
-import com.example.hypocaust.domain.event.ArtifactScheduledEvent.ArtifactScheduledEventPayload;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ErrorEvent.ErrorEventPayload;
 import com.example.hypocaust.domain.event.Event.EventPayload;
-import com.example.hypocaust.domain.event.RunCompletedEvent.RunCompletedEventPayload;
-import com.example.hypocaust.domain.event.RunScheduledEvent.RunScheduledEventPayload;
-import com.example.hypocaust.domain.event.RunStartedEvent.RunStartedEventPayload;
 import com.example.hypocaust.domain.event.ToolCallingEvent.ToolCallingEventPayload;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DatabindContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   private static final Map<EventType, Class<? extends EventPayload>> TYPE_TO_CLASS;
 
   static {
-    Map<EventType, Class<? extends EventPayload>> map = new java.util.HashMap<>();
-    map.put(EventType.RUN_SCHEDULED, RunScheduledEventPayload.class);
-    map.put(EventType.RUN_STARTED, RunStartedEventPayload.class);
-    map.put(EventType.RUN_COMPLETED, RunCompletedEventPayload.class);
-    map.put(EventType.ARTIFACT_SCHEDULED, ArtifactScheduledEventPayload.class);
-    map.put(EventType.ARTIFACT_CREATED, ArtifactCreatedEventPayload.class);
-    map.put(EventType.ARTIFACT_CANCELLED, ArtifactCancelledEventPayload.class);
+    Map<EventType, Class<? extends EventPayload>> map = new HashMap<>();
+    map.put(EventType.ARTIFACT_ADDED, Artifact.class);
+    map.put(EventType.ARTIFACT_UPDATED, Artifact.class);
+    map.put(EventType.ARTIFACT_REMOVED, ArtifactRemovedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_STARTED, TaskExecutionStartedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_COMPLETED, TaskExecutionCompletedEvent.Payload.class);
+    map.put(EventType.TASKEXECUTION_FAILED, TaskExecutionFailedEvent.Payload.class);
+    map.put(EventType.TASK_PROGRESS_UPDATED, TodoListUpdatedEvent.Payload.class);
     map.put(EventType.TOOL_CALLING, ToolCallingEventPayload.class);
     map.put(EventType.ERROR, ErrorEventPayload.class);
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.Payload.class);
@@ -37,7 +35,11 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
 
   private static final Map<Class<?>, EventType> CLASS_TO_TYPE =
       TYPE_TO_CLASS.entrySet().stream()
-          .collect(java.util.stream.Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+          .collect(Collectors.toMap(
+              Map.Entry::getValue,
+              Map.Entry::getKey,
+              (existing, replacement) -> existing // Keep the first one in case of collision
+          ));
 
   @Override
   public String idFromValue(Object value) {

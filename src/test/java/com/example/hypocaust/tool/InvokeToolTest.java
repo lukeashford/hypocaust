@@ -67,7 +67,8 @@ class InvokeToolTest {
     String operatorName = "MockOperator";
     OperatorSpec spec = new OperatorSpec(operatorName, "1.0", "desc", List.of(), List.of());
     when(mockOperator.spec()).thenReturn(spec);
-    when(mockOperator.execute(any())).thenReturn(OperatorResult.success("ok", Map.of(), Map.of()));
+    when(mockOperator.execute(any(), any())).thenReturn(
+        OperatorResult.success("ok", Map.of(), Map.of()));
     when(operatorRegistry.get(operatorName)).thenReturn(Optional.of(mockOperator));
 
     OperatorLedger ledger = new OperatorLedger(
@@ -91,7 +92,8 @@ class InvokeToolTest {
     String operatorName = "MockOperator";
     OperatorSpec spec = new OperatorSpec(operatorName, "1.0", "desc", List.of(), List.of());
     when(mockOperator.spec()).thenReturn(spec);
-    when(mockOperator.execute(any())).thenReturn(OperatorResult.success("ok", Map.of(), Map.of()));
+    when(mockOperator.execute(any(), any())).thenReturn(
+        OperatorResult.success("ok", Map.of(), Map.of()));
     when(operatorRegistry.get(operatorName)).thenReturn(Optional.of(mockOperator));
 
     Map<String, Object> values = new HashMap<>();
