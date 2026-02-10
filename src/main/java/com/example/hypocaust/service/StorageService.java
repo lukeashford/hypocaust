@@ -29,24 +29,6 @@ public interface StorageService {
   String store(InputStream inputStream, long contentLength, String contentType);
 
   /**
-   * Retrieve a file as an InputStream.
-   *
-   * @param storageKey the key returned from store()
-   * @return input stream of the file data
-   * @throws StorageException if file not found or retrieval fails
-   */
-  InputStream retrieve(String storageKey);
-
-  /**
-   * Get metadata about a stored file.
-   *
-   * @param storageKey the storage key
-   * @return file metadata
-   * @throws StorageException if file not found
-   */
-  FileMetadata getMetadata(String storageKey);
-
-  /**
    * Delete a file from storage.
    *
    * @param storageKey the storage key

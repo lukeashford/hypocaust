@@ -1,8 +1,5 @@
-package com.example.hypocaust.web;
+package com.example.hypocaust.domain;
 
-import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.TaskExecutionStatus;
-import com.example.hypocaust.domain.Todo;
 import java.util.List;
 import java.util.UUID;
 

@@ -2,7 +2,7 @@ package com.example.hypocaust.web;
 
 import com.example.hypocaust.common.Routes;
 import com.example.hypocaust.db.ProjectEntity;
-import com.example.hypocaust.repo.ProjectRepository;
+import com.example.hypocaust.service.ProjectService;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class ProjectController {
 
-  private final ProjectRepository projectRepository;
+  private final ProjectService projectService;
 
   /**
    * Create a new empty project.
@@ -32,11 +32,7 @@ public class ProjectController {
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public Map<String, UUID> createProject() {
-    ProjectEntity project = new ProjectEntity();
-    projectRepository.save(project);
-
-    log.info("Created new project: {}", project.getId());
-
+    ProjectEntity project = projectService.createProject();
     return Map.of("projectId", project.getId());
   }
 }

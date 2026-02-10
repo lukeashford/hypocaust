@@ -8,6 +8,8 @@ import com.example.hypocaust.repo.ArtifactRepository;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +33,22 @@ public class ArtifactService {
   private final ArtifactMapper artifactMapper;
 
   /**
-   * Get domain object for an artifact by ID
+   * Get domain object for an artifact by ID. URL is automatically externalized.
    */
   public Optional<Artifact> getArtifact(UUID artifactId) {
     return artifactRepository.findById(artifactId).map(artifactMapper::toDomain);
+  }
+
+  /**
+   * Get multiple artifacts by their IDs. URLs are automatically externalized.
+   */
+  public List<Artifact> getArtifacts(Collection<UUID> artifactIds) {
+    if (artifactIds == null || artifactIds.isEmpty()) {
+      return List.of();
+    }
+    return artifactRepository.findAllById(artifactIds).stream()
+        .map(artifactMapper::toDomain)
+        .toList();
   }
 
   private Artifact downloadArtifact(Artifact pendingArtifact) {
@@ -73,7 +87,7 @@ public class ArtifactService {
   }
 
   @Transactional
-  public UUID materialize(Artifact pendingArtifact, UUID projectId, UUID taskExecutionId) {
+  UUID materialize(Artifact pendingArtifact, UUID projectId, UUID taskExecutionId) {
     return artifactRepository.save(artifactMapper.toEntity(
         pendingArtifact.url() == null
             ? pendingArtifact

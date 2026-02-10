@@ -4,14 +4,12 @@ import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.exception.StorageException;
 import com.example.hypocaust.service.storage.StorageProperties;
 import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
-import io.minio.StatObjectResponse;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
@@ -131,49 +129,6 @@ public class MinioStorageService implements StorageService {
       return true;
     } catch (Exception e) {
       return false;
-    }
-  }
-
-  @Override
-  public InputStream retrieve(String storageKey) {
-    try {
-      log.debug("Retrieving file: {}", storageKey);
-
-      return minioClient.getObject(
-          GetObjectArgs.builder()
-              .bucket(storageProperties.getBucketName())
-              .object(storageKey)
-              .build()
-      );
-
-    } catch (Exception e) {
-      log.error("Failed to retrieve file: {}", storageKey, e);
-      throw new StorageException("Failed to retrieve file: " + storageKey, e);
-    }
-  }
-
-  @Override
-  public FileMetadata getMetadata(String storageKey) {
-    try {
-      log.debug("Getting metadata for: {}", storageKey);
-
-      StatObjectResponse stat = minioClient.statObject(
-          StatObjectArgs.builder()
-              .bucket(storageProperties.getBucketName())
-              .object(storageKey)
-              .build()
-      );
-
-      return new FileMetadata(
-          storageKey,
-          stat.contentType(),
-          stat.size(),
-          stat.etag()
-      );
-
-    } catch (Exception e) {
-      log.error("Failed to get metadata for: {}", storageKey, e);
-      throw new StorageException("Failed to get metadata: " + storageKey, e);
     }
   }
 

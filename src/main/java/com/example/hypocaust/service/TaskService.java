@@ -9,7 +9,6 @@ import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
 import com.example.hypocaust.operator.DecomposingOperator;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
-import com.example.hypocaust.repo.ProjectRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class TaskService {
       If this task is not about generating a picture, fail early and do nothing.
       """;
 
-  private final ProjectRepository projectRepository;
+  private final ProjectService projectService;
   private final TaskExecutionRepository taskExecutionRepository;
   private final DecomposingOperator decomposingOperator;
   private final ExecutorService runExecutorService;
@@ -60,7 +59,7 @@ public class TaskService {
     }
 
     // Verify project exists
-    if (!projectRepository.existsById(projectId)) {
+    if (!projectService.exists(projectId)) {
       return TaskResponseDto.rejected("Project not found: " + projectId);
     }
 

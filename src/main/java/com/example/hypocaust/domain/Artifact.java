@@ -2,6 +2,7 @@ package com.example.hypocaust.domain;
 
 import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 
@@ -9,6 +10,7 @@ import lombok.NonNull;
  * Domain representation of an artifact, used both in memory during task execution and as a DTO for
  * the frontend.
  *
+ * @param id unique identifier
  * @param name project-unique identifier
  * @param kind type of artifact
  * @param url URL of the manifested artifact
@@ -22,6 +24,7 @@ import lombok.NonNull;
  */
 @Builder
 public record Artifact(
+    UUID id,
     @NonNull String name,
     @NonNull ArtifactKind kind,
     String url,
@@ -50,12 +53,12 @@ public record Artifact(
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, prompt, model,
-        metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
+        model, metadata);
   }
 
   public Artifact withUrl(String url) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, prompt, model,
-        metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
+        model, metadata);
   }
 }

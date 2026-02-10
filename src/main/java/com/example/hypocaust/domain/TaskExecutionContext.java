@@ -3,7 +3,6 @@ package com.example.hypocaust.domain;
 import com.example.hypocaust.service.ArtifactNameGeneratorService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
-import com.example.hypocaust.web.TaskExecutionSnapshot;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

@@ -74,6 +74,19 @@ public class EventService {
     return sseHub.subscribe(taskExecutionId, replayEvents);
   }
 
+  /**
+   * Get all events for a TaskExecution.
+   *
+   * @param taskExecutionId the execution ID
+   * @return list of events
+   */
+  public List<Event<?>> getEvents(UUID taskExecutionId) {
+    return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
+        .stream()
+        .map(eventMapper::toDomain)
+        .collect(Collectors.toList());
+  }
+
   private List<SseHub.ReplayItem> findEventsForExecutionSince(UUID taskExecutionId,
       UUID lastEventId) {
     if (lastEventId == null) {
@@ -81,7 +94,7 @@ public class EventService {
       return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
           .parallelStream()
           .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
-          .collect(Collectors.toUnmodifiableList());
+          .toList();
     }
 
     if (!eventLogRepository.existsByIdAndTaskExecutionId(lastEventId, taskExecutionId)) {
@@ -94,6 +107,6 @@ public class EventService {
             lastEventId)
         .parallelStream()
         .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
-        .collect(Collectors.toUnmodifiableList());
+        .toList();
   }
 }

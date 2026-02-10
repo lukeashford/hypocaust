@@ -2,9 +2,9 @@ package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.domain.TaskExecutionSnapshot;
 import com.example.hypocaust.operator.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.TaskExecutionRepository;
-import com.example.hypocaust.web.TaskExecutionSnapshot;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;

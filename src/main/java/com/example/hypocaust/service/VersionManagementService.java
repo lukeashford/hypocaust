@@ -7,11 +7,12 @@ import com.example.hypocaust.domain.Changelist;
 import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,7 @@ public class VersionManagementService {
    */
   public Map<String, UUID> computeArtifactSnapshotAt(UUID taskExecutionId) {
     if (taskExecutionId == null) { // root
-      return Map.of();
+      return new HashMap<>();
     }
 
     TaskExecutionEntity execution = taskExecutionRepository.findById(taskExecutionId).orElseThrow(
@@ -99,11 +100,8 @@ public class VersionManagementService {
   }
 
   public List<Artifact> getAllMaterializedArtifactsAt(@NonNull UUID taskExecutionId) {
-    return computeArtifactSnapshotAt(taskExecutionId).values().stream()
-        .map(artifactService::getArtifact)
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .collect(Collectors.toList());
+    Collection<UUID> artifactIds = computeArtifactSnapshotAt(taskExecutionId).values();
+    return artifactService.getArtifacts(artifactIds);
   }
 
   public List<Artifact> getAllArtifactsWithChanges(@NonNull UUID taskExecutionId,
