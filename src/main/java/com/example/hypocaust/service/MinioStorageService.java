@@ -174,43 +174,7 @@ public class MinioStorageService implements StorageService {
       throw new StorageException("Failed to generate presigned URL: " + storageKey, e);
     }
   }
-
-  @Override
-  public String manifestUrl(String url, String contentType) {
-    if (url == null || url.isBlank()) {
-      return null;
-    }
-
-    // If it's already a local storage key (starts with "blobs/"), return as-is
-    if (isLocalStorageKey(url)) {
-      log.debug("URL is already a local storage key: {}", url);
-      return url;
-    }
-
-    // Download from external URL and store
-    try {
-      log.debug("Manifesting external URL: {}", url);
-      byte[] data;
-      try (var stream = new java.net.URI(url).toURL().openStream()) {
-        data = stream.readAllBytes();
-      }
-
-      // store() already handles hash-based dedup
-      String storageKey = store(data, contentType);
-      log.info("Manifested URL {} to storage key {}", url, storageKey);
-      return storageKey;
-
-    } catch (Exception e) {
-      log.error("Failed to manifest URL: {}", url, e);
-      throw new StorageException("Failed to manifest URL: " + url, e);
-    }
-  }
-
-  private boolean isLocalStorageKey(String url) {
-    // Local storage keys follow the pattern "blobs/xx/yy/hash.ext"
-    return url.startsWith("blobs/");
-  }
-
+  
   /**
    * Generates a storage key with hash-based organization. Format: blobs/ab/cd/{hash}.{ext}
    */

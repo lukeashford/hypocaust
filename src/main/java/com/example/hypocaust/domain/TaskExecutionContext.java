@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
  * Thread-local context for the current TaskExecution. Replaces both RunContextHolder and
  * ExecutionContext with a unified approach. Also incorporates task progress tracking (previously in
  * TaskProgressService).
- *
+ * <p>
  * Refactored into a Sub-Context Architecture to delegate artifact and todo management.
  */
 @Getter

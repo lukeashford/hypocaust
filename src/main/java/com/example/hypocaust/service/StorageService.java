@@ -46,25 +46,4 @@ public interface StorageService {
    */
   String generatePresignedUrl(String storageKey, int expirySeconds);
 
-  /**
-   * Manifest a URL - if already local (a storage key), return as-is. If external, download, hash,
-   * store (dedup by hash), return local storage key.
-   *
-   * @param url the URL to manifest (can be external URL or local storage key)
-   * @param contentType the MIME type for storage
-   * @return local storage key
-   */
-  String manifestUrl(String url, String contentType);
-
-  /**
-   * Metadata about a stored file.
-   */
-  record FileMetadata(
-      String storageKey,
-      String contentType,
-      long size,
-      String etag
-  ) {
-
-  }
 }
