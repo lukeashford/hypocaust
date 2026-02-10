@@ -1,4 +1,4 @@
--- Initial schema consolidated from migrations V1 to V9
+-- Initial schema consolidated from migrations V1 to V3
 
 -- Extensions
 CREATE
@@ -10,7 +10,8 @@ EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 CREATE TABLE project
 (
     id         uuid PRIMARY KEY,
-    created_at timestamptz NOT NULL DEFAULT now()
+    name       varchar(100) NOT NULL UNIQUE,
+    created_at timestamptz  NOT NULL DEFAULT now()
 );
 
 -- Task Execution table (formerly run)
@@ -26,7 +27,7 @@ CREATE TABLE task_execution
     started_at     timestamptz,
     completed_at   timestamptz,
     predecessor_id uuid REFERENCES task_execution (id),
-    message        text,
+    commit_message text,
     delta          jsonb
 );
 
@@ -49,12 +50,9 @@ CREATE TABLE artifact
                                                     'CANCELLED',
                                                     'FAILED')),
     title             text,
-    mime              text,
     storage_key       text,
-    content           jsonb,
+    inline_content jsonb,
     metadata          jsonb,
-    subtitle          text,
-    alt               text,
     name              varchar(100) NOT NULL,
     description       text,
     prompt            text,
@@ -64,7 +62,7 @@ CREATE TABLE artifact
 
 -- Artifact indexes
 CREATE INDEX idx_artifact_project_time ON artifact (project_id, created_at DESC);
-CREATE INDEX idx_artifact_content_gin ON artifact USING gin (content);
+CREATE INDEX idx_artifact_content_gin ON artifact USING gin (inline_content);
 CREATE INDEX idx_artifact_name ON artifact (project_id, name);
 CREATE INDEX idx_artifact_task_execution ON artifact (task_execution_id);
 
