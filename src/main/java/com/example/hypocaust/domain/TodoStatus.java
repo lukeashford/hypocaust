@@ -1,8 +1,8 @@
 package com.example.hypocaust.domain;
 
-/**
- * Status of a task item in the progress tree.
- */
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Status of a todo / progress item", enumAsRef = true)
 public enum TodoStatus {
   PENDING,
   IN_PROGRESS,

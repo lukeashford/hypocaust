@@ -18,25 +18,17 @@ public class ProjectService {
 
   private final ProjectRepository projectRepository;
 
-  /**
-   * Create a new project.
-   *
-   * @return the created project entity
-   */
   @Transactional
-  public ProjectEntity createProject() {
-    ProjectEntity project = new ProjectEntity();
+  public ProjectEntity createProject(String name) {
+    if (projectRepository.existsByName(name)) {
+      throw new IllegalArgumentException("Project name already exists: " + name);
+    }
+    ProjectEntity project = new ProjectEntity(name);
     ProjectEntity saved = projectRepository.save(project);
-    log.info("Created new project: {}", saved.getId());
+    log.info("Created new project: {} (name={})", saved.getId(), saved.getName());
     return saved;
   }
 
-  /**
-   * Check if a project exists.
-   *
-   * @param projectId the project ID
-   * @return true if it exists, false otherwise
-   */
   public boolean exists(UUID projectId) {
     return projectRepository.existsById(projectId);
   }

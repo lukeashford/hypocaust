@@ -27,7 +27,7 @@ public class EventService {
   private final TaskExecutionRepository taskExecutionRepository;
 
   @Transactional
-  public void publish(Event<?> event, boolean doPersist) {
+  public UUID publish(Event<?> event, boolean doPersist) {
     log.debug("Publishing event: {}", event);
     final var entity = eventMapper.toEntity(event);
 
@@ -51,11 +51,12 @@ public class EventService {
     }
 
     sseHub.broadcast(executionId, entity.getId(), event);
+    return entity.getId();
   }
 
   @Transactional
-  public void publish(Event<?> event) {
-    publish(event, true);
+  public UUID publish(Event<?> event) {
+    return publish(event, true);
   }
 
   /**
