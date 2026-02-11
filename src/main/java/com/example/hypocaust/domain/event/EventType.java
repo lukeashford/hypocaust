@@ -2,11 +2,13 @@ package com.example.hypocaust.domain.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
+@Schema(description = "SSE event type. Used as the `event` field in the SSE stream.", enumAsRef = true)
 public enum EventType {
   // Artifact events (simplified)
   ARTIFACT_ADDED("artifact.added"),

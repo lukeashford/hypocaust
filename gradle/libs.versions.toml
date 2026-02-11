@@ -10,6 +10,7 @@ uuid-creator = "6.1.1"
 hibernate-vector = "6.6.15.Final"
 jtokkit = "1.1.0"
 minio = "8.6.0"
+springdoc = "2.8.6"
 
 [libraries]
 # Spring Boot BOM managed (no version needed, managed by BOM)
@@ -27,6 +28,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 # Mockito (BOM managed)
 mockito-core = { module = "org.mockito:mockito-core" }

@@ -2,38 +2,49 @@ package com.example.hypocaust.domain;
 
 import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 
-/**
- * Domain representation of an artifact, used both in memory during task execution and as a DTO for
- * the frontend.
- *
- * @param id unique identifier
- * @param name project-unique identifier
- * @param kind type of artifact
- * @param url URL of the manifested artifact
- * @param inlineContent inline content (for text)
- * @param title human-readable title
- * @param description human-readable description
- * @param status current status
- * @param prompt prompt used to generate this artifact
- * @param model model used to generate this artifact
- * @param metadata size, duration, etc.
- */
 @Builder
+@Schema(description = "A generated artifact (image, document, structured data, etc.)")
 public record Artifact(
+    @Schema(description = "Unique artifact ID")
     UUID id,
+
+    @Schema(description = "Project-unique semantic name used to identify and deduplicate artifacts",
+        example = "cat-astronaut-illustration")
     @NonNull String name,
+
+    @Schema(description = "Content type category")
     @NonNull ArtifactKind kind,
+
+    @Schema(description = "URL to fetch the resource from (available once status is MANIFESTED)",
+        nullable = true)
     String url,
+
+    @Schema(description = "Inline structured content (for STRUCTURED_JSON kind). Display directly as text.",
+        nullable = true)
     JsonNode inlineContent,
+
+    @Schema(description = "Human-readable title", example = "Cat Astronaut Illustration")
     @NonNull String title,
+
+    @Schema(description = "Human-readable description of what this artifact contains")
     @NonNull String description,
+
+    @Schema(description = "Processing status. GESTATING = still generating (show skeleton), "
+        + "MANIFESTED = ready to display")
     @NonNull ArtifactStatus status,
+
+    @Schema(description = "The prompt used to generate this artifact", nullable = true)
     String prompt,
+
+    @Schema(description = "The AI model used for generation", nullable = true)
     String model,
+
+    @Schema(description = "Additional metadata (dimensions, file size, etc.)", nullable = true)
     JsonNode metadata
 ) implements ArtifactEventPayload {
 

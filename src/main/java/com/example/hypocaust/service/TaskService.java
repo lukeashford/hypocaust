@@ -69,14 +69,20 @@ public class TaskService {
         .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
             .orElse(null));
 
-    // Create TaskExecution entity
+    // Create TaskExecution entity and transition to RUNNING synchronously
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
         .task(task)
         .predecessorId(predecessorId)
         .build();
+    taskExecution.start();
     taskExecutionRepository.save(taskExecution);
     final var taskExecutionId = taskExecution.getId();
+
+    // Publish the started event synchronously so the client receives its ID
+    // before connecting to SSE — guarantees no events are lost
+    final UUID firstEventId = eventService.publish(
+        new TaskExecutionStartedEvent(taskExecutionId));
 
     log.info("Created TaskExecution {} for project {} with predecessor {}",
         taskExecutionId, projectId, predecessorId);
@@ -86,7 +92,7 @@ public class TaskService {
     runExecutorService.submit(
         () -> executeTask(projectId, taskExecutionId, finalPredecessorId, task));
 
-    return TaskResponseDto.accepted(projectId, taskExecutionId);
+    return TaskResponseDto.accepted(projectId, taskExecutionId, firstEventId);
   }
 
   public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
@@ -102,16 +108,9 @@ public class TaskService {
     // Reset call sequence counter
     modelCallLogger.resetSequence();
 
-    // Update status to RUNNING
-    TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
-        .orElseThrow(
-            () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
-
+    // Task is already in RUNNING status and the started event was published
+    // synchronously during submitTask()
     try {
-      taskExecution.start();
-      taskExecutionRepository.save(taskExecution);
-      eventService.publish(new TaskExecutionStartedEvent(taskExecutionId));
-
       // Augment the task with the picture generation note
       final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
 

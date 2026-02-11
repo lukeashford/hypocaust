@@ -11,6 +11,10 @@ import static com.example.hypocaust.common.DiagnosticsConstants.MODEL_HEALTH_END
 
 import com.example.hypocaust.service.DatabaseHealthService;
 import com.example.hypocaust.service.ModelHealthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -21,31 +25,29 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Controller for system diagnostics and health checks.
- */
 @RestController
 @RequestMapping(DIAGNOSTICS_BASE)
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Diagnostics", description = "Health checks for AI models and database connectivity.")
 public class DiagnosticsController {
 
   private final ModelHealthService modelHealthService;
   private final DatabaseHealthService databaseHealthService;
 
-  /**
-   * Health check for a specific model.
-   */
+  @Operation(summary = "Check health of a specific model")
+  @ApiResponse(responseCode = "200", description = "Health check result")
   @GetMapping(MODEL_HEALTH_ENDPOINT)
-  public ResponseEntity<Map<String, Object>> checkModelHealth(@PathVariable String modelName) {
+  public ResponseEntity<Map<String, Object>> checkModelHealth(
+      @Parameter(description = "Name of the AI model to check", example = "gpt-4o")
+      @PathVariable String modelName) {
     log.info(LOG_MODEL_HEALTH_CHECK, modelName);
     final var healthResult = modelHealthService.checkModelHealth(modelName);
     return ResponseEntity.ok(healthResult);
   }
 
-  /**
-   * Health check for all configured models.
-   */
+  @Operation(summary = "Check health of all configured models")
+  @ApiResponse(responseCode = "200", description = "Aggregated health check results")
   @GetMapping(ALL_MODELS_HEALTH_ENDPOINT)
   public ResponseEntity<Map<String, Object>> checkAllModelsHealth() {
     log.info(LOG_ALL_MODELS_HEALTH_CHECK);
@@ -53,18 +55,16 @@ public class DiagnosticsController {
     return ResponseEntity.ok(healthResults);
   }
 
-  /**
-   * List all available models.
-   */
+  @Operation(summary = "List available models")
+  @ApiResponse(responseCode = "200", description = "Set of available model names")
   @GetMapping(LIST_MODELS_ENDPOINT)
   public ResponseEntity<Set<String>> listAvailableModels() {
     final var availableModels = modelHealthService.listAvailableModels();
     return ResponseEntity.ok(availableModels);
   }
 
-  /**
-   * Database health check.
-   */
+  @Operation(summary = "Check database health")
+  @ApiResponse(responseCode = "200", description = "Database connectivity status")
   @GetMapping(DATABASE_HEALTH_ENDPOINT)
   public ResponseEntity<Map<String, Object>> checkDatabaseHealth() {
     log.info(LOG_DATABASE_HEALTH_CHECK);

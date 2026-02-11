@@ -30,6 +30,9 @@ dependencies {
   // Storage
   implementation(libs.minio)
 
+  // OpenAPI / Swagger
+  implementation(libs.springdoc.openapi.starter.webmvc.ui)
+
   // Spring AI (BOM managed)
   implementation(libs.bundles.spring.ai)
 
