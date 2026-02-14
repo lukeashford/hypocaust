@@ -22,6 +22,13 @@ app:
           frequencyPenalty: 0.0
           maxCompletionTokens: 4096    # safe default; lift if you need longer answers
 
+        "[gpt-5.2]": # Latest flagship with enhanced creativity; ideal for creative writing tasks.
+          topP: 1.0
+          temperature: 0.9
+          presencePenalty: 0.1
+          frequencyPenalty: 0.1
+          maxCompletionTokens: 4096
+
         gpt-4o: # Multimodal generalist; typical ctx ~128K per OpenAI era guidance.
           temperature: 0.2
           topP: 1.0
