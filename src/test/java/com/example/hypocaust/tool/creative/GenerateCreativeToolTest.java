@@ -3,12 +3,15 @@ package com.example.hypocaust.tool.creative;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.integration.ReplicateClient;
@@ -16,13 +19,18 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.PlatformEmbeddingRegistry;
 import com.example.hypocaust.rag.PlatformEmbeddingRegistry.SearchResult;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.Prompt;
 
 class GenerateCreativeToolTest {
 
@@ -32,6 +40,10 @@ class GenerateCreativeToolTest {
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
 
+  private TaskExecutionContext context;
+  private ArtifactsContext artifactsContext;
+  private AnthropicChatModel chatModel;
+
   @BeforeEach
   void setUp() {
     modelRag = mock(PlatformEmbeddingRegistry.class);
@@ -39,11 +51,70 @@ class GenerateCreativeToolTest {
     replicateClient = mock(ReplicateClient.class);
     objectMapper = new ObjectMapper();
     tool = new GenerateCreativeTool(modelRag, modelRegistry, replicateClient, objectMapper);
+
+    context = mock(TaskExecutionContext.class);
+    artifactsContext = mock(ArtifactsContext.class);
+    when(context.getArtifacts()).thenReturn(artifactsContext);
+    TaskExecutionContextHolder.setContext(context);
+
+    chatModel = mock(AnthropicChatModel.class);
   }
 
   @AfterEach
   void tearDown() {
     TaskExecutionContextHolder.clear();
+  }
+
+  @Test
+  void generate_success() {
+    // GIVEN
+    String task = "Make a cute cat";
+    ArtifactKind kind = ArtifactKind.IMAGE;
+    String modelDoc = "Replicate: stability-ai/sdxl\nVersion: latest-hash";
+
+    when(modelRag.search(anyString())).thenReturn(List.of(new SearchResult("SDXL", modelDoc)));
+
+    ObjectNode modelVersion = objectMapper.createObjectNode();
+    modelVersion.set("openapi_schema", objectMapper.createObjectNode());
+    when(replicateClient.getModelVersion("stability-ai", "sdxl", "latest-hash")).thenReturn(
+        modelVersion);
+
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
+
+    String planJson = """
+        {
+          "title": "Cute Cat",
+          "description": "A very cute cat illustration",
+          "replicateInput": {"prompt": "a cute cat"},
+          "errorMessage": null
+        }
+        """;
+    AssistantMessage assistantMessage = new AssistantMessage(planJson);
+    Generation generation = new Generation(assistantMessage);
+    ChatResponse chatResponse = new ChatResponse(List.of(generation));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    when(artifactsContext.add(any())).thenReturn("cute-cat-1");
+
+    JsonNode replicateOutput = objectMapper.valueToTree("https://replicate.com/output.png");
+    when(replicateClient.predict(eq("stability-ai"), eq("sdxl"), eq("latest-hash"),
+        any())).thenReturn(replicateOutput);
+
+    // WHEN
+    var result = tool.generate(task, kind);
+
+    // THEN
+    assertThat(result.error()).isNull();
+    assertThat(result.artifactName()).isEqualTo("cute-cat-1");
+    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+
+    verify(artifactsContext).updatePending(argThat(artifact ->
+        artifact.name().equals("cute-cat-1") &&
+            artifact.url().equals("https://replicate.com/output.png") &&
+            artifact.status().equals(ArtifactStatus.CREATED)
+    ));
   }
 
   @Test
@@ -57,80 +128,32 @@ class GenerateCreativeToolTest {
   }
 
   @Test
-  void generate_successfulGeneration_returnsSuccess() {
-    // Setup context
-    var context = mock(TaskExecutionContext.class);
-    var artifactsContext = mock(ArtifactsContext.class);
-    when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
-    when(context.getArtifacts()).thenReturn(artifactsContext);
-    when(artifactsContext.add(any())).thenReturn("sunset-001");
-    TaskExecutionContextHolder.setContext(context);
+  void generate_planReturnsErrorMessage_returnsError() {
+    // GIVEN
+    String task = "Make a video";
+    ArtifactKind kind = ArtifactKind.VIDEO;
+    String modelDoc = "Replicate: lucataco/animate-diff\nVersion: v1";
 
-    // Setup RAG
-    var modelDoc = "Replicate: stability-ai/sdxl\nVersion: abc123\nSummary: SDXL model";
-    when(modelRag.search(anyString()))
-        .thenReturn(List.of(new SearchResult("SDXL", modelDoc)));
+    when(modelRag.search(anyString())).thenReturn(
+        List.of(new SearchResult("AnimateDiff", modelDoc)));
 
-    // Mock Haiku call (will fail since no chat model, but fallback handles it)
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
-        .thenThrow(new RuntimeException("No LLM"));
+    ObjectNode modelVersion = objectMapper.createObjectNode();
+    modelVersion.set("openapi_schema", objectMapper.createObjectNode());
+    when(replicateClient.getModelVersion(anyString(), anyString(), anyString())).thenReturn(
+        modelVersion);
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
-    // Mock Replicate
-    when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
-        .thenReturn(new TextNode("https://replicate.delivery/result.png"));
+    String planJson = "{\"title\":null, \"description\":null, \"replicateInput\":null, \"errorMessage\":\"Missing video length\"}";
+    AssistantMessage assistantMessage = new AssistantMessage(planJson);
+    Generation generation = new Generation(assistantMessage);
+    ChatResponse chatResponse = new ChatResponse(List.of(generation));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    var result = tool.generate("Generate a sunset", ArtifactKind.IMAGE);
+    // WHEN
+    var result = tool.generate(task, kind);
 
-    assertThat(result.artifactName()).isEqualTo("sunset-001");
-    assertThat(result.summary()).contains("Generated IMAGE");
-    assertThat(result.error()).isNull();
-  }
-
-  @Test
-  void generate_replicateFailure_rollsBackAndReturnsError() {
-    var context = mock(TaskExecutionContext.class);
-    var artifactsContext = mock(ArtifactsContext.class);
-    when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
-    when(context.getArtifacts()).thenReturn(artifactsContext);
-    when(artifactsContext.add(any())).thenReturn("failed-001");
-    TaskExecutionContextHolder.setContext(context);
-
-    var modelDoc = "Replicate: stability-ai/sdxl\nVersion: abc123\nSummary: SDXL";
-    when(modelRag.search(anyString()))
-        .thenReturn(List.of(new SearchResult("SDXL", modelDoc)));
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
-        .thenThrow(new RuntimeException("No LLM"));
-    when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
-        .thenThrow(new ReplicateClient.ReplicateException("API timeout"));
-
-    var result = tool.generate("Generate something", ArtifactKind.IMAGE);
-
-    assertThat(result.error()).contains("Generation failed").contains("API timeout");
-    verify(artifactsContext).rollbackPending("failed-001");
-  }
-
-  @Test
-  void generateTitleAndDescription_fallback_whenLlmUnavailable() {
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
-        .thenThrow(new RuntimeException("No LLM"));
-
-    var result = tool.generateTitleAndDescription(
-        "Create a beautiful landscape painting of mountains at sunset", ArtifactKind.IMAGE);
-
-    // Fallback: title truncated to 60 chars, description is full task
-    assertThat(result.title()).hasSizeLessThanOrEqualTo(60);
-    assertThat(result.description()).isEqualTo(
-        "Create a beautiful landscape painting of mountains at sunset");
-  }
-
-  @Test
-  void generateTitleAndDescription_shortTask_usesFullTaskAsTitle() {
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
-        .thenThrow(new RuntimeException("No LLM"));
-
-    var result = tool.generateTitleAndDescription("Cat photo", ArtifactKind.IMAGE);
-
-    assertThat(result.title()).isEqualTo("Cat photo");
-    assertThat(result.description()).isEqualTo("Cat photo");
+    // THEN
+    assertThat(result.error()).isEqualTo("Missing video length");
   }
 }

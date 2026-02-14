@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * Simple HTTP client for the Replicate API. Creates predictions, polls for completion,
- * and returns output URLs/content.
+ * Simple HTTP client for the Replicate API. Creates predictions, polls for completion, and returns
+ * output URLs/content.
  */
 @Component
 @Slf4j
@@ -41,9 +41,9 @@ public class ReplicateClient {
    * Create and await a prediction on a Replicate model.
    *
    * @param modelOwner the model owner (e.g., "stability-ai")
-   * @param modelName  the model name (e.g., "sdxl")
-   * @param version    the model version hash
-   * @param input      JSON object with model-specific input parameters
+   * @param modelName the model name (e.g., "sdxl")
+   * @param version the model version hash
+   * @param input JSON object with model-specific input parameters
    * @return the prediction output (URLs, text, etc.)
    */
   public JsonNode predict(String modelOwner, String modelName, String version, JsonNode input) {
@@ -85,6 +85,22 @@ public class ReplicateClient {
     }
 
     return awaitPrediction(predictionUrl);
+  }
+
+  /**
+   * Fetch model version details, including its OpenAPI schema.
+   */
+  public JsonNode getModelVersion(String owner, String name, String version) {
+    log.info("Fetching model version details for {}/{} (version: {})", owner, name, version);
+    var response = restClient.get()
+        .uri("/models/{owner}/{name}/versions/{version}", owner, name, version)
+        .retrieve()
+        .body(JsonNode.class);
+
+    if (response == null) {
+      throw new ReplicateException("No response from Replicate API when fetching model version");
+    }
+    return response;
   }
 
   private JsonNode awaitPrediction(String predictionUrl) {

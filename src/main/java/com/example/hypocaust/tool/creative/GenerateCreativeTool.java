@@ -1,5 +1,6 @@
 package com.example.hypocaust.tool.creative;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
@@ -7,12 +8,12 @@ import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.integration.ReplicateClient;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.rag.PlatformEmbeddingRegistry;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -20,9 +21,9 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
 /**
- * Unified creative generation tool. The decomposer describes what it needs and this tool
- * handles everything internally: model selection via RAG, prompt engineering, title/description
- * generation, and Replicate API calling.
+ * Unified creative generation tool. The decomposer describes what it needs and this tool handles
+ * everything internally: model selection via RAG, prompt engineering, title/description generation,
+ * and Replicate API calling.
  *
  * <p>Replaces all hardcoded creative operators (ImageGeneration, ImageEdit,
  * CreativeTextGeneration, ImagePromptEngineer).
@@ -30,14 +31,14 @@ import org.springframework.ai.tool.annotation.ToolParam;
 @DiscoverableTool(
     name = "generate_creative",
     description = "Generate or edit creative content (images, audio, video, text). "
-        + "Handles model selection, prompt optimization, and generation automatically.")
+        + "Describe what you need. To use existing artifacts as inputs, refer to them "
+        + "using the @ prefix (e.g., 'Make @user_photo a cartoon').")
 @RequiredArgsConstructor
 @Slf4j
 public class GenerateCreativeTool {
 
   private static final AnthropicChatModelSpec PROMPT_ENG_MODEL =
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
-  private static final int MODEL_RAG_RESULTS = 3;
 
   private final PlatformEmbeddingRegistry modelRag;
   private final ModelRegistry modelRegistry;
@@ -45,8 +46,9 @@ public class GenerateCreativeTool {
   private final ObjectMapper objectMapper;
 
   @Tool(name = "generate_creative",
-      description = "Generate creative content. Describe what you need and the tool "
-          + "handles model selection, prompt engineering, and generation.")
+      description = "Generate or edit creative content. Describe what you need and the tool "
+          + "handles model selection, prompt engineering, and generation. "
+          + "Use @artifact_name to reference existing items.")
   public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
       @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
@@ -62,21 +64,38 @@ public class GenerateCreativeTool {
     var bestModel = modelResults.getFirst();
     log.info("Selected model: {}", bestModel.name());
 
-    // Step 2: Generate title and description from the task
-    var titleAndDescription = generateTitleAndDescription(task, artifactKind);
-
-    // Step 3: Prompt engineering - use the model docs to craft an optimized prompt
-    var optimizedPrompt = engineerPrompt(task, bestModel.text());
-
-    // Step 4: Parse model info from RAG result to get Replicate coordinates
+    // Step 2: Parse model info and fetch schema from Replicate
     var modelInfo = parseModelInfo(bestModel.text());
+    JsonNode modelVersion;
+    try {
+      modelVersion = replicateClient.getModelVersion(
+          modelInfo.owner(), modelInfo.name(), modelInfo.version());
+    } catch (Exception e) {
+      log.error("Failed to fetch model version from Replicate: {}", e.getMessage());
+      return GenerateCreativeResult.error("Failed to fetch model details: " + e.getMessage());
+    }
+
+    JsonNode schema = modelVersion.path("openapi_schema");
+    List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
+        .getAllWithChanges();
+
+    // Step 3: Unified plan generation (Title, Description, Replicate Input)
+    var plan = generatePlan(task, artifactKind, bestModel.text(), schema, availableArtifacts);
+
+    if (plan.errorMessage() != null) {
+      log.warn("Creative generation plan failed: {}", plan.errorMessage());
+      return GenerateCreativeResult.error(plan.errorMessage());
+    }
+
+    // Step 4: Substitute artifact placeholders
+    var finalInput = substituteArtifacts(plan.replicateInput(), availableArtifacts);
 
     // Step 5: Schedule artifact
     var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
         .kind(artifactKind)
-        .title(titleAndDescription.title())
-        .description(titleAndDescription.description())
-        .prompt(optimizedPrompt)
+        .title(plan.title())
+        .description(plan.description())
+        .prompt(task) // Store original task as prompt context
         .model(bestModel.name())
         .status(ArtifactStatus.GESTATING)
         .build());
@@ -85,9 +104,8 @@ public class GenerateCreativeTool {
 
     try {
       // Step 6: Call Replicate
-      var input = buildReplicateInput(optimizedPrompt, artifactKind, bestModel.text());
       var output = replicateClient.predict(
-          modelInfo.owner(), modelInfo.name(), modelInfo.version(), input);
+          modelInfo.owner(), modelInfo.name(), modelInfo.version(), finalInput);
 
       // Step 7: Extract result URL/content
       var resultUrl = extractOutputUrl(output);
@@ -95,16 +113,16 @@ public class GenerateCreativeTool {
       // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
       metadata.put("originalTask", task);
-      metadata.put("optimizedPrompt", optimizedPrompt);
+      metadata.set("replicateInput", finalInput);
       metadata.put("model", bestModel.name());
 
       TaskExecutionContextHolder.getContext().getArtifacts()
           .updatePending(Artifact.builder()
               .name(artifactName)
               .kind(artifactKind)
-              .title(titleAndDescription.title())
-              .description(titleAndDescription.description())
-              .prompt(optimizedPrompt)
+              .title(plan.title())
+              .description(plan.description())
+              .prompt(task)
               .model(bestModel.name())
               .url(resultUrl)
               .metadata(metadata)
@@ -126,55 +144,80 @@ public class GenerateCreativeTool {
     }
   }
 
-  record TitleAndDescription(String title, String description) {
+  record GenerateCreativePlan(
+      String title,
+      String description,
+      JsonNode replicateInput,
+      String errorMessage
+  ) {
 
   }
 
-  TitleAndDescription generateTitleAndDescription(String task, ArtifactKind kind) {
+  private GenerateCreativePlan generatePlan(
+      String task,
+      ArtifactKind kind,
+      String modelDocs,
+      JsonNode schema,
+      List<Artifact> artifacts
+  ) {
     try {
       var chatClient = ChatClient.builder(modelRegistry.get(PROMPT_ENG_MODEL)).build();
 
+      var artifactNames = artifacts.stream().map(Artifact::name).toList();
+
       var response = chatClient.prompt()
           .system("""
-              Given a creative task and artifact kind, generate a concise title (max 60 chars) \
-              and a descriptive summary (1-2 sentences).
-              Return ONLY valid JSON: {"title":"...","description":"..."}""")
-          .user("Task: " + task + "\nKind: " + kind)
+              You are an expert creative director and prompt engineer. Your goal is to prepare a generation plan \
+              for a Replicate model based on a user's task.
+              
+              INPUTS PROVIDED:
+              1. User Task: The natural language description of what to generate/edit.
+              2. Model Docs: Contextual information about the selected model.
+              3. OpenAPI Schema: The EXACT input schema required by the Replicate API.
+              4. Available Artifacts: Names of artifacts currently in the project.
+              
+              YOUR RESPONSIBILITIES:
+              1. Title & Description: Create a catchy title (max 60 chars) and a 1-2 sentence description.
+              2. Input Mapping: Construct the 'replicateInput' object matching the provided OpenAPI schema.
+                 - Optimize prompts for the best artistic results.
+                 - Map user requirements to specific schema fields.
+                 - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
+              3. Validation:
+                 - Ensure all REQUIRED fields in the schema are present.
+                 - If the user task is missing information that is MANDATORY for the model and cannot be reasonably defaulted, \
+                   provide a concise but precise 'errorMessage' explaining what's missing (e.g., "This model requires a video length").
+                 - If you provide an 'errorMessage', 'replicateInput' should be null.
+              
+              OUTPUT:
+              Return ONLY valid JSON:
+              {
+                "title": "...",
+                "description": "...",
+                "replicateInput": { ... },
+                "errorMessage": null or "..."
+              }
+              """)
+          .user(String.format("""
+              Task: %s
+              Kind: %s
+              Artifacts: %s
+              Model Docs: %s
+              Schema: %s
+              """, task, kind, artifactNames, modelDocs, schema))
           .call()
           .content();
 
       var node = objectMapper.readTree(response);
-      var title = node.path("title").asText(null);
-      var description = node.path("description").asText(null);
-
-      if (title != null && !title.isBlank() && description != null && !description.isBlank()) {
-        return new TitleAndDescription(title, description);
-      }
+      return new GenerateCreativePlan(
+          node.path("title").asText("Untitled"),
+          node.path("description").asText(""),
+          node.path("replicateInput"),
+          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
+      );
     } catch (Exception e) {
-      log.warn("Title/description generation failed, using fallback: {}", e.getMessage());
-    }
-
-    // Fallback
-    var title = task.length() > 60 ? task.substring(0, 57) + "..." : task;
-    return new TitleAndDescription(title, task);
-  }
-
-  private String engineerPrompt(String task, String modelDocs) {
-    try {
-      var chatClient = ChatClient.builder(modelRegistry.get(PROMPT_ENG_MODEL)).build();
-
-      return chatClient.prompt()
-          .system("""
-              You are a prompt engineer. Given a creative task and model documentation,
-              craft an optimized prompt that will produce the best results with that specific model.
-              Return ONLY the optimized prompt, nothing else.
-              """)
-          .user("Task: " + task + "\n\nModel documentation:\n" + modelDocs)
-          .call()
-          .content();
-    } catch (Exception e) {
-      log.warn("Prompt engineering failed, using original task as prompt: {}", e.getMessage());
-      return task;
+      log.error("Failed to generate creative plan", e);
+      return new GenerateCreativePlan("Untitled", "", null,
+          "Plan generation failed: " + e.getMessage());
     }
   }
 
@@ -203,16 +246,19 @@ public class GenerateCreativeTool {
     return new ModelInfo(owner, name, version);
   }
 
-  private JsonNode buildReplicateInput(String prompt, ArtifactKind kind, String modelDocs) {
-    var input = objectMapper.createObjectNode();
-    input.put("prompt", prompt);
-
-    if (kind == ArtifactKind.IMAGE) {
-      input.put("width", 1024);
-      input.put("height", 1024);
+  private JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {
+    try {
+      String jsonString = node.toString();
+      for (Artifact artifact : artifacts) {
+        if (artifact.url() != null) {
+          jsonString = jsonString.replace("@" + artifact.name(), artifact.url());
+        }
+      }
+      return objectMapper.readTree(jsonString);
+    } catch (Exception e) {
+      log.error("Failed to substitute artifact placeholders", e);
+      return node;
     }
-
-    return input;
   }
 
   private String extractOutputUrl(JsonNode output) {
