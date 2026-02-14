@@ -18,11 +18,11 @@ public class DeleteArtifactTool {
 
   @Tool(name = "delete_artifact",
       description = "Delete an artifact from the project.")
-  public String delete(
+  public DeleteResult delete(
       @ToolParam(description = "The name of the artifact to delete") String artifactName
   ) {
     if (artifactName == null || artifactName.isBlank()) {
-      return "{\"error\": \"Artifact name is required\"}";
+      return DeleteResult.error("Artifact name is required");
     }
 
     log.info("Deleting artifact: {}", artifactName);
@@ -30,10 +30,10 @@ public class DeleteArtifactTool {
     try {
       TaskExecutionContextHolder.deleteArtifact(artifactName.trim());
       log.info("Marked artifact {} for deletion", artifactName);
-      return "{\"artifactName\": \"" + artifactName + "\", \"summary\": \"Artifact marked for deletion\"}";
+      return DeleteResult.success(artifactName, "Artifact marked for deletion");
     } catch (Exception e) {
       log.error("Failed to delete artifact {}: {}", artifactName, e.getMessage());
-      return "{\"error\": \"" + e.getMessage().replace("\"", "'") + "\"}";
+      return DeleteResult.error(e.getMessage());
     }
   }
 }

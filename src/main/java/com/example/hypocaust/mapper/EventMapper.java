@@ -5,11 +5,11 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
+import com.example.hypocaust.domain.event.DecomposerFailedEvent;
+import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
+import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.domain.event.ErrorEvent;
 import com.example.hypocaust.domain.event.Event;
-import com.example.hypocaust.domain.event.OperatorFailedEvent;
-import com.example.hypocaust.domain.event.OperatorFinishedEvent;
-import com.example.hypocaust.domain.event.OperatorStartedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
@@ -72,22 +72,21 @@ public interface EventMapper {
     return new ErrorEvent(entity.getTaskExecutionId(), payload.message());
   }
 
-  default OperatorStartedEvent toOperatorStartedEvent(EventEntity entity) {
-    var payload = (OperatorStartedEvent.Payload) entity.getPayload();
-    return new OperatorStartedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs());
+  default DecomposerStartedEvent toDecomposerStartedEvent(EventEntity entity) {
+    var payload = (DecomposerStartedEvent.Payload) entity.getPayload();
+    return new DecomposerStartedEvent(entity.getTaskExecutionId(), payload.task());
   }
 
-  default OperatorFinishedEvent toOperatorFinishedEvent(EventEntity entity) {
-    var payload = (OperatorFinishedEvent.Payload) entity.getPayload();
-    return new OperatorFinishedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs(), payload.outputs());
+  default DecomposerFinishedEvent toDecomposerFinishedEvent(EventEntity entity) {
+    var payload = (DecomposerFinishedEvent.Payload) entity.getPayload();
+    return new DecomposerFinishedEvent(entity.getTaskExecutionId(), payload.task(),
+        payload.summary(), payload.artifactNames());
   }
 
-  default OperatorFailedEvent toOperatorFailedEvent(EventEntity entity) {
-    var payload = (OperatorFailedEvent.Payload) entity.getPayload();
-    return new OperatorFailedEvent(entity.getTaskExecutionId(), payload.operatorName(),
-        payload.inputs(), payload.reason());
+  default DecomposerFailedEvent toDecomposerFailedEvent(EventEntity entity) {
+    var payload = (DecomposerFailedEvent.Payload) entity.getPayload();
+    return new DecomposerFailedEvent(entity.getTaskExecutionId(), payload.task(),
+        payload.reason());
   }
 
   @ObjectFactory
@@ -107,9 +106,9 @@ public interface EventMapper {
 
       case ERROR -> toErrorEvent(entity);
 
-      case OPERATOR_STARTED -> toOperatorStartedEvent(entity);
-      case OPERATOR_FINISHED -> toOperatorFinishedEvent(entity);
-      case OPERATOR_FAILED -> toOperatorFailedEvent(entity);
+      case DECOMPOSER_STARTED -> toDecomposerStartedEvent(entity);
+      case DECOMPOSER_FINISHED -> toDecomposerFinishedEvent(entity);
+      case DECOMPOSER_FAILED -> toDecomposerFailedEvent(entity);
     };
   }
 

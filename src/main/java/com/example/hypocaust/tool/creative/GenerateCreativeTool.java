@@ -21,8 +21,8 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 /**
  * Unified creative generation tool. The decomposer describes what it needs and this tool
- * handles everything internally: model selection via RAG, prompt engineering, and Replicate
- * API calling.
+ * handles everything internally: model selection via RAG, prompt engineering, title/description
+ * generation, and Replicate API calling.
  *
  * <p>Replaces all hardcoded creative operators (ImageGeneration, ImageEdit,
  * CreativeTextGeneration, ImagePromptEngineer).
@@ -47,35 +47,35 @@ public class GenerateCreativeTool {
   @Tool(name = "generate_creative",
       description = "Generate creative content. Describe what you need and the tool "
           + "handles model selection, prompt engineering, and generation.")
-  public String generate(
+  public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
-      @ToolParam(description = "Kind of artifact: IMAGE, AUDIO, VIDEO, or STRUCTURED_JSON") String artifactKind,
-      @ToolParam(description = "Human-readable description for the artifact") String description
+      @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
   ) {
     log.info("Creative generation request: {} (kind: {})", task, artifactKind);
-
-    var kind = ArtifactKind.valueOf(artifactKind.toUpperCase());
 
     // Step 1: Model selection via RAG
     var modelResults = modelRag.search(task + " " + artifactKind);
     if (modelResults.isEmpty()) {
-      return "{\"error\": \"No suitable model found for: " + task + "\"}";
+      return GenerateCreativeResult.error("No suitable model found for: " + task);
     }
 
     var bestModel = modelResults.getFirst();
     log.info("Selected model: {}", bestModel.name());
 
-    // Step 2: Prompt engineering - use the model docs to craft an optimized prompt
+    // Step 2: Generate title and description from the task
+    var titleAndDescription = generateTitleAndDescription(task, artifactKind);
+
+    // Step 3: Prompt engineering - use the model docs to craft an optimized prompt
     var optimizedPrompt = engineerPrompt(task, bestModel.text());
 
-    // Step 3: Parse model info from RAG result to get Replicate coordinates
+    // Step 4: Parse model info from RAG result to get Replicate coordinates
     var modelInfo = parseModelInfo(bestModel.text());
 
-    // Step 4: Schedule artifact
+    // Step 5: Schedule artifact
     var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
-        .kind(kind)
-        .title(description != null ? description : task)
-        .description(description != null ? description : task)
+        .kind(artifactKind)
+        .title(titleAndDescription.title())
+        .description(titleAndDescription.description())
         .prompt(optimizedPrompt)
         .model(bestModel.name())
         .status(ArtifactStatus.GESTATING)
@@ -84,15 +84,15 @@ public class GenerateCreativeTool {
     log.info("Scheduled artifact: {}", artifactName);
 
     try {
-      // Step 5: Call Replicate
-      var input = buildReplicateInput(optimizedPrompt, kind, bestModel.text());
+      // Step 6: Call Replicate
+      var input = buildReplicateInput(optimizedPrompt, artifactKind, bestModel.text());
       var output = replicateClient.predict(
           modelInfo.owner(), modelInfo.name(), modelInfo.version(), input);
 
-      // Step 6: Extract result URL/content
+      // Step 7: Extract result URL/content
       var resultUrl = extractOutputUrl(output);
 
-      // Step 7: Update artifact
+      // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
       metadata.put("originalTask", task);
       metadata.put("optimizedPrompt", optimizedPrompt);
@@ -101,9 +101,9 @@ public class GenerateCreativeTool {
       TaskExecutionContextHolder.getContext().getArtifacts()
           .updatePending(Artifact.builder()
               .name(artifactName)
-              .kind(kind)
-              .title(description != null ? description : task)
-              .description(description != null ? description : task)
+              .kind(artifactKind)
+              .title(titleAndDescription.title())
+              .description(titleAndDescription.description())
               .prompt(optimizedPrompt)
               .model(bestModel.name())
               .url(resultUrl)
@@ -112,8 +112,8 @@ public class GenerateCreativeTool {
               .build());
 
       log.info("Creative generation complete: {}", artifactName);
-      return "{\"artifactName\": \"" + artifactName + "\", \"summary\": \"Generated "
-          + kind + " using " + bestModel.name() + "\"}";
+      return GenerateCreativeResult.success(
+          artifactName, "Generated " + artifactKind + " using " + bestModel.name());
 
     } catch (Exception e) {
       log.error("Creative generation failed: {}", e.getMessage(), e);
@@ -122,8 +122,41 @@ public class GenerateCreativeTool {
       } catch (Exception rollbackEx) {
         log.warn("Failed to rollback artifact: {}", rollbackEx.getMessage());
       }
-      return "{\"error\": \"Generation failed: " + e.getMessage().replace("\"", "'") + "\"}";
+      return GenerateCreativeResult.error("Generation failed: " + e.getMessage());
     }
+  }
+
+  private record TitleAndDescription(String title, String description) {
+
+  }
+
+  TitleAndDescription generateTitleAndDescription(String task, ArtifactKind kind) {
+    try {
+      var chatClient = ChatClient.builder(modelRegistry.get(PROMPT_ENG_MODEL)).build();
+
+      var response = chatClient.prompt()
+          .system("""
+              Given a creative task and artifact kind, generate a concise title (max 60 chars) \
+              and a descriptive summary (1-2 sentences).
+              Return ONLY valid JSON: {"title":"...","description":"..."}""")
+          .user("Task: " + task + "\nKind: " + kind)
+          .call()
+          .content();
+
+      var node = objectMapper.readTree(response);
+      var title = node.path("title").asText(null);
+      var description = node.path("description").asText(null);
+
+      if (title != null && !title.isBlank() && description != null && !description.isBlank()) {
+        return new TitleAndDescription(title, description);
+      }
+    } catch (Exception e) {
+      log.warn("Title/description generation failed, using fallback: {}", e.getMessage());
+    }
+
+    // Fallback
+    var title = task.length() > 60 ? task.substring(0, 57) + "..." : task;
+    return new TitleAndDescription(title, task);
   }
 
   private String engineerPrompt(String task, String modelDocs) {
@@ -150,10 +183,6 @@ public class GenerateCreativeTool {
   }
 
   private ModelInfo parseModelInfo(String modelDocs) {
-    // Extract owner/name/version from model documentation
-    // The RAG docs should contain lines like:
-    // Replicate: owner/name
-    // Version: abc123...
     var owner = "stability-ai";
     var name = "sdxl";
     var version = "";
@@ -178,7 +207,6 @@ public class GenerateCreativeTool {
     var input = objectMapper.createObjectNode();
     input.put("prompt", prompt);
 
-    // Add kind-specific defaults
     if (kind == ArtifactKind.IMAGE) {
       input.put("width", 1024);
       input.put("height", 1024);
@@ -188,7 +216,6 @@ public class GenerateCreativeTool {
   }
 
   private String extractOutputUrl(JsonNode output) {
-    // Replicate outputs vary by model - could be a string URL, array of URLs, or object
     if (output.isTextual()) {
       return output.asText();
     }

@@ -6,7 +6,6 @@ import com.example.hypocaust.domain.Todo;
 import com.example.hypocaust.domain.TodoStatus;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import java.util.List;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -25,17 +24,15 @@ import org.springframework.stereotype.Component;
 public class InvokeDecomposerTool {
 
   private final Decomposer decomposer;
-  private final ObjectMapper objectMapper;
 
-  public InvokeDecomposerTool(@Lazy Decomposer decomposer, ObjectMapper objectMapper) {
+  public InvokeDecomposerTool(@Lazy Decomposer decomposer) {
     this.decomposer = decomposer;
-    this.objectMapper = objectMapper;
   }
 
   @Tool(name = "invoke_decomposer",
       description = "Delegate a subtask to a child decomposer agent. "
           + "The child operates in its own isolated context and returns a result.")
-  public String invoke(
+  public DecomposerResult invoke(
       @ToolParam(description = "Self-contained task description with all necessary context") String task,
       @ToolParam(description = "Human-readable progress label for this step") String todoDescription
   ) {
@@ -65,17 +62,11 @@ public class InvokeDecomposerTool {
         log.warn("{}[CHILD] Failed: {} - {}", indent, todoDescription, result.errorMessage());
       }
 
-      return objectMapper.writeValueAsString(result);
+      return result;
     } catch (Exception e) {
       TaskExecutionContextHolder.markCurrentTodoFailed();
       log.error("{}[CHILD] Error: {} - {}", indent, todoDescription, e.getMessage(), e);
-
-      try {
-        return objectMapper.writeValueAsString(DecomposerResult.failure(e.getMessage()));
-      } catch (Exception jsonEx) {
-        return "{\"success\": false, \"errorMessage\": \"" + e.getMessage().replace("\"", "'")
-            + "\"}";
-      }
+      return DecomposerResult.failure(e.getMessage());
     } finally {
       TaskExecutionContextHolder.decrementDepth();
       TaskExecutionContextHolder.popTodoId();

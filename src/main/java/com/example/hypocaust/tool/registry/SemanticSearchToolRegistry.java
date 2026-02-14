@@ -195,6 +195,17 @@ public class SemanticSearchToolRegistry implements ToolRegistry {
             .append(toolParam.description().replace("\"", "\\\""))
             .append("\"");
       }
+      if (param.getType().isEnum()) {
+        var enumConstants = param.getType().getEnumConstants();
+        sb.append(",\"enum\":[");
+        for (int j = 0; j < enumConstants.length; j++) {
+          if (j > 0) {
+            sb.append(",");
+          }
+          sb.append("\"").append(enumConstants[j]).append("\"");
+        }
+        sb.append("]");
+      }
       sb.append("}");
     }
     sb.append("}}");
