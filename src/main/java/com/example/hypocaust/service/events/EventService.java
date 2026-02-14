@@ -2,7 +2,7 @@ package com.example.hypocaust.service.events;
 
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.mapper.EventMapper;
-import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.List;

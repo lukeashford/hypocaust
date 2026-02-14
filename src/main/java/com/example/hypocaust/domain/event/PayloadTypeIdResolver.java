@@ -30,6 +30,9 @@ class PayloadTypeIdResolver extends TypeIdResolverBase {
     map.put(EventType.OPERATOR_STARTED, OperatorStartedEvent.Payload.class);
     map.put(EventType.OPERATOR_FINISHED, OperatorFinishedEvent.Payload.class);
     map.put(EventType.OPERATOR_FAILED, OperatorFailedEvent.Payload.class);
+    map.put(EventType.DECOMPOSER_STARTED, DecomposerStartedEvent.Payload.class);
+    map.put(EventType.DECOMPOSER_FINISHED, DecomposerFinishedEvent.Payload.class);
+    map.put(EventType.DECOMPOSER_FAILED, DecomposerFailedEvent.Payload.class);
     TYPE_TO_CLASS = Map.copyOf(map);
   }
 

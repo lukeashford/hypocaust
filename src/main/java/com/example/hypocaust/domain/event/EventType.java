@@ -26,10 +26,15 @@ public enum EventType {
   // Tool events
   TOOL_CALLING("tool.calling"),
 
-  // Operator events
+  // Operator events (legacy, kept for backwards compatibility)
   OPERATOR_STARTED("operator.started"),
   OPERATOR_FINISHED("operator.finished"),
   OPERATOR_FAILED("operator.failed"),
+
+  // Decomposer events
+  DECOMPOSER_STARTED("decomposer.started"),
+  DECOMPOSER_FINISHED("decomposer.finished"),
+  DECOMPOSER_FAILED("decomposer.failed"),
 
   // Error events
   ERROR("error");

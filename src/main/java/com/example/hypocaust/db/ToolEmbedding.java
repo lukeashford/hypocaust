@@ -13,20 +13,18 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * JPA entity representing operator embeddings stored in the database for semantic search. Each
- * embedding corresponds to an operator's description and metadata converted to a vector
- * representation for similarity-based retrieval.
+ * JPA entity for tool embeddings stored in pgvector for semantic search.
  */
 @Entity
-@Table(name = "operator_embeddings")
+@Table(name = "tool_embeddings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class OperatorEmbedding extends BaseEntity {
+public class ToolEmbedding extends BaseEntity {
 
-  @Column(name = "operator_name", unique = true, nullable = false)
-  private String operatorName;
+  @Column(name = "tool_name", unique = true, nullable = false)
+  private String toolName;
 
   @Column(name = "embedding", nullable = false, columnDefinition = "vector(1536)")
   @JdbcTypeCode(SqlTypes.VECTOR)
@@ -36,10 +34,6 @@ public class OperatorEmbedding extends BaseEntity {
   @Column(nullable = false, length = 64)
   private String hash;
 
-  /**
-   * In-place update of the embedding and its hash. Replaces the array reference so JPA can detect
-   * the change, and clones to avoid aliasing shared mutable state.
-   */
   public void updateEmbedding(float[] newEmbedding, String newHash) {
     this.embedding = newEmbedding == null ? null : newEmbedding.clone();
     this.hash = newHash;

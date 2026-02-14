@@ -17,7 +17,7 @@ import lombok.Getter;
 @JsonTypeIdResolver(EventTypeIdResolver.class)
 public abstract sealed class Event<T extends EventPayload>
     permits ArtifactEvent, TaskExecutionEvent, ToolEvent, ErrorEvent, OperatorEvent,
-    TaskProgressEvent {
+    DecomposerEvent, TaskProgressEvent {
 
   private final UUID taskExecutionId;
   private final T payload;

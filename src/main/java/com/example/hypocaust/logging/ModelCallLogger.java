@@ -1,6 +1,6 @@
 package com.example.hypocaust.logging;
 
-import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -38,7 +38,7 @@ public class ModelCallLogger {
   /**
    * Log a model call (request) to a structured file.
    */
-  public void logCall(String operatorName, Object request) {
+  public void logCall(String caller, Object request) {
     try {
       final var projectId = TaskExecutionContextHolder.getProjectId();
       final var runId = TaskExecutionContextHolder.getTaskExecutionId();
@@ -54,7 +54,7 @@ public class ModelCallLogger {
 
       final var logEntry = new ModelCallEntry(
           Instant.now(),
-          operatorName,
+          caller,
           sequence,
           request
       );
@@ -69,7 +69,7 @@ public class ModelCallLogger {
   /**
    * Log a model response to a structured file.
    */
-  public void logResponse(String operatorName, Object response) {
+  public void logResponse(String caller, Object response) {
     try {
       final var projectId = TaskExecutionContextHolder.getProjectId();
       final var runId = TaskExecutionContextHolder.getTaskExecutionId();
@@ -85,7 +85,7 @@ public class ModelCallLogger {
 
       final var logEntry = new ModelResponseEntry(
           Instant.now(),
-          operatorName,
+          caller,
           sequence,
           response
       );
@@ -94,34 +94,6 @@ public class ModelCallLogger {
       log.debug("Model response logged to: {}", logFile);
     } catch (Exception e) {
       log.error("Failed to log model response", e);
-    }
-  }
-
-  /**
-   * Log the operator ledger at the end of a run.
-   */
-  public void logLedger(Object ledger) {
-    try {
-      final var projectId = TaskExecutionContextHolder.getProjectId();
-      final var runId = TaskExecutionContextHolder.getTaskExecutionId();
-
-      if (projectId == null || runId == null) {
-        log.debug("Skipping ledger log - no run context available");
-        return;
-      }
-
-      final var logDir = getLogDirectory(projectId, runId);
-      final var logFile = logDir.resolve("ledger.json");
-
-      final var logEntry = new LedgerEntry(
-          Instant.now(),
-          ledger
-      );
-
-      writeJson(logFile, logEntry);
-      log.info("Operator ledger logged to: {}", logFile);
-    } catch (Exception e) {
-      log.error("Failed to log operator ledger", e);
     }
   }
 
@@ -144,15 +116,11 @@ public class ModelCallLogger {
   }
 
   // Log entry records
-  record ModelCallEntry(Instant timestamp, String operator, int sequence, Object request) {
+  record ModelCallEntry(Instant timestamp, String caller, int sequence, Object request) {
 
   }
 
-  record ModelResponseEntry(Instant timestamp, String operator, int sequence, Object response) {
-
-  }
-
-  record LedgerEntry(Instant timestamp, Object ledger) {
+  record ModelResponseEntry(Instant timestamp, String caller, int sequence, Object response) {
 
   }
 }

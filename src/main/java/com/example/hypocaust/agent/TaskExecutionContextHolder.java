@@ -1,4 +1,4 @@
-package com.example.hypocaust.operator;
+package com.example.hypocaust.agent;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class TaskExecutionContextHolder {
 
   private static final ThreadLocal<TaskExecutionContext> contextHolder = new ThreadLocal<>();
-  private static final ThreadLocal<Integer> operatorDepth = ThreadLocal.withInitial(() -> 0);
+  private static final ThreadLocal<Integer> decomposerDepth = ThreadLocal.withInitial(() -> 0);
   private static final ThreadLocal<Deque<UUID>> todoPath = ThreadLocal.withInitial(ArrayDeque::new);
   private static final ConcurrentHashMap<UUID, TaskExecutionContext> contextsByExecution = new ConcurrentHashMap<>();
 
@@ -27,7 +27,7 @@ public final class TaskExecutionContextHolder {
 
   public static void setContext(TaskExecutionContext ctx) {
     contextHolder.set(ctx);
-    operatorDepth.set(0);
+    decomposerDepth.set(0);
     // Register for cross-thread lookup
     contextsByExecution.put(ctx.getTaskExecutionId(), ctx);
   }
@@ -50,7 +50,7 @@ public final class TaskExecutionContextHolder {
       contextsByExecution.remove(ctx.getTaskExecutionId());
     }
     contextHolder.remove();
-    operatorDepth.remove();
+    decomposerDepth.remove();
     todoPath.remove();
   }
 
@@ -135,13 +135,13 @@ public final class TaskExecutionContextHolder {
     getTodos().markFailed(getCurrentTodoId());
   }
 
-  // === Operator depth tracking (for logging indentation) ===
+  // === Decomposer depth tracking (for logging indentation) ===
 
   /**
-   * Get the current operator depth (0 = top-level operator).
+   * Get the current decomposer depth (0 = top-level decomposer).
    */
   public static int getDepth() {
-    return operatorDepth.get();
+    return decomposerDepth.get();
   }
 
   /**
@@ -149,23 +149,23 @@ public final class TaskExecutionContextHolder {
    * nesting.
    */
   public static String getIndent() {
-    return "  ".repeat(operatorDepth.get());
+    return "  ".repeat(decomposerDepth.get());
   }
 
   /**
-   * Increment the operator depth (call when entering a child operator).
+   * Increment the decomposer depth (call when entering a child decomposer).
    */
   public static void incrementDepth() {
-    operatorDepth.set(operatorDepth.get() + 1);
+    decomposerDepth.set(decomposerDepth.get() + 1);
   }
 
   /**
-   * Decrement the operator depth (call when exiting a child operator).
+   * Decrement the decomposer depth (call when exiting a child decomposer).
    */
   public static void decrementDepth() {
-    int current = operatorDepth.get();
+    int current = decomposerDepth.get();
     if (current > 0) {
-      operatorDepth.set(current - 1);
+      decomposerDepth.set(current - 1);
     }
   }
 
