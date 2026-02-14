@@ -23,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -31,11 +32,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
-/**
- * End-to-end scenario: decomposer receives a task that it can solve directly
- * (the LLM returns a successful JSON result). Verifies events are emitted
- * and the result is correctly propagated.
- */
 @SpringBootTest
 class SimpleToolCallScenarioTest {
 
@@ -65,7 +61,6 @@ class SimpleToolCallScenarioTest {
 
   @Test
   void simpleTask_decomposerReturnsSuccess_eventsEmitted() {
-    // Mock the Opus model to return a valid result
     var mockChatModel = org.mockito.Mockito.mock(
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
@@ -73,19 +68,16 @@ class SimpleToolCallScenarioTest {
     var resultJson = """
         {"success": true, "summary": "Generated sunset landscape using SDXL", \
         "artifactNames": ["sunset-001"]}""";
-    var generation = new Generation(resultJson);
+    var generation = new Generation(new AssistantMessage(resultJson));
     var chatResponse = new ChatResponse(List.of(generation));
     when(mockChatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    // Execute
     DecomposerResult result = decomposer.execute("Generate a sunset landscape image");
 
-    // Verify result
     assertThat(result.success()).isTrue();
     assertThat(result.summary()).contains("sunset landscape");
     assertThat(result.artifactNames()).containsExactly("sunset-001");
 
-    // Verify events
     var captor = ArgumentCaptor.forClass(Event.class);
     verify(eventService, atLeastOnce()).publish(captor.capture());
     var eventClasses = captor.getAllValues().stream()
@@ -102,7 +94,7 @@ class SimpleToolCallScenarioTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
 
     var resultJson = "{\"success\": false, \"errorMessage\": \"No suitable model found\"}";
-    var generation = new Generation(resultJson);
+    var generation = new Generation(new AssistantMessage(resultJson));
     var chatResponse = new ChatResponse(List.of(generation));
     when(mockChatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 

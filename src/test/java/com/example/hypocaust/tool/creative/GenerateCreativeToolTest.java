@@ -9,11 +9,11 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.integration.ReplicateClient;
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.PlatformEmbeddingRegistry;
 import com.example.hypocaust.rag.PlatformEmbeddingRegistry.SearchResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +23,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.model.ChatModel;
 
 class GenerateCreativeToolTest {
 
@@ -73,7 +72,8 @@ class GenerateCreativeToolTest {
         .thenReturn(List.of(new SearchResult("SDXL", modelDoc)));
 
     // Mock Haiku call (will fail since no chat model, but fallback handles it)
-    when(modelRegistry.get(any())).thenThrow(new RuntimeException("No LLM"));
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
+        .thenThrow(new RuntimeException("No LLM"));
 
     // Mock Replicate
     when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
@@ -98,7 +98,8 @@ class GenerateCreativeToolTest {
     var modelDoc = "Replicate: stability-ai/sdxl\nVersion: abc123\nSummary: SDXL";
     when(modelRag.search(anyString()))
         .thenReturn(List.of(new SearchResult("SDXL", modelDoc)));
-    when(modelRegistry.get(any())).thenThrow(new RuntimeException("No LLM"));
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
+        .thenThrow(new RuntimeException("No LLM"));
     when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
         .thenThrow(new ReplicateClient.ReplicateException("API timeout"));
 
@@ -110,7 +111,8 @@ class GenerateCreativeToolTest {
 
   @Test
   void generateTitleAndDescription_fallback_whenLlmUnavailable() {
-    when(modelRegistry.get(any())).thenThrow(new RuntimeException("No LLM"));
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
+        .thenThrow(new RuntimeException("No LLM"));
 
     var result = tool.generateTitleAndDescription(
         "Create a beautiful landscape painting of mountains at sunset", ArtifactKind.IMAGE);
@@ -123,7 +125,8 @@ class GenerateCreativeToolTest {
 
   @Test
   void generateTitleAndDescription_shortTask_usesFullTaskAsTitle() {
-    when(modelRegistry.get(any())).thenThrow(new RuntimeException("No LLM"));
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
+        .thenThrow(new RuntimeException("No LLM"));
 
     var result = tool.generateTitleAndDescription("Cat photo", ArtifactKind.IMAGE);
 

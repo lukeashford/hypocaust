@@ -3,23 +3,15 @@ package com.example.hypocaust.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
-import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
+import com.example.hypocaust.service.StorageService;
 import com.example.hypocaust.service.events.EventService;
-import com.example.hypocaust.tool.ProjectContextTool;
-import com.example.hypocaust.tool.WorkflowSearchTool;
-import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
-import com.example.hypocaust.tool.discovery.ExecuteToolTool;
-import com.example.hypocaust.tool.discovery.SearchToolsTool;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -27,38 +19,38 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
+@SpringBootTest
 class DecomposerIntegrationTest {
 
+  @Autowired
   private Decomposer decomposer;
+
+  @MockitoSpyBean
   private EventService eventService;
+
+  @MockitoBean
   private ModelRegistry modelRegistry;
+
+  @MockitoBean
+  private StorageService storageService;
+
   private AnthropicChatModel chatModel;
 
   @BeforeEach
   void setUp() {
-    eventService = mock(EventService.class);
-    modelRegistry = mock(ModelRegistry.class);
-    chatModel = mock(AnthropicChatModel.class);
-    when(modelRegistry.get(any(com.example.hypocaust.models.enums.AnthropicChatModelSpec.class)))
-        .thenReturn(chatModel);
+    chatModel = org.mockito.Mockito.mock(AnthropicChatModel.class);
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
-    decomposer = new Decomposer(
-        modelRegistry,
-        mock(InvokeDecomposerTool.class),
-        mock(SearchToolsTool.class),
-        mock(ExecuteToolTool.class),
-        mock(ProjectContextTool.class),
-        mock(WorkflowSearchTool.class),
-        eventService,
-        new ObjectMapper()
-    );
-
-    // Set up context
-    var context = mock(TaskExecutionContext.class);
+    var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     TaskExecutionContextHolder.setContext(context);
   }
@@ -70,9 +62,8 @@ class DecomposerIntegrationTest {
 
   @Test
   void execute_emitsStartedAndFinishedEvents() {
-    // Simulate LLM returning a valid JSON result
-    var generation = new Generation(
-        "{\"success\": true, \"summary\": \"Task complete\", \"artifactNames\": []}");
+    var generation = new Generation(new AssistantMessage(
+        "{\"success\": true, \"summary\": \"Task complete\", \"artifactNames\": []}"));
     var chatResponse = new ChatResponse(List.of(generation));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
@@ -81,7 +72,6 @@ class DecomposerIntegrationTest {
     assertThat(result.success()).isTrue();
     assertThat(result.summary()).isEqualTo("Task complete");
 
-    // Verify events were published
     var captor = ArgumentCaptor.forClass(Event.class);
     verify(eventService, atLeastOnce()).publish(captor.capture());
     var events = captor.getAllValues();
@@ -110,9 +100,9 @@ class DecomposerIntegrationTest {
 
   @Test
   void execute_withArtifactNames_includesInResult() {
-    var generation = new Generation(
+    var generation = new Generation(new AssistantMessage(
         "{\"success\": true, \"summary\": \"Created images\", "
-            + "\"artifactNames\": [\"sunset-001\", \"mountain-002\"]}");
+            + "\"artifactNames\": [\"sunset-001\", \"mountain-002\"]}"));
     var chatResponse = new ChatResponse(List.of(generation));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 

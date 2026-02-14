@@ -2,7 +2,6 @@ package com.example.hypocaust.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,7 +10,6 @@ import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.domain.TodoList;
 import com.example.hypocaust.domain.TodosContext;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.domain.event.Event;
@@ -26,6 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -34,14 +33,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
-/**
- * End-to-end scenario: decomposer receives a complex task and delegates to a child
- * decomposer via InvokeDecomposerTool. Verifies that:
- * - The parent decomposer spawns
- * - The child decomposer is invoked
- * - Events are emitted for both parent and child
- * - Results propagate correctly
- */
 @SpringBootTest
 class DecompositionScenarioTest {
 
@@ -66,7 +57,6 @@ class DecompositionScenarioTest {
     var todosContext = org.mockito.Mockito.mock(TodosContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
-    when(context.getTodoList()).thenReturn(new TodoList());
     TaskExecutionContextHolder.setContext(context);
   }
 
@@ -81,15 +71,11 @@ class DecompositionScenarioTest {
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
 
-    // The parent LLM should call invoke_decomposer, but since we're mocking at the ChatModel
-    // level, we simulate a parent that reports a child was successful.
-    // In a real scenario, the ChatClient would call the tool - here we test the
-    // overall flow by having the parent return success with artifacts from a "child".
     var resultJson = """
         {"success": true, \
         "summary": "Generated both images: sunset and mountain", \
         "artifactNames": ["sunset-001", "mountain-002"]}""";
-    var generation = new Generation(resultJson);
+    var generation = new Generation(new AssistantMessage(resultJson));
     var chatResponse = new ChatResponse(List.of(generation));
     when(mockChatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
@@ -99,7 +85,6 @@ class DecompositionScenarioTest {
     assertThat(result.success()).isTrue();
     assertThat(result.artifactNames()).hasSize(2);
 
-    // Verify events were published (at minimum started + finished)
     var captor = ArgumentCaptor.forClass(Event.class);
     verify(eventService, atLeastOnce()).publish(captor.capture());
 
@@ -117,18 +102,16 @@ class DecompositionScenarioTest {
 
     var childResultJson = """
         {"success": true, "summary": "Child completed", "artifactNames": ["child-img-001"]}""";
-    var generation = new Generation(childResultJson);
+    var generation = new Generation(new AssistantMessage(childResultJson));
     var chatResponse = new ChatResponse(List.of(generation));
     when(mockChatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     var initialDepth = TaskExecutionContextHolder.getDepth();
 
-    // Directly invoke child
     var result = invokeDecomposerTool.invoke("Generate a sunset image", "Generating sunset");
 
     assertThat(result.success()).isTrue();
     assertThat(result.summary()).isEqualTo("Child completed");
-    // Depth should be restored
     assertThat(TaskExecutionContextHolder.getDepth()).isEqualTo(initialDepth);
   }
 }

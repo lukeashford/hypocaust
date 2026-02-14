@@ -9,7 +9,6 @@ import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.domain.TodoList;
 import com.example.hypocaust.domain.TodosContext;
 import java.util.List;
 import java.util.UUID;
@@ -27,12 +26,10 @@ class InvokeDecomposerToolTest {
     decomposer = mock(Decomposer.class);
     invokeDecomposerTool = new InvokeDecomposerTool(decomposer);
 
-    // Set up a task execution context with todos
     var context = mock(TaskExecutionContext.class);
     var todosContext = mock(TodosContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
-    when(context.getTodoList()).thenReturn(new TodoList());
     TaskExecutionContextHolder.setContext(context);
   }
 
@@ -78,7 +75,6 @@ class InvokeDecomposerToolTest {
   void invoke_incrementsAndDecrementsDepth() {
     var initialDepth = TaskExecutionContextHolder.getDepth();
     when(decomposer.execute(anyString())).thenAnswer(inv -> {
-      // Verify depth is incremented during execution
       assertThat(TaskExecutionContextHolder.getDepth()).isEqualTo(initialDepth + 1);
       return DecomposerResult.success("done", List.of());
     });

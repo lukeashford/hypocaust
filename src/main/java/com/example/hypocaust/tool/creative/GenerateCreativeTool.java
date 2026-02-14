@@ -126,7 +126,7 @@ public class GenerateCreativeTool {
     }
   }
 
-  private record TitleAndDescription(String title, String description) {
+  record TitleAndDescription(String title, String description) {
 
   }
 
