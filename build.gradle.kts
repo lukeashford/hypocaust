@@ -59,6 +59,14 @@ dependencyManagement {
   }
 }
 
+configurations.all {
+  resolutionStrategy.dependencySubstitution {
+    substitute(module("io.swagger.core.v3:swagger-annotations"))
+      .using(module("io.swagger.core.v3:swagger-annotations-jakarta:2.2.29"))
+      .because("Universal migration to Jakarta annotations to avoid split-package conflicts between springdoc and spring-ai")
+  }
+}
+
 tasks.withType<Test>().configureEach {
   useJUnitPlatform()
   // Load Mockito as a javaagent; also silence the CDS warning seen with agents
