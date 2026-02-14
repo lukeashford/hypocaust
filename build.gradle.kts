@@ -1,7 +1,6 @@
 plugins {
   java
   alias(libs.plugins.spring.boot)
-  alias(libs.plugins.spring.dependency.management)
 }
 
 group = "com.example"
@@ -17,9 +16,12 @@ repositories {
   mavenCentral()
 }
 
-val mockitoAgent by configurations.creating { isTransitive = false }
+val mockitoAgent by configurations.creating
 
 dependencies {
+  implementation(platform(libs.springboot.dependencies))
+  implementation(platform(libs.springai.bom))
+
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
   implementation(libs.bundles.db)
@@ -49,18 +51,8 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.bundles.testing.core)
   testImplementation(libs.bundles.testing.containers)
+  mockitoAgent(platform(libs.springboot.dependencies))
   mockitoAgent(libs.mockito.core)
-}
-
-dependencyManagement {
-  imports {
-    mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
-    mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
-    mavenBom("org.testcontainers:testcontainers-bom:1.21.4")
-  }
-  dependencies {
-    dependency("org.apache.commons:commons-lang3:3.20.0")
-  }
 }
 
 configurations.all {
@@ -75,7 +67,7 @@ tasks.withType<Test>().configureEach {
   useJUnitPlatform()
   // Load Mockito as a javaagent; also silence the CDS warning seen with agents
   jvmArgs(
-    "-javaagent:${configurations["mockitoAgent"].asPath}",
+    "-javaagent:${configurations["mockitoAgent"].filter { it.name.startsWith("mockito-core") }.asPath}",
     "-Xshare:off"
   )
 }
