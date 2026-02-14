@@ -107,6 +107,11 @@ public class GenerateCreativeTool {
       // Step 7: Extract result URL/content
       var resultUrl = extractOutputUrl(output);
 
+      if (resultUrl == null || resultUrl.isBlank() || "null".equals(resultUrl)) {
+        throw new IllegalStateException(
+            "Model returned no usable output URL (got: " + resultUrl + ")");
+      }
+
       // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
       metadata.put("originalTask", task);
@@ -218,11 +223,11 @@ public class GenerateCreativeTool {
     }
   }
 
-  private record ModelInfo(String owner, String name, String version) {
+  record ModelInfo(String owner, String name, String version) {
 
   }
 
-  private ModelInfo parseModelInfo(String modelDocs) {
+  ModelInfo parseModelInfo(String modelDocs) {
     var owner = "stability-ai";
     var name = "sdxl";
     var version = "";
@@ -243,7 +248,7 @@ public class GenerateCreativeTool {
     return new ModelInfo(owner, name, version);
   }
 
-  private JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {
+  JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {
     try {
       String jsonString = node.toString();
       for (Artifact artifact : artifacts) {
@@ -258,7 +263,7 @@ public class GenerateCreativeTool {
     }
   }
 
-  private String extractOutputUrl(JsonNode output) {
+  String extractOutputUrl(JsonNode output) {
     if (output.isTextual()) {
       return output.asText();
     }

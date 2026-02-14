@@ -54,6 +54,19 @@ Accept: application/json
 GET https://localhost/projects/{{projectId}}/logs
 Accept: text/plain
 
+### E2E: Three Characters Story (picture + voice for each)
+POST https://localhost/tasks
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "task": "Generate a funny story about three fundamentally different characters and generate a picture and voice sample for each of them."
+}
+
+> {%
+  client.global.set("taskExecutionId", response.body.taskExecutionId);
+%}
+
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1
 @replicateToken = r8_Wke9S4clis5oinqAf1MnApxPfL7WH9D0pfQsA
