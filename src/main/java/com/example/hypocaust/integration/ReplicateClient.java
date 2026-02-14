@@ -107,33 +107,32 @@ public class ReplicateClient {
     long startTime = System.currentTimeMillis();
 
     while (System.currentTimeMillis() - startTime < MAX_WAIT_MS) {
-      try {
-        Thread.sleep(POLL_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new ReplicateException("Prediction polling interrupted");
-      }
-
       var response = restClient.get()
           .uri(predictionUrl)
           .retrieve()
           .body(JsonNode.class);
 
-      if (response == null) {
-        continue;
+      if (response != null) {
+        var status = response.path("status").asText();
+
+        switch (status) {
+          case "succeeded" -> {
+            log.info("Prediction completed after {}ms",
+                System.currentTimeMillis() - startTime);
+            return response.path("output");
+          }
+          case "failed", "canceled" -> throw new ReplicateException(
+              "Prediction " + status + ": " + response.path("error").asText("unknown error"));
+          default -> log.debug("Prediction status: {}", status);
+        }
       }
 
-      var status = response.path("status").asText();
-
-      switch (status) {
-        case "succeeded" -> {
-          log.info("Prediction completed after {}ms",
-              System.currentTimeMillis() - startTime);
-          return response.path("output");
-        }
-        case "failed", "canceled" -> throw new ReplicateException(
-            "Prediction " + status + ": " + response.path("error").asText("unknown error"));
-        default -> log.debug("Prediction status: {}", status);
+      try {
+        //noinspection BusyWait
+        Thread.sleep(POLL_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new ReplicateException("Prediction polling interrupted");
       }
     }
 

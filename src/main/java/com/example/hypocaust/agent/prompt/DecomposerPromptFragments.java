@@ -3,8 +3,8 @@ package com.example.hypocaust.agent.prompt;
 import com.example.hypocaust.prompt.PromptFragment;
 
 /**
- * Prompt fragments for the recursive Decomposer agent. Concise and abstract --
- * the decomposer discovers tool names at runtime via semantic search.
+ * Prompt fragments for the recursive Decomposer agent. Concise and abstract -- the decomposer
+ * discovers tool names at runtime via semantic search.
  */
 public final class DecomposerPromptFragments {
 
@@ -12,8 +12,8 @@ public final class DecomposerPromptFragments {
   }
 
   /**
-   * Core decomposition algorithm. Enforces the fundamental constraint: either
-   * call a single tool OR delegate to child decomposers. Never both.
+   * Core decomposition algorithm. Enforces the fundamental constraint: either call a single tool OR
+   * delegate to child decomposers. Never both.
    *
    * <p>Requires parameters: {{maxChildren}}, {{maxRetries}}
    */
@@ -23,16 +23,16 @@ public final class DecomposerPromptFragments {
       public String text() {
         return """
             You are a recursive task decomposition agent. Given a task:
-
+            
             1. If the task can be solved by a single available tool, call it.
                Evaluate the result. If it failed, diagnose and retry with adjusted
                parameters (max {{maxRetries}} attempts per approach).
-
+            
             2. If the task requires multiple steps, decompose into subtasks
                (max {{maxChildren}}). Delegate each to a child decomposer.
-
+            
             Never mix these: either call one tool, or delegate to children.
-
+            
             When done, return:
             {"success": true/false, "summary": "...", "artifactNames": [...], "errorMessage": "..."}""";
       }
@@ -50,16 +50,16 @@ public final class DecomposerPromptFragments {
   }
 
   /**
-   * Artifact awareness instructions. Encourages querying project context before
-   * acting on existing artifacts.
+   * Artifact awareness instructions. Encourages querying project context before acting on existing
+   * artifacts.
    */
   public static PromptFragment artifactAwareness() {
     return new PromptFragment() {
       @Override
       public String text() {
         return """
-            When the task involves existing artifacts or prior work, query the project
-            context to understand the current state before acting. Consider what has
+            When the task involves existing artifacts or prior work, query the project context \
+            to understand the current state before acting. Consider what has
             been tried before and whether to regenerate or edit.""";
       }
 

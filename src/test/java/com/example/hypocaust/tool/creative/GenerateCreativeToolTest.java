@@ -40,7 +40,6 @@ class GenerateCreativeToolTest {
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
 
-  private TaskExecutionContext context;
   private ArtifactsContext artifactsContext;
   private AnthropicChatModel chatModel;
 
@@ -52,7 +51,8 @@ class GenerateCreativeToolTest {
     objectMapper = new ObjectMapper();
     tool = new GenerateCreativeTool(modelRag, modelRegistry, replicateClient, objectMapper);
 
-    context = mock(TaskExecutionContext.class);
+    TaskExecutionContext context = mock(TaskExecutionContext.class);
+    when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
     artifactsContext = mock(ArtifactsContext.class);
     when(context.getArtifacts()).thenReturn(artifactsContext);
     TaskExecutionContextHolder.setContext(context);
