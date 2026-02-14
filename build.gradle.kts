@@ -57,6 +57,9 @@ dependencyManagement {
     mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
     mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
   }
+  dependencies {
+    dependency("org.apache.commons:commons-lang3:3.20.0")
+  }
 }
 
 configurations.all {
