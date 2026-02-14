@@ -6,6 +6,16 @@ Accept: application/json
 GET https://localhost/api/diagnostics/models/health
 Accept: application/json
 
+### OpenAPI Export (JSON)
+GET https://localhost/v3/api-docs
+Accept: application/json
+
+### OpenAPI Export (YAML)
+GET https://localhost/v3/api-docs.yaml
+
+### Swagger UI
+GET https://localhost/swagger-ui/index.html
+
 ### 1. Create a Project
 POST https://localhost/projects
 Accept: application/json
