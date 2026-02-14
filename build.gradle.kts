@@ -56,6 +56,7 @@ dependencyManagement {
   imports {
     mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
     mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
+    mavenBom("org.testcontainers:testcontainers-bom:1.21.4")
   }
   dependencies {
     dependency("org.apache.commons:commons-lang3:3.20.0")
