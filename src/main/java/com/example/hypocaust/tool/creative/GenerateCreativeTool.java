@@ -17,8 +17,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.stereotype.Component;
 
 /**
  * Unified creative generation tool. The decomposer describes what it needs and this tool handles
@@ -28,13 +28,9 @@ import org.springframework.ai.tool.annotation.ToolParam;
  * <p>Replaces all hardcoded creative operators (ImageGeneration, ImageEdit,
  * CreativeTextGeneration, ImagePromptEngineer).
  */
-@DiscoverableTool(
-    name = "generate_creative",
-    description = "Generate or edit creative content (images, audio, video, text). "
-        + "Describe what you need. To use existing artifacts as inputs, refer to them "
-        + "using the @ prefix (e.g., 'Make @user_photo a cartoon').")
 @RequiredArgsConstructor
 @Slf4j
+@Component
 public class GenerateCreativeTool {
 
   private static final AnthropicChatModelSpec PROMPT_ENG_MODEL =
@@ -45,10 +41,11 @@ public class GenerateCreativeTool {
   private final ReplicateClient replicateClient;
   private final ObjectMapper objectMapper;
 
-  @Tool(name = "generate_creative",
-      description = "Generate or edit creative content. Describe what you need and the tool "
-          + "handles model selection, prompt engineering, and generation. "
-          + "Use @artifact_name to reference existing items.")
+  @DiscoverableTool(
+      name = "generate_creative",
+      description = "Generate or edit creative content (images, audio, video, text). "
+          + "Describe what you need. To use existing artifacts as inputs, refer to them "
+          + "using the @ prefix (e.g., 'Make @user_photo a cartoon').")
   public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
       @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind

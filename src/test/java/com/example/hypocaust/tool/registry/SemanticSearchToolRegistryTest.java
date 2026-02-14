@@ -12,7 +12,6 @@ import com.example.hypocaust.service.EmbeddingService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.context.ApplicationContext;
 
@@ -38,26 +37,45 @@ class SemanticSearchToolRegistryTest {
   @Test
   void initialize_discoversAnnotatedBeans() {
     var testTool = new TestToolBean();
-    when(applicationContext.getBeansWithAnnotation(DiscoverableTool.class))
-        .thenReturn(java.util.Map.of("testTool", testTool));
+    when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"testTool"});
+    when(applicationContext.getBean("testTool")).thenReturn(testTool);
+    when(applicationContext.getType("testTool")).thenReturn((Class) TestToolBean.class);
 
     var registry = new SemanticSearchToolRegistry(
         repository, embeddingService, hashCalculator, applicationContext);
-    registry.initialize();
+    registry.afterSingletonsInstantiated();
 
     assertThat(registry.size()).isEqualTo(1);
     assertThat(registry.getCallback("test_tool")).isPresent();
   }
 
   @Test
-  void initialize_buildsCorrectParameterSchema() {
-    var testTool = new TestToolBean();
-    when(applicationContext.getBeansWithAnnotation(DiscoverableTool.class))
-        .thenReturn(java.util.Map.of("testTool", testTool));
+  void initialize_discoversClassLevelAnnotation() {
+    var classTool = new ClassLevelToolBean();
+    when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"classTool"});
+    when(applicationContext.getBean("classTool")).thenReturn(classTool);
+    when(applicationContext.getType("classTool")).thenReturn((Class) ClassLevelToolBean.class);
 
     var registry = new SemanticSearchToolRegistry(
         repository, embeddingService, hashCalculator, applicationContext);
-    registry.initialize();
+    registry.afterSingletonsInstantiated();
+
+    assertThat(registry.size()).isEqualTo(1);
+    assertThat(registry.getCallback("class_tool")).isPresent();
+    assertThat(registry.getCallback("class_tool").get().getToolDefinition().description())
+        .isEqualTo("Class level description");
+  }
+
+  @Test
+  void initialize_buildsCorrectParameterSchema() {
+    var testTool = new TestToolBean();
+    when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"testTool"});
+    when(applicationContext.getBean("testTool")).thenReturn(testTool);
+    when(applicationContext.getType("testTool")).thenReturn((Class) TestToolBean.class);
+
+    var registry = new SemanticSearchToolRegistry(
+        repository, embeddingService, hashCalculator, applicationContext);
+    registry.afterSingletonsInstantiated();
 
     var callback = registry.getCallback("test_tool");
     assertThat(callback).isPresent();
@@ -70,12 +88,13 @@ class SemanticSearchToolRegistryTest {
   @Test
   void initialize_enumParameterIncludesEnumValues() {
     var enumTool = new EnumToolBean();
-    when(applicationContext.getBeansWithAnnotation(DiscoverableTool.class))
-        .thenReturn(java.util.Map.of("enumTool", enumTool));
+    when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"enumTool"});
+    when(applicationContext.getBean("enumTool")).thenReturn(enumTool);
+    when(applicationContext.getType("enumTool")).thenReturn((Class) EnumToolBean.class);
 
     var registry = new SemanticSearchToolRegistry(
         repository, embeddingService, hashCalculator, applicationContext);
-    registry.initialize();
+    registry.afterSingletonsInstantiated();
 
     var callback = registry.getCallback("enum_tool");
     assertThat(callback).isPresent();
@@ -90,12 +109,11 @@ class SemanticSearchToolRegistryTest {
 
   @Test
   void getCallback_unknownTool_returnsEmpty() {
-    when(applicationContext.getBeansWithAnnotation(DiscoverableTool.class))
-        .thenReturn(java.util.Map.of());
+    when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{});
 
     var registry = new SemanticSearchToolRegistry(
         repository, embeddingService, hashCalculator, applicationContext);
-    registry.initialize();
+    registry.afterSingletonsInstantiated();
 
     assertThat(registry.getCallback("nonexistent")).isEmpty();
   }
@@ -104,7 +122,17 @@ class SemanticSearchToolRegistryTest {
   @DiscoverableTool(name = "test_tool", description = "A test tool")
   static class TestToolBean {
 
-    @Tool(name = "test_tool", description = "Execute test")
+    @DiscoverableTool(name = "test_tool", description = "Execute test")
+    public String run(
+        @ToolParam(description = "The task to run") String task
+    ) {
+      return "ok";
+    }
+  }
+
+  @DiscoverableTool(name = "class_tool", description = "Class level description")
+  static class ClassLevelToolBean {
+
     public String run(
         @ToolParam(description = "The task to run") String task
     ) {
@@ -115,7 +143,7 @@ class SemanticSearchToolRegistryTest {
   @DiscoverableTool(name = "enum_tool", description = "A tool with enum param")
   static class EnumToolBean {
 
-    @Tool(name = "enum_tool", description = "Execute with kind")
+    @DiscoverableTool(name = "enum_tool", description = "Execute with kind")
     public String run(
         @ToolParam(description = "Kind of artifact") ArtifactKind kind
     ) {
