@@ -1,8 +1,8 @@
 package com.example.hypocaust.rag;
 
 import com.example.hypocaust.common.HashCalculator;
-import com.example.hypocaust.db.PlatformEmbedding;
-import com.example.hypocaust.repo.PlatformEmbeddingRepository;
+import com.example.hypocaust.db.ModelEmbedding;
+import com.example.hypocaust.repo.ModelEmbeddingRepository;
 import com.example.hypocaust.service.EmbeddingService;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
@@ -20,23 +20,22 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 /**
- * Registry that scans a directory of markdown documents describing AI platforms and their models,
- * generates embeddings per model chunk (based on text following the "Summary:" marker), keeps the
- * database in sync, and provides semantic search over those chunks.
+ * Registry that scans a directory of markdown documents describing AI models, generates embeddings
+ * per model chunk (based on human-friendly name and description), keeps the database in sync, and
+ * provides semantic search over those chunks.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PlatformEmbeddingRegistry {
+public class ModelEmbeddingRegistry {
 
   // Constants
-  private static final String SUMMARY_PREFIX = "Summary: ";
   private static final String EXT_MD = ".md";
   private static final String H1_PREFIX = "# ";
   private static final String H2_PREFIX = "## ";
   private static final int DEFAULT_MAX_RESULTS = 5;
 
-  private final PlatformEmbeddingRepository repository;
+  private final ModelEmbeddingRepository repository;
   private final EmbeddingService embeddingService;
   private final HashCalculator hashCalculator;
 
@@ -48,7 +47,7 @@ public class PlatformEmbeddingRegistry {
     try {
       indexDocuments();
     } catch (Exception e) {
-      log.error("Failed to index platform documents", e);
+      log.error("Failed to index model documents", e);
     }
   }
 
@@ -58,7 +57,7 @@ public class PlatformEmbeddingRegistry {
   public void indexDocuments() {
     final var dir = Path.of(platformsDir);
     if (!Files.exists(dir)) {
-      log.warn("Platforms directory not found: {}", platformsDir);
+      log.warn("Models directory not found: {}", platformsDir);
       return;
     }
 
@@ -82,7 +81,7 @@ public class PlatformEmbeddingRegistry {
       return;
     }
 
-    final var upsertRows = new ArrayList<PlatformEmbedding>();
+    final var upsertRows = new ArrayList<ModelEmbedding>();
     final var currentNames = new HashSet<String>();
 
     for (final var ch : chunks) {
@@ -92,21 +91,31 @@ public class PlatformEmbeddingRegistry {
         if (existingOpt.isEmpty()) {
           // New
           final var embedding = embeddingService.generateEmbedding(ch.embeddingText);
-          upsertRows.add(PlatformEmbedding.builder()
+          upsertRows.add(ModelEmbedding.builder()
               .name(ch.name)
               .embedding(embedding)
               .hash(ch.hash)
-              .text(ch.fullText)
+              .owner(ch.owner)
+              .modelId(ch.modelId)
+              .description(ch.description)
+              .bestPractices(ch.bestPractices)
+              .tier(ch.tier)
               .build());
         } else {
           final var existing = existingOpt.get();
           final var requiresReembed = !Objects.equals(existing.getHash(), ch.hash);
-          final var textChanged = !Objects.equals(existing.getText(), ch.fullText);
-          if (requiresReembed || textChanged) {
+          final var metadataChanged = !Objects.equals(existing.getOwner(), ch.owner)
+              || !Objects.equals(existing.getModelId(), ch.modelId)
+              || !Objects.equals(existing.getDescription(), ch.description)
+              || !Objects.equals(existing.getBestPractices(), ch.bestPractices)
+              || !Objects.equals(existing.getTier(), ch.tier);
+
+          if (requiresReembed || metadataChanged) {
             final float[] newEmbedding = requiresReembed
                 ? embeddingService.generateEmbedding(ch.embeddingText)
-                : null; // keep existing embedding if only text changed
-            existing.update(ch.fullText, ch.hash, newEmbedding);
+                : null;
+            existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
+                ch.description, ch.bestPractices, ch.tier);
             upsertRows.add(existing);
           }
         }
@@ -145,7 +154,14 @@ public class PlatformEmbeddingRegistry {
       final var results = repository.findTopByEmbeddingSimilarity(queryEmbedding, pageable);
       final var out = new ArrayList<SearchResult>();
       for (final var r : results) {
-        out.add(new SearchResult(r.getName(), r.getText()));
+        out.add(new SearchResult(
+            r.getName(),
+            r.getOwner(),
+            r.getModelId(),
+            r.getDescription(),
+            r.getBestPractices(),
+            r.getTier()
+        ));
       }
       return out;
     } catch (Exception e) {
@@ -159,78 +175,101 @@ public class PlatformEmbeddingRegistry {
     final var content = Files.readString(file, StandardCharsets.UTF_8);
     final var lines = content.replace("\r\n", "\n").replace('\r', '\n').split("\n");
 
-    String platform = null;
     final var models = new ArrayList<ModelSection>();
 
-    String currentModel = null;
+    String currentModelTitle = null;
     final var buffer = new ArrayList<String>();
 
-    for (final var rawLine : lines) {
-      final var line = rawLine; // keep as-is for text
-      if (platform == null && line.startsWith(H1_PREFIX)) {
-        platform = line.substring(H1_PREFIX.length()).trim();
-        continue;
-      }
+    for (final var line : lines) {
       if (line.startsWith(H2_PREFIX)) {
         // flush previous
-        if (currentModel != null) {
-          models.add(new ModelSection(currentModel, String.join("\n", buffer)));
+        if (currentModelTitle != null) {
+          models.add(new ModelSection(currentModelTitle, String.join("\n", buffer)));
           buffer.clear();
         }
-        currentModel = line.substring(H2_PREFIX.length()).trim();
+        currentModelTitle = line.substring(H2_PREFIX.length()).trim();
         continue;
       }
-      if (currentModel != null) {
+      if (currentModelTitle != null) {
         buffer.add(line);
       }
     }
-    if (currentModel != null) {
-      models.add(new ModelSection(currentModel, String.join("\n", buffer)));
-    }
-
-    if (platform == null || platform.isBlank()) {
-      log.warn("Skipping file without platform H1 heading: {}", file);
-      return List.of();
+    if (currentModelTitle != null) {
+      models.add(new ModelSection(currentModelTitle, String.join("\n", buffer)));
     }
 
     final var chunks = new ArrayList<Chunk>();
 
     for (final var m : models) {
-      final var fullChunk = buildFullChunk(platform, m.modelName(), m.body());
-      final var embeddingText = extractEmbeddingText(m.body());
-      if (embeddingText.isEmpty()) {
-        log.warn("No '{}' section found for {} - {} in file {}", SUMMARY_PREFIX.trim(), platform,
-            m.modelName(), file);
-        continue;
+      try {
+        chunks.add(parseModelChunk(m));
+      } catch (Exception e) {
+        log.warn("Failed to parse model chunk '{}' in file {}: {}", m.modelName(), file,
+            e.getMessage());
       }
-      final var hash = hashCalculator.calculateSha256Hash(embeddingText);
-      final var name = platform + " - " + m.modelName();
-      chunks.add(new Chunk(name, fullChunk, embeddingText, hash));
     }
 
     return chunks;
   }
 
-  private static String buildFullChunk(String platform, String model, String body) {
-    final var sb = new StringBuilder();
-    sb.append("# ").append(platform).append('\n');
-    sb.append("## ").append(model).append('\n');
-    if (body != null && !body.isEmpty()) {
-      sb.append(body.strip()).append('\n');
-    }
-    return sb.toString();
-  }
+  private Chunk parseModelChunk(ModelSection m) {
+    String owner = "";
+    String modelId = "";
+    String tier = "balanced";
+    String description = "";
+    String bestPractices = "";
 
-  private static String extractEmbeddingText(String body) {
-    if (body == null) {
-      return "";
+    String[] lines = m.body().split("\n");
+    int i = 0;
+    while (i < lines.length) {
+      String line = lines[i].trim();
+      if (line.startsWith("- **owner**:")) {
+        owner = line.substring("- **owner**:".length()).trim();
+      } else if (line.startsWith("- **id**:")) {
+        modelId = line.substring("- **id**:".length()).trim();
+      } else if (line.startsWith("- **tier**:")) {
+        tier = line.substring("- **tier**:".length()).trim();
+      } else if (line.startsWith("- **ID**:")) {
+        String id = line.substring("- **ID**:".length()).trim();
+        String[] parts = id.split("/");
+        if (parts.length == 2) {
+          owner = parts[0].trim();
+          modelId = parts[1].trim();
+        } else {
+          modelId = id;
+        }
+      } else if (line.equals("### Description")) {
+        i++;
+        StringBuilder sb = new StringBuilder();
+        while (i < lines.length && !lines[i].startsWith("###")) {
+          sb.append(lines[i]).append("\n");
+          i++;
+        }
+        description = sb.toString().trim();
+        continue;
+      } else if (line.equals("### Best Practices")) {
+        i++;
+        StringBuilder sb = new StringBuilder();
+        while (i < lines.length && !lines[i].startsWith("###")) {
+          sb.append(lines[i]).append("\n");
+          i++;
+        }
+        bestPractices = sb.toString().trim();
+        continue;
+      }
+      i++;
     }
-    final var idx = body.indexOf(SUMMARY_PREFIX);
-    if (idx < 0) {
-      return "";
+
+    if (modelId.isEmpty()) {
+      throw new IllegalArgumentException("Missing required metadata (ID)");
     }
-    final var after = body.substring(idx + SUMMARY_PREFIX.length());
-    return after.strip();
+
+    String hash = hashCalculator.calculateSha256Hash(description + " tier: " + tier);
+
+    String embeddingText = m.modelName() + " " + description + " tier: " + tier;
+
+    return new Chunk(m.modelName(), embeddingText, hash, owner, modelId, description,
+        bestPractices, tier);
   }
 
   // Data holders
@@ -238,11 +277,27 @@ public class PlatformEmbeddingRegistry {
 
   }
 
-  public record SearchResult(String name, String text) {
+  public record SearchResult(
+      String name,
+      String owner,
+      String modelId,
+      String description,
+      String bestPractices,
+      String tier
+  ) {
 
   }
 
-  private record Chunk(String name, String fullText, String embeddingText, String hash) {
+  private record Chunk(
+      String name,
+      String embeddingText,
+      String hash,
+      String owner,
+      String modelId,
+      String description,
+      String bestPractices,
+      String tier
+  ) {
 
   }
 }

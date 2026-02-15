@@ -1,6 +1,7 @@
 package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
@@ -8,7 +9,8 @@ import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.integration.ReplicateClient;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import com.example.hypocaust.rag.PlatformEmbeddingRegistry;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry;
+import com.example.hypocaust.service.TaskComplexityService;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,24 +38,29 @@ public class GenerateCreativeTool {
   private static final AnthropicChatModelSpec PROMPT_ENG_MODEL =
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
 
-  private final PlatformEmbeddingRegistry modelRag;
+  private final ModelEmbeddingRegistry modelRag;
   private final ModelRegistry modelRegistry;
   private final ReplicateClient replicateClient;
+  private final TaskComplexityService complexityService;
   private final ObjectMapper objectMapper;
 
   @DiscoverableTool(
       name = "generate_creative",
       description = "Generate or edit creative content (images, audio, video, text). "
-          + "Describe what you need. To use existing artifacts as inputs, refer to them "
-          + "using the @ prefix (e.g., 'Make @user_photo a cartoon').")
+          + "Describe what you need. If you have preferences (e.g., high quality, fast/cheap, "
+          + "photorealistic, creative), include them in the task. To use existing artifacts "
+          + "as inputs, refer to them using the @ prefix (e.g., 'Make @user_photo a cartoon').")
   public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
       @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
   ) {
     log.info("Creative generation request: {} (kind: {})", task, artifactKind);
 
+    // Step 0: Complexity analysis
+    String requiredTier = complexityService.evaluate(task, artifactKind);
+
     // Step 1: Model selection via RAG
-    var modelResults = modelRag.search(task + " " + artifactKind);
+    var modelResults = modelRag.search(task + " " + artifactKind + " tier: " + requiredTier);
     if (modelResults.isEmpty()) {
       return GenerateCreativeResult.error("No suitable model found for: " + task);
     }
@@ -61,23 +68,24 @@ public class GenerateCreativeTool {
     var bestModel = modelResults.getFirst();
     log.info("Selected model: {}", bestModel.name());
 
-    // Step 2: Parse model info and fetch schema from Replicate
-    var modelInfo = parseModelInfo(bestModel.text());
-    JsonNode modelVersion;
+    // Step 2: Resolve latest version and fetch schema
+    String version;
+    JsonNode schema;
     try {
-      modelVersion = replicateClient.getModelVersion(
-          modelInfo.owner(), modelInfo.name(), modelInfo.version());
+      version = replicateClient.getLatestVersion(bestModel.owner(), bestModel.modelId());
+      schema = replicateClient.getSchema(bestModel.owner(), bestModel.modelId(), version);
     } catch (Exception e) {
-      log.error("Failed to fetch model version from Replicate: {}", e.getMessage());
+      log.error("Failed to fetch model details from Replicate: {}", e.getMessage());
       return GenerateCreativeResult.error("Failed to fetch model details: " + e.getMessage());
     }
 
-    JsonNode schema = modelVersion.path("openapi_schema");
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
 
     // Step 3: Unified plan generation (Title, Description, Replicate Input)
-    var plan = generatePlan(task, artifactKind, bestModel.text(), schema, availableArtifacts);
+    String modelDocs = bestModel.name() + "\n\n" + bestModel.description()
+        + "\n\nBest Practices:\n" + bestModel.bestPractices();
+    var plan = generatePlan(task, artifactKind, modelDocs, schema, availableArtifacts);
 
     if (plan.errorMessage() != null) {
       log.warn("Creative generation plan failed: {}", plan.errorMessage());
@@ -92,8 +100,6 @@ public class GenerateCreativeTool {
         .kind(artifactKind)
         .title(plan.title())
         .description(plan.description())
-        .prompt(task) // Store original task as prompt context
-        .model(bestModel.name())
         .status(ArtifactStatus.GESTATING)
         .build());
 
@@ -102,7 +108,7 @@ public class GenerateCreativeTool {
     try {
       // Step 6: Call Replicate
       var output = replicateClient.predict(
-          modelInfo.owner(), modelInfo.name(), modelInfo.version(), finalInput);
+          bestModel.owner(), bestModel.modelId(), version, finalInput);
 
       // Step 7: Extract result URL/content
       var resultUrl = extractOutputUrl(output);
@@ -114,9 +120,14 @@ public class GenerateCreativeTool {
 
       // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
-      metadata.put("originalTask", task);
+      ObjectNode genDetails = metadata.putObject("generation_details");
+      genDetails.put("provider", "replicate");
+      genDetails.put("model_name", bestModel.name());
+      genDetails.put("owner", bestModel.owner());
+      genDetails.put("model_id", bestModel.modelId());
+      genDetails.put("resolved_version", version);
+      genDetails.put("prompt", task);
       metadata.set("replicateInput", finalInput);
-      metadata.put("model", bestModel.name());
 
       TaskExecutionContextHolder.getContext().getArtifacts()
           .updatePending(Artifact.builder()
@@ -124,8 +135,6 @@ public class GenerateCreativeTool {
               .kind(artifactKind)
               .title(plan.title())
               .description(plan.description())
-              .prompt(task)
-              .model(bestModel.name())
               .url(resultUrl)
               .metadata(metadata)
               .status(ArtifactStatus.CREATED)
@@ -191,7 +200,9 @@ public class GenerateCreativeTool {
                  - If you provide an 'errorMessage', 'replicateInput' should be null.
               
               OUTPUT:
-              Return ONLY valid JSON:
+              Return ONLY valid JSON.
+              IMPORTANT: All string values MUST have newlines and special characters properly escaped (e.g., use \\n for newlines).
+              
               {
                 "title": "...",
                 "description": "...",
@@ -209,7 +220,8 @@ public class GenerateCreativeTool {
           .call()
           .content();
 
-      var node = objectMapper.readTree(response);
+      var json = JsonUtils.extractJson(response);
+      var node = objectMapper.readTree(json);
       return new GenerateCreativePlan(
           node.path("title").asText("Untitled"),
           node.path("description").asText(""),
@@ -221,31 +233,6 @@ public class GenerateCreativeTool {
       return new GenerateCreativePlan("Untitled", "", null,
           "Plan generation failed: " + e.getMessage());
     }
-  }
-
-  record ModelInfo(String owner, String name, String version) {
-
-  }
-
-  ModelInfo parseModelInfo(String modelDocs) {
-    var owner = "stability-ai";
-    var name = "sdxl";
-    var version = "";
-
-    for (var line : modelDocs.split("\n")) {
-      var trimmed = line.trim();
-      if (trimmed.startsWith("Replicate:")) {
-        var parts = trimmed.substring("Replicate:".length()).trim().split("/");
-        if (parts.length == 2) {
-          owner = parts[0].trim();
-          name = parts[1].trim();
-        }
-      } else if (trimmed.startsWith("Version:")) {
-        version = trimmed.substring("Version:".length()).trim();
-      }
-    }
-
-    return new ModelInfo(owner, name, version);
   }
 
   JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {

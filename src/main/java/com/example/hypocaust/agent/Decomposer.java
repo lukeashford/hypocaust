@@ -1,6 +1,7 @@
 package com.example.hypocaust.agent;
 
 import com.example.hypocaust.agent.prompt.DecomposerPromptFragments;
+import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
@@ -23,9 +24,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
- * The single recursive decomposition agent. Either calls one tool or delegates
- * to child decomposers. Each invocation creates a fresh ChatClient conversation
- * for context isolation.
+ * The single recursive decomposition agent. Either calls one tool or delegates to child
+ * decomposers. Each invocation creates a fresh ChatClient conversation for context isolation.
  *
  * <p>Direct tools (always in the ChatClient schema):
  * <ul>
@@ -118,8 +118,8 @@ public class Decomposer {
   }
 
   /**
-   * Parse the decomposer's final text response into a structured result.
-   * The decomposer is instructed to return JSON with success, summary, artifactNames, errorMessage.
+   * Parse the decomposer's final text response into a structured result. The decomposer is
+   * instructed to return JSON with success, summary, artifactNames, errorMessage.
    */
   DecomposerResult parseResult(String response) {
     if (response == null || response.isBlank()) {
@@ -127,7 +127,7 @@ public class Decomposer {
     }
 
     // Try to extract JSON from the response (may be wrapped in markdown code blocks)
-    var json = extractJson(response);
+    var json = JsonUtils.extractJson(response);
 
     try {
       var node = objectMapper.readTree(json);
@@ -154,36 +154,5 @@ public class Decomposer {
           e.getMessage());
       return DecomposerResult.success(response, List.of());
     }
-  }
-
-  private String extractJson(String response) {
-    // Try to find JSON in markdown code block
-    var jsonBlockStart = response.indexOf("```json");
-    if (jsonBlockStart >= 0) {
-      var contentStart = response.indexOf('\n', jsonBlockStart) + 1;
-      var contentEnd = response.indexOf("```", contentStart);
-      if (contentEnd > contentStart) {
-        return response.substring(contentStart, contentEnd).trim();
-      }
-    }
-
-    // Try to find JSON in generic code block
-    var codeBlockStart = response.indexOf("```");
-    if (codeBlockStart >= 0) {
-      var contentStart = response.indexOf('\n', codeBlockStart) + 1;
-      var contentEnd = response.indexOf("```", contentStart);
-      if (contentEnd > contentStart) {
-        return response.substring(contentStart, contentEnd).trim();
-      }
-    }
-
-    // Try to find bare JSON object
-    var braceStart = response.indexOf('{');
-    var braceEnd = response.lastIndexOf('}');
-    if (braceStart >= 0 && braceEnd > braceStart) {
-      return response.substring(braceStart, braceEnd + 1);
-    }
-
-    return response;
   }
 }

@@ -88,10 +88,31 @@ public class ReplicateClient {
   }
 
   /**
-   * Fetch model version details, including its OpenAPI schema.
+   * Resolve the latest version hash for a model.
    */
-  public JsonNode getModelVersion(String owner, String name, String version) {
-    log.info("Fetching model version details for {}/{} (version: {})", owner, name, version);
+  public String getLatestVersion(String owner, String name) {
+    log.info("Resolving latest version for {}/{}", owner, name);
+    var response = restClient.get()
+        .uri("/models/{owner}/{name}", owner, name)
+        .retrieve()
+        .body(JsonNode.class);
+
+    if (response == null) {
+      throw new ReplicateException("No response from Replicate API when fetching model details");
+    }
+
+    String latestVersion = response.path("latest_version").path("id").asText();
+    if (latestVersion.isBlank()) {
+      throw new ReplicateException("Could not find latest_version for model " + owner + "/" + name);
+    }
+    return latestVersion;
+  }
+
+  /**
+   * Fetch the OpenAPI schema for a specific model version.
+   */
+  public JsonNode getSchema(String owner, String name, String version) {
+    log.info("Fetching schema for {}/{} (version: {})", owner, name, version);
     var response = restClient.get()
         .uri("/models/{owner}/{name}/versions/{version}", owner, name, version)
         .retrieve()
@@ -100,7 +121,7 @@ public class ReplicateClient {
     if (response == null) {
       throw new ReplicateException("No response from Replicate API when fetching model version");
     }
-    return response;
+    return response.path("openapi_schema");
   }
 
   private JsonNode awaitPrediction(String predictionUrl) {

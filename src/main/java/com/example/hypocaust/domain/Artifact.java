@@ -38,12 +38,6 @@ public record Artifact(
         + "MANIFESTED = ready to display")
     @NonNull ArtifactStatus status,
 
-    @Schema(description = "The prompt used to generate this artifact", nullable = true)
-    String prompt,
-
-    @Schema(description = "The AI model used for generation", nullable = true)
-    String model,
-
     @Schema(description = "Additional metadata (dimensions, file size, etc.)", nullable = true)
     JsonNode metadata
 ) implements ArtifactEventPayload {
@@ -57,19 +51,15 @@ public record Artifact(
         .title(draft.title())
         .description(draft.description())
         .status(draft.status())
-        .prompt(draft.prompt())
-        .model(draft.model())
         .metadata(draft.metadata())
         .build();
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
-        model, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata);
   }
 
   public Artifact withUrl(String url) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
-        model, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata);
   }
 }

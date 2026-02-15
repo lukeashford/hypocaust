@@ -108,18 +108,6 @@ public class ArtifactEntity extends BaseEntity {
   // =====================================================
 
   /**
-   * The prompt used to generate this artifact.
-   */
-  @Column(columnDefinition = "text")
-  private String prompt;
-
-  /**
-   * The model used to generate this artifact.
-   */
-  @Column(length = 100)
-  private String model;
-
-  /**
    * Technical metadata about the artifact. Examples: image dimensions, video duration, file size,
    * generation parameters.
    */

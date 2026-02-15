@@ -1,6 +1,6 @@
 package com.example.hypocaust.repo;
 
-import com.example.hypocaust.db.PlatformEmbedding;
+import com.example.hypocaust.db.ModelEmbedding;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,15 +11,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface PlatformEmbeddingRepository extends JpaRepository<PlatformEmbedding, UUID> {
+public interface ModelEmbeddingRepository extends JpaRepository<ModelEmbedding, UUID> {
 
-  Optional<PlatformEmbedding> findByName(String name);
+  Optional<ModelEmbedding> findByName(String name);
 
   @Query("""
       select d
-      from PlatformEmbedding d
+      from ModelEmbedding d
       order by cosine_distance(d.embedding, :queryEmbedding)
       """)
-  List<PlatformEmbedding> findTopByEmbeddingSimilarity(
+  List<ModelEmbedding> findTopByEmbeddingSimilarity(
       @Param("queryEmbedding") float[] queryEmbedding, Pageable pageable);
 }

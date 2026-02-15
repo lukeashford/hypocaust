@@ -67,9 +67,10 @@ public class ArtifactService {
         String mimeType =
             pendingArtifact.kind() == ArtifactKind.IMAGE ? "image/png" : "application/octet-stream";
 
+        String storageKey = storageService.store(data, mimeType);
         log.info("Downloaded artifact {} with key {} (attempt {})", pendingArtifact.name(),
-            storageService.store(data, mimeType), attempt);
-        return pendingArtifact.withUrl(storageService.store(data, mimeType))
+            storageKey, attempt);
+        return pendingArtifact.withUrl(storageKey)
             .withStatus(ArtifactStatus.MANIFESTED);
       } catch (IOException e) {
         try {

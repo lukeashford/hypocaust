@@ -151,12 +151,12 @@ public class VersionManagementService {
 
     List<ArtifactChange> added = new ArrayList<>();
     for (Artifact artifact : pending.getAdded()) {
-      added.add(materializeArtifact(artifact, taskExecutionId, projectId));
+      added.add(materializeArtifact(artifact, projectId, taskExecutionId));
     }
 
     List<ArtifactChange> edited = new ArrayList<>();
     for (Artifact artifact : pending.getEdited()) {
-      edited.add(materializeArtifact(artifact, taskExecutionId, projectId));
+      edited.add(materializeArtifact(artifact, projectId, taskExecutionId));
     }
 
     List<String> deleted = new ArrayList<>(pending.getDeletedNames());

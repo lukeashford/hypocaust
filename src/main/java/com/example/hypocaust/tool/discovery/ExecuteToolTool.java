@@ -8,8 +8,8 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 /**
- * Bridge tool that invokes discoverable tools by name. The decomposer discovers tools
- * via {@link SearchToolsTool} and calls them through this bridge.
+ * Bridge tool that invokes discoverable tools by name. The decomposer discovers tools via
+ * {@link SearchToolsTool} and calls them through this bridge.
  *
  * <p>Leverages Spring AI's {@code ToolCallback} infrastructure for type-safe parameter
  * deserialization and return type serialization.
@@ -36,8 +36,12 @@ public class ExecuteToolTool {
     try {
       return callback.call(parametersJson);
     } catch (Exception e) {
-      log.error("Tool execution failed for {}: {}", toolName, e.getMessage(), e);
-      return "{\"error\": \"" + e.getMessage().replace("\"", "'") + "\", \"toolName\": \""
+      String message = e.getMessage();
+      if (message == null) {
+        message = e.getClass().getSimpleName();
+      }
+      log.error("Tool execution failed for {}: {}", toolName, message, e);
+      return "{\"error\": \"" + message.replace("\"", "'") + "\", \"toolName\": \""
           + toolName + "\"}";
     }
   }

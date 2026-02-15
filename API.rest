@@ -18,11 +18,20 @@ GET https://localhost/swagger-ui/index.html
 
 ### 1. Create a Project
 POST https://localhost/projects
+Content-Type: application/json
 Accept: application/json
 
+{
+  "name": "test_project"
+}
+
 > {%
-  client.global.set("projectId", response.body.projectId);
+  client.global.set("projectId", response.body.id);
 %}
+
+### 1a. List Projects
+GET https://localhost/projects
+Accept: application/json
 
 ### 2. Picture Generation Task
 POST https://localhost/tasks
@@ -77,5 +86,10 @@ Accept: application/json
 ###
 GET https://api.replicate.com/v1/search?
     query=a+model+that+cannot+only+remove+background+in+videos+but+replace+it+seamlessly
+Authorization: Bearer {{replicateToken}}
+Accept: application/json
+
+###
+GET {{replicateBase}}/models/black-forest-labs/flux-dev
 Authorization: Bearer {{replicateToken}}
 Accept: application/json

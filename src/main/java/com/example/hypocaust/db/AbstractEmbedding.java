@@ -28,22 +28,17 @@ public abstract class AbstractEmbedding extends BaseEntity {
   @Column(nullable = false, length = 64)
   protected String hash;
 
-  @Column(name = "text", columnDefinition = "text", nullable = false)
-  protected String text;
-
-  protected AbstractEmbedding(String name, float[] embedding, String hash, String text) {
+  protected AbstractEmbedding(String name, float[] embedding, String hash) {
     this.name = name;
     this.embedding = embedding;
     this.hash = hash;
-    this.text = text;
   }
 
   /**
-   * In-place update of the document text, hash and embedding. Replaces the array reference so JPA
-   * can detect the change; clones to prevent aliasing external mutable arrays.
+   * In-place update of the document hash and embedding. Replaces the array reference so JPA can
+   * detect the change; clones to prevent aliasing external mutable arrays.
    */
-  public void update(String newText, String newHash, float[] newEmbedding) {
-    this.text = newText;
+  public void update(String newHash, float[] newEmbedding) {
     this.hash = newHash;
     if (newEmbedding != null) {
       this.embedding = newEmbedding.clone();

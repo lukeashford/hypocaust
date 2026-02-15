@@ -1,13 +1,14 @@
 package com.example.hypocaust.tool;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.TaskExecutionService;
 import com.example.hypocaust.service.VersionManagementService;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,9 +18,9 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 /**
- * Tool that provides project context via natural language Q&A. The decomposer asks
- * smart questions, and this tool uses its internal access to structured data (artifacts,
- * task execution history, deltas, version chain) to answer in natural language.
+ * Tool that provides project context via natural language Q&A. The decomposer asks smart questions,
+ * and this tool uses its internal access to structured data (artifacts, task execution history,
+ * deltas, version chain) to answer in natural language.
  *
  * <p>Never returns raw data. The inner LLM (Haiku) has full structured access and returns
  * curated natural language summaries.
@@ -69,13 +70,14 @@ public class ProjectContextTool {
           artifact.kind(),
           artifact.status(),
           artifact.description()));
-      if (artifact.prompt() != null) {
-        contextBuilder.append(String.format("  Prompt: %s\n", artifact.prompt()));
-      }
-      if (artifact.model() != null) {
-        contextBuilder.append(String.format("  Model: %s\n", artifact.model()));
-      }
       if (artifact.metadata() != null) {
+        JsonNode genDetails = artifact.metadata().path("generation_details");
+        if (!genDetails.isMissingNode()) {
+          contextBuilder.append(
+              String.format("  Model: %s\n", genDetails.path("model_name").asText()));
+          contextBuilder.append(
+              String.format("  Prompt: %s\n", genDetails.path("prompt").asText()));
+        }
         contextBuilder.append(String.format("  Metadata: %s\n", artifact.metadata()));
       }
     }

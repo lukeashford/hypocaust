@@ -21,21 +21,11 @@ public interface TaskExecutionRepository extends JpaRepository<TaskExecutionEnti
    * Find the most recent completed TaskExecution for a project.
    */
   @Query("SELECT te FROM TaskExecutionEntity te WHERE te.projectId = :projectId AND te.status = 'COMPLETED' ORDER BY te.completedAt DESC LIMIT 1")
-  Optional<TaskExecutionEntity> findMostRecentCompletedByProjectId(@Param("projectId") UUID projectId);
+  Optional<TaskExecutionEntity> findMostRecentCompletedByProjectId(
+      @Param("projectId") UUID projectId);
 
   /**
    * Find all TaskExecutions for a project, ordered by creation time.
    */
   List<TaskExecutionEntity> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
-
-  /**
-   * Find all TaskExecutions for a project that have changes (non-null delta).
-   */
-  @Query("SELECT te FROM TaskExecutionEntity te WHERE te.projectId = :projectId AND te.delta IS NOT NULL ORDER BY te.createdAt DESC")
-  List<TaskExecutionEntity> findWithChangesByProjectId(@Param("projectId") UUID projectId);
-
-  /**
-   * Find TaskExecutions that have a specific predecessor.
-   */
-  List<TaskExecutionEntity> findByPredecessorId(UUID predecessorId);
 }
