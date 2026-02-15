@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Logger for structured model call/response logging to files. Creates directory structure:
- * logs/{projectId}/{runId}/{sequence}-{call|response}.json
+ * logs/{id}/{runId}/{sequence}-{call|response}.json
  */
 @Component
 @Slf4j
