@@ -5,15 +5,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Content type category of an artifact", enumAsRef = true)
 public enum ArtifactKind {
   /**
-   * JSON data, text, analysis results, or other structured content.
-   */
-  STRUCTURED_JSON,
-  /**
    * Visual content (PNG, JPG, WebP, etc.).
    */
   IMAGE,
   /**
-   * Document files including PDFs and presentations.
+   * Portable Document Format (PDF) files.
    */
   PDF,
   /**
@@ -23,5 +19,13 @@ public enum ArtifactKind {
   /**
    * Video content.
    */
-  VIDEO
+  VIDEO,
+  /**
+   * Text documents (non-PDF), e.g., plain text or Markdown.
+   */
+  TEXT,
+  /**
+   * Fallback for unknown or other types.
+   */
+  OTHER
 }

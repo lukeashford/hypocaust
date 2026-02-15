@@ -1,4 +1,4 @@
--- Initial schema consolidated from migrations V1 to V3
+-- Initial schema
 
 -- Extensions
 CREATE
@@ -43,8 +43,8 @@ CREATE TABLE artifact
     created_at        timestamptz  NOT NULL DEFAULT now(),
     project_id        uuid         NOT NULL REFERENCES project (id) ON DELETE CASCADE,
     kind              text         NOT NULL CHECK (kind IN
-                                                   ('STRUCTURED_JSON', 'IMAGE', 'PDF', 'AUDIO',
-                                                    'VIDEO')),
+                                                   ('IMAGE', 'PDF', 'AUDIO',
+                                                    'VIDEO', 'TEXT', 'OTHER')),
     status            text         NOT NULL CHECK (status IN
                                                    ('GESTATING', 'CREATED', 'MANIFESTED',
                                                     'CANCELLED',
@@ -53,10 +53,9 @@ CREATE TABLE artifact
     storage_key       text,
     inline_content jsonb,
     metadata          jsonb,
+    mime_type         text,
     name              varchar(100) NOT NULL,
     description       text,
-    prompt            text,
-    model             varchar(100),
     task_execution_id uuid REFERENCES task_execution (id)
 );
 
@@ -79,10 +78,11 @@ CREATE TABLE event
                                                            'taskexecution.completed',
                                                            'taskexecution.failed',
                                                            'todo.list.updated',
+                                                           'task.progress.updated',
                                                            'tool.calling',
-                                                           'operator.started',
-                                                           'operator.finished',
-                                                           'operator.failed',
+                                                           'decomposer.started',
+                                                           'decomposer.finished',
+                                                           'decomposer.failed',
                                                            'error'
         )),
     payload           jsonb       NOT NULL,
@@ -108,32 +108,36 @@ CREATE TABLE todo
 CREATE INDEX idx_todo_task_execution ON todo (task_execution_id);
 CREATE INDEX idx_todo_parent ON todo (parent_id);
 
--- Operator embeddings table
-CREATE TABLE operator_embeddings
-(
-    id            uuid PRIMARY KEY,
-    created_at    timestamptz DEFAULT now(),
-    operator_name varchar(255) UNIQUE NOT NULL,
-    embedding     vector(1536)        NOT NULL,
-    hash          varchar(64)         NOT NULL
-);
-
--- Operator embeddings index
-CREATE INDEX idx_operator_embeddings_vector ON operator_embeddings USING ivfflat (embedding vector_cosine_ops);
-
--- Platform embeddings table
-CREATE TABLE platform_embeddings
+-- Tool embeddings table
+CREATE TABLE tool_embeddings
 (
     id         uuid PRIMARY KEY,
     created_at timestamptz DEFAULT now(),
-    name       varchar(255) UNIQUE NOT NULL,
+    tool_name  varchar(255) UNIQUE NOT NULL,
     embedding  vector(1536)        NOT NULL,
-    hash       varchar(64)         NOT NULL,
-    text       text                NOT NULL
+    hash       varchar(64)         NOT NULL
 );
 
--- Platform embeddings index
-CREATE INDEX idx_platform_embeddings_vector ON platform_embeddings USING ivfflat (embedding vector_cosine_ops);
+-- Tool embeddings index
+CREATE INDEX idx_tool_embeddings_vector ON tool_embeddings USING ivfflat (embedding vector_cosine_ops);
+
+-- Model embeddings table
+CREATE TABLE model_embeddings
+(
+    id             uuid PRIMARY KEY,
+    created_at     timestamptz                  DEFAULT now(),
+    name           varchar(255) UNIQUE NOT NULL,
+    embedding      vector(1536)        NOT NULL,
+    hash           varchar(64)         NOT NULL,
+    owner          VARCHAR(255)        NOT NULL,
+    model_id       VARCHAR(255)        NOT NULL,
+    description    TEXT                NOT NULL,
+    best_practices TEXT                NOT NULL,
+    tier           VARCHAR(50)         NOT NULL DEFAULT 'balanced'
+);
+
+-- Model embeddings index
+CREATE INDEX idx_model_embeddings_vector ON model_embeddings USING ivfflat (embedding vector_cosine_ops);
 
 -- Workflow embeddings table
 CREATE TABLE workflow_embeddings

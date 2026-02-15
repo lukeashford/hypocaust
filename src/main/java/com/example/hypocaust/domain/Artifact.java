@@ -24,7 +24,7 @@ public record Artifact(
         nullable = true)
     String url,
 
-    @Schema(description = "Inline structured content (for STRUCTURED_JSON kind). Display directly as text.",
+    @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
         nullable = true)
     JsonNode inlineContent,
 
@@ -38,14 +38,11 @@ public record Artifact(
         + "MANIFESTED = ready to display")
     @NonNull ArtifactStatus status,
 
-    @Schema(description = "The prompt used to generate this artifact", nullable = true)
-    String prompt,
-
-    @Schema(description = "The AI model used for generation", nullable = true)
-    String model,
-
     @Schema(description = "Additional metadata (dimensions, file size, etc.)", nullable = true)
-    JsonNode metadata
+    JsonNode metadata,
+
+    @Schema(description = "Technical MIME type", example = "image/webp")
+    String mimeType
 ) implements ArtifactEventPayload {
 
   public static Artifact fromDraft(String name, ArtifactDraft draft) {
@@ -57,19 +54,33 @@ public record Artifact(
         .title(draft.title())
         .description(draft.description())
         .status(draft.status())
-        .prompt(draft.prompt())
-        .model(draft.model())
         .metadata(draft.metadata())
+        .mimeType(null) // Drafts don't have mimeType yet
         .build();
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
-        model, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
   }
 
   public Artifact withUrl(String url) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, prompt,
-        model, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withMimeType(String mimeType) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withMetadata(JsonNode metadata) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withInlineContent(JsonNode inlineContent) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
   }
 }

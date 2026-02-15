@@ -3,10 +3,9 @@ package com.example.hypocaust.prompt;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
  */
 public final class PromptBuilder {
 
-  private final Set<PromptFragment> fragments = new LinkedHashSet<>();
+  private final Map<String, PromptFragment> fragmentsById = new LinkedHashMap<>();
   private final Map<String, Object> params = new HashMap<>();
   private String separator = "\n\n";
 
@@ -52,7 +51,7 @@ public final class PromptBuilder {
    */
   public PromptBuilder with(PromptFragment fragment) {
     if (fragment != null) {
-      fragments.add(fragment);
+      fragmentsById.putIfAbsent(fragment.id(), fragment);
     }
     return this;
   }
@@ -116,7 +115,7 @@ public final class PromptBuilder {
    */
   public String build() {
     // Sort by priority, then combine
-    List<PromptFragment> sorted = new ArrayList<>(fragments);
+    List<PromptFragment> sorted = new ArrayList<>(fragmentsById.values());
     sorted.sort(Comparator.comparingInt(PromptFragment::priority));
 
     String combined = sorted.stream()
@@ -133,7 +132,7 @@ public final class PromptBuilder {
    * @return list of fragment IDs
    */
   public List<String> fragmentIds() {
-    return fragments.stream()
+    return fragmentsById.values().stream()
         .sorted(Comparator.comparingInt(PromptFragment::priority))
         .map(PromptFragment::id)
         .toList();

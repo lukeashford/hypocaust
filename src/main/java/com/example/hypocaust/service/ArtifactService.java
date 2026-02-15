@@ -5,9 +5,16 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.repo.ArtifactRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +38,7 @@ public class ArtifactService {
   private final ArtifactRepository artifactRepository;
   private final StorageService storageService;
   private final ArtifactMapper artifactMapper;
+  private final ObjectMapper objectMapper;
 
   /**
    * Get domain object for an artifact by ID. URL is automatically externalized.
@@ -62,15 +70,73 @@ public class ArtifactService {
 
     final int maxAttempts = 3;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      try (var stream = new URI(pendingArtifact.url()).toURL().openStream()) {
-        byte[] data = stream.readAllBytes();
-        String mimeType =
-            pendingArtifact.kind() == ArtifactKind.IMAGE ? "image/png" : "application/octet-stream";
+      try {
+        URL url = new URI(pendingArtifact.url()).toURL();
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(30000);
 
-        log.info("Downloaded artifact {} with key {} (attempt {})", pendingArtifact.name(),
-            storageService.store(data, mimeType), attempt);
-        return pendingArtifact.withUrl(storageService.store(data, mimeType))
-            .withStatus(ArtifactStatus.MANIFESTED);
+        try (var stream = connection.getInputStream()) {
+          byte[] data = stream.readAllBytes();
+          long contentLength = connection.getContentLengthLong();
+          if (contentLength <= 0) {
+            contentLength = data.length;
+          }
+
+          // 1. Get MIME type from Response Header
+          String mimeType = connection.getContentType();
+
+          // 2. Fallback to URL-based guessing if header is generic or missing
+          if (mimeType == null || mimeType.startsWith("application/octet-stream")) {
+            mimeType = URLConnection.guessContentTypeFromName(pendingArtifact.url());
+          }
+
+          // 3. Final fallback based on ArtifactKind
+          if (mimeType == null) {
+            mimeType = switch (pendingArtifact.kind()) {
+              case IMAGE -> "image/png";
+              case AUDIO -> "audio/mpeg";
+              case VIDEO -> "video/mp4";
+              case PDF -> "application/pdf";
+              case TEXT -> "text/plain";
+              default -> "application/octet-stream";
+            };
+          }
+
+          // Clean up MIME type (remove charset, etc.)
+          if (mimeType.contains(";")) {
+            mimeType = mimeType.split(";")[0].trim();
+          }
+
+          boolean isInline = pendingArtifact.kind() == ArtifactKind.TEXT;
+
+          String storageKey = null;
+          JsonNode inlineContent = null;
+
+          if (isInline) {
+            inlineContent = new TextNode(new String(data, StandardCharsets.UTF_8));
+          } else {
+            storageKey = storageService.store(data, mimeType);
+          }
+
+          log.info("Processed artifact {} (kind: {}, inline: {}, MIME: {})",
+              pendingArtifact.name(), pendingArtifact.kind(), isInline, mimeType);
+
+          // Update metadata with contentLength
+          JsonNode metadata = pendingArtifact.metadata();
+          if (metadata == null || metadata.isNull()) {
+            metadata = objectMapper.createObjectNode();
+          }
+          if (metadata.isObject()) {
+            ((ObjectNode) metadata).put("contentLength", contentLength);
+          }
+
+          return pendingArtifact.withUrl(storageKey)
+              .withInlineContent(inlineContent)
+              .withStatus(ArtifactStatus.MANIFESTED)
+              .withMimeType(mimeType)
+              .withMetadata(metadata);
+        }
       } catch (IOException e) {
         try {
           Thread.sleep(500L * attempt);

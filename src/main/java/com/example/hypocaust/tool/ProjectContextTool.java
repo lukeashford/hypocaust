@@ -1,21 +1,29 @@
 package com.example.hypocaust.tool;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.TaskExecutionService;
 import com.example.hypocaust.service.VersionManagementService;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 /**
- * A tool (not an operator) that provides project context to operators. Answers questions in natural
- * language about artifacts and version history.
+ * Tool that provides project context via natural language Q&A. The decomposer asks smart questions,
+ * and this tool uses its internal access to structured data (artifacts, task execution history,
+ * deltas, version chain) to answer in natural language.
+ *
+ * <p>Never returns raw data. The inner LLM (Haiku) has full structured access and returns
+ * curated natural language summaries.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,20 +37,15 @@ public class ProjectContextTool {
   private final VersionManagementService versionService;
   private final ModelRegistry modelRegistry;
   private final TaskExecutionService taskExecutionService;
+  private final TaskExecutionRepository taskExecutionRepository;
 
-  /**
-   * Answer a question about project artifacts or version history.
-   *
-   * Examples: - "What is this project about?" - "What is the artifact name for the picture of our
-   * protagonist wearing a suit?" - "What prompt was used for the forest_background artifact?" -
-   * "List all current artifacts" - "Show me the version history of hero_image"
-   *
-   * We are explicitly limiting your access to version history to save you space in your context.
-   * You can ask this anything, even to dump the whole history graph, but if you use this wisely and
-   * ask a good question, you get a good answer without blowing up your context.
-   */
-  @Tool(name = "ask_project_context", description = "Answer questions about project artifacts, their descriptions, prompts, and version history")
-  public String ask(String question) {
+  @Tool(name = "ask_project_context",
+      description = "Answer questions about project artifacts, their descriptions, prompts, "
+          + "models, version history, and past task executions. Ask specific questions to get "
+          + "precise answers without consuming context.")
+  public String ask(
+      @ToolParam(description = "Your question about the project") String question
+  ) {
     if (question == null || question.isBlank()) {
       throw new IllegalArgumentException("Question cannot be empty");
     }
@@ -53,34 +56,47 @@ public class ProjectContextTool {
 
     var ctx = TaskExecutionContextHolder.getContext();
     var taskExecutionId = ctx.getTaskExecutionId();
+    var projectId = ctx.getProjectId();
 
-    // Gather relevant data
+    // Gather all relevant data for the inner LLM
+    var contextBuilder = new StringBuilder();
+
+    // Current artifacts with full details
     List<Artifact> artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
-
-    // Build context for LLM
-    StringBuilder contextBuilder = new StringBuilder();
     contextBuilder.append("Current artifacts:\n");
     for (Artifact artifact : artifacts) {
-      contextBuilder.append(String.format("- %s (%s): %s\n",
+      contextBuilder.append(String.format("- %s (%s, %s): %s\n",
           artifact.name(),
           artifact.kind(),
+          artifact.status(),
           artifact.description()));
-      if (artifact.prompt() != null) {
-        contextBuilder.append(String.format("  Prompt: %s\n", artifact.prompt()));
-      }
-      if (artifact.model() != null) {
-        contextBuilder.append(String.format("  Model: %s\n", artifact.model()));
+      if (artifact.metadata() != null) {
+        JsonNode genDetails = artifact.metadata().path("generation_details");
+        if (!genDetails.isMissingNode()) {
+          contextBuilder.append(
+              String.format("  Model: %s\n", genDetails.path("model_name").asText()));
+          contextBuilder.append(
+              String.format("  Prompt: %s\n", genDetails.path("prompt").asText()));
+        }
+        contextBuilder.append(String.format("  Metadata: %s\n", artifact.metadata()));
       }
     }
 
-//    contextBuilder.append("\nTask execution history (most recent first):\n");
-//    for (TaskExecutionEntity te : history) {
-//      contextBuilder.append(String.format("- [%s] %s: %s\n",
-//          te.getStatus(),
-//          te.getTask() != null ? te.getTask().substring(0, Math.min(50, te.getTask().length()))
-//              : "no task",
-//          te.getCommitMessage() != null ? te.getCommitMessage() : "no changes"));
-//    }
+    // Task execution history (predecessor chain)
+    contextBuilder.append("\nTask execution history (most recent first):\n");
+    List<TaskExecutionEntity> history =
+        taskExecutionRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+    for (TaskExecutionEntity te : history) {
+      contextBuilder.append(String.format("- [%s] Task: %s\n",
+          te.getStatus(),
+          te.getTask() != null ? te.getTask() : "no task"));
+      if (te.getCommitMessage() != null) {
+        contextBuilder.append(String.format("  Changes: %s\n", te.getCommitMessage()));
+      }
+      if (te.getDelta() != null) {
+        contextBuilder.append(String.format("  Delta: %s\n", te.getDelta()));
+      }
+    }
 
     // Call small LLM to interpret and answer
     try {
@@ -93,6 +109,8 @@ public class ProjectContextTool {
               Be concise and direct. When asked for an artifact name, reply with just the name.
               When listing artifacts, use a clean format.
               When explaining what happened, summarize the key changes.
+              When asked about prompts that were tried, include the full prompt text.
+              When asked about what failed, explain what was attempted and why it failed.
               """)
           .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
           .call()

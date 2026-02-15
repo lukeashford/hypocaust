@@ -1,6 +1,6 @@
 package com.example.hypocaust.tool;
 
-import com.example.hypocaust.rag.PlatformEmbeddingRegistry;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.tool.annotation.Tool;
@@ -11,12 +11,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ModelSearchTool {
 
-  private final PlatformEmbeddingRegistry platformEmbeddingRegistry;
+  private final ModelEmbeddingRegistry modelEmbeddingRegistry;
 
-  @Tool(name = "model_search", description = "Semantic search over creative AI platforms/models. Returns relevant model documentation snippets for the given query.")
-  public List<PlatformEmbeddingRegistry.SearchResult> search(
+  @Tool(name = "model_search", description = "Semantic search over creative AI models. Returns relevant model documentation snippets for the given query.")
+  public List<ModelEmbeddingRegistry.SearchResult> search(
       @ToolParam(description = "Natural language description of the model capability or use-case to search for") String query
   ) {
-    return platformEmbeddingRegistry.search(query);
+    return modelEmbeddingRegistry.search(query);
   }
 }

@@ -13,6 +13,7 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.repo.ArtifactRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ class ArtifactServiceTest {
   private ArtifactRepository artifactRepository;
   private StorageService storageService;
   private ArtifactMapper artifactMapper;
+  private ObjectMapper objectMapper;
   private ArtifactService artifactService;
 
   @BeforeEach
@@ -30,7 +32,9 @@ class ArtifactServiceTest {
     artifactRepository = mock(ArtifactRepository.class);
     storageService = mock(StorageService.class);
     artifactMapper = mock(ArtifactMapper.class);
-    artifactService = new ArtifactService(artifactRepository, storageService, artifactMapper);
+    objectMapper = new ObjectMapper();
+    artifactService = new ArtifactService(artifactRepository, storageService, artifactMapper,
+        objectMapper);
   }
 
   @Test
@@ -96,4 +100,58 @@ class ArtifactServiceTest {
     assertThat(resultId).isEqualTo(entity.getId());
     verify(artifactRepository).save(entity);
   }
+
+  @Test
+  void shouldMaterializeTextArtifactInline() throws java.io.IOException {
+    UUID projectId = UUID.randomUUID();
+    UUID taskExecutionId = UUID.randomUUID();
+
+    java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("test", ".txt");
+    java.nio.file.Files.writeString(tempFile, "Hello World");
+
+    Artifact pendingArtifact = Artifact.builder()
+        .name("text_artifact")
+        .kind(ArtifactKind.TEXT)
+        .status(ArtifactStatus.CREATED)
+        .url(tempFile.toUri().toURL().toString())
+        .title("Title")
+        .description("Desc")
+        .build();
+
+    when(artifactMapper.toEntity(any(Artifact.class), eq(projectId),
+        eq(taskExecutionId))).thenAnswer(invocation -> {
+      Artifact arg = invocation.getArgument(0);
+      return ArtifactEntity.builder()
+          .name(arg.name())
+          .kind(arg.kind())
+          .status(arg.status())
+          .inlineContent(arg.inlineContent())
+          .projectId(projectId)
+          .taskExecutionId(taskExecutionId)
+          .build();
+    });
+
+    when(artifactRepository.save(any(ArtifactEntity.class))).thenAnswer(
+        invocation -> {
+          ArtifactEntity entity = invocation.getArgument(0);
+          return entity;
+        });
+
+    UUID resultId = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
+
+    assertThat(resultId).isNotNull();
+
+    org.mockito.ArgumentCaptor<Artifact> artifactCaptor = org.mockito.ArgumentCaptor.forClass(
+        Artifact.class);
+    verify(artifactMapper).toEntity(artifactCaptor.capture(), eq(projectId), eq(taskExecutionId));
+
+    Artifact materialized = artifactCaptor.getValue();
+    assertThat(materialized.status()).isEqualTo(ArtifactStatus.MANIFESTED);
+    assertThat(materialized.inlineContent()).isNotNull();
+    assertThat(materialized.inlineContent().asText()).isEqualTo("Hello World");
+    assertThat(materialized.url()).isNull(); // Should be null for inline
+
+    java.nio.file.Files.deleteIfExists(tempFile);
+  }
+
 }

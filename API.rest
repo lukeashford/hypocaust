@@ -18,11 +18,20 @@ GET https://localhost/swagger-ui/index.html
 
 ### 1. Create a Project
 POST https://localhost/projects
+Content-Type: application/json
 Accept: application/json
 
+{
+  "name": "test_project"
+}
+
 > {%
-  client.global.set("projectId", response.body.projectId);
+  client.global.set("projectId", response.body.id);
 %}
+
+### 1a. List Projects
+GET https://localhost/projects
+Accept: application/json
 
 ### 2. Picture Generation Task
 POST https://localhost/tasks
@@ -54,6 +63,19 @@ Accept: application/json
 GET https://localhost/projects/{{projectId}}/logs
 Accept: text/plain
 
+### E2E: Three Characters Story (picture + voice for each)
+POST https://localhost/tasks
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "task": "Generate a funny story about three fundamentally different characters and generate a picture and voice sample for each of them."
+}
+
+> {%
+  client.global.set("taskExecutionId", response.body.taskExecutionId);
+%}
+
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1
 @replicateToken = r8_Wke9S4clis5oinqAf1MnApxPfL7WH9D0pfQsA
@@ -64,5 +86,10 @@ Accept: application/json
 ###
 GET https://api.replicate.com/v1/search?
     query=a+model+that+cannot+only+remove+background+in+videos+but+replace+it+seamlessly
+Authorization: Bearer {{replicateToken}}
+Accept: application/json
+
+###
+GET {{replicateBase}}/models/black-forest-labs/flux-dev
 Authorization: Bearer {{replicateToken}}
 Accept: application/json

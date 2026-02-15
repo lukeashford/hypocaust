@@ -174,7 +174,7 @@ public class MinioStorageService implements StorageService {
       throw new StorageException("Failed to generate presigned URL: " + storageKey, e);
     }
   }
-  
+
   /**
    * Generates a storage key with hash-based organization. Format: blobs/ab/cd/{hash}.{ext}
    */
@@ -191,13 +191,19 @@ public class MinioStorageService implements StorageService {
     return switch (contentType.toLowerCase()) {
       case "image/png" -> "png";
       case "image/jpeg", "image/jpg" -> "jpg";
+      case "image/webp" -> "webp";
       case "image/gif" -> "gif";
+      case "audio/mpeg" -> "mp3";
+      case "audio/wav", "audio/x-wav" -> "wav";
+      case "audio/ogg" -> "ogg";
+      case "audio/flac" -> "flac";
+      case "video/mp4" -> "mp4";
+      case "video/webm" -> "webm";
+      case "video/quicktime" -> "mov";
       case "application/pdf" -> "pdf";
       case "application/json" -> "json";
       case "text/plain" -> "txt";
-      case "audio/mpeg" -> "mp3";
-      case "audio/wav" -> "wav";
-      case "video/mp4" -> "mp4";
+      case "text/markdown", "text/x-markdown" -> "md";
       default -> "bin";
     };
   }

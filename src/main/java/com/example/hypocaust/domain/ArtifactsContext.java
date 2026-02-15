@@ -8,6 +8,7 @@ import com.example.hypocaust.exception.ArtifactTypeMismatchException;
 import com.example.hypocaust.service.ArtifactNameGeneratorService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -101,7 +102,8 @@ public class ArtifactsContext {
   }
 
   private synchronized String generateUniqueName(String description) {
-    Set<String> existingNames = versionService.computeArtifactSnapshotAt(taskExecutionId).keySet();
+    Set<String> existingNames = new HashSet<>(
+        versionService.computeArtifactSnapshotAt(taskExecutionId).keySet());
 
     existingNames.addAll(changelist.getAddedNames());
     existingNames.addAll(changelist.getEditedNames());

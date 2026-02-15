@@ -1,5 +1,6 @@
 package com.example.hypocaust.service;
 
+import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
@@ -7,11 +8,9 @@ import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
-import com.example.hypocaust.operator.DecomposingOperator;
-import com.example.hypocaust.operator.TaskExecutionContextHolder;
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -29,14 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TaskService {
 
-  private static final String PICTURE_GENERATION_NOTE = """
-      Note: This system currently only supports tasks related to brainstorming a story and generating a fitting picture.
-      If this task is not about generating a picture, fail early and do nothing.
-      """;
-
   private final ProjectService projectService;
   private final TaskExecutionRepository taskExecutionRepository;
-  private final DecomposingOperator decomposingOperator;
+  private final Decomposer decomposer;
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
   private final EventService eventService;
@@ -111,19 +105,15 @@ public class TaskService {
     // Task is already in RUNNING status and the started event was published
     // synchronously during submitTask()
     try {
-      // Augment the task with the picture generation note
-      final var augmentedTask = task + "\n\n" + PICTURE_GENERATION_NOTE;
+      var result = decomposer.execute(task);
 
-      // Execute with null todoId (root level)
-      final var result = decomposingOperator.execute(Map.of("task", augmentedTask), null);
-
-      if (result.ok()) {
+      if (result.success()) {
         lifecycleService.commitExecution(taskExecutionId, projectId, task, context);
         log.info("Task completed successfully for project {}", projectId);
       } else {
-        lifecycleService.failExecution(taskExecutionId, projectId, result.message(),
+        lifecycleService.failExecution(taskExecutionId, projectId, result.errorMessage(),
             context.getArtifacts());
-        log.error("Task failed for project {}: {}", projectId, result.message());
+        log.error("Task failed for project {}: {}", projectId, result.errorMessage());
       }
     } catch (Exception e) {
       lifecycleService.failExecution(taskExecutionId, projectId, e.getMessage(),

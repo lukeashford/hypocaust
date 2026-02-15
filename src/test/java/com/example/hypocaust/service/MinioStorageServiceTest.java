@@ -89,4 +89,34 @@ class MinioStorageServiceTest {
     verify(minioClient).putObject(captor.capture());
     assertThat(captor.getValue().object()).isEqualTo(expectedKey);
   }
+
+  @Test
+  void shouldMapAudioMimeToWav() throws Exception {
+    byte[] data = "dummy audio".getBytes();
+    String hash = hashCalculator.calculateSha256Hash(data);
+    String expectedKey = String.format("blobs/%s/%s/%s.wav", hash.substring(0, 2),
+        hash.substring(2, 4), hash);
+
+    when(minioClient.statObject(any(StatObjectArgs.class))).thenThrow(
+        new RuntimeException("not found"));
+
+    String key = storageService.store(data, "audio/x-wav");
+
+    assertThat(key).isEqualTo(expectedKey);
+  }
+
+  @Test
+  void shouldMapVideoMimeToWebm() throws Exception {
+    byte[] data = "dummy video".getBytes();
+    String hash = hashCalculator.calculateSha256Hash(data);
+    String expectedKey = String.format("blobs/%s/%s/%s.webm", hash.substring(0, 2),
+        hash.substring(2, 4), hash);
+
+    when(minioClient.statObject(any(StatObjectArgs.class))).thenThrow(
+        new RuntimeException("not found"));
+
+    String key = storageService.store(data, "video/webm");
+
+    assertThat(key).isEqualTo(expectedKey);
+  }
 }
