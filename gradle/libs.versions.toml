@@ -12,6 +12,7 @@ jtokkit = "1.1.0"
 minio = "8.6.0"
 springdoc = "2.8.6"
 testcontainers = "1.21.4"
+testcontainers-minio = "1.21.4"
 
 [libraries]
 # BOMs
@@ -31,6 +32,7 @@ uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers-minio" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
@@ -57,7 +59,7 @@ tools = ["uuid-creator", "jtokkit"]
 
 # Testing infrastructure
 testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]
-testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
+testing-containers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql", "testcontainers-minio"]
 
 [plugins]
 # Plugin versions for reference
