@@ -7,12 +7,13 @@ import com.example.hypocaust.service.EmbeddingService;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.annotation.Tool;
@@ -65,10 +66,8 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
   private void discoverAndIndexTools() {
     log.info("Discovering and indexing tools...");
 
-    var upsertRows = new ArrayList<ToolEmbedding>();
-    var currentToolNames = new HashSet<String>();
-
-    String[] beanNames = applicationContext.getBeanDefinitionNames();
+    final List<ToolCandidate> candidates = new ArrayList<>();
+    final String[] beanNames = applicationContext.getBeanDefinitionNames();
 
     for (String beanName : beanNames) {
       Class<?> beanType = applicationContext.getType(beanName);
@@ -98,8 +97,7 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
       for (Method method : beanClass.getMethods()) {
         var disc = AnnotatedElementUtils.findMergedAnnotation(method, DiscoverableTool.class);
         if (disc != null) {
-          registerAndIndex(bean, method, disc.name(), disc.description(), upsertRows,
-              currentToolNames);
+          candidates.add(new ToolCandidate(bean, method, disc.name(), disc.description()));
           foundMethodTool = true;
         }
       }
@@ -111,8 +109,8 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
             DiscoverableTool.class);
         Method primary = findPrimaryMethod(beanClass);
         if (primary != null) {
-          registerAndIndex(bean, primary, classDisc.name(), classDisc.description(), upsertRows,
-              currentToolNames);
+          candidates.add(
+              new ToolCandidate(bean, primary, classDisc.name(), classDisc.description()));
         } else {
           log.warn("Class {} is marked @DiscoverableTool but has no unique primary method",
               beanClass.getSimpleName());
@@ -120,14 +118,28 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
       }
     }
 
+    // 3. Pre-fetch existing embeddings to avoid N+1
+    final Map<String, ToolEmbedding> existingMap = repository.findAll().stream()
+        .collect(Collectors.toMap(ToolEmbedding::getToolName, e -> e));
+
+    // 4. Parallel process each candidate
+    final List<ToolEmbedding> upsertRows = candidates.parallelStream()
+        .map(c -> registerAndIndex(c, existingMap))
+        .filter(Objects::nonNull)
+        .toList();
+
     if (!upsertRows.isEmpty()) {
       repository.saveAll(upsertRows);
       log.info("Generated embeddings for {} tools", upsertRows.size());
     }
 
     // Clean up obsolete embeddings
+    final Set<String> currentToolNames = candidates.stream()
+        .map(c -> resolveToolName(c.method(), c.name()))
+        .collect(Collectors.toSet());
+
     try {
-      var obsolete = repository.findAll().stream()
+      var obsolete = existingMap.values().stream()
           .filter(e -> !currentToolNames.contains(e.getToolName()))
           .toList();
       if (!obsolete.isEmpty()) {
@@ -141,21 +153,18 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
     log.info("Tool registry initialized with {} tools", callbacksByName.size());
   }
 
-  private void registerAndIndex(Object bean, Method toolMethod, String name, String description,
-      List<ToolEmbedding> upsertRows, HashSet<String> currentToolNames) {
+  private ToolEmbedding registerAndIndex(ToolCandidate c, Map<String, ToolEmbedding> existingMap) {
+    final Object bean = c.bean();
+    final Method toolMethod = c.method();
+    final String name = c.name();
+    final String description = c.description();
 
-    // Determine metadata (Source of truth: @Tool if name/description are empty in DiscoverableTool)
-    var toolAnnotation = AnnotatedElementUtils.findMergedAnnotation(toolMethod, Tool.class);
-    String toolName = (name != null && !name.isEmpty()) ? name :
-        (toolAnnotation != null && !toolAnnotation.name().isEmpty()) ? toolAnnotation.name()
-            : toolMethod.getName();
-    String toolDescription = (description != null && !description.isEmpty()) ? description :
-        (toolAnnotation != null ? toolAnnotation.description() : "");
-
-    currentToolNames.add(toolName);
+    // Determine metadata
+    final String toolName = resolveToolName(toolMethod, name);
+    final String toolDescription = resolveToolDescription(toolMethod, description);
 
     // Build ToolCallback using Spring AI's infrastructure
-    var callback = MethodToolCallback.builder()
+    final var callback = MethodToolCallback.builder()
         .toolDefinition(org.springframework.ai.tool.definition.ToolDefinition.builder()
             .name(toolName)
             .description(toolDescription)
@@ -168,7 +177,7 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
     callbacksByName.put(toolName, callback);
 
     // Build descriptor for search results
-    var descriptor = new ToolDescriptor(
+    final var descriptor = new ToolDescriptor(
         toolName,
         toolDescription,
         buildParameterSchema(toolMethod)
@@ -177,24 +186,41 @@ public class SemanticSearchToolRegistry implements ToolRegistry, SmartInitializi
 
     // Generate embedding
     try {
-      var embeddingText = createEmbeddingText(toolName, toolDescription, toolMethod);
-      var textHash = hashCalculator.calculateSha256Hash(embeddingText);
-      var existingOpt = repository.findByToolName(toolName);
+      final var embeddingText = createEmbeddingText(toolName, toolDescription, toolMethod);
+      final var textHash = hashCalculator.calculateSha256Hash(embeddingText);
+      final ToolEmbedding existing = existingMap.get(toolName);
 
-      if (existingOpt.isEmpty()) {
-        upsertRows.add(ToolEmbedding.builder()
+      if (existing == null) {
+        return ToolEmbedding.builder()
             .toolName(toolName)
             .embedding(embeddingService.generateEmbedding(embeddingText))
             .hash(textHash)
-            .build());
-      } else if (!Objects.equals(existingOpt.get().getHash(), textHash)) {
-        var existing = existingOpt.get();
+            .build();
+      } else if (!Objects.equals(existing.getHash(), textHash)) {
         existing.updateEmbedding(embeddingService.generateEmbedding(embeddingText), textHash);
-        upsertRows.add(existing);
+        return existing;
       }
     } catch (Exception e) {
       log.error("Failed to process tool {}: {}", toolName, e.getMessage(), e);
     }
+    return null;
+  }
+
+  private String resolveToolName(Method toolMethod, String name) {
+    var toolAnnotation = AnnotatedElementUtils.findMergedAnnotation(toolMethod, Tool.class);
+    return (name != null && !name.isEmpty()) ? name :
+        (toolAnnotation != null && !toolAnnotation.name().isEmpty()) ? toolAnnotation.name()
+            : toolMethod.getName();
+  }
+
+  private String resolveToolDescription(Method toolMethod, String description) {
+    var toolAnnotation = AnnotatedElementUtils.findMergedAnnotation(toolMethod, Tool.class);
+    return (description != null && !description.isEmpty()) ? description :
+        (toolAnnotation != null ? toolAnnotation.description() : "");
+  }
+
+  private record ToolCandidate(Object bean, Method method, String name, String description) {
+
   }
 
   private Method findPrimaryMethod(Class<?> clazz) {

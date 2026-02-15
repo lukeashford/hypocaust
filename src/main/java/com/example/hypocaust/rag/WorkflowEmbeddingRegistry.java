@@ -10,9 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,55 +78,55 @@ public class WorkflowEmbeddingRegistry {
       return;
     }
 
-    final var upserts = new ArrayList<WorkflowEmbedding>();
-    final var currentNames = new HashSet<String>();
+    // 1. Pre-fetch all existing WorkflowEmbedding records
+    final Map<String, WorkflowEmbedding> existingMap = repository.findAll().stream()
+        .collect(Collectors.toMap(WorkflowEmbedding::getName, e -> e));
 
-    for (final var r : records) {
-      currentNames.add(r.name);
-      try {
-        final var existingOpt = repository.findByName(r.name);
-        if (existingOpt.isEmpty()) {
-          final var embedding = embeddingService.generateEmbedding(r.embeddingText);
-          upserts.add(WorkflowEmbedding.builder()
-              .name(r.name)
-              .embedding(embedding)
-              .hash(r.hash)
-              .text(r.fullText)
-              .build());
-        } else {
-          final var existing = existingOpt.get();
-          final var requiresReembed = !Objects.equals(existing.getHash(), r.hash);
-          final var textChanged = !Objects.equals(existing.getText(), r.fullText);
-          if (requiresReembed || textChanged) {
-            final float[] newEmbedding = requiresReembed
-                ? embeddingService.generateEmbedding(r.embeddingText)
-                : null;
-            existing.update(r.fullText, r.hash, newEmbedding);
-            upserts.add(existing);
+    // 2. Process records in parallel using virtual threads (via parallelStream)
+    final List<WorkflowEmbedding> upserts = records.parallelStream()
+        .map(r -> {
+          try {
+            final WorkflowEmbedding existing = existingMap.get(r.name);
+            if (existing == null) {
+              final var embedding = embeddingService.generateEmbedding(r.embeddingText);
+              return WorkflowEmbedding.builder()
+                  .name(r.name)
+                  .embedding(embedding)
+                  .hash(r.hash)
+                  .text(r.fullText)
+                  .build();
+            } else {
+              final boolean requiresReembed = !Objects.equals(existing.getHash(), r.hash);
+              final boolean textChanged = !Objects.equals(existing.getText(), r.fullText);
+              if (requiresReembed || textChanged) {
+                final float[] newEmbedding = requiresReembed
+                    ? embeddingService.generateEmbedding(r.embeddingText)
+                    : null;
+                existing.update(r.fullText, r.hash, newEmbedding);
+                return existing;
+              }
+            }
+          } catch (Exception e) {
+            log.warn("Failed to process workflow {}: {}", r.name, e.getMessage());
           }
-        }
-      } catch (Exception e) {
-        log.warn("Failed to process workflow {}: {}", r.name, e.getMessage());
-      }
-    }
+          return null;
+        })
+        .filter(Objects::nonNull)
+        .toList();
 
     if (!upserts.isEmpty()) {
       repository.saveAll(upserts);
       log.info("Generated embeddings for {} workflows", upserts.size());
     }
 
-    // cleanup obsolete
-    try {
-      final var all = repository.findAll();
-      final var obsolete = all.stream()
-          .filter(e -> !currentNames.contains(e.getName()))
-          .toList();
-      if (!obsolete.isEmpty()) {
-        repository.deleteAll(obsolete);
-        log.info("Deleted {} obsolete workflow embeddings", obsolete.size());
-      }
-    } catch (Exception e) {
-      log.warn("Failed to clean up obsolete workflow embeddings: {}", e.getMessage(), e);
+    // 3. Cleanup obsolete using the map
+    final Set<String> currentNames = records.stream().map(r -> r.name).collect(Collectors.toSet());
+    final List<WorkflowEmbedding> obsolete = existingMap.values().stream()
+        .filter(e -> !currentNames.contains(e.getName()))
+        .toList();
+    if (!obsolete.isEmpty()) {
+      repository.deleteAll(obsolete);
+      log.info("Deleted {} obsolete workflow embeddings", obsolete.size());
     }
   }
 

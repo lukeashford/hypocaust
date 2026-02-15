@@ -10,9 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,66 +83,66 @@ public class ModelEmbeddingRegistry {
       return;
     }
 
-    final var upsertRows = new ArrayList<ModelEmbedding>();
-    final var currentNames = new HashSet<String>();
+    // 1. Fetch all existing records into a Map to avoid N+1 queries
+    final Map<String, ModelEmbedding> existingMap = repository.findAll().stream()
+        .collect(Collectors.toMap(ModelEmbedding::getName, e -> e));
 
-    for (final var ch : chunks) {
-      currentNames.add(ch.name);
-      try {
-        final var existingOpt = repository.findByName(ch.name);
-        if (existingOpt.isEmpty()) {
-          // New
-          final var embedding = embeddingService.generateEmbedding(ch.embeddingText);
-          upsertRows.add(ModelEmbedding.builder()
-              .name(ch.name)
-              .embedding(embedding)
-              .hash(ch.hash)
-              .owner(ch.owner)
-              .modelId(ch.modelId)
-              .description(ch.description)
-              .bestPractices(ch.bestPractices)
-              .tier(ch.tier)
-              .build());
-        } else {
-          final var existing = existingOpt.get();
-          final var requiresReembed = !Objects.equals(existing.getHash(), ch.hash);
-          final var metadataChanged = !Objects.equals(existing.getOwner(), ch.owner)
-              || !Objects.equals(existing.getModelId(), ch.modelId)
-              || !Objects.equals(existing.getDescription(), ch.description)
-              || !Objects.equals(existing.getBestPractices(), ch.bestPractices)
-              || !Objects.equals(existing.getTier(), ch.tier);
+    // 2. Process chunks in parallel using virtual threads (via parallelStream)
+    final List<ModelEmbedding> upsertRows = chunks.parallelStream()
+        .map(ch -> {
+          try {
+            final ModelEmbedding existing = existingMap.get(ch.name);
+            if (existing == null) {
+              // New record
+              return ModelEmbedding.builder()
+                  .name(ch.name)
+                  .embedding(embeddingService.generateEmbedding(ch.embeddingText))
+                  .hash(ch.hash)
+                  .owner(ch.owner)
+                  .modelId(ch.modelId)
+                  .description(ch.description)
+                  .bestPractices(ch.bestPractices)
+                  .tier(ch.tier)
+                  .build();
+            } else {
+              // Check for changes
+              final boolean requiresReembed = !Objects.equals(existing.getHash(), ch.hash);
+              final boolean metadataChanged = !Objects.equals(existing.getOwner(), ch.owner)
+                  || !Objects.equals(existing.getModelId(), ch.modelId)
+                  || !Objects.equals(existing.getDescription(), ch.description)
+                  || !Objects.equals(existing.getBestPractices(), ch.bestPractices)
+                  || !Objects.equals(existing.getTier(), ch.tier);
 
-          if (requiresReembed || metadataChanged) {
-            final float[] newEmbedding = requiresReembed
-                ? embeddingService.generateEmbedding(ch.embeddingText)
-                : null;
-            existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
-                ch.description, ch.bestPractices, ch.tier);
-            upsertRows.add(existing);
+              if (requiresReembed || metadataChanged) {
+                final float[] newEmbedding = requiresReembed
+                    ? embeddingService.generateEmbedding(ch.embeddingText)
+                    : null;
+                existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
+                    ch.description, ch.bestPractices, ch.tier);
+                return existing;
+              }
+            }
+          } catch (Exception e) {
+            log.warn("Failed to process chunk {}: {}", ch.name, e.getMessage());
           }
-        }
-      } catch (Exception e) {
-        log.warn("Failed to process chunk {}: {}", ch.name, e.getMessage());
-      }
-    }
+          return null;
+        })
+        .filter(Objects::nonNull)
+        .toList();
 
     if (!upsertRows.isEmpty()) {
       repository.saveAll(upsertRows);
       log.info("Generated embeddings for {} chunks", upsertRows.size());
     }
 
-    // Delete obsolete
-    try {
-      final var all = repository.findAll();
-      final var obsolete = all.stream()
-          .filter(e -> !currentNames.contains(e.getName()))
-          .toList();
-      if (!obsolete.isEmpty()) {
-        repository.deleteAll(obsolete);
-        log.info("Deleted {} obsolete document embeddings", obsolete.size());
-      }
-    } catch (Exception e) {
-      log.warn("Failed to clean up obsolete document embeddings: {}", e.getMessage(), e);
+    // 3. Efficient cleanup using the map
+    final Set<String> currentNames = chunks.stream().map(c -> c.name).collect(Collectors.toSet());
+    final List<ModelEmbedding> obsolete = existingMap.values().stream()
+        .filter(e -> !currentNames.contains(e.getName()))
+        .toList();
+    if (!obsolete.isEmpty()) {
+      repository.deleteAll(obsolete);
+      log.info("Deleted {} obsolete document embeddings", obsolete.size());
     }
   }
 

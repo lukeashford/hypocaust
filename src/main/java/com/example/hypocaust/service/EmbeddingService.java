@@ -4,6 +4,7 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.OpenAiEmbeddingModelSpec;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.stereotype.Component;
 
@@ -36,5 +37,17 @@ public class EmbeddingService {
     final var embeddingModel = getEmbeddingModel();
     final var response = embeddingModel.embedForResponse(List.of(text));
     return response.getResult().getOutput();
+  }
+
+  /**
+   * Generates embeddings for the given list of texts using the configured embedding model.
+   *
+   * @param texts the list of input texts to generate embeddings for
+   * @return list of float arrays representing the text embeddings
+   */
+  public List<float[]> generateEmbeddings(List<String> texts) {
+    final var embeddingModel = getEmbeddingModel();
+    final var response = embeddingModel.embedForResponse(texts);
+    return response.getResults().stream().map(Embedding::getOutput).toList();
   }
 }
