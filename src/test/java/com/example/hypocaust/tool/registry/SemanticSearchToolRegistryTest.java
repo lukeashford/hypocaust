@@ -101,7 +101,7 @@ class SemanticSearchToolRegistryTest {
 
     var schema = callback.get().getToolDefinition().inputSchema();
     assertThat(schema).contains("\"enum\":");
-    assertThat(schema).contains("STRUCTURED_JSON");
+    assertThat(schema).contains("TEXT");
     assertThat(schema).contains("IMAGE");
     assertThat(schema).contains("AUDIO");
     assertThat(schema).contains("VIDEO");

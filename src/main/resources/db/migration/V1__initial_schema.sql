@@ -43,8 +43,8 @@ CREATE TABLE artifact
     created_at        timestamptz  NOT NULL DEFAULT now(),
     project_id        uuid         NOT NULL REFERENCES project (id) ON DELETE CASCADE,
     kind              text         NOT NULL CHECK (kind IN
-                                                   ('STRUCTURED_JSON', 'IMAGE', 'PDF', 'AUDIO',
-                                                    'VIDEO')),
+                                                   ('IMAGE', 'PDF', 'AUDIO',
+                                                    'VIDEO', 'TEXT', 'OTHER')),
     status            text         NOT NULL CHECK (status IN
                                                    ('GESTATING', 'CREATED', 'MANIFESTED',
                                                     'CANCELLED',
@@ -53,6 +53,7 @@ CREATE TABLE artifact
     storage_key       text,
     inline_content jsonb,
     metadata          jsonb,
+    mime_type         text,
     name              varchar(100) NOT NULL,
     description       text,
     task_execution_id uuid REFERENCES task_execution (id)

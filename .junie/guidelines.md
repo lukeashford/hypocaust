@@ -5,4 +5,5 @@
   speculative "maybe later" annotations.
 * For Spring components and similar, prefer **Lombok `@RequiredArgsConstructor`** for DI instead of
   explicit constructors.
-* This is a green-field project. Design ahead, instead of worrying about legacy compat.
+* This is a green-field project. Design ahead, instead of worrying about legacy compat. Consolidate
+  migrations into V1.

@@ -660,7 +660,7 @@ shifts, sound redesign, and iterative audio direction.
 
 ### Description
 
-Llama 4 Maverick Instruct is a high-end STRUCTURED_JSON-capable text generation model (
+Llama 4 Maverick Instruct is a high-end JSON-capable text generation model (
 chat/instruct) geared for reasoning, planning, and agent workflows with long outputs, useful for
 tool-using autonomous agents, creative writing, coding assistance, and RAG orchestration.
 
@@ -681,7 +681,7 @@ tool-using autonomous agents, creative writing, coding assistance, and RAG orche
 
 ### Description
 
-Llama 3.1 405B Instruct is a frontier-scale STRUCTURED_JSON-capable text model optimized for
+Llama 3.1 405B Instruct is a frontier-scale JSON-capable text model optimized for
 high-quality instruction following, long-form generation, and strong general reasoning (excellent
 for complex agents, deep summarization, multi-step planning, and high-stakes drafting).
 
@@ -701,7 +701,7 @@ for complex agents, deep summarization, multi-step planning, and high-stakes dra
 
 ### Description
 
-Qwen3 235B A22B Instruct is a large STRUCTURED_JSON-capable text generation model aimed at strong
+Qwen3 235B A22B Instruct is a large JSON-capable text generation model aimed at strong
 instruction following, multilingual utility, and high-throughput agent usage (good for planning,
 extraction, synthesis, coding tasks, and creative ideation).
 
@@ -721,7 +721,7 @@ extraction, synthesis, coding tasks, and creative ideation).
 
 ### Description
 
-DeepSeek v3.1 is a strong STRUCTURED_JSON-capable text model for reasoning-heavy tasks, coding, and
+DeepSeek v3.1 is a strong JSON-capable text model for reasoning-heavy tasks, coding, and
 agent planning; it exposes a `thinking` control that can trade latency for deeper reasoning (useful
 for autonomous agents and multi-step problem solving).
 
@@ -740,7 +740,7 @@ for autonomous agents and multi-step problem solving).
 
 ### Description
 
-DeepSeek R1 is a STRUCTURED_JSON-capable reasoning-oriented text model suited to multi-step
+DeepSeek R1 is a JSON-capable reasoning-oriented text model suited to multi-step
 analysis, chain planning, code reasoning, and robust agent tool orchestration (useful when you need
 stronger deliberation than standard instruct models).
 
@@ -761,7 +761,7 @@ stronger deliberation than standard instruct models).
 ### Description
 
 Gemma 3 27B IT is a large multimodal-capable (text + optional image input) instruct model for
-STRUCTURED_JSON-friendly generation, multilingual tasks, and long-context assistant use; **Version
+JSON-friendly generation, multilingual tasks, and long-context assistant use; **Version
 is a placeholder**—pin the exact 64-hex version from the model’s Replicate “Versions” page before
 production use.
 
@@ -782,7 +782,7 @@ production use.
 ### Description
 
 Gemma 3 12B IT is a multimodal-capable instruct model (text + optional image input) for
-STRUCTURED_JSON-style outputs, general assistant tasks, and efficient deployment with solid
+JSON-style outputs, general assistant tasks, and efficient deployment with solid
 reasoning for its size (good for scalable agents and multimodal RAG helpers).
 
 ### Best Practices
@@ -800,7 +800,7 @@ reasoning for its size (good for scalable agents and multimodal RAG helpers).
 ### Description
 
 Gemma 3 4B IT is a smaller multimodal-capable instruct model optimized for fast, cost-effective
-STRUCTURED_JSON-friendly text generation and lightweight multimodal tasks (good for high-QPS
+JSON-friendly text generation and lightweight multimodal tasks (good for high-QPS
 assistants, extraction, and short-form creative outputs).
 
 ### Best Practices
@@ -817,7 +817,7 @@ assistants, extraction, and short-form creative outputs).
 
 ### Description
 
-Gemma2 27B IT is a strong general-purpose instruct model for STRUCTURED_JSON-friendly generation,
+Gemma2 27B IT is a strong general-purpose instruct model for JSON-friendly generation,
 summarization, reasoning, and content drafting with a good quality/latency tradeoff (useful for
 agent planning, RAG synthesis, and long-form writing).
 
@@ -835,7 +835,7 @@ agent planning, RAG synthesis, and long-form writing).
 
 ### Description
 
-Gemma2 9B IT is an efficient instruct model for STRUCTURED_JSON-capable text generation,
+Gemma2 9B IT is an efficient instruct model for JSON-capable text generation,
 summarization, and everyday reasoning at lower cost; **Version is a placeholder**—pin the exact
 64-hex version from Replicate “Versions” before production deployment.
 
@@ -853,7 +853,7 @@ summarization, and everyday reasoning at lower cost; **Version is a placeholder*
 
 ### Description
 
-Phi-3 Mini 4K Instruct is a lightweight STRUCTURED_JSON-friendly text model optimized for fast
+Phi-3 Mini 4K Instruct is a lightweight JSON-friendly text model optimized for fast
 responses and strong reasoning-per-parameter, ideal for low-latency assistants, code snippets, short
 planning, and scalable agent microservices.
 
@@ -871,7 +871,7 @@ planning, and scalable agent microservices.
 
 ### Description
 
-Phi-3 Mini 128K Instruct is a long-context STRUCTURED_JSON-capable text model for large documents,
+Phi-3 Mini 128K Instruct is a long-context JSON-capable text model for large documents,
 extended conversations, and RAG-heavy synthesis where you need broad context retention with
 relatively low compute.
 
@@ -890,7 +890,7 @@ relatively low compute.
 
 ### Description
 
-Phi-3 Medium 4K Instruct is a mid-size STRUCTURED_JSON-capable text model (14B class) offering
+Phi-3 Medium 4K Instruct is a mid-size JSON-capable text model (14B class) offering
 stronger reasoning and robustness than Mini while still targeting efficient deployment for
 assistants, coding, and planning workloads.
 
@@ -908,7 +908,7 @@ assistants, coding, and planning workloads.
 
 ### Description
 
-Ollama Llama 3.3 70B is a STRUCTURED_JSON-capable large text model wrapper optimized for assistant
+Ollama Llama 3.3 70B is a JSON-capable large text model wrapper optimized for assistant
 dialogue, multilingual generation, and strong general reasoning with long context (useful for
 self-contained deployments and agent backends that prefer Ollama-style serving).
 
@@ -927,7 +927,7 @@ self-contained deployments and agent backends that prefer Ollama-style serving).
 
 ### Description
 
-Ollama Qwen2.5 72B is a large STRUCTURED_JSON-capable text model wrapper aimed at strong instruction
+Ollama Qwen2.5 72B is a large JSON-capable text model wrapper aimed at strong instruction
 following and multilingual utility; **Version is a placeholder**—pin the exact 64-hex version from
 Replicate “Versions” before production use.
 

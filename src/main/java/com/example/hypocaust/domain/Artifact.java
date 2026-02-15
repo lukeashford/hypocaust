@@ -24,7 +24,7 @@ public record Artifact(
         nullable = true)
     String url,
 
-    @Schema(description = "Inline structured content (for STRUCTURED_JSON kind). Display directly as text.",
+    @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
         nullable = true)
     JsonNode inlineContent,
 
@@ -39,7 +39,10 @@ public record Artifact(
     @NonNull ArtifactStatus status,
 
     @Schema(description = "Additional metadata (dimensions, file size, etc.)", nullable = true)
-    JsonNode metadata
+    JsonNode metadata,
+
+    @Schema(description = "Technical MIME type", example = "image/webp")
+    String mimeType
 ) implements ArtifactEventPayload {
 
   public static Artifact fromDraft(String name, ArtifactDraft draft) {
@@ -52,14 +55,32 @@ public record Artifact(
         .description(draft.description())
         .status(draft.status())
         .metadata(draft.metadata())
+        .mimeType(null) // Drafts don't have mimeType yet
         .build();
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
   }
 
   public Artifact withUrl(String url) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata);
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withMimeType(String mimeType) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withMetadata(JsonNode metadata) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
+  }
+
+  public Artifact withInlineContent(JsonNode inlineContent) {
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
+        mimeType);
   }
 }

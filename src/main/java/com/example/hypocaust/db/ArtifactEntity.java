@@ -54,22 +54,22 @@ public class ArtifactEntity extends BaseEntity {
   // =====================================================
 
   /**
-   * The type of content this artifact represents. - STRUCTURED_JSON: JSON data, text, analysis
-   * results - IMAGE: Visual content (PNG, JPG, etc.) - PDF: Document files including presentations
-   * - AUDIO: Sound files and recordings - VIDEO: Video content
+   * The type of content this artifact represents. - TEXT: Plain text or Markdown documents - IMAGE:
+   * Visual content (PNG, JPG, etc.) - PDF: Portable Document Format files - AUDIO: Sound files and
+   * recordings - VIDEO: Video content
    */
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private ArtifactKind kind;
 
   /**
-   * Storage location for file-based artifacts (images, PDFs, etc.)
+   * Storage location for file-based artifacts (images, PDFs, etc.). Null for inline artifacts.
    */
   private String storageKey;
 
   /**
-   * Inline inlineContent for structured artifacts (JSON, text). Used when the artifact
-   * inlineContent can be stored directly in the database.
+   * Inline content for textual artifacts (JSON, text). Used when the artifact content can be stored
+   * directly in the database.
    */
   @Column(columnDefinition = "jsonb")
   @JdbcTypeCode(SqlTypes.JSON)
@@ -114,5 +114,10 @@ public class ArtifactEntity extends BaseEntity {
   @Column(columnDefinition = "jsonb")
   @JdbcTypeCode(SqlTypes.JSON)
   private JsonNode metadata;
+
+  /**
+   * Technical MIME type of the artifact.
+   */
+  private String mimeType;
 
 }
