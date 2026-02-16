@@ -51,7 +51,7 @@ public class ArtifactsContext {
    */
   public synchronized void edit(Artifact newVersion) {
     String name = newVersion.name();
-    Artifact existing = versionService.getMaterializedArtifactAt(name, taskExecutionId)
+    Artifact existing = versionService.getMaterializedArtifactAt(name, predecessorId)
         .orElseThrow(
             () -> new ArtifactNotFoundException("Artifact not found: " + name));
 
@@ -69,7 +69,7 @@ public class ArtifactsContext {
    * Schedule an artifact for deletion.
    */
   public synchronized void delete(String name) {
-    if (!versionService.exists(name, taskExecutionId, changelist)) {
+    if (!versionService.exists(name, predecessorId, changelist)) {
       throw new ArtifactNotFoundException("Artifact not found: " + name);
     }
 
@@ -103,7 +103,7 @@ public class ArtifactsContext {
 
   private synchronized String generateUniqueName(String description) {
     Set<String> existingNames = new HashSet<>(
-        versionService.computeArtifactSnapshotAt(taskExecutionId).keySet());
+        versionService.computeArtifactSnapshotAt(predecessorId).keySet());
 
     existingNames.addAll(changelist.getAddedNames());
     existingNames.addAll(changelist.getEditedNames());
@@ -113,14 +113,14 @@ public class ArtifactsContext {
   }
 
   public synchronized Optional<Artifact> get(String name) {
-    return versionService.getArtifactWithChanges(name, taskExecutionId, changelist);
+    return versionService.getArtifactWithChanges(name, predecessorId, changelist);
   }
 
   public synchronized List<Artifact> getAllWithChanges() {
-    return versionService.getAllArtifactsWithChanges(taskExecutionId, changelist);
+    return versionService.getAllArtifactsWithChanges(predecessorId, changelist);
   }
 
   public synchronized boolean exists(String name) {
-    return versionService.exists(name, taskExecutionId, changelist);
+    return versionService.exists(name, predecessorId, changelist);
   }
 }

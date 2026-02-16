@@ -1,23 +1,17 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.agent.Decomposer;
-import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
-import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
-import com.example.hypocaust.repo.TaskExecutionRepository;
-import com.example.hypocaust.service.events.EventService;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service for handling task submission and execution. Manages the TaskExecution lifecycle including
@@ -29,20 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
 
   private final ProjectService projectService;
-  private final TaskExecutionRepository taskExecutionRepository;
   private final Decomposer decomposer;
   private final ExecutorService runExecutorService;
   private final ModelCallLogger modelCallLogger;
-  private final EventService eventService;
-  private final VersionManagementService versionService;
   private final TaskExecutionContextFactory contextFactory;
   private final TaskExecutionLifecycleService lifecycleService;
 
-  @Transactional
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
     final var projectId = request.projectId();
-    final var predecessorIdInput = request.predecessorId();
 
     if (task == null || task.isBlank()) {
       return TaskResponseDto.rejected("Task description is required");
@@ -57,36 +46,16 @@ public class TaskService {
       return TaskResponseDto.rejected("Project not found: " + projectId);
     }
 
-    // Resolve predecessorId: use provided or find most recent completed
-    // null if none exists (which would be fine for an empty project)
-    UUID predecessorId = Optional.ofNullable(predecessorIdInput)
-        .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
-            .orElse(null));
-
-    // Create TaskExecution entity and transition to RUNNING synchronously
-    final var taskExecution = TaskExecutionEntity.builder()
-        .projectId(projectId)
-        .task(task)
-        .predecessorId(predecessorId)
-        .build();
-    taskExecution.start();
-    taskExecutionRepository.save(taskExecution);
-    final var taskExecutionId = taskExecution.getId();
-
-    // Publish the started event synchronously so the client receives its ID
-    // before connecting to SSE — guarantees no events are lost
-    final UUID firstEventId = eventService.publish(
-        new TaskExecutionStartedEvent(taskExecutionId));
-
-    log.info("Created TaskExecution {} for project {} with predecessor {}",
-        taskExecutionId, projectId, predecessorId);
+    // Atomic state transition
+    // This call starts and finishes its own transaction.
+    var init = lifecycleService.startExecution(projectId, task, request.predecessorId());
 
     // Kick off execution asynchronously
-    final UUID finalPredecessorId = predecessorId;
+    // Now we are GUARANTEED that the database transaction has committed.
     runExecutorService.submit(
-        () -> executeTask(projectId, taskExecutionId, finalPredecessorId, task));
+        () -> executeTask(init.projectId(), init.taskExecutionId(), init.predecessorId(), task));
 
-    return TaskResponseDto.accepted(projectId, taskExecutionId, firstEventId);
+    return TaskResponseDto.accepted(init.projectId(), init.taskExecutionId(), init.firstEventId());
   }
 
   public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
@@ -103,7 +72,7 @@ public class TaskService {
     modelCallLogger.resetSequence();
 
     // Task is already in RUNNING status and the started event was published
-    // synchronously during submitTask()
+    // synchronously during lifecycleService.startExecution()
     try {
       var result = decomposer.execute(task);
 
@@ -111,13 +80,11 @@ public class TaskService {
         lifecycleService.commitExecution(taskExecutionId, projectId, task, context);
         log.info("Task completed successfully for project {}", projectId);
       } else {
-        lifecycleService.failExecution(taskExecutionId, projectId, result.errorMessage(),
-            context.getArtifacts());
+        lifecycleService.failExecution(taskExecutionId, result.errorMessage());
         log.error("Task failed for project {}: {}", projectId, result.errorMessage());
       }
     } catch (Exception e) {
-      lifecycleService.failExecution(taskExecutionId, projectId, e.getMessage(),
-          context != null ? context.getArtifacts() : null);
+      lifecycleService.failExecution(taskExecutionId, e.getMessage());
       log.error("Error executing task for project {}: {}", projectId, e.getMessage(), e);
     } finally {
       // Always clear the context when done

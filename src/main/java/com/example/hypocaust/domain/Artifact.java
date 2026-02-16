@@ -14,10 +14,11 @@ public record Artifact(
     UUID id,
 
     @Schema(description = "Project-unique semantic name used to identify and deduplicate artifacts",
-        example = "cat-astronaut-illustration")
+        example = "cat-astronaut-illustration",
+        requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull String name,
 
-    @Schema(description = "Content type category")
+    @Schema(description = "Content type category", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull ArtifactKind kind,
 
     @Schema(description = "URL to fetch the resource from (available once status is MANIFESTED)",
@@ -25,17 +26,17 @@ public record Artifact(
     String url,
 
     @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
-        nullable = true)
+        nullable = true, type = "string")
     JsonNode inlineContent,
 
-    @Schema(description = "Human-readable title", example = "Cat Astronaut Illustration")
+    @Schema(description = "Human-readable title", example = "Cat Astronaut Illustration", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull String title,
 
-    @Schema(description = "Human-readable description of what this artifact contains")
+    @Schema(description = "Human-readable description of what this artifact contains", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull String description,
 
     @Schema(description = "Processing status. GESTATING = still generating (show skeleton), "
-        + "MANIFESTED = ready to display")
+        + "MANIFESTED = ready to display", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull ArtifactStatus status,
 
     @Schema(description = "Additional metadata (dimensions, file size, etc.)", nullable = true)

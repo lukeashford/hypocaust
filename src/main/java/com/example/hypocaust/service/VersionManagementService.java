@@ -90,7 +90,7 @@ public class VersionManagementService {
    * @return the artifact, or empty if not found or deleted
    */
   public Optional<Artifact> getMaterializedArtifactAt(@NonNull String name,
-      @NonNull UUID taskExecutionId) {
+      UUID taskExecutionId) {
     Map<String, UUID> snapshot = computeArtifactSnapshotAt(taskExecutionId);
     UUID artifactId = snapshot.get(name);
     if (artifactId == null) {
@@ -99,17 +99,17 @@ public class VersionManagementService {
     return artifactService.getArtifact(artifactId);
   }
 
-  public List<Artifact> getAllMaterializedArtifactsAt(@NonNull UUID taskExecutionId) {
+  public List<Artifact> getAllMaterializedArtifactsAt(UUID taskExecutionId) {
     Collection<UUID> artifactIds = computeArtifactSnapshotAt(taskExecutionId).values();
     return artifactService.getArtifacts(artifactIds);
   }
 
-  public List<Artifact> getAllArtifactsWithChanges(@NonNull UUID taskExecutionId,
+  public List<Artifact> getAllArtifactsWithChanges(UUID taskExecutionId,
       Changelist changelist) {
     return changelist.applyTo(getAllMaterializedArtifactsAt(taskExecutionId));
   }
 
-  public Optional<Artifact> getArtifactWithChanges(String name, @NonNull UUID taskExecutionId,
+  public Optional<Artifact> getArtifactWithChanges(String name, UUID taskExecutionId,
       Changelist changelist) {
     return getAllArtifactsWithChanges(taskExecutionId, changelist)
         .stream()
@@ -117,7 +117,7 @@ public class VersionManagementService {
         .findFirst();
   }
 
-  public boolean exists(String name, @NonNull UUID taskExecutionId, Changelist changelist) {
+  public boolean exists(String name, UUID taskExecutionId, Changelist changelist) {
     return getArtifactWithChanges(name, taskExecutionId, changelist).isPresent();
   }
 
