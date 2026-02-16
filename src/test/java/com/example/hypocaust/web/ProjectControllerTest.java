@@ -1,6 +1,7 @@
 package com.example.hypocaust.web;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,7 +37,7 @@ class ProjectControllerTest {
     when(projectService.getProjects()).thenReturn(List.of(dto1, dto2));
 
     // When & Then
-    mockMvc.perform(get(Routes.PROJECTS))
+    mockMvc.perform(get(Routes.PROJECTS).with(jwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].name").value("Project 1"))

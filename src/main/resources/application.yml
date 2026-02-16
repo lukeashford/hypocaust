@@ -4,6 +4,12 @@ spring:
       enabled: true
   application:
     name: hypocaust
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Spring Boot will automatically fetch JWKS from {issuer-uri}/.well-known/openid-configuration
+          issuer-uri: ${CLERK_ISSUER_URI:https://clerk.example.com}
   datasource:
     url: jdbc:postgresql://localhost:7888/hypocaust
     username: ${DB_USERNAME:postgres}
@@ -25,6 +31,8 @@ spring:
 
 app:
   host-url: ${HOST_URL:https://localhost}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
   rag:
     platforms-path: ${PLATFORMS_PATH:src/main/resources/rag/platforms}
     workflows-path: ${WORKFLOWS_PATH:src/main/resources/rag/workflows}

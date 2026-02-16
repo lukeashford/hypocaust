@@ -1,6 +1,11 @@
 spring:
   profiles:
     active: test
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/jwks.json
 
 app:
   storage:
