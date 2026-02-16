@@ -49,7 +49,7 @@ public interface EventMapper {
   default TaskExecutionCompletedEvent toTaskExecutionCompletedEvent(EventEntity entity) {
     var payload = (TaskExecutionCompletedEvent.Payload) entity.getPayload();
     return new TaskExecutionCompletedEvent(entity.getTaskExecutionId(), payload.hasChanges(),
-        payload.message());
+        payload.name(), payload.message());
   }
 
   default TaskExecutionFailedEvent toTaskExecutionFailedEvent(EventEntity entity) {

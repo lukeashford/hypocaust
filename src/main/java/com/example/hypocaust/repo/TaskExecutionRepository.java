@@ -3,6 +3,7 @@ package com.example.hypocaust.repo;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -28,4 +29,15 @@ public interface TaskExecutionRepository extends JpaRepository<TaskExecutionEnti
    * Find all TaskExecutions for a project, ordered by creation time.
    */
   List<TaskExecutionEntity> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
+
+  /**
+   * Find a TaskExecution by its readable name within a project.
+   */
+  Optional<TaskExecutionEntity> findByProjectIdAndName(UUID projectId, String name);
+
+  /**
+   * Get all execution names already taken in a project (for uniqueness checks during generation).
+   */
+  @Query("SELECT te.name FROM TaskExecutionEntity te WHERE te.projectId = :projectId AND te.name IS NOT NULL")
+  Set<String> findAllNamesByProjectId(@Param("projectId") UUID projectId);
 }

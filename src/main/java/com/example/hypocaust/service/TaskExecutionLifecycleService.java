@@ -13,6 +13,7 @@ import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class TaskExecutionLifecycleService {
   private final TodoService todoService;
   private final EventService eventService;
   private final ModelRegistry modelRegistry;
+  private final TaskExecutionNameGeneratorService nameGeneratorService;
 
   /**
    * Initialize a task execution. Transitions to RUNNING synchronously.
@@ -100,16 +102,19 @@ public class TaskExecutionLifecycleService {
     // Materialize todos
     todoService.materialize(context.getTodos().getList(), taskExecutionId);
 
-    // Generate commit message
+    // Generate commit message and execution name
     String commitMessage = generateCommitMessage(task);
+    Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
+    String name = nameGeneratorService.generateUniqueName(task, commitMessage, delta,
+        existingNames);
 
     // Complete the task execution
-    taskExecution.complete(commitMessage, delta);
+    taskExecution.complete(name, commitMessage, delta);
     taskExecutionRepository.save(taskExecution);
 
     // Publish completion event
     eventService.publish(
-        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, commitMessage));
+        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, name, commitMessage));
   }
 
   /**

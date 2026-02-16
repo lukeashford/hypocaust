@@ -87,8 +87,9 @@ public class ProjectContextTool {
     List<TaskExecutionEntity> history =
         taskExecutionRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
     for (TaskExecutionEntity te : history) {
-      contextBuilder.append(String.format("- [%s] Task: %s\n",
+      contextBuilder.append(String.format("- [%s] %s — Task: %s\n",
           te.getStatus(),
+          te.getName(),
           te.getTask() != null ? te.getTask() : "no task"));
       if (te.getCommitMessage() != null) {
         contextBuilder.append(String.format("  Changes: %s\n", te.getCommitMessage()));
@@ -111,6 +112,9 @@ public class ProjectContextTool {
               When explaining what happened, summarize the key changes.
               When asked about prompts that were tried, include the full prompt text.
               When asked about what failed, explain what was attempted and why it failed.
+              Task executions have stable snake_case names (shown before the dash in the history).
+              When asked about historical versions, include the execution name so the caller
+              can use it as a stable reference for version lookback.
               """)
           .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
           .call()

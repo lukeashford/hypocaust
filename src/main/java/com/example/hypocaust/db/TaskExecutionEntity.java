@@ -49,6 +49,13 @@ public class TaskExecutionEntity extends BaseEntity {
   private UUID predecessorId;
 
   /**
+   * LLM-generated readable name for this execution (e.g. "initial_character_designs"). Used for
+   * LLM-addressable version lookbacks instead of UUIDs.
+   */
+  @Column(length = 50)
+  private String name;
+
+  /**
    * Auto-generated summary of changes (null if no changes).
    */
   private String commitMessage;
@@ -68,12 +75,14 @@ public class TaskExecutionEntity extends BaseEntity {
   /**
    * Complete with optional artifact changes.
    *
+   * @param name LLM-generated readable name for version lookback addressing
    * @param commitMessage Summary of what was done (LLM-generated for success)
    * @param delta The changes delta (null if no artifact changes)
    */
-  public void complete(String commitMessage, TaskExecutionDelta delta) {
+  public void complete(String name, String commitMessage, TaskExecutionDelta delta) {
     this.completedAt = Instant.now();
     this.status = TaskExecutionStatus.COMPLETED;
+    this.name = name;
     this.commitMessage = commitMessage;
     this.delta = delta;
   }

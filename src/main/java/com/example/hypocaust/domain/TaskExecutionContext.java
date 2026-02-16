@@ -53,6 +53,7 @@ public class TaskExecutionContext {
   public synchronized TaskExecutionSnapshot getSnapshot() {
     return new TaskExecutionSnapshot(
         taskExecutionId,
+        null, // name is assigned at commit time, not during execution
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges(),
         todos.getList().toList(),

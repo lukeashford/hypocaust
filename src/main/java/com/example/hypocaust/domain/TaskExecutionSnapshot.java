@@ -9,6 +9,11 @@ public record TaskExecutionSnapshot(
     @Schema(description = "ID of this task execution")
     UUID taskExecutionId,
 
+    @Schema(description = "Readable name for this execution (e.g. 'initial_character_designs'). "
+        + "Used for LLM-addressable version lookbacks. Null while still running.",
+        nullable = true)
+    String name,
+
     @Schema(description = "Current lifecycle status")
     TaskExecutionStatus status,
 

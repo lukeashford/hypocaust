@@ -60,7 +60,11 @@ public final class DecomposerPromptFragments {
         return """
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
-            been tried before and whether to regenerate or edit.""";
+            been tried before and whether to regenerate or edit.
+            When the task involves restoring a previous version of an artifact, query project \
+            context to find the execution name where the desired state existed. Task executions \
+            have stable snake_case names (e.g. initial_character_designs) that identify \
+            historical points in the version timeline.""";
       }
 
       @Override

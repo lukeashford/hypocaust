@@ -171,6 +171,22 @@ public class VersionManagementService {
     return delta;
   }
 
+  /**
+   * Gets a historical artifact version by artifact name and execution name. This is the primary
+   * entry point for LLM-driven version lookbacks: "get protagonist_portrait at
+   * initial_character_designs".
+   *
+   * @param artifactName the artifact's semantic name
+   * @param executionName the execution's readable name
+   * @param projectId the project scope
+   * @return the artifact as it existed at that execution, or empty if not found
+   */
+  public Optional<Artifact> getMaterializedArtifactAtExecution(@NonNull String artifactName,
+      @NonNull String executionName, @NonNull UUID projectId) {
+    return taskExecutionRepository.findByProjectIdAndName(projectId, executionName)
+        .flatMap(execution -> getMaterializedArtifactAt(artifactName, execution.getId()));
+  }
+
   public Optional<UUID> getMostRecentTaskExecutionId(UUID projectId) {
     return taskExecutionRepository
         .findMostRecentCompletedByProjectId(projectId)

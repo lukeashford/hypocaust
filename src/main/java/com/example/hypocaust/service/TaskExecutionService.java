@@ -34,6 +34,7 @@ public class TaskExecutionService {
 
     return new TaskExecutionSnapshot(
         id,
+        entity.getName(),
         entity.getStatus(),
         versionManagementService.getAllMaterializedArtifactsAt(id),
         todoService.getTodosForTaskExecution(id),
