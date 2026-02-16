@@ -24,6 +24,7 @@ dependencies {
 
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
+  implementation(libs.spring.boot.starter.oauth2.resource.server)
   implementation(libs.bundles.db)
 
   // Tools
@@ -51,6 +52,7 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.bundles.testing.core)
   testImplementation(libs.bundles.testing.containers)
+  testImplementation(libs.spring.security.test)
   mockitoAgent(platform(libs.springboot.dependencies))
   mockitoAgent(libs.mockito.core)
 }
