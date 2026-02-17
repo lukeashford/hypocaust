@@ -48,7 +48,6 @@ class ArtifactServiceTest {
     UUID artifactId = entity.getId();
 
     Artifact domainArtifact = Artifact.builder()
-        .id(artifactId)
         .name("test")
         .kind(ArtifactKind.IMAGE)
         .url("http://presigned-url")

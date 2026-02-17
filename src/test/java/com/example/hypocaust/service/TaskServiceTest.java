@@ -1,7 +1,6 @@
 package com.example.hypocaust.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -136,7 +135,7 @@ class TaskServiceTest {
     taskService.executeTask(projectId, taskExecutionId, predecessorId, taskDescription);
 
     // Then
-    verify(lifecycleService).failExecution(eq(taskExecutionId), eq(projectId), eq("error"), any());
+    verify(lifecycleService).failExecution(eq(taskExecutionId), eq("error"));
   }
 
   @Test
@@ -152,6 +151,6 @@ class TaskServiceTest {
     taskService.executeTask(projectId, taskExecutionId, predecessorId, taskDescription);
 
     // Then
-    verify(lifecycleService).failExecution(eq(taskExecutionId), eq(projectId), eq("crash"), any());
+    verify(lifecycleService).failExecution(eq(taskExecutionId), eq("crash"));
   }
 }

@@ -149,7 +149,7 @@ class TaskExecutionLifecycleServiceTest {
     UUID executionId = execution.getId();
 
     // When
-    lifecycleService.failExecution(executionId, projectId, "error message", null);
+    lifecycleService.failExecution(executionId, "error message");
 
     // Then
     TaskExecutionEntity updated = taskExecutionRepository.findById(executionId).orElseThrow();
