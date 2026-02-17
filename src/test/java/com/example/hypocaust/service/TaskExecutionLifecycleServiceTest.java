@@ -43,6 +43,9 @@ class TaskExecutionLifecycleServiceTest {
   @MockitoBean
   private ModelRegistry modelRegistry;
 
+  @MockitoBean
+  private TaskExecutionNameGeneratorService nameGeneratorService;
+
   @Test
   void startExecution_withPredecessorId_createsCorrectExecution() {
     // Given

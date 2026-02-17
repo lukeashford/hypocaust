@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactChange;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -55,7 +57,13 @@ class VersionManagementServiceNameResolutionTest {
     when(taskExecutionRepository.findById(execution.getId()))
         .thenReturn(Optional.of(execution));
 
-    Artifact expectedArtifact = mock(Artifact.class);
+    Artifact expectedArtifact = Artifact.builder()
+        .name("hero_portrait")
+        .kind(ArtifactKind.IMAGE)
+        .title("Hero Portrait")
+        .description("Initial designs for the hero")
+        .status(ArtifactStatus.MANIFESTED)
+        .build();
     when(artifactService.getArtifact(artifactId)).thenReturn(Optional.of(expectedArtifact));
 
     Optional<Artifact> result = service.getMaterializedArtifactAtExecution(
