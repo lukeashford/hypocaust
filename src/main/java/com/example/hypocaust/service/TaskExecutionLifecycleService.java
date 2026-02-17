@@ -4,6 +4,7 @@ import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionDelta;
+import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
@@ -107,8 +108,8 @@ public class TaskExecutionLifecycleService {
     taskExecutionRepository.save(taskExecution);
 
     // Publish completion event
-//    eventService.publish(
-//        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, commitMessage));
+    eventService.publish(
+        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, commitMessage));
   }
 
   /**

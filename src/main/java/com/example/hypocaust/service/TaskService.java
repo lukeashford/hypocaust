@@ -2,6 +2,7 @@ package com.example.hypocaust.service;
 
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.agent.TodoExecutor;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
@@ -28,6 +29,8 @@ public class TaskService {
   private final ModelCallLogger modelCallLogger;
   private final TaskExecutionContextFactory contextFactory;
   private final TaskExecutionLifecycleService lifecycleService;
+  private final TodoExecutor todoExecutor;
+  private final TaskWordingService taskWordingService;
 
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
@@ -74,7 +77,9 @@ public class TaskService {
     // Task is already in RUNNING status and the started event was published
     // synchronously during lifecycleService.startExecution()
     try {
-      var result = decomposer.execute(task);
+      // Generate a concise label for the root todo and execute within the todo lifecycle
+      String rootLabel = taskWordingService.generateTodoWording(task);
+      var result = todoExecutor.execute(rootLabel, () -> decomposer.execute(task));
 
       if (result.success()) {
         lifecycleService.commitExecution(taskExecutionId, projectId, task, context);

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class TaskExecutionContextHolder {
 
   private static final ThreadLocal<TaskExecutionContext> contextHolder = new ThreadLocal<>();
-  private static final ThreadLocal<Integer> decomposerDepth = ThreadLocal.withInitial(() -> 0);
+  private static final ThreadLocal<Integer> decomposerDepth = ThreadLocal.withInitial(() -> -1);
   private static final ThreadLocal<Deque<UUID>> todoPath = ThreadLocal.withInitial(ArrayDeque::new);
   private static final ConcurrentHashMap<UUID, TaskExecutionContext> contextsByExecution = new ConcurrentHashMap<>();
 
@@ -27,7 +27,7 @@ public final class TaskExecutionContextHolder {
 
   public static void setContext(TaskExecutionContext ctx) {
     contextHolder.set(ctx);
-    decomposerDepth.set(0);
+    decomposerDepth.set(-1);
     // Register for cross-thread lookup
     contextsByExecution.put(ctx.getTaskExecutionId(), ctx);
   }
@@ -149,7 +149,11 @@ public final class TaskExecutionContextHolder {
    * nesting.
    */
   public static String getIndent() {
-    return "  ".repeat(decomposerDepth.get());
+    int depth = decomposerDepth.get();
+    if (depth <= 0) {
+      return "";
+    }
+    return "  ".repeat(depth);
   }
 
   /**
@@ -164,7 +168,7 @@ public final class TaskExecutionContextHolder {
    */
   public static void decrementDepth() {
     int current = decomposerDepth.get();
-    if (current > 0) {
+    if (current >= 0) {
       decomposerDepth.set(current - 1);
     }
   }

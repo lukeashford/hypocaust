@@ -1,0 +1,71 @@
+package com.example.hypocaust.agent;
+
+import com.example.hypocaust.domain.Todo;
+import com.example.hypocaust.domain.TodoStatus;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Supplier;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+/**
+ * Orchestrates the execution of a task (top-level or subtask), managing the todo lifecycle,
+ * thread-local stack, and depth tracking.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class TodoExecutor {
+
+  /**
+   * Execute a piece of work as a task with a human-readable description.
+   *
+   * @param description The label for the todo representing this task
+   * @param work The work to execute
+   * @param <T> The return type of the work
+   * @return The result of the work
+   */
+  public <T> T execute(String description, Supplier<T> work) {
+    TaskExecutionContextHolder.incrementDepth();
+    UUID parentTodoId = TaskExecutionContextHolder.getCurrentTodoId();
+    String indent = TaskExecutionContextHolder.getIndent();
+
+    // Create a todo for this task
+    Todo todo = new Todo(description, TodoStatus.PENDING);
+    TaskExecutionContextHolder.getTodos().registerSubtodos(parentTodoId, List.of(todo));
+
+    log.info("{}[DECOMPOSER] Starting: {}", indent, description);
+
+    TaskExecutionContextHolder.pushTodoId(todo.id());
+    TaskExecutionContextHolder.markCurrentTodoRunning();
+
+    try {
+      T result = work.get();
+
+      // Handle success/failure based on DecomposerResult if that's what we got
+      if (result instanceof DecomposerResult dr) {
+        if (dr.success()) {
+          TaskExecutionContextHolder.markCurrentTodoCompleted();
+          log.info("{}[DECOMPOSER] Completed: {}", indent, description);
+        } else {
+          TaskExecutionContextHolder.markCurrentTodoFailed();
+          log.warn("{}[DECOMPOSER] Failed: {} - {}", indent, description, dr.errorMessage());
+        }
+      } else {
+        // For other types of work, assume success if no exception was thrown
+        TaskExecutionContextHolder.markCurrentTodoCompleted();
+        log.info("{}[DECOMPOSER] Completed: {}", indent, description);
+      }
+
+      return result;
+    } catch (Exception e) {
+      TaskExecutionContextHolder.markCurrentTodoFailed();
+      log.error("{}[DECOMPOSER] Error: {} - {}", indent, description, e.getMessage(), e);
+      throw e;
+    } finally {
+      TaskExecutionContextHolder.popTodoId();
+      TaskExecutionContextHolder.decrementDepth();
+    }
+  }
+}

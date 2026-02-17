@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.agent.TodoExecutor;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
 import java.util.List;
@@ -24,7 +25,8 @@ class InvokeDecomposerToolTest {
   @BeforeEach
   void setUp() {
     decomposer = mock(Decomposer.class);
-    invokeDecomposerTool = new InvokeDecomposerTool(decomposer);
+    TodoExecutor todoExecutor = new TodoExecutor();
+    invokeDecomposerTool = new InvokeDecomposerTool(decomposer, todoExecutor);
 
     var context = mock(TaskExecutionContext.class);
     var todosContext = mock(TodosContext.class);

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
+import com.example.hypocaust.agent.TodoExecutor;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
@@ -32,6 +33,12 @@ class TaskServiceTest {
 
   @Mock
   private Decomposer decomposer;
+
+  @Mock
+  private TodoExecutor todoExecutor;
+
+  @Mock
+  private TaskWordingService taskWordingService;
 
   @Mock
   private ExecutorService runExecutorService;
@@ -97,6 +104,14 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
+    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("test label");
+    when(todoExecutor.execute(eq("test label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+        invocation -> {
+          @SuppressWarnings("unchecked")
+          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+              1);
+          return supplier.get();
+        });
     when(decomposer.execute(taskDescription)).thenReturn(DecomposerResult.success("done", null));
 
     // Execute the runnable
@@ -129,6 +144,14 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
+    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("fail label");
+    when(todoExecutor.execute(eq("fail label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+        invocation -> {
+          @SuppressWarnings("unchecked")
+          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+              1);
+          return supplier.get();
+        });
     when(decomposer.execute(taskDescription)).thenReturn(DecomposerResult.failure("error"));
 
     // When
@@ -145,6 +168,14 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
+    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("boom label");
+    when(todoExecutor.execute(eq("boom label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+        invocation -> {
+          @SuppressWarnings("unchecked")
+          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+              1);
+          return supplier.get();
+        });
     when(decomposer.execute(taskDescription)).thenThrow(new RuntimeException("crash"));
 
     // When
