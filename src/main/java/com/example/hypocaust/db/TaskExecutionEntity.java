@@ -75,14 +75,12 @@ public class TaskExecutionEntity extends BaseEntity {
   /**
    * Complete with optional artifact changes.
    *
-   * @param name LLM-generated readable name for version lookback addressing
    * @param commitMessage Summary of what was done (LLM-generated for success)
    * @param delta The changes delta (null if no artifact changes)
    */
-  public void complete(String name, String commitMessage, TaskExecutionDelta delta) {
+  public void complete(String commitMessage, TaskExecutionDelta delta) {
     this.completedAt = Instant.now();
     this.status = TaskExecutionStatus.COMPLETED;
-    this.name = name;
     this.commitMessage = commitMessage;
     this.delta = delta;
   }

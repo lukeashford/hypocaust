@@ -56,11 +56,16 @@ public class TaskExecutionLifecycleService {
         .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
             .orElse(null));
 
+    // Generate execution name upfront so the entity is named from creation
+    Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
+    String name = nameGeneratorService.generateUniqueName(task, existingNames);
+
     // Create TaskExecution entity and transition to RUNNING synchronously
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
         .task(task)
         .predecessorId(predecessorId)
+        .name(name)
         .build();
     taskExecution.start();
     taskExecutionRepository.save(taskExecution);
@@ -102,19 +107,17 @@ public class TaskExecutionLifecycleService {
     // Materialize todos
     todoService.materialize(context.getTodos().getList(), taskExecutionId);
 
-    // Generate commit message and execution name
+    // Generate commit message
     String commitMessage = generateCommitMessage(task);
-    Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
-    String name = nameGeneratorService.generateUniqueName(task, commitMessage, delta,
-        existingNames);
 
     // Complete the task execution
-    taskExecution.complete(name, commitMessage, delta);
+    taskExecution.complete(commitMessage, delta);
     taskExecutionRepository.save(taskExecution);
 
     // Publish completion event
     eventService.publish(
-        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, name, commitMessage));
+        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, taskExecution.getName(),
+            commitMessage));
   }
 
   /**

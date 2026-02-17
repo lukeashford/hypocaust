@@ -9,13 +9,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.hypocaust.domain.ArtifactChange;
-import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -40,13 +36,7 @@ class TaskExecutionNameGeneratorServiceTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void shouldGenerateNameFromTaskAndDelta() {
-    TaskExecutionDelta delta = new TaskExecutionDelta(
-        List.of(new ArtifactChange("hero_portrait", UUID.randomUUID())),
-        List.of(),
-        List.of()
-    );
-
+  void shouldGenerateNameFromTask() {
     try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
       mockedChatClient.when(() -> ChatClient.builder(any())).thenReturn(chatClientBuilder);
       when(chatClientBuilder.build()).thenReturn(chatClient);
@@ -60,8 +50,7 @@ class TaskExecutionNameGeneratorServiceTest {
       when(promptSpec.call()).thenReturn(responseSpec);
       when(responseSpec.content()).thenReturn("hero_portrait_created");
 
-      String result = service.generateUniqueName(
-          "Create the hero portrait", "Created hero portrait", delta, Set.of());
+      String result = service.generateUniqueName("Create the hero portrait", Set.of());
 
       assertThat(result).isEqualTo("hero_portrait_created");
       verify(promptSpec, times(1)).call();
@@ -86,8 +75,7 @@ class TaskExecutionNameGeneratorServiceTest {
       when(promptSpec.call()).thenReturn(responseSpec);
       when(responseSpec.content()).thenReturn("taken_name", "unique_name");
 
-      String result = service.generateUniqueName(
-          "Some task", "Some commit", new TaskExecutionDelta(), existingNames);
+      String result = service.generateUniqueName("Some task", existingNames);
 
       assertThat(result).isEqualTo("unique_name");
       verify(promptSpec, times(2)).call();
@@ -112,8 +100,7 @@ class TaskExecutionNameGeneratorServiceTest {
       when(promptSpec.call()).thenReturn(responseSpec);
       when(responseSpec.content()).thenReturn("some_task");
 
-      String result = service.generateUniqueName(
-          "some task", "some commit", new TaskExecutionDelta(), existingNames);
+      String result = service.generateUniqueName("some task", existingNames);
 
       assertThat(result).isEqualTo("some_task_2");
       verify(promptSpec, times(3)).call();
@@ -125,9 +112,7 @@ class TaskExecutionNameGeneratorServiceTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
         .thenThrow(new RuntimeException("LLM Down"));
 
-    String result = service.generateUniqueName(
-        "Create character designs", "Created designs",
-        new TaskExecutionDelta(), Set.of());
+    String result = service.generateUniqueName("Create character designs", Set.of());
 
     assertThat(result).isEqualTo("create_character_designs");
   }
@@ -137,8 +122,7 @@ class TaskExecutionNameGeneratorServiceTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
         .thenThrow(new RuntimeException("LLM Down"));
 
-    String result = service.generateUniqueName(
-        null, "Created something", new TaskExecutionDelta(), Set.of());
+    String result = service.generateUniqueName(null, Set.of());
 
     assertThat(result).isEqualTo("task");
   }
@@ -149,38 +133,8 @@ class TaskExecutionNameGeneratorServiceTest {
         .thenThrow(new RuntimeException("LLM Down"));
 
     String longTask = "a".repeat(100);
-    String result = service.generateUniqueName(longTask, "commit", new TaskExecutionDelta(),
-        Set.of());
+    String result = service.generateUniqueName(longTask, Set.of());
 
     assertThat(result.length()).isLessThanOrEqualTo(50);
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void shouldIncludeDeltaInfoInPrompt() {
-    TaskExecutionDelta delta = new TaskExecutionDelta(
-        List.of(new ArtifactChange("new_bg", UUID.randomUUID())),
-        List.of(new ArtifactChange("hero_portrait", UUID.randomUUID())),
-        List.of("old_sketch")
-    );
-
-    try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
-      mockedChatClient.when(() -> ChatClient.builder(any())).thenReturn(chatClientBuilder);
-      when(chatClientBuilder.build()).thenReturn(chatClient);
-
-      ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-      ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
-
-      when(chatClient.prompt()).thenReturn(promptSpec);
-      when(promptSpec.system(anyString())).thenReturn(promptSpec);
-      when(promptSpec.user(anyString())).thenReturn(promptSpec);
-      when(promptSpec.call()).thenReturn(responseSpec);
-      when(responseSpec.content()).thenReturn("character_overhaul");
-
-      String result = service.generateUniqueName(
-          "Redesign characters", "Redesigned characters with new background", delta, Set.of());
-
-      assertThat(result).isEqualTo("character_overhaul");
-    }
   }
 }

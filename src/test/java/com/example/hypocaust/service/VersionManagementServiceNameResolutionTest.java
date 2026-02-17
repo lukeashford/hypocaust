@@ -38,10 +38,10 @@ class VersionManagementServiceNameResolutionTest {
     // Set up execution with name and delta
     TaskExecutionEntity execution = TaskExecutionEntity.builder()
         .projectId(PROJECT_ID)
+        .name("initial_designs")
         .status(TaskExecutionStatus.COMPLETED)
         .build();
-    // Manually set fields that the builder doesn't cover via complete()
-    execution.complete("initial_designs", "Created initial designs",
+    execution.complete("Created initial designs",
         new TaskExecutionDelta(
             List.of(new ArtifactChange("hero_portrait", artifactId)),
             List.of(),
@@ -80,9 +80,10 @@ class VersionManagementServiceNameResolutionTest {
   void shouldReturnEmptyWhenArtifactNotInSnapshot() {
     TaskExecutionEntity execution = TaskExecutionEntity.builder()
         .projectId(PROJECT_ID)
+        .name("some_task")
         .status(TaskExecutionStatus.COMPLETED)
         .build();
-    execution.complete("some_task", "Did something",
+    execution.complete("Did something",
         new TaskExecutionDelta(
             List.of(new ArtifactChange("other_artifact", UUID.randomUUID())),
             List.of(),
