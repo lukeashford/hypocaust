@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class StorageProperties {
 
   /**
-   * Storage provider identifier. Currently supported: "minio".
+   * Storage provider identifier. Currently supported: "minio", "r2".
    */
   private String provider = "minio";
 
@@ -20,6 +20,7 @@ public class StorageProperties {
   private String bucketName = "artifacts";
 
   private Minio minio;
+  private R2 r2;
 
   @Data
   public static class Minio {
@@ -27,5 +28,20 @@ public class StorageProperties {
     private String endpoint;
     private String accessKey;
     private String secretKey;
+  }
+
+  @Data
+  public static class R2 {
+
+    private String accountId;
+    private String accessKey;
+    private String secretKey;
+
+    public String getEndpoint() {
+      if (accountId == null || accountId.isBlank()) {
+        return null;
+      }
+      return String.format("https://%s.r2.cloudflarestorage.com", accountId);
+    }
   }
 }
