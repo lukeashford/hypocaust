@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import java.util.Set;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -50,7 +50,7 @@ class TaskExecutionNameGeneratorServiceTest {
       when(promptSpec.call()).thenReturn(responseSpec);
       when(responseSpec.content()).thenReturn("hero_portrait_created");
 
-      String result = service.generateUniqueName("Create the hero portrait", Set.of());
+      String result = service.generateUniqueName("Create the hero portrait", List.of());
 
       assertThat(result).isEqualTo("hero_portrait_created");
       verify(promptSpec, times(1)).call();
@@ -60,7 +60,7 @@ class TaskExecutionNameGeneratorServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldRetryWhenLlmReturnsExistingName() {
-    Set<String> existingNames = Set.of("taken_name");
+    java.util.Collection<String> existingNames = List.of("taken_name");
 
     try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
       mockedChatClient.when(() -> ChatClient.builder(any())).thenReturn(chatClientBuilder);
@@ -85,7 +85,7 @@ class TaskExecutionNameGeneratorServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldFallbackWithCounterIfAllRetriesFail() {
-    Set<String> existingNames = Set.of("some_task");
+    java.util.Collection<String> existingNames = List.of("some_task");
 
     try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
       mockedChatClient.when(() -> ChatClient.builder(any())).thenReturn(chatClientBuilder);
@@ -112,7 +112,7 @@ class TaskExecutionNameGeneratorServiceTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
         .thenThrow(new RuntimeException("LLM Down"));
 
-    String result = service.generateUniqueName("Create character designs", Set.of());
+    String result = service.generateUniqueName("Create character designs", List.of());
 
     assertThat(result).isEqualTo("create_character_designs");
   }
@@ -122,7 +122,7 @@ class TaskExecutionNameGeneratorServiceTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class)))
         .thenThrow(new RuntimeException("LLM Down"));
 
-    String result = service.generateUniqueName(null, Set.of());
+    String result = service.generateUniqueName(null, List.of());
 
     assertThat(result).isEqualTo("task");
   }
@@ -133,7 +133,7 @@ class TaskExecutionNameGeneratorServiceTest {
         .thenThrow(new RuntimeException("LLM Down"));
 
     String longTask = "a".repeat(100);
-    String result = service.generateUniqueName(longTask, Set.of());
+    String result = service.generateUniqueName(longTask, List.of());
 
     assertThat(result.length()).isLessThanOrEqualTo(50);
   }

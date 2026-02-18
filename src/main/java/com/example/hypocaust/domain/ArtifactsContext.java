@@ -120,7 +120,8 @@ public class ArtifactsContext {
         .orElseThrow(() -> new ArtifactNotFoundException(
             "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
 
-    String finalName = resolveUniqueName(artifactName, source.description());
+    String finalName = nameGeneratorService.generateUniqueName(source.description(),
+        collectTakenNames(), artifactName);
 
     // URL-based artifacts must enter the changelist as CREATED so that materialization
     // re-downloads and creates a new storage record under the new task execution.
@@ -158,18 +159,6 @@ public class ArtifactsContext {
 
   private synchronized String generateUniqueName(String description) {
     return nameGeneratorService.generateUniqueName(description, collectTakenNames());
-  }
-
-  /**
-   * Use {@code preferred} as the name if it is currently free; otherwise fall back to the LLM
-   * generator to find a semantically appropriate alternative.
-   */
-  private synchronized String resolveUniqueName(String preferred, String description) {
-    Set<String> taken = collectTakenNames();
-    if (!taken.contains(preferred)) {
-      return preferred;
-    }
-    return nameGeneratorService.generateUniqueName(description, taken);
   }
 
   public synchronized Optional<Artifact> get(String name) {

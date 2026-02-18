@@ -3,7 +3,8 @@ package com.example.hypocaust.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,18 @@ class ArtifactsContextRestoreTest {
     eventService = mock(EventService.class);
     versionService = mock(VersionManagementService.class);
     nameGeneratorService = mock(ArtifactNameGeneratorService.class);
+    when(nameGeneratorService.generateUniqueName(anyString(), anyCollection(), anyString()))
+        .thenAnswer(invocation -> {
+          String source = invocation.getArgument(0);
+          java.util.Collection<String> existing = invocation.getArgument(1);
+          String preferred = invocation.getArgument(2);
+          if (preferred != null && !existing.contains(preferred)) {
+            return preferred;
+          }
+          return preferred != null ? preferred + "_new" : "generated_name";
+        });
+    when(nameGeneratorService.generateUniqueName(anyString(), anyCollection()))
+        .thenAnswer(invocation -> "generated_name");
 
     when(versionService.computeArtifactSnapshotAt(PREDECESSOR_ID)).thenReturn(Map.of());
 
@@ -98,14 +111,14 @@ class ArtifactsContextRestoreTest {
     when(versionService.computeArtifactSnapshotAt(PREDECESSOR_ID))
         .thenReturn(Map.of("protagonist", UUID.randomUUID()));
     when(nameGeneratorService.generateUniqueName(
-        eq("A portrait of the protagonist"), anySet()))
+        eq("A portrait of the protagonist"), anyCollection(), eq("protagonist")))
         .thenReturn("protagonist_2");
 
     String finalName = context.restore("protagonist", "initial_character_designs");
 
     assertThat(finalName).isEqualTo("protagonist_2");
     verify(nameGeneratorService).generateUniqueName(
-        eq("A portrait of the protagonist"), anySet());
+        eq("A portrait of the protagonist"), anyCollection(), eq("protagonist"));
   }
 
   @Test

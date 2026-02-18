@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import java.util.Set;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -37,7 +37,7 @@ class ArtifactNameGeneratorServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldRetryWhenLlmReturnsExistingName() {
-    Set<String> existingNames = Set.of("taken_name");
+    java.util.Collection<String> existingNames = List.of("taken_name");
     String description = "A new artifact";
 
     try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
@@ -65,7 +65,7 @@ class ArtifactNameGeneratorServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldFallbackToNumberAppendingIfAllRetriesFail() {
-    Set<String> existingNames = Set.of("taken_name");
+    java.util.Collection<String> existingNames = List.of("taken_name");
     String description = "taken_name";
 
     try (MockedStatic<ChatClient> mockedChatClient = mockStatic(ChatClient.class)) {
@@ -92,7 +92,7 @@ class ArtifactNameGeneratorServiceTest {
 
   @Test
   void shouldSanitizeNames() {
-    String result = service.generateUniqueName("My Artifact Name!", Set.of());
+    String result = service.generateUniqueName("My Artifact Name!", List.of());
     assertThat(result).isEqualTo("my_artifact_name");
   }
 
@@ -101,7 +101,32 @@ class ArtifactNameGeneratorServiceTest {
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenThrow(
         new RuntimeException("LLM Down"));
 
-    String result = service.generateUniqueName("fallback name", Set.of());
+    String result = service.generateUniqueName("fallback name", List.of());
     assertThat(result).isEqualTo("fallback_name");
+  }
+
+  @Test
+  void shouldTruncateAndSanitizeFallback() {
+    String longName = "this_is_a_very_long_name_that_exceeds_thirty_characters";
+    String result = service.generateUniqueName(longName, List.of());
+    assertThat(result).hasSizeLessThanOrEqualTo(30);
+    assertThat(result).isEqualTo("this_is_a_very_long_name_that");
+  }
+
+  @Test
+  void shouldUsePreferredNameIfAvailable() {
+    String result = service.generateUniqueName("description", List.of(), "Preferred Name");
+    assertThat(result).isEqualTo("preferred_name");
+  }
+
+  @Test
+  void shouldIgnorePreferredNameIfTaken() {
+    java.util.Collection<String> existingNames = List.of("preferred_name");
+    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenThrow(
+        new RuntimeException("LLM Down"));
+
+    String result = service.generateUniqueName("fallback description", existingNames,
+        "Preferred Name");
+    assertThat(result).isEqualTo("fallback_description");
   }
 }
