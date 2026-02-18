@@ -23,7 +23,6 @@ import org.springframework.ai.tool.annotation.ToolParam;
 @DiscoverableTool(
     name = "restore_artifact",
     description = "Restore a historical artifact version from a past task execution. "
-        + "Use ask_project_context to look up execution names (e.g. 'initial_character_designs'). "
         + "The restored artifact is added to the current changelist under its original name when "
         + "that name is free, or under a new unique name when it is already taken. "
         + "To revert an artifact, restore the historical version then delete the current one.")
@@ -32,7 +31,9 @@ public class RestoreArtifactTool {
 
   public RestoreResult restore(
       @ToolParam(description = "Name of the artifact to retrieve from history") String artifactName,
-      @ToolParam(description = "Task execution name to retrieve from, e.g. 'initial_character_designs'")
+      @ToolParam(description =
+          "Task execution name to retrieve from (e.g. 'initial_character_designs'). "
+              + "Can be found in the project's task execution history.")
       String executionName
   ) {
     if (artifactName == null || artifactName.isBlank()) {

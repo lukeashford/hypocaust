@@ -1,4 +1,4 @@
-package com.example.hypocaust.agent.prompt;
+package com.example.hypocaust.prompt.fragments;
 
 import com.example.hypocaust.prompt.PromptFragment;
 
@@ -18,10 +18,9 @@ public final class DecomposerPromptFragments {
    * <p>Requires parameters: {{maxChildren}}, {{maxRetries}}
    */
   public static PromptFragment core() {
-    return new PromptFragment() {
-      @Override
-      public String text() {
-        return """
+    return new PromptFragment(
+        "decomposer-core",
+        """
             You are a recursive task decomposition agent. Given a task:
             
             1. If the task can be solved by a single available tool, call it.
@@ -34,19 +33,9 @@ public final class DecomposerPromptFragments {
             Never mix these: either call one tool, or delegate to children.
             
             When done, return:
-            {"success": true/false, "summary": "...", "artifactNames": [...], "errorMessage": "..."}""";
-      }
-
-      @Override
-      public String id() {
-        return "decomposer-core";
-      }
-
-      @Override
-      public int priority() {
-        return 10;
-      }
-    };
+            {"success": true/false, "summary": "...", "artifactNames": [...], "errorMessage": "..."}""",
+        10
+    );
   }
 
   /**
@@ -54,29 +43,14 @@ public final class DecomposerPromptFragments {
    * artifacts.
    */
   public static PromptFragment artifactAwareness() {
-    return new PromptFragment() {
-      @Override
-      public String text() {
-        return """
+    return new PromptFragment(
+        "decomposer-artifact-awareness",
+        """
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
-            been tried before and whether to regenerate or edit.
-            When the task involves restoring a previous version of an artifact, query project \
-            context to find the execution name where the desired state existed. Task executions \
-            have stable snake_case names (e.g. initial_character_designs) that identify \
-            historical points in the version timeline.""";
-      }
-
-      @Override
-      public String id() {
-        return "decomposer-artifact-awareness";
-      }
-
-      @Override
-      public int priority() {
-        return 20;
-      }
-    };
+            been tried before and whether to regenerate or edit.""",
+        20
+    );
   }
 
   /**
@@ -85,27 +59,16 @@ public final class DecomposerPromptFragments {
    * <p>Requires parameter: {{maxRetries}}
    */
   public static PromptFragment selfHealing() {
-    return new PromptFragment() {
-      @Override
-      public String text() {
-        return """
+    return new PromptFragment(
+        "decomposer-self-healing",
+        """
             After any action, evaluate the result. If it failed:
             - Diagnose the cause.
             - Retry with a different approach or different parameters.
             - If one strategy is exhausted, try a fundamentally different one.
             - Max {{maxRetries}} retries per approach.
-            - When giving up, return a clear diagnosis.""";
-      }
-
-      @Override
-      public String id() {
-        return "decomposer-self-healing";
-      }
-
-      @Override
-      public int priority() {
-        return 30;
-      }
-    };
+            - When giving up, return a clear diagnosis.""",
+        30
+    );
   }
 }

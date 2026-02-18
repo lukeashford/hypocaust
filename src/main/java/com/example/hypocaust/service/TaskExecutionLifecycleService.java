@@ -8,8 +8,6 @@ import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
-import com.example.hypocaust.models.ModelRegistry;
-import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Optional;
@@ -17,7 +15,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TaskExecutionLifecycleService {
 
-  private static final AnthropicChatModelSpec MESSAGE_GENERATION_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
-
   private final TaskExecutionRepository taskExecutionRepository;
   private final VersionManagementService versionService;
   private final TodoService todoService;
   private final EventService eventService;
-  private final ModelRegistry modelRegistry;
-  private final TaskExecutionNameGeneratorService nameGeneratorService;
+  private final NamingService namingService;
+  private final WordingService wordingService;
 
   /**
    * Initialize a task execution. Transitions to RUNNING synchronously.
@@ -58,7 +52,7 @@ public class TaskExecutionLifecycleService {
 
     // Generate execution name upfront so the entity is named from creation
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
-    String name = nameGeneratorService.generateUniqueName(task, existingNames);
+    String name = namingService.generateExecutionName(task, existingNames);
 
     // Create TaskExecution entity and transition to RUNNING synchronously
     final var taskExecution = TaskExecutionEntity.builder()
@@ -108,7 +102,7 @@ public class TaskExecutionLifecycleService {
     todoService.materialize(context.getTodos().getList(), taskExecutionId);
 
     // Generate commit message
-    String commitMessage = generateCommitMessage(task);
+    String commitMessage = wordingService.generateCommitMessage(task);
 
     // Complete the task execution
     taskExecution.complete(commitMessage, delta);
@@ -140,34 +134,5 @@ public class TaskExecutionLifecycleService {
 
     // Publish failure event
     eventService.publish(new TaskExecutionFailedEvent(taskExecutionId, errorMessage));
-  }
-
-  /**
-   * Generate a commit message summarizing the task using an LLM.
-   */
-  private String generateCommitMessage(String task) {
-    try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(MESSAGE_GENERATION_MODEL))
-          .build();
-
-      String response = chatClient.prompt()
-          .system("""
-              Generate a brief commit message (1 sentence, max 100 chars) summarizing what was done.
-              Focus on the outcome, not the process. Start with a verb like "Added", "Created", "Updated".
-              """)
-          .user("Task: " + task)
-          .call()
-          .content();
-
-      if (response != null && !response.isBlank()) {
-        // Truncate if too long
-        return response.length() > 100 ? response.substring(0, 100) : response.trim();
-      }
-    } catch (Exception e) {
-      log.warn("Failed to generate commit message, using default: {}", e.getMessage());
-    }
-
-    // Fallback
-    return "Completed task";
   }
 }

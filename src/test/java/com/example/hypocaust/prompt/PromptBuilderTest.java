@@ -7,22 +7,7 @@ import org.junit.jupiter.api.Test;
 class PromptBuilderTest {
 
   private static PromptFragment fragment(String id, int priority, String text) {
-    return new PromptFragment() {
-      @Override
-      public String text() {
-        return text;
-      }
-
-      @Override
-      public String id() {
-        return id;
-      }
-
-      @Override
-      public int priority() {
-        return priority;
-      }
-    };
+    return new PromptFragment(id, text, priority);
   }
 
   @Test

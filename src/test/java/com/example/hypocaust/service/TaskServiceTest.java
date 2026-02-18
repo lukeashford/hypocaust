@@ -17,6 +17,7 @@ import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +39,7 @@ class TaskServiceTest {
   private TodoExecutor todoExecutor;
 
   @Mock
-  private TaskWordingService taskWordingService;
+  private WordingService wordingService;
 
   @Mock
   private ExecutorService runExecutorService;
@@ -104,11 +105,10 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
-    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("test label");
+    when(wordingService.generateTodoWording(taskDescription)).thenReturn("test label");
     when(todoExecutor.execute(eq("test label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          @SuppressWarnings("unchecked")
-          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+          Supplier<Object> supplier = invocation.getArgument(
               1);
           return supplier.get();
         });
@@ -144,11 +144,10 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
-    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("fail label");
+    when(wordingService.generateTodoWording(taskDescription)).thenReturn("fail label");
     when(todoExecutor.execute(eq("fail label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          @SuppressWarnings("unchecked")
-          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+          Supplier<Object> supplier = invocation.getArgument(
               1);
           return supplier.get();
         });
@@ -168,11 +167,10 @@ class TaskServiceTest {
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
-    when(taskWordingService.generateTodoWording(taskDescription)).thenReturn("boom label");
+    when(wordingService.generateTodoWording(taskDescription)).thenReturn("boom label");
     when(todoExecutor.execute(eq("boom label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          @SuppressWarnings("unchecked")
-          java.util.function.Supplier<Object> supplier = (java.util.function.Supplier<Object>) invocation.getArgument(
+          Supplier<Object> supplier = invocation.getArgument(
               1);
           return supplier.get();
         });

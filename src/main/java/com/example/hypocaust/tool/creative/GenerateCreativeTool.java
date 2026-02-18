@@ -11,6 +11,7 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.service.TaskComplexityService;
+import com.example.hypocaust.service.WordingService;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +43,7 @@ public class GenerateCreativeTool {
   private final ModelRegistry modelRegistry;
   private final ReplicateClient replicateClient;
   private final TaskComplexityService complexityService;
+  private final WordingService wordingService;
   private final ObjectMapper objectMapper;
 
   @DiscoverableTool(
@@ -188,12 +190,11 @@ public class GenerateCreativeTool {
               4. Available Artifacts: Names of artifacts currently in the project.
               
               YOUR RESPONSIBILITIES:
-              1. Title & Description: Create a catchy title (max 60 chars) and a 1-2 sentence description.
-              2. Input Mapping: Construct the 'replicateInput' object matching the provided OpenAPI schema.
+              1. Input Mapping: Construct the 'replicateInput' object matching the provided OpenAPI schema.
                  - Optimize prompts for the best artistic results.
                  - Map user requirements to specific schema fields.
                  - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
-              3. Validation:
+              2. Validation:
                  - Ensure all REQUIRED fields in the schema are present.
                  - If the user task is missing information that is MANDATORY for the model and cannot be reasonably defaulted, \
                    provide a concise but precise 'errorMessage' explaining what's missing (e.g., "This model requires a video length").
@@ -204,8 +205,6 @@ public class GenerateCreativeTool {
               IMPORTANT: All string values MUST have newlines and special characters properly escaped (e.g., use \\n for newlines).
               
               {
-                "title": "...",
-                "description": "...",
                 "replicateInput": { ... },
                 "errorMessage": null or "..."
               }
@@ -222,9 +221,13 @@ public class GenerateCreativeTool {
 
       var json = JsonUtils.extractJson(response);
       var node = objectMapper.readTree(json);
+
+      String title = wordingService.generateArtifactTitle(task);
+      String description = wordingService.generateArtifactDescription(task);
+
       return new GenerateCreativePlan(
-          node.path("title").asText("Untitled"),
-          node.path("description").asText(""),
+          title,
+          description,
           node.path("replicateInput"),
           node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
       );

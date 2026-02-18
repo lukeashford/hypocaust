@@ -5,7 +5,7 @@ import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
-import com.example.hypocaust.service.ArtifactNameGeneratorService;
+import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.HashSet;
@@ -31,7 +31,7 @@ public class ArtifactsContext {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final ArtifactNameGeneratorService nameGeneratorService;
+  private final NamingService namingService;
 
   private final Changelist changelist = new Changelist();
 
@@ -120,7 +120,7 @@ public class ArtifactsContext {
         .orElseThrow(() -> new ArtifactNotFoundException(
             "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
 
-    String finalName = nameGeneratorService.generateUniqueName(source.description(),
+    String finalName = namingService.generateArtifactName(source.description(),
         collectTakenNames(), artifactName);
 
     // URL-based artifacts must enter the changelist as CREATED so that materialization
@@ -158,7 +158,7 @@ public class ArtifactsContext {
   }
 
   private synchronized String generateUniqueName(String description) {
-    return nameGeneratorService.generateUniqueName(description, collectTakenNames());
+    return namingService.generateArtifactName(description, collectTakenNames());
   }
 
   public synchronized Optional<Artifact> get(String name) {

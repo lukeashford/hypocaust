@@ -7,7 +7,6 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.TaskExecutionService;
-import com.example.hypocaust.service.VersionManagementService;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +33,6 @@ public class ProjectContextTool {
       AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
   private static final int MAX_QUESTION_LENGTH = 1000;
 
-  private final VersionManagementService versionService;
   private final ModelRegistry modelRegistry;
   private final TaskExecutionService taskExecutionService;
   private final TaskExecutionRepository taskExecutionRepository;
@@ -42,8 +40,7 @@ public class ProjectContextTool {
   @Tool(name = "ask_project_context",
       description = "Answer questions about project artifacts, their descriptions, prompts, "
           + "models, version history, and past task executions. Ask specific questions to get "
-          + "precise answers. Execution names returned here can be passed directly to "
-          + "restore_artifact to recover historical artifact versions.")
+          + "precise answers.")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {
@@ -114,8 +111,7 @@ public class ProjectContextTool {
               When asked about prompts that were tried, include the full prompt text.
               When asked about what failed, explain what was attempted and why it failed.
               Task executions have stable snake_case names (shown before the dash in the history).
-              When asked about historical versions, always include the execution name — it can be
-              passed directly to restore_artifact to recover that artifact version.
+              When asked about historical versions, always include the execution name.
               """)
           .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
           .call()

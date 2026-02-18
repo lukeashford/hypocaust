@@ -1,6 +1,6 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.service.ArtifactNameGeneratorService;
+import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -34,14 +34,14 @@ public class TaskExecutionContext {
       UUID predecessorId,
       EventService eventService,
       VersionManagementService versionService,
-      ArtifactNameGeneratorService nameGeneratorService) {
+      NamingService namingService) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
     this.predecessorId = predecessorId;
 
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
-        eventService, versionService, nameGeneratorService
+        eventService, versionService, namingService
     );
     this.todos = new TodosContext(taskExecutionId, eventService);
   }

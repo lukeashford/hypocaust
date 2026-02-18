@@ -1,6 +1,6 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.service.ArtifactNameGeneratorService;
+import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -16,7 +16,7 @@ public class TaskExecutionContextFactory {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final ArtifactNameGeneratorService nameGeneratorService;
+  private final NamingService namingService;
 
   /**
    * Create a new TaskExecutionContext for a task execution.
@@ -28,7 +28,7 @@ public class TaskExecutionContextFactory {
         predecessorId,
         eventService,
         versionService,
-        nameGeneratorService
+        namingService
     );
   }
 }

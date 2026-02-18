@@ -30,7 +30,7 @@ public class TaskService {
   private final TaskExecutionContextFactory contextFactory;
   private final TaskExecutionLifecycleService lifecycleService;
   private final TodoExecutor todoExecutor;
-  private final TaskWordingService taskWordingService;
+  private final WordingService wordingService;
 
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
@@ -78,7 +78,7 @@ public class TaskService {
     // synchronously during lifecycleService.startExecution()
     try {
       // Generate a concise label for the root todo and execute within the todo lifecycle
-      String rootLabel = taskWordingService.generateTodoWording(task);
+      String rootLabel = wordingService.generateTodoWording(task);
       var result = todoExecutor.execute(rootLabel, () -> decomposer.execute(task));
 
       if (result.success()) {

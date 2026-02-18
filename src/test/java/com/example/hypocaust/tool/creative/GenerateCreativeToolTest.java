@@ -21,6 +21,7 @@ import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
 import com.example.hypocaust.service.TaskComplexityService;
+import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -40,6 +41,7 @@ class GenerateCreativeToolTest {
   private ModelRegistry modelRegistry;
   private ReplicateClient replicateClient;
   private TaskComplexityService complexityService;
+  private WordingService wordingService;
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
 
@@ -52,9 +54,10 @@ class GenerateCreativeToolTest {
     modelRegistry = mock(ModelRegistry.class);
     replicateClient = mock(ReplicateClient.class);
     complexityService = mock(TaskComplexityService.class);
+    wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
     tool = new GenerateCreativeTool(modelRag, modelRegistry, replicateClient,
-        complexityService, objectMapper);
+        complexityService, wordingService, objectMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -92,12 +95,14 @@ class GenerateCreativeToolTest {
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
 
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cute Cat");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn(
+        "A very cute cat illustration");
+
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
     String planJson = """
         {
-          "title": "Cute Cat",
-          "description": "A very cute cat illustration",
           "replicateInput": {"prompt": "a cute cat"},
           "errorMessage": null
         }
@@ -160,9 +165,11 @@ class GenerateCreativeToolTest {
     when(replicateClient.getSchema(anyString(), anyString(), anyString())).thenReturn(
         objectMapper.createObjectNode());
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Video");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
-    String planJson = "{\"title\":null, \"description\":null, \"replicateInput\":null, \"errorMessage\":\"Missing video length\"}";
+    String planJson = "{\"replicateInput\":null, \"errorMessage\":\"Missing video length\"}";
     AssistantMessage assistantMessage = new AssistantMessage(planJson);
     Generation generation = new Generation(assistantMessage);
     ChatResponse chatResponse = new ChatResponse(List.of(generation));
@@ -193,10 +200,12 @@ class GenerateCreativeToolTest {
     when(replicateClient.getSchema(anyString(), anyString(), anyString()))
         .thenReturn(objectMapper.createObjectNode());
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cat");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
     String planJson = """
-        {"title": "Cat", "description": "A cat", "replicateInput": {"prompt": "cat"}, "errorMessage": null}
+        {"replicateInput": {"prompt": "cat"}, "errorMessage": null}
         """;
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(planJson)))));
@@ -232,10 +241,12 @@ class GenerateCreativeToolTest {
     when(replicateClient.getSchema(anyString(), anyString(), anyString()))
         .thenReturn(objectMapper.createObjectNode());
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Thing");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
 
     String planJson = """
-        {"title": "Thing", "description": "A thing", "replicateInput": {"prompt": "thing"}, "errorMessage": null}
+        {"replicateInput": {"prompt": "thing"}, "errorMessage": null}
         """;
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(planJson)))));

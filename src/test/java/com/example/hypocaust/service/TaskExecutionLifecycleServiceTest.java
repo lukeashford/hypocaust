@@ -10,7 +10,6 @@ import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
-import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
 import java.util.Optional;
@@ -41,10 +40,10 @@ class TaskExecutionLifecycleServiceTest {
   private EventService eventService;
 
   @MockitoBean
-  private ModelRegistry modelRegistry;
+  private WordingService wordingService;
 
   @MockitoBean
-  private TaskExecutionNameGeneratorService nameGeneratorService;
+  private NamingService namingService;
 
   @Test
   void startExecution_withPredecessorId_createsCorrectExecution() {
@@ -123,6 +122,7 @@ class TaskExecutionLifecycleServiceTest {
     when(context.getArtifacts()).thenReturn(artifacts);
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
+    when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");
 
     // When
     lifecycleService.commitExecution(executionId, projectId, "test task", context);
