@@ -21,7 +21,7 @@ public enum EventType {
   TASKEXECUTION_FAILED("taskexecution.failed"),
 
   // Task progress events
-  TASK_PROGRESS_UPDATED("task.progress.updated"),
+  TODO_LIST_UPDATED("todo.list.updated"),
 
   // Tool events
   TOOL_CALLING("tool.calling"),

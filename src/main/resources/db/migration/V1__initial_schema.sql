@@ -80,7 +80,6 @@ CREATE TABLE event
                                                            'taskexecution.completed',
                                                            'taskexecution.failed',
                                                            'todo.list.updated',
-                                                           'task.progress.updated',
                                                            'tool.calling',
                                                            'decomposer.started',
                                                            'decomposer.finished',

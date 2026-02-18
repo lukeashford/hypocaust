@@ -10,13 +10,13 @@ import lombok.NonNull;
 @Builder(toBuilder = true)
 @Schema(description = "A single item in the hierarchical progress / todo tree")
 public record Todo(
-    @Schema(description = "Unique todo ID")
+    @Schema(description = "Unique todo ID", requiredMode = Schema.RequiredMode.REQUIRED)
     UUID id,
 
-    @Schema(description = "Human-readable description of this step", example = "Generate color palette")
+    @Schema(description = "Human-readable description of this step", example = "Generate color palette", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull String description,
 
-    @Schema(description = "Current status of this step")
+    @Schema(description = "Current status of this step", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull TodoStatus status,
 
     @Schema(description = "Nested child steps (empty list if leaf node)")

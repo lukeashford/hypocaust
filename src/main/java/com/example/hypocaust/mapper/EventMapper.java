@@ -100,7 +100,7 @@ public interface EventMapper {
       case TASKEXECUTION_COMPLETED -> toTaskExecutionCompletedEvent(entity);
       case TASKEXECUTION_FAILED -> toTaskExecutionFailedEvent(entity);
 
-      case TASK_PROGRESS_UPDATED -> toTodoListUpdatedEvent(entity);
+      case TODO_LIST_UPDATED -> toTodoListUpdatedEvent(entity);
 
       case TOOL_CALLING -> toToolCallingEvent(entity);
 
