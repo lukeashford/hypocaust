@@ -1,27 +1,5 @@
 # Replicate
 
-## Flux.1 [schnell]
-
-- **owner**: black-forest-labs
-- **id**: flux-schnell
-- **tier**: fast
-
-### Description
-
-Flux.1 [schnell] is an ultra-fast rectified-flow transformer for IMAGE text-to-image generation,
-optimized for low latency, rapid iteration, and strong prompt adherence with surprisingly high
-photorealism at very low step counts (great for previews, storyboards, thumbnails, and realtime
-creative tooling).
-
-### Best Practices
-
-- Keep prompts simple and concrete (subject + setting + lighting + lens) and iterate quickly; use
-  seeds for reproducibility.
-- If available in the endpoint, increase steps slightly for cleaner detail; lock aspect ratio
-  early (e.g., 16:9 cinematic, 9:16 vertical).
-- Use negatives sparingly; prefer positive constraints (“clean background, sharp focus”) for
-  speed-first workflows.
-
 ## Flux.1 [dev]
 
 - **owner**: black-forest-labs
@@ -652,27 +630,6 @@ shifts, sound redesign, and iterative audio direction.
 - Provide a good `source_prompt` describing the input audio to reduce semantic ambiguity and
   artifacting.
 
-## Llama 4 Maverick Instruct
-
-- **owner**: meta
-- **id**: llama-4-maverick-instruct
-- **tier**: powerful
-
-### Description
-
-Llama 4 Maverick Instruct is a high-end JSON-capable text generation model (
-chat/instruct) geared for reasoning, planning, and agent workflows with long outputs, useful for
-tool-using autonomous agents, creative writing, coding assistance, and RAG orchestration.
-
-### Best Practices
-
-- Use system-style constraints in the prompt (“Return valid JSON”, “Use bullet points only”) to
-  control format.
-- Tune `max_tokens` to prevent truncation; lower `temperature` for deterministic plans, raise for
-  ideation.
-- Use `top_p` sampling for controlled diversity; add stop strings if your pipeline needs hard
-  cutoffs.
-
 ## Llama 3.1 405B Instruct
 
 - **owner**: meta
@@ -692,45 +649,6 @@ for complex agents, deep summarization, multi-step planning, and high-stakes dra
 - Keep `temperature` moderate (≈0.4–0.8) for balanced creativity and reliability; adjust `top_p` for
   diversity.
 - Use `stop_sequences` and prompt templates consistently for stable formatting across runs.
-
-## Qwen3 235B A22B Instruct (2507)
-
-- **owner**: qwen
-- **id**: qwen3-235b-a22b-instruct-2507
-- **tier**: powerful
-
-### Description
-
-Qwen3 235B A22B Instruct is a large JSON-capable text generation model aimed at strong
-instruction following, multilingual utility, and high-throughput agent usage (good for planning,
-extraction, synthesis, coding tasks, and creative ideation).
-
-### Best Practices
-
-- Use low `temperature` for extraction and structured outputs; raise for brainstorming and creative
-  copy.
-- Set `max_tokens` according to your expected completion length; constrain format with “Return JSON
-  only” when needed.
-- Use `top_p` to control variation without chaotic outputs.
-
-## DeepSeek v3.1
-
-- **owner**: deepseek-ai
-- **id**: deepseek-v3.1
-- **tier**: powerful
-
-### Description
-
-DeepSeek v3.1 is a strong JSON-capable text model for reasoning-heavy tasks, coding, and
-agent planning; it exposes a `thinking` control that can trade latency for deeper reasoning (useful
-for autonomous agents and multi-step problem solving).
-
-### Best Practices
-
-- Use `thinking` (e.g., “medium”) when you need deeper reasoning; leave unset for faster responses.
-- Keep `temperature` low for correctness; raise slightly for creative variations and alternative
-  solutions.
-- Constrain outputs with explicit schemas and stop conditions for reliable parsing.
 
 ## DeepSeek R1
 

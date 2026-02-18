@@ -134,7 +134,8 @@ CREATE TABLE model_embeddings
     model_id       VARCHAR(255)        NOT NULL,
     description    TEXT                NOT NULL,
     best_practices TEXT                NOT NULL,
-    tier           VARCHAR(50)         NOT NULL DEFAULT 'balanced'
+    tier           VARCHAR(50)         NOT NULL DEFAULT 'balanced',
+    platform       VARCHAR(50)         NOT NULL DEFAULT 'REPLICATE'
 );
 
 -- Model embeddings index

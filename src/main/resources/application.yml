@@ -96,6 +96,10 @@ app:
 
   replicate:
     api-token: ${REPLICATE_API_TOKEN:}
+  fal:
+    api-key: ${FAL_API_KEY:}
+  openrouter:
+    api-key: ${OPENROUTER_API_KEY:}
 
   storage:
     provider: ${STORAGE_PROVIDER:r2}

@@ -15,9 +15,9 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.integration.ReplicateClient;
-import com.example.hypocaust.models.ModelRegistry;
-import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
+import com.example.hypocaust.integration.ExecutionPlan;
+import com.example.hypocaust.integration.ExecutionRouter;
+import com.example.hypocaust.integration.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
 import com.example.hypocaust.service.TaskComplexityService;
@@ -29,35 +29,29 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.anthropic.AnthropicChatModel;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.chat.prompt.Prompt;
 
 class GenerateCreativeToolTest {
 
   private ModelEmbeddingRegistry modelRag;
-  private ModelRegistry modelRegistry;
-  private ReplicateClient replicateClient;
+  private ExecutionRouter executionRouter;
+  private ModelExecutor modelExecutor;
   private TaskComplexityService complexityService;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
 
   private ArtifactsContext artifactsContext;
-  private AnthropicChatModel chatModel;
 
   @BeforeEach
   void setUp() {
     modelRag = mock(ModelEmbeddingRegistry.class);
-    modelRegistry = mock(ModelRegistry.class);
-    replicateClient = mock(ReplicateClient.class);
+    executionRouter = mock(ExecutionRouter.class);
+    modelExecutor = mock(ModelExecutor.class);
     complexityService = mock(TaskComplexityService.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
-    tool = new GenerateCreativeTool(modelRag, modelRegistry, replicateClient,
-        complexityService, wordingService, objectMapper);
+    tool = new GenerateCreativeTool(modelRag, executionRouter, complexityService,
+        wordingService, objectMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -65,7 +59,7 @@ class GenerateCreativeToolTest {
     when(context.getArtifacts()).thenReturn(artifactsContext);
     TaskExecutionContextHolder.setContext(context);
 
-    chatModel = mock(AnthropicChatModel.class);
+    when(executionRouter.resolve(anyString())).thenReturn(modelExecutor);
   }
 
   @AfterEach
@@ -80,18 +74,18 @@ class GenerateCreativeToolTest {
     ArtifactKind kind = ArtifactKind.IMAGE;
     String owner = "stability-ai";
     String modelId = "sdxl";
-    String version = "latest-hash";
     String description = "A high-quality image model";
     String bestPractices = "Use clear prompts";
     String tier = "balanced";
 
     when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
     when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, description, bestPractices, tier)));
+        new SearchResult("SDXL", owner, modelId, description, bestPractices, tier, "REPLICATE")));
 
-    when(replicateClient.getLatestVersion(owner, modelId)).thenReturn(version);
-    when(replicateClient.getSchema(owner, modelId, version)).thenReturn(
-        objectMapper.createObjectNode());
+    var planInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
+    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionPlan(planInput, null));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
 
@@ -99,24 +93,12 @@ class GenerateCreativeToolTest {
     when(wordingService.generateArtifactDescription(anyString())).thenReturn(
         "A very cute cat illustration");
 
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
-
-    String planJson = """
-        {
-          "replicateInput": {"prompt": "a cute cat"},
-          "errorMessage": null
-        }
-        """;
-    AssistantMessage assistantMessage = new AssistantMessage(planJson);
-    Generation generation = new Generation(assistantMessage);
-    ChatResponse chatResponse = new ChatResponse(List.of(generation));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
-
     when(artifactsContext.add(any())).thenReturn("cute-cat-1");
 
-    JsonNode replicateOutput = objectMapper.valueToTree("https://replicate.com/output.png");
-    when(replicateClient.predict(eq("stability-ai"), eq("sdxl"), eq("latest-hash"),
-        any())).thenReturn(replicateOutput);
+    JsonNode executorOutput = objectMapper.valueToTree("https://replicate.com/output.png");
+    when(modelExecutor.execute(eq("stability-ai"), eq("sdxl"), any())).thenReturn(executorOutput);
+    when(modelExecutor.extractOutputUrl(executorOutput)).thenReturn(
+        "https://replicate.com/output.png");
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -151,29 +133,17 @@ class GenerateCreativeToolTest {
     ArtifactKind kind = ArtifactKind.VIDEO;
     String owner = "lucataco";
     String modelId = "animate-diff";
-    String version = "v1";
-    String description = "A video model";
-    String bestPractices = "Keep it short";
     String tier = "balanced";
 
     when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
     when(modelRag.search(anyString())).thenReturn(
-        List.of(new SearchResult("AnimateDiff", owner, modelId, description,
-            bestPractices, tier)));
+        List.of(new SearchResult("AnimateDiff", owner, modelId, "A video model",
+            "Keep it short", tier, "REPLICATE")));
 
-    when(replicateClient.getLatestVersion(anyString(), anyString())).thenReturn(version);
-    when(replicateClient.getSchema(anyString(), anyString(), anyString())).thenReturn(
-        objectMapper.createObjectNode());
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Video");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
-
-    String planJson = "{\"replicateInput\":null, \"errorMessage\":\"Missing video length\"}";
-    AssistantMessage assistantMessage = new AssistantMessage(planJson);
-    Generation generation = new Generation(assistantMessage);
-    ChatResponse chatResponse = new ChatResponse(List.of(generation));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(ExecutionPlan.error("Missing video length"));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -183,79 +153,66 @@ class GenerateCreativeToolTest {
   }
 
   @Test
-  void generate_replicateCallFails_rollsBackArtifact() {
+  void generate_executorCallFails_rollsBackArtifact() {
     // GIVEN
     String task = "Make a cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
     String owner = "stability-ai";
     String modelId = "sdxl";
-    String version = "v1";
     String tier = "balanced";
 
     when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
     when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, "desc", "best", tier)));
+        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE")));
 
-    when(replicateClient.getLatestVersion(anyString(), anyString())).thenReturn(version);
-    when(replicateClient.getSchema(anyString(), anyString(), anyString()))
-        .thenReturn(objectMapper.createObjectNode());
+    var planInput = objectMapper.createObjectNode().put("prompt", "cat");
+    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionPlan(planInput, null));
+
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cat");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
-
-    String planJson = """
-        {"replicateInput": {"prompt": "cat"}, "errorMessage": null}
-        """;
-    when(chatModel.call(any(Prompt.class)))
-        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(planJson)))));
     when(artifactsContext.add(any())).thenReturn("cat-1");
 
-    when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
-        .thenThrow(new RuntimeException("Replicate API timeout"));
+    when(modelExecutor.execute(anyString(), anyString(), any()))
+        .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
     var result = tool.generate(task, kind);
 
     // THEN
-    assertThat(result.error()).contains("Replicate API timeout");
+    assertThat(result.error()).contains("Provider API timeout");
     assertThat(result.artifactName()).isNull();
     verify(artifactsContext).rollbackPending("cat-1");
   }
 
   @Test
   void generate_nullOutputUrl_returnsError() {
-    // GIVEN — Replicate returns a null node as output
+    // GIVEN
     String task = "Make something";
     ArtifactKind kind = ArtifactKind.IMAGE;
     String owner = "stability-ai";
     String modelId = "sdxl";
-    String version = "v1";
     String tier = "balanced";
 
     when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
     when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, "desc", "best", tier)));
+        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE")));
 
-    when(replicateClient.getLatestVersion(anyString(), anyString())).thenReturn(version);
-    when(replicateClient.getSchema(anyString(), anyString(), anyString()))
-        .thenReturn(objectMapper.createObjectNode());
+    var planInput = objectMapper.createObjectNode().put("prompt", "thing");
+    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionPlan(planInput, null));
+
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Thing");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
-
-    String planJson = """
-        {"replicateInput": {"prompt": "thing"}, "errorMessage": null}
-        """;
-    when(chatModel.call(any(Prompt.class)))
-        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(planJson)))));
     when(artifactsContext.add(any())).thenReturn("thing-1");
 
-    // Replicate returns a NullNode (output field is null)
     JsonNode nullOutput = objectMapper.nullNode();
-    when(replicateClient.predict(anyString(), anyString(), anyString(), any()))
-        .thenReturn(nullOutput);
+    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(nullOutput);
+    when(modelExecutor.extractOutputUrl(nullOutput)).thenReturn("null");
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -263,35 +220,6 @@ class GenerateCreativeToolTest {
     // THEN
     assertThat(result.error()).contains("no usable output URL");
     verify(artifactsContext).rollbackPending("thing-1");
-  }
-
-  @Nested
-  class ExtractOutputUrl {
-
-    @Test
-    void textualNode_returnsText() {
-      var node = objectMapper.valueToTree("https://example.com/img.png");
-      assertThat(tool.extractOutputUrl(node)).isEqualTo("https://example.com/img.png");
-    }
-
-    @Test
-    void arrayNode_returnsFirstElement() {
-      var node = objectMapper.valueToTree(
-          List.of("https://example.com/1.png", "https://example.com/2.png"));
-      assertThat(tool.extractOutputUrl(node)).isEqualTo("https://example.com/1.png");
-    }
-
-    @Test
-    void objectWithUrlField_returnsUrlValue() throws Exception {
-      var node = objectMapper.readTree("{\"url\": \"https://example.com/out.png\", \"other\": 42}");
-      assertThat(tool.extractOutputUrl(node)).isEqualTo("https://example.com/out.png");
-    }
-
-    @Test
-    void otherShape_fallsBackToToString() throws Exception {
-      var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(tool.extractOutputUrl(node)).isEqualTo("{\"data\":123}");
-    }
   }
 
   @Nested
@@ -319,5 +247,4 @@ class GenerateCreativeToolTest {
       assertThat(result.get("image").asText()).isEqualTo("@photo");
     }
   }
-
 }
