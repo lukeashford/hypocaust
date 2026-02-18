@@ -1,9 +1,9 @@
 package com.example.hypocaust.service;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionSnapshot;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.UUID;
 import lombok.NonNull;
@@ -26,6 +26,15 @@ public class TaskExecutionService {
     return TaskExecutionContextHolder.getContextByTaskExecutionId(taskExecutionId)
         .map(TaskExecutionContext::getSnapshot)
         .orElseGet(() -> mapFromDatabase(taskExecutionId));
+  }
+
+  public TaskExecutionSnapshot getLatestProjectState(@NonNull UUID projectId) {
+    UUID latestId = taskExecutionRepository.findTopByProjectIdOrderByStartedAtDesc(projectId)
+        .map(TaskExecutionEntity::getId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "No task executions found for project: " + projectId));
+
+    return getState(latestId);
   }
 
   private TaskExecutionSnapshot mapFromDatabase(UUID id) {

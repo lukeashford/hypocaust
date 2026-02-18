@@ -21,11 +21,13 @@ public class TaskExecutionContextFactory {
   /**
    * Create a new TaskExecutionContext for a task execution.
    */
-  public TaskExecutionContext create(UUID projectId, UUID taskExecutionId, UUID predecessorId) {
+  public TaskExecutionContext create(UUID projectId, UUID taskExecutionId, UUID predecessorId,
+      String name) {
     return new TaskExecutionContext(
         projectId,
         taskExecutionId,
         predecessorId,
+        name,
         eventService,
         versionService,
         namingService

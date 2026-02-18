@@ -72,7 +72,8 @@ public class TaskExecutionLifecycleService {
     log.info("Created TaskExecution {} for project {} with predecessor {}",
         taskExecutionId, projectId, predecessorId);
 
-    return new TaskInitializationResult(projectId, taskExecutionId, predecessorId, firstEventId);
+    return new TaskInitializationResult(projectId, taskExecutionId, predecessorId, firstEventId,
+        name);
   }
 
   /**

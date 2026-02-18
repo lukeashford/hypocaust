@@ -79,7 +79,8 @@ class TaskServiceTest {
     when(projectService.exists(projectId)).thenReturn(true);
     when(lifecycleService.startExecution(projectId, taskDescription, predecessorId))
         .thenReturn(
-            new TaskInitializationResult(projectId, taskExecutionId, predecessorId, firstEventId));
+            new TaskInitializationResult(projectId, taskExecutionId, predecessorId, firstEventId,
+                "test-name"));
 
     // Capture the lambda submitted to executor
     ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
@@ -103,7 +104,8 @@ class TaskServiceTest {
 
     // Preparation for executeTask verification
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
-    when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
+    when(contextFactory.create(projectId, taskExecutionId, predecessorId, "test-name"))
+        .thenReturn(mockContext);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(wordingService.generateTodoWording(taskDescription)).thenReturn("test label");
     when(todoExecutor.execute(eq("test label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
@@ -143,7 +145,8 @@ class TaskServiceTest {
     String taskDescription = "fail task";
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
-    when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
+    when(contextFactory.create(projectId, taskExecutionId, predecessorId, "fail-name"))
+        .thenReturn(mockContext);
     when(wordingService.generateTodoWording(taskDescription)).thenReturn("fail label");
     when(todoExecutor.execute(eq("fail label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
@@ -154,7 +157,8 @@ class TaskServiceTest {
     when(decomposer.execute(taskDescription)).thenReturn(DecomposerResult.failure("error"));
 
     // When
-    taskService.executeTask(projectId, taskExecutionId, predecessorId, taskDescription);
+    taskService.executeTask(projectId, taskExecutionId, predecessorId, "fail-name",
+        taskDescription);
 
     // Then
     verify(lifecycleService).failExecution(eq(taskExecutionId), eq("error"));
@@ -166,7 +170,8 @@ class TaskServiceTest {
     String taskDescription = "exception task";
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
-    when(contextFactory.create(projectId, taskExecutionId, predecessorId)).thenReturn(mockContext);
+    when(contextFactory.create(projectId, taskExecutionId, predecessorId, "boom-name"))
+        .thenReturn(mockContext);
     when(wordingService.generateTodoWording(taskDescription)).thenReturn("boom label");
     when(todoExecutor.execute(eq("boom label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
@@ -177,7 +182,8 @@ class TaskServiceTest {
     when(decomposer.execute(taskDescription)).thenThrow(new RuntimeException("crash"));
 
     // When
-    taskService.executeTask(projectId, taskExecutionId, predecessorId, taskDescription);
+    taskService.executeTask(projectId, taskExecutionId, predecessorId, "boom-name",
+        taskDescription);
 
     // Then
     verify(lifecycleService).failExecution(eq(taskExecutionId), eq("crash"));

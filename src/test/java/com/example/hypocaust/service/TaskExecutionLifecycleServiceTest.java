@@ -54,6 +54,7 @@ class TaskExecutionLifecycleServiceTest {
     UUID eventId = UUID.randomUUID();
 
     when(eventService.publish(any(TaskExecutionStartedEvent.class))).thenReturn(eventId);
+    when(namingService.generateExecutionName(eq(task), any())).thenReturn("mock-name");
 
     // When
     TaskInitializationResult result = lifecycleService.startExecution(projectId, task,
@@ -63,6 +64,7 @@ class TaskExecutionLifecycleServiceTest {
     assertThat(result.projectId()).isEqualTo(projectId);
     assertThat(result.predecessorId()).isEqualTo(predecessorId);
     assertThat(result.firstEventId()).isEqualTo(eventId);
+    assertThat(result.name()).isEqualTo("mock-name");
 
     Optional<TaskExecutionEntity> saved = taskExecutionRepository.findById(
         result.taskExecutionId());
@@ -86,6 +88,7 @@ class TaskExecutionLifecycleServiceTest {
     when(versionService.getMostRecentTaskExecutionId(projectId))
         .thenReturn(Optional.of(resolvedPredecessorId));
     when(eventService.publish(any(TaskExecutionStartedEvent.class))).thenReturn(UUID.randomUUID());
+    when(namingService.generateExecutionName(any(), any())).thenReturn("mock-name");
 
     // When
     TaskInitializationResult result = lifecycleService.startExecution(projectId, task, null);

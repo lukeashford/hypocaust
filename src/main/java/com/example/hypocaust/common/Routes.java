@@ -11,6 +11,7 @@ public final class Routes {
 
   // Project routes
   public static final String PROJECTS = "/projects";
+  public static final String PROJECT_STATE = PROJECTS + "/{projectId}/state";
 
   // Task routes
   public static final String TASKS = "/tasks";

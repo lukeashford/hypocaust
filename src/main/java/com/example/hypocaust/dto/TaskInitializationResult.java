@@ -9,7 +9,8 @@ public record TaskInitializationResult(
     UUID projectId,
     UUID taskExecutionId,
     UUID predecessorId,
-    UUID firstEventId
+    UUID firstEventId,
+    String name
 ) {
 
 }

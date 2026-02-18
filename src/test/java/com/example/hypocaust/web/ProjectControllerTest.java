@@ -7,8 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.hypocaust.common.Routes;
+import com.example.hypocaust.domain.TaskExecutionSnapshot;
+import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.dto.ProjectResponseDto;
 import com.example.hypocaust.service.ProjectService;
+import com.example.hypocaust.service.TaskExecutionService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,9 @@ class ProjectControllerTest {
 
   @MockitoBean
   private ProjectService projectService;
+
+  @MockitoBean
+  private TaskExecutionService taskExecutionService;
 
   @Test
   void shouldListAllProjects() throws Exception {
@@ -44,5 +50,30 @@ class ProjectControllerTest {
         .andExpect(jsonPath("$[0].id").value(id1.toString()))
         .andExpect(jsonPath("$[1].name").value("Project 2"))
         .andExpect(jsonPath("$[1].id").value(id2.toString()));
+  }
+
+  @Test
+  void shouldGetLatestProjectState() throws Exception {
+    // Given
+    UUID projectId = UUID.randomUUID();
+    UUID executionId = UUID.randomUUID();
+    TaskExecutionSnapshot snapshot = new TaskExecutionSnapshot(
+        executionId,
+        "initial_character_designs",
+        TaskExecutionStatus.COMPLETED,
+        List.of(),
+        List.of(),
+        null
+    );
+
+    when(taskExecutionService.getLatestProjectState(projectId)).thenReturn(snapshot);
+
+    // When & Then
+    String path = Routes.PROJECT_STATE.replace("{projectId}", projectId.toString());
+    mockMvc.perform(get(path).with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.taskExecutionId").value(executionId.toString()))
+        .andExpect(jsonPath("$.name").value("initial_character_designs"))
+        .andExpect(jsonPath("$.status").value("COMPLETED"));
   }
 }

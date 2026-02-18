@@ -56,17 +56,19 @@ public class TaskService {
     // Kick off execution asynchronously
     // Now we are GUARANTEED that the database transaction has committed.
     runExecutorService.submit(
-        () -> executeTask(init.projectId(), init.taskExecutionId(), init.predecessorId(), task));
+        () -> executeTask(init.projectId(), init.taskExecutionId(), init.predecessorId(),
+            init.name(), task));
 
     return TaskResponseDto.accepted(init.projectId(), init.taskExecutionId(), init.firstEventId());
   }
 
-  public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String task) {
+  public void executeTask(UUID projectId, UUID taskExecutionId, UUID predecessorId, String name,
+      String task) {
     log.info("Starting task execution {} for project {}", taskExecutionId, projectId);
 
     // Create context
     TaskExecutionContext context = contextFactory.create(projectId, taskExecutionId,
-        predecessorId);
+        predecessorId, name);
 
     // Set the context for this thread
     TaskExecutionContextHolder.setContext(context);

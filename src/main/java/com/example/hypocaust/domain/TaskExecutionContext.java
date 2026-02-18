@@ -5,7 +5,6 @@ import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
  * Thread-local context for the current TaskExecution. Replaces both RunContextHolder and
@@ -15,12 +14,12 @@ import lombok.RequiredArgsConstructor;
  * Refactored into a Sub-Context Architecture to delegate artifact and todo management.
  */
 @Getter
-@RequiredArgsConstructor
 public class TaskExecutionContext {
 
   private final UUID projectId;
   private final UUID taskExecutionId;
   private final UUID predecessorId;
+  private final String name;
 
   private final ArtifactsContext artifacts;
   private final TodosContext todos;
@@ -32,12 +31,14 @@ public class TaskExecutionContext {
       UUID projectId,
       UUID taskExecutionId,
       UUID predecessorId,
+      String name,
       EventService eventService,
       VersionManagementService versionService,
       NamingService namingService) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
     this.predecessorId = predecessorId;
+    this.name = name;
 
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
@@ -53,7 +54,7 @@ public class TaskExecutionContext {
   public synchronized TaskExecutionSnapshot getSnapshot() {
     return new TaskExecutionSnapshot(
         taskExecutionId,
-        null, // name is assigned at commit time, not during execution
+        name,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges(),
         todos.getList().toList(),
