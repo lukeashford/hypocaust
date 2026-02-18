@@ -111,6 +111,17 @@ public final class TaskExecutionContextHolder {
   }
 
   /**
+   * Restore a historical artifact from a past task execution into the current changelist.
+   *
+   * @param artifactName the artifact's semantic name in the historical snapshot
+   * @param executionName the readable task execution name (e.g. "initial_character_designs")
+   * @return the final name assigned to the restored artifact
+   */
+  public static String restoreArtifact(String artifactName, String executionName) {
+    return getContext().getArtifacts().restore(artifactName, executionName);
+  }
+
+  /**
    * Check if an artifact exists.
    */
   public static boolean artifactExists(String name) {

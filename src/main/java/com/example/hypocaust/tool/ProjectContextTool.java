@@ -42,7 +42,8 @@ public class ProjectContextTool {
   @Tool(name = "ask_project_context",
       description = "Answer questions about project artifacts, their descriptions, prompts, "
           + "models, version history, and past task executions. Ask specific questions to get "
-          + "precise answers without consuming context.")
+          + "precise answers. Execution names returned here can be passed directly to "
+          + "restore_artifact to recover historical artifact versions.")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {
@@ -113,8 +114,8 @@ public class ProjectContextTool {
               When asked about prompts that were tried, include the full prompt text.
               When asked about what failed, explain what was attempted and why it failed.
               Task executions have stable snake_case names (shown before the dash in the history).
-              When asked about historical versions, include the execution name so the caller
-              can use it as a stable reference for version lookback.
+              When asked about historical versions, always include the execution name — it can be
+              passed directly to restore_artifact to recover that artifact version.
               """)
           .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
           .call()

@@ -15,12 +15,14 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Sub-context for managing artifacts during a TaskExecution.
  */
 @Getter
 @RequiredArgsConstructor
+@Slf4j
 public class ArtifactsContext {
 
   private final UUID projectId;
@@ -101,15 +103,73 @@ public class ArtifactsContext {
     eventService.publish(new ArtifactRemovedEvent(taskExecutionId, name));
   }
 
-  private synchronized String generateUniqueName(String description) {
-    Set<String> existingNames = new HashSet<>(
+  /**
+   * Restore a historical artifact version into the current changelist.
+   *
+   * <p>Retrieves the artifact as it existed at the named task execution, then adds it as a new
+   * artifact. The original name is reused if it is currently free; otherwise a new unique name is
+   * generated automatically.
+   *
+   * @param artifactName the artifact's semantic name in the historical snapshot
+   * @param executionName the readable task execution name (e.g. "initial_character_designs")
+   * @return the final name assigned to the restored artifact
+   */
+  public synchronized String restore(String artifactName, String executionName) {
+    Artifact source = versionService.getMaterializedArtifactAtExecution(
+            artifactName, executionName, projectId)
+        .orElseThrow(() -> new ArtifactNotFoundException(
+            "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
+
+    String finalName = resolveUniqueName(artifactName, source.description());
+
+    // URL-based artifacts must enter the changelist as CREATED so that materialization
+    // re-downloads and creates a new storage record under the new task execution.
+    ArtifactStatus restoredStatus = source.url() != null ? ArtifactStatus.CREATED : source.status();
+
+    Artifact restored = Artifact.builder()
+        .name(finalName)
+        .kind(source.kind())
+        .title(source.title())
+        .description(source.description())
+        .url(source.url())
+        .inlineContent(source.inlineContent())
+        .metadata(source.metadata())
+        .mimeType(source.mimeType())
+        .status(restoredStatus)
+        .build();
+
+    changelist.addArtifact(restored);
+    eventService.publish(new ArtifactAddedEvent(taskExecutionId, restored));
+
+    log.info("Restored artifact '{}' from execution '{}' as '{}'",
+        artifactName, executionName, finalName);
+
+    return finalName;
+  }
+
+  private synchronized Set<String> collectTakenNames() {
+    Set<String> taken = new HashSet<>(
         versionService.computeArtifactSnapshotAt(predecessorId).keySet());
+    taken.addAll(changelist.getAddedNames());
+    taken.addAll(changelist.getEditedNames());
+    changelist.getDeletedNames().forEach(taken::remove);
+    return taken;
+  }
 
-    existingNames.addAll(changelist.getAddedNames());
-    existingNames.addAll(changelist.getEditedNames());
-    changelist.getDeletedNames().forEach(existingNames::remove);
+  private synchronized String generateUniqueName(String description) {
+    return nameGeneratorService.generateUniqueName(description, collectTakenNames());
+  }
 
-    return nameGeneratorService.generateUniqueName(description, existingNames);
+  /**
+   * Use {@code preferred} as the name if it is currently free; otherwise fall back to the LLM
+   * generator to find a semantically appropriate alternative.
+   */
+  private synchronized String resolveUniqueName(String preferred, String description) {
+    Set<String> taken = collectTakenNames();
+    if (!taken.contains(preferred)) {
+      return preferred;
+    }
+    return nameGeneratorService.generateUniqueName(description, taken);
   }
 
   public synchronized Optional<Artifact> get(String name) {
