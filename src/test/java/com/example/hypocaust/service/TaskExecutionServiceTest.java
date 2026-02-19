@@ -6,8 +6,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.TaskExecutionSnapshot;
+import com.example.hypocaust.domain.ProjectSnapshot;
 import com.example.hypocaust.domain.TaskExecutionStatus;
+import com.example.hypocaust.exception.NotFoundException;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.List;
 import java.util.Optional;
@@ -50,7 +51,7 @@ class TaskExecutionServiceTest {
     when(todoService.getTodosForTaskExecution(executionId)).thenReturn(List.of());
 
     // When
-    TaskExecutionSnapshot snapshot = taskExecutionService.getLatestProjectState(projectId);
+    ProjectSnapshot snapshot = taskExecutionService.getLatestProjectState(projectId);
 
     // Then
     assertThat(snapshot.taskExecutionId()).isEqualTo(executionId);
@@ -59,15 +60,33 @@ class TaskExecutionServiceTest {
   }
 
   @Test
-  void getLatestProjectState_projectNotFound_throwsException() {
+  void getLatestProjectState_noExecutions_returnsEmptySnapshot() {
     // Given
     UUID projectId = UUID.randomUUID();
     when(taskExecutionRepository.findTopByProjectIdOrderByStartedAtDesc(projectId))
         .thenReturn(Optional.empty());
 
+    // When
+    ProjectSnapshot snapshot = taskExecutionService.getLatestProjectState(projectId);
+
+    // Then
+    assertThat(snapshot.taskExecutionId()).isNull();
+    assertThat(snapshot.name()).isNull();
+    assertThat(snapshot.status()).isNull();
+    assertThat(snapshot.artifacts()).isEmpty();
+    assertThat(snapshot.todos()).isEmpty();
+    assertThat(snapshot.lastEventId()).isNull();
+  }
+
+  @Test
+  void getState_executionNotFound_throwsNotFoundException() {
+    // Given
+    UUID executionId = UUID.randomUUID();
+    when(taskExecutionRepository.findById(executionId)).thenReturn(Optional.empty());
+
     // When & Then
-    assertThatThrownBy(() -> taskExecutionService.getLatestProjectState(projectId))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("No task executions found for project");
+    assertThatThrownBy(() -> taskExecutionService.getState(executionId))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("TaskExecution not found");
   }
 }

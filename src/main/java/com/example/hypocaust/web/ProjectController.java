@@ -1,9 +1,10 @@
 package com.example.hypocaust.web;
 
 import com.example.hypocaust.common.Routes;
-import com.example.hypocaust.domain.TaskExecutionSnapshot;
+import com.example.hypocaust.domain.ProjectSnapshot;
 import com.example.hypocaust.dto.CreateProjectRequestDto;
 import com.example.hypocaust.dto.ProjectResponseDto;
+import com.example.hypocaust.exception.NotFoundException;
 import com.example.hypocaust.service.ProjectService;
 import com.example.hypocaust.service.TaskExecutionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,16 +61,21 @@ public class ProjectController {
   }
 
   @Operation(
-      summary = "Get latest task execution state for a project",
-      description = "Returns the state of the most recent task execution (running, completed, or failed) for this project."
+      summary = "Get latest state of a project",
+      description = """
+          Returns the state of the most recent task execution (running, completed, or failed) for this project.
+          If the project has no executions yet, returns an empty snapshot (200)."""
   )
-  @ApiResponse(responseCode = "200", description = "Latest task execution state",
-      content = @Content(schema = @Schema(implementation = TaskExecutionSnapshot.class)))
-  @ApiResponse(responseCode = "404", description = "Project or task execution not found")
+  @ApiResponse(responseCode = "200", description = "Latest project state",
+      content = @Content(schema = @Schema(implementation = ProjectSnapshot.class)))
+  @ApiResponse(responseCode = "404", description = "Project not found")
   @GetMapping(value = Routes.PROJECT_STATE, produces = MediaType.APPLICATION_JSON_VALUE)
-  public TaskExecutionSnapshot getLatestProjectState(
+  public ProjectSnapshot getLatestProjectState(
       @Parameter(description = "ID of the project", required = true)
       @PathVariable UUID projectId) {
+    if (!projectService.exists(projectId)) {
+      throw new NotFoundException("Project not found: " + projectId);
+    }
     return taskExecutionService.getLatestProjectState(projectId);
   }
 }

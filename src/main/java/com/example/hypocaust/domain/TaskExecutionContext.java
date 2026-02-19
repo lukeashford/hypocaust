@@ -51,10 +51,10 @@ public class TaskExecutionContext {
     this.lastEventId = eventId;
   }
 
-  public synchronized TaskExecutionSnapshot getSnapshot() {
-    return new TaskExecutionSnapshot(
-        taskExecutionId,
+  public synchronized ProjectSnapshot getSnapshot() {
+    return new ProjectSnapshot(
         name,
+        taskExecutionId,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges(),
         todos.getList().toList(),

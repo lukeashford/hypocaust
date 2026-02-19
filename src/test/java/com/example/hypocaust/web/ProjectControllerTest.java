@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.hypocaust.common.Routes;
-import com.example.hypocaust.domain.TaskExecutionSnapshot;
+import com.example.hypocaust.domain.ProjectSnapshot;
 import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.dto.ProjectResponseDto;
 import com.example.hypocaust.service.ProjectService;
@@ -57,15 +57,16 @@ class ProjectControllerTest {
     // Given
     UUID projectId = UUID.randomUUID();
     UUID executionId = UUID.randomUUID();
-    TaskExecutionSnapshot snapshot = new TaskExecutionSnapshot(
-        executionId,
+    ProjectSnapshot snapshot = new ProjectSnapshot(
         "initial_character_designs",
+        executionId,
         TaskExecutionStatus.COMPLETED,
         List.of(),
         List.of(),
         null
     );
 
+    when(projectService.exists(projectId)).thenReturn(true);
     when(taskExecutionService.getLatestProjectState(projectId)).thenReturn(snapshot);
 
     // When & Then
@@ -75,5 +76,17 @@ class ProjectControllerTest {
         .andExpect(jsonPath("$.taskExecutionId").value(executionId.toString()))
         .andExpect(jsonPath("$.name").value("initial_character_designs"))
         .andExpect(jsonPath("$.status").value("COMPLETED"));
+  }
+
+  @Test
+  void shouldReturn404WhenProjectNotFound() throws Exception {
+    // Given
+    UUID projectId = UUID.randomUUID();
+    when(projectService.exists(projectId)).thenReturn(false);
+
+    // When & Then
+    String path = Routes.PROJECT_STATE.replace("{projectId}", projectId.toString());
+    mockMvc.perform(get(path).with(jwt()))
+        .andExpect(status().isNotFound());
   }
 }
