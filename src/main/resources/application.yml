@@ -104,6 +104,9 @@ app:
     api-key: ${ELEVENLABS_API_KEY:}
   assemblyai:
     api-key: ${ASSEMBLYAI_API_KEY:}
+  ffmpeg:
+    base-url: ${FFMPEG_BASE_URL:http://localhost:8100}
+    api-key: ${FFMPEG_API_KEY:dev-key}
 
   storage:
     provider: ${STORAGE_PROVIDER:r2}

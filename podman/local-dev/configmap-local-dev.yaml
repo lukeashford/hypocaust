@@ -19,6 +19,9 @@ data:
   MINIO_ROOT_USER: "minioadmin"
   MINIO_ROOT_PASSWORD: "minioadmin"
 
+  # ffmpeg-api
+  FFMPEG_API_KEY: "dev-key"
+
   # application storage properties (Spring will map these to storage.*)
   STORAGE_PROVIDER: "minio"
   STORAGE_MINIO_ENDPOINT: "http://localhost:9000"

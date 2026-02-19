@@ -22,5 +22,6 @@ restart hypocaust-postgres-postgres
 restart hypocaust-postgres-pgadmin
 restart hypocaust-minio-minio
 restart hypocaust-nginx-nginx
+restart hypocaust-ffmpeg-ffmpeg
 
 echo "${GR}All containers restarted.${NC}"
