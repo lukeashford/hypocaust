@@ -9,8 +9,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-  @ExceptionHandler(ArtifactNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleNotFound(ArtifactNotFoundException ex) {
+  @ExceptionHandler({ArtifactNotFoundException.class, NotFoundException.class})
+  public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(new ErrorResponse(ex.getMessage()));
   }

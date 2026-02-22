@@ -1,6 +1,5 @@
 package com.example.hypocaust.agent;
 
-import com.example.hypocaust.agent.prompt.DecomposerPromptFragments;
 import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
@@ -8,6 +7,8 @@ import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.fragments.CommonPromptFragments;
+import com.example.hypocaust.prompt.fragments.DecomposerPromptFragments;
 import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
@@ -42,7 +43,7 @@ import org.springframework.stereotype.Component;
 public class Decomposer {
 
   private static final AnthropicChatModelSpec MODEL =
-      AnthropicChatModelSpec.CLAUDE_OPUS_4_5_20251101;
+      AnthropicChatModelSpec.CLAUDE_OPUS_4_6;
   private static final int MAX_CHILDREN = 3;
   private static final int MAX_RETRIES = 2;
 
@@ -74,6 +75,7 @@ public class Decomposer {
     try {
       var systemPrompt = PromptBuilder.create()
           .with(DecomposerPromptFragments.core())
+          .with(CommonPromptFragments.abilityAwareness())
           .with(DecomposerPromptFragments.artifactAwareness())
           .with(DecomposerPromptFragments.selfHealing())
           .param("maxChildren", MAX_CHILDREN)

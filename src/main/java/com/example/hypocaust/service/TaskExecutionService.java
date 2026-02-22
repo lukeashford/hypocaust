@@ -1,13 +1,15 @@
 package com.example.hypocaust.service;
 
-import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.domain.TaskExecutionSnapshot;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.domain.ProjectSnapshot;
+import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.exception.NotFoundException;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,25 +20,38 @@ public class TaskExecutionService {
   private final VersionManagementService versionManagementService;
   private final TodoService todoService;
 
-  public TaskExecutionSnapshot getState() {
+  public ProjectSnapshot getState() {
     return getState(TaskExecutionContextHolder.getContext().getTaskExecutionId());
   }
 
-  public TaskExecutionSnapshot getState(@NonNull UUID taskExecutionId) {
+  public ProjectSnapshot getState(@Nullable UUID taskExecutionId) {
+    if (taskExecutionId == null) {
+      return new ProjectSnapshot();
+    }
+
     return TaskExecutionContextHolder.getContextByTaskExecutionId(taskExecutionId)
         .map(TaskExecutionContext::getSnapshot)
         .orElseGet(() -> mapFromDatabase(taskExecutionId));
   }
 
-  private TaskExecutionSnapshot mapFromDatabase(UUID id) {
-    TaskExecutionEntity entity = taskExecutionRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("TaskExecution not found: " + id));
+  public ProjectSnapshot getLatestProjectState(@NonNull UUID projectId) {
+    UUID latestId = taskExecutionRepository.findTopByProjectIdOrderByStartedAtDesc(projectId)
+        .map(TaskExecutionEntity::getId).orElse(null);
 
-    return new TaskExecutionSnapshot(
-        id,
+    return getState(latestId);
+  }
+
+  private ProjectSnapshot mapFromDatabase(UUID taskExecutionId) {
+    TaskExecutionEntity entity = taskExecutionRepository.findById(taskExecutionId)
+        .orElseThrow(
+            () -> new NotFoundException("TaskExecution not found: " + taskExecutionId));
+
+    return new ProjectSnapshot(
+        entity.getName(),
+        taskExecutionId,
         entity.getStatus(),
-        versionManagementService.getAllMaterializedArtifactsAt(id),
-        todoService.getTodosForTaskExecution(id),
+        versionManagementService.getAllMaterializedArtifactsAt(taskExecutionId),
+        todoService.getTodosForTaskExecution(taskExecutionId),
         null // Finished tasks don't emit new events
     );
   }

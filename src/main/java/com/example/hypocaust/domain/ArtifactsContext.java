@@ -5,7 +5,7 @@ import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
-import com.example.hypocaust.service.ArtifactNameGeneratorService;
+import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.HashSet;
@@ -15,12 +15,14 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Sub-context for managing artifacts during a TaskExecution.
  */
 @Getter
 @RequiredArgsConstructor
+@Slf4j
 public class ArtifactsContext {
 
   private final UUID projectId;
@@ -29,7 +31,7 @@ public class ArtifactsContext {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final ArtifactNameGeneratorService nameGeneratorService;
+  private final NamingService namingService;
 
   private final Changelist changelist = new Changelist();
 
@@ -51,7 +53,7 @@ public class ArtifactsContext {
    */
   public synchronized void edit(Artifact newVersion) {
     String name = newVersion.name();
-    Artifact existing = versionService.getMaterializedArtifactAt(name, taskExecutionId)
+    Artifact existing = versionService.getMaterializedArtifactAt(name, predecessorId)
         .orElseThrow(
             () -> new ArtifactNotFoundException("Artifact not found: " + name));
 
@@ -69,7 +71,7 @@ public class ArtifactsContext {
    * Schedule an artifact for deletion.
    */
   public synchronized void delete(String name) {
-    if (!versionService.exists(name, taskExecutionId, changelist)) {
+    if (!versionService.exists(name, predecessorId, changelist)) {
       throw new ArtifactNotFoundException("Artifact not found: " + name);
     }
 
@@ -101,26 +103,73 @@ public class ArtifactsContext {
     eventService.publish(new ArtifactRemovedEvent(taskExecutionId, name));
   }
 
+  /**
+   * Restore a historical artifact version into the current changelist.
+   *
+   * <p>Retrieves the artifact as it existed at the named task execution, then adds it as a new
+   * artifact. The original name is reused if it is currently free; otherwise a new unique name is
+   * generated automatically.
+   *
+   * @param artifactName the artifact's semantic name in the historical snapshot
+   * @param executionName the readable task execution name (e.g. "initial_character_designs")
+   * @return the final name assigned to the restored artifact
+   */
+  public synchronized String restore(String artifactName, String executionName) {
+    Artifact source = versionService.getMaterializedArtifactAtExecution(
+            artifactName, executionName, projectId)
+        .orElseThrow(() -> new ArtifactNotFoundException(
+            "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
+
+    String finalName = namingService.generateArtifactName(source.description(),
+        collectTakenNames(), artifactName);
+
+    // URL-based artifacts must enter the changelist as CREATED so that materialization
+    // re-downloads and creates a new storage record under the new task execution.
+    ArtifactStatus restoredStatus = source.url() != null ? ArtifactStatus.CREATED : source.status();
+
+    Artifact restored = Artifact.builder()
+        .name(finalName)
+        .kind(source.kind())
+        .title(source.title())
+        .description(source.description())
+        .url(source.url())
+        .inlineContent(source.inlineContent())
+        .metadata(source.metadata())
+        .mimeType(source.mimeType())
+        .status(restoredStatus)
+        .build();
+
+    changelist.addArtifact(restored);
+    eventService.publish(new ArtifactAddedEvent(taskExecutionId, restored));
+
+    log.info("Restored artifact '{}' from execution '{}' as '{}'",
+        artifactName, executionName, finalName);
+
+    return finalName;
+  }
+
+  private synchronized Set<String> collectTakenNames() {
+    Set<String> taken = new HashSet<>(
+        versionService.computeArtifactSnapshotAt(predecessorId).keySet());
+    taken.addAll(changelist.getAddedNames());
+    taken.addAll(changelist.getEditedNames());
+    changelist.getDeletedNames().forEach(taken::remove);
+    return taken;
+  }
+
   private synchronized String generateUniqueName(String description) {
-    Set<String> existingNames = new HashSet<>(
-        versionService.computeArtifactSnapshotAt(taskExecutionId).keySet());
-
-    existingNames.addAll(changelist.getAddedNames());
-    existingNames.addAll(changelist.getEditedNames());
-    changelist.getDeletedNames().forEach(existingNames::remove);
-
-    return nameGeneratorService.generateUniqueName(description, existingNames);
+    return namingService.generateArtifactName(description, collectTakenNames());
   }
 
   public synchronized Optional<Artifact> get(String name) {
-    return versionService.getArtifactWithChanges(name, taskExecutionId, changelist);
+    return versionService.getArtifactWithChanges(name, predecessorId, changelist);
   }
 
   public synchronized List<Artifact> getAllWithChanges() {
-    return versionService.getAllArtifactsWithChanges(taskExecutionId, changelist);
+    return versionService.getAllArtifactsWithChanges(predecessorId, changelist);
   }
 
   public synchronized boolean exists(String name) {
-    return versionService.exists(name, taskExecutionId, changelist);
+    return versionService.exists(name, predecessorId, changelist);
   }
 }

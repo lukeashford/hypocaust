@@ -27,6 +27,7 @@ CREATE TABLE task_execution
     started_at     timestamptz,
     completed_at   timestamptz,
     predecessor_id uuid REFERENCES task_execution (id),
+    name           varchar(50),
     commit_message text,
     delta          jsonb
 );
@@ -35,6 +36,7 @@ CREATE TABLE task_execution
 CREATE INDEX idx_task_execution_project_started_at ON task_execution (project_id, coalesce(started_at, completed_at));
 CREATE INDEX idx_task_execution_project ON task_execution (project_id, created_at DESC);
 CREATE INDEX idx_task_execution_predecessor ON task_execution (predecessor_id);
+CREATE UNIQUE INDEX idx_task_execution_project_name ON task_execution (project_id, name);
 
 -- Artifact table
 CREATE TABLE artifact
@@ -78,7 +80,6 @@ CREATE TABLE event
                                                            'taskexecution.completed',
                                                            'taskexecution.failed',
                                                            'todo.list.updated',
-                                                           'task.progress.updated',
                                                            'tool.calling',
                                                            'decomposer.started',
                                                            'decomposer.finished',
@@ -133,7 +134,8 @@ CREATE TABLE model_embeddings
     model_id       VARCHAR(255)        NOT NULL,
     description    TEXT                NOT NULL,
     best_practices TEXT                NOT NULL,
-    tier           VARCHAR(50)         NOT NULL DEFAULT 'balanced'
+    tier           VARCHAR(50)         NOT NULL DEFAULT 'balanced',
+    platform       VARCHAR(50)         NOT NULL DEFAULT 'REPLICATE'
 );
 
 -- Model embeddings index

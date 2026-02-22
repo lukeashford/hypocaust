@@ -12,7 +12,7 @@ public final class TodoListUpdatedEvent extends
 
   @Override
   public EventType type() {
-    return EventType.TASK_PROGRESS_UPDATED;
+    return EventType.TODO_LIST_UPDATED;
   }
 
   public record Payload(TodoList todoList) implements TaskProgressEventPayload {

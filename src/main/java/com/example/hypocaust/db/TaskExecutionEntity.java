@@ -49,6 +49,13 @@ public class TaskExecutionEntity extends BaseEntity {
   private UUID predecessorId;
 
   /**
+   * LLM-generated readable name for this execution (e.g. "initial_character_designs"). Used for
+   * LLM-addressable version lookbacks instead of UUIDs.
+   */
+  @Column(length = 50)
+  private String name;
+
+  /**
    * Auto-generated summary of changes (null if no changes).
    */
   private String commitMessage;

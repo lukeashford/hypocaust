@@ -103,6 +103,7 @@ public class ModelEmbeddingRegistry {
                   .description(ch.description)
                   .bestPractices(ch.bestPractices)
                   .tier(ch.tier)
+                  .platform(ch.platform)
                   .build();
             } else {
               // Check for changes
@@ -111,14 +112,15 @@ public class ModelEmbeddingRegistry {
                   || !Objects.equals(existing.getModelId(), ch.modelId)
                   || !Objects.equals(existing.getDescription(), ch.description)
                   || !Objects.equals(existing.getBestPractices(), ch.bestPractices)
-                  || !Objects.equals(existing.getTier(), ch.tier);
+                  || !Objects.equals(existing.getTier(), ch.tier)
+                  || !Objects.equals(existing.getPlatform(), ch.platform);
 
               if (requiresReembed || metadataChanged) {
                 final float[] newEmbedding = requiresReembed
                     ? embeddingService.generateEmbedding(ch.embeddingText)
                     : null;
                 existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
-                    ch.description, ch.bestPractices, ch.tier);
+                    ch.description, ch.bestPractices, ch.tier, ch.platform);
                 return existing;
               }
             }
@@ -162,7 +164,8 @@ public class ModelEmbeddingRegistry {
             r.getModelId(),
             r.getDescription(),
             r.getBestPractices(),
-            r.getTier()
+            r.getTier(),
+            r.getPlatform()
         ));
       }
       return out;
@@ -173,9 +176,12 @@ public class ModelEmbeddingRegistry {
   }
 
   // Parser
-  private List<Chunk> parseFile(Path file) throws IOException {
+  List<Chunk> parseFile(Path file) throws IOException {
     final var content = Files.readString(file, StandardCharsets.UTF_8);
     final var lines = content.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+
+    // Derive platform from filename: replicate.md -> REPLICATE, fal.md -> FAL, openrouter.md -> OPENROUTER
+    final var platform = derivePlatform(file.getFileName().toString());
 
     final var models = new ArrayList<ModelSection>();
 
@@ -204,7 +210,7 @@ public class ModelEmbeddingRegistry {
 
     for (final var m : models) {
       try {
-        chunks.add(parseModelChunk(m));
+        chunks.add(parseModelChunk(m, platform));
       } catch (Exception e) {
         log.warn("Failed to parse model chunk '{}' in file {}: {}", m.modelName(), file,
             e.getMessage());
@@ -214,7 +220,15 @@ public class ModelEmbeddingRegistry {
     return chunks;
   }
 
-  private Chunk parseModelChunk(ModelSection m) {
+  static String derivePlatform(String filename) {
+    var name = filename.toLowerCase();
+    if (name.endsWith(EXT_MD)) {
+      name = name.substring(0, name.length() - EXT_MD.length());
+    }
+    return name.toUpperCase();
+  }
+
+  private Chunk parseModelChunk(ModelSection m, String platform) {
     String owner = "";
     String modelId = "";
     String tier = "balanced";
@@ -271,7 +285,7 @@ public class ModelEmbeddingRegistry {
     String embeddingText = m.modelName() + " " + description + " tier: " + tier;
 
     return new Chunk(m.modelName(), embeddingText, hash, owner, modelId, description,
-        bestPractices, tier);
+        bestPractices, tier, platform);
   }
 
   // Data holders
@@ -285,12 +299,13 @@ public class ModelEmbeddingRegistry {
       String modelId,
       String description,
       String bestPractices,
-      String tier
+      String tier,
+      String platform
   ) {
 
   }
 
-  private record Chunk(
+  record Chunk(
       String name,
       String embeddingText,
       String hash,
@@ -298,7 +313,8 @@ public class ModelEmbeddingRegistry {
       String modelId,
       String description,
       String bestPractices,
-      String tier
+      String tier,
+      String platform
   ) {
 
   }

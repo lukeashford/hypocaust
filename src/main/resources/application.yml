@@ -80,28 +80,36 @@ app:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       chat:
-        claude-opus-4-5-20251101: # Claude Opus 4.5; most capable for complex reasoning and decomposition.
-          maxTokens: 8192
-          temperature: 0.7
-
-        claude-sonnet-4-20250514: # Claude Sonnet 4; balanced performance for orchestration.
+        claude-opus-4-6:
           maxTokens: 4096
-          temperature: 0.7
-          topP: 1.0
+          temperature: 0.4
 
-        claude-3-5-haiku-latest: # Claude Haiku 3.5; fast and efficient for simple tasks like title generation.
-          maxTokens: 1024
+        claude-sonnet-4-6:
+          maxTokens: 2048
           temperature: 0.5
-          topP: 1.0
+
+        claude-haiku-4-5:
+          maxTokens: 1024
+          temperature: 0.3
 
   replicate:
     api-token: ${REPLICATE_API_TOKEN:}
+  fal:
+    api-key: ${FAL_API_KEY:}
+  openrouter:
+    api-key: ${OPENROUTER_API_KEY:}
 
   storage:
+    provider: ${STORAGE_PROVIDER:r2}
+    bucket-name: ${STORAGE_BUCKET:hypocaust}
     minio:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
       access-key: ${MINIO_ACCESS_KEY:minioadmin}
       secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    r2:
+      account-id: ${R2_ACCOUNT_ID:dummy-account-id}
+      access-key: ${R2_ACCESS_KEY:dummy-access-key}
+      secret-key: ${R2_SECRET_KEY:dummy-secret-key}
   
   sse:
     heartbeat:

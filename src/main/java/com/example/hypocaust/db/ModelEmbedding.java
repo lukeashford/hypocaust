@@ -32,24 +32,29 @@ public class ModelEmbedding extends AbstractEmbedding {
   @Column(nullable = false)
   private String tier;
 
+  @Column(nullable = false)
+  private String platform;
+
   @Builder
   public ModelEmbedding(String name, float[] embedding, String hash, String owner,
-      String modelId, String description, String bestPractices, String tier) {
+      String modelId, String description, String bestPractices, String tier, String platform) {
     super(name, embedding, hash);
     this.owner = owner;
     this.modelId = modelId;
     this.description = description;
     this.bestPractices = bestPractices;
     this.tier = tier;
+    this.platform = platform != null ? platform : "REPLICATE";
   }
 
   public void update(String newHash, float[] newEmbedding, String owner, String modelId,
-      String description, String bestPractices, String tier) {
+      String description, String bestPractices, String tier, String platform) {
     super.update(newHash, newEmbedding);
     this.owner = owner;
     this.modelId = modelId;
     this.description = description;
     this.bestPractices = bestPractices;
     this.tier = tier;
+    this.platform = platform != null ? platform : "REPLICATE";
   }
 }

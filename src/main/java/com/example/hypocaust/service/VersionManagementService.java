@@ -90,7 +90,7 @@ public class VersionManagementService {
    * @return the artifact, or empty if not found or deleted
    */
   public Optional<Artifact> getMaterializedArtifactAt(@NonNull String name,
-      @NonNull UUID taskExecutionId) {
+      UUID taskExecutionId) {
     Map<String, UUID> snapshot = computeArtifactSnapshotAt(taskExecutionId);
     UUID artifactId = snapshot.get(name);
     if (artifactId == null) {
@@ -99,17 +99,17 @@ public class VersionManagementService {
     return artifactService.getArtifact(artifactId);
   }
 
-  public List<Artifact> getAllMaterializedArtifactsAt(@NonNull UUID taskExecutionId) {
+  public List<Artifact> getAllMaterializedArtifactsAt(UUID taskExecutionId) {
     Collection<UUID> artifactIds = computeArtifactSnapshotAt(taskExecutionId).values();
     return artifactService.getArtifacts(artifactIds);
   }
 
-  public List<Artifact> getAllArtifactsWithChanges(@NonNull UUID taskExecutionId,
+  public List<Artifact> getAllArtifactsWithChanges(UUID taskExecutionId,
       Changelist changelist) {
     return changelist.applyTo(getAllMaterializedArtifactsAt(taskExecutionId));
   }
 
-  public Optional<Artifact> getArtifactWithChanges(String name, @NonNull UUID taskExecutionId,
+  public Optional<Artifact> getArtifactWithChanges(String name, UUID taskExecutionId,
       Changelist changelist) {
     return getAllArtifactsWithChanges(taskExecutionId, changelist)
         .stream()
@@ -117,7 +117,7 @@ public class VersionManagementService {
         .findFirst();
   }
 
-  public boolean exists(String name, @NonNull UUID taskExecutionId, Changelist changelist) {
+  public boolean exists(String name, UUID taskExecutionId, Changelist changelist) {
     return getArtifactWithChanges(name, taskExecutionId, changelist).isPresent();
   }
 
@@ -169,6 +169,22 @@ public class VersionManagementService {
         delta.deleted().size());
 
     return delta;
+  }
+
+  /**
+   * Gets a historical artifact version by artifact name and execution name. This is the primary
+   * entry point for LLM-driven version lookbacks: "get protagonist_portrait at
+   * initial_character_designs".
+   *
+   * @param artifactName the artifact's semantic name
+   * @param executionName the execution's readable name
+   * @param projectId the project scope
+   * @return the artifact as it existed at that execution, or empty if not found
+   */
+  public Optional<Artifact> getMaterializedArtifactAtExecution(@NonNull String artifactName,
+      @NonNull String executionName, @NonNull UUID projectId) {
+    return taskExecutionRepository.findByProjectIdAndName(projectId, executionName)
+        .flatMap(execution -> getMaterializedArtifactAt(artifactName, execution.getId()));
   }
 
   public Optional<UUID> getMostRecentTaskExecutionId(UUID projectId) {
