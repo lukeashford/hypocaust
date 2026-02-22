@@ -29,15 +29,6 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   @Override
   protected String planSystemPrompt() {
     return """
-        You are an expert creative director and prompt engineer. Your goal is to prepare a generation plan \
-        for a Replicate model based on a user's task.
-
-        INPUTS PROVIDED:
-        1. User Task: The natural language description of what to generate/edit.
-        2. Model Docs: Contextual information about the selected model.
-        3. OpenAPI Schema: The EXACT input schema required by the Replicate API.
-        4. Available Artifacts: Names of artifacts currently in the project.
-
         YOUR RESPONSIBILITIES:
         1. Input Mapping: Construct the 'providerInput' object matching the provided OpenAPI schema.
            - Optimize prompts for the best artistic results.
@@ -48,15 +39,6 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
            - If the user task is missing information that is MANDATORY for the model and cannot be reasonably defaulted, \
              provide a concise but precise 'errorMessage' explaining what's missing (e.g., "This model requires a video length").
            - If you provide an 'errorMessage', 'providerInput' should be null.
-
-        OUTPUT:
-        Return ONLY valid JSON.
-        IMPORTANT: All string values MUST have newlines and special characters properly escaped (e.g., use \\n for newlines).
-
-        {
-          "providerInput": { ... },
-          "errorMessage": null or "..."
-        }
         """;
   }
 

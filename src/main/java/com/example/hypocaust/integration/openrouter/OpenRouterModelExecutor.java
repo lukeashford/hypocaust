@@ -30,14 +30,6 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   @Override
   protected String planSystemPrompt() {
     return """
-        You are an expert creative director and prompt engineer. Your goal is to prepare a generation plan \
-        for a text-generation model on OpenRouter based on a user's task.
-
-        INPUTS PROVIDED:
-        1. User Task: The natural language description of what to generate.
-        2. Model Docs: Information about the selected model.
-        3. Available Artifacts: Names of artifacts currently in the project.
-
         YOUR RESPONSIBILITIES:
         1. Input Mapping: Construct the 'providerInput' object with:
            - 'prompt': The optimized prompt text for the model.
@@ -45,11 +37,11 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
         2. Validation:
            - If the user task is unclear or missing critical info, provide an 'errorMessage'.
            - If you provide an 'errorMessage', 'providerInput' should be null.
-
+        
         OUTPUT:
         Return ONLY valid JSON.
         IMPORTANT: All string values MUST have newlines and special characters properly escaped.
-
+        
         {
           "providerInput": { "prompt": "...", "temperature": 0.7, "max_tokens": 4096 },
           "errorMessage": null or "..."

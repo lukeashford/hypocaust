@@ -5,6 +5,9 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.PromptFragment;
+import com.example.hypocaust.prompt.fragments.CommonPromptFragments;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -39,8 +42,14 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
       var artifactNames = availableArtifacts.stream().map(Artifact::name).toList();
       var additionalContext = additionalPlanContext(owner, modelId, description, bestPractices);
 
+      var systemPrompt = PromptBuilder.create()
+          .with(CommonPromptFragments.planSystemPrompt())
+          .with(new PromptFragment(platform().name().toLowerCase() + "-plan", planSystemPrompt()))
+          .with(CommonPromptFragments.abilityAwareness())
+          .build();
+
       var response = chatClient.prompt()
-          .system(planSystemPrompt())
+          .system(systemPrompt)
           .user(String.format("""
               Task: %s
               Kind: %s

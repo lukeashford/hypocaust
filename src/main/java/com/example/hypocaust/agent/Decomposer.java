@@ -7,6 +7,7 @@ import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.fragments.CommonPromptFragments;
 import com.example.hypocaust.prompt.fragments.DecomposerPromptFragments;
 import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
@@ -74,6 +75,7 @@ public class Decomposer {
     try {
       var systemPrompt = PromptBuilder.create()
           .with(DecomposerPromptFragments.core())
+          .with(CommonPromptFragments.abilityAwareness())
           .with(DecomposerPromptFragments.artifactAwareness())
           .with(DecomposerPromptFragments.selfHealing())
           .param("maxChildren", MAX_CHILDREN)

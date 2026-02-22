@@ -30,14 +30,6 @@ public class FalModelExecutor extends AbstractModelExecutor {
   @Override
   protected String planSystemPrompt() {
     return """
-        You are an expert creative director and prompt engineer. Your goal is to prepare a generation plan \
-        for a fal.ai model based on a user's task.
-
-        INPUTS PROVIDED:
-        1. User Task: The natural language description of what to generate/edit.
-        2. Model Docs: Contextual information about the selected model and its input format.
-        3. Available Artifacts: Names of artifacts currently in the project.
-
         YOUR RESPONSIBILITIES:
         1. Input Mapping: Construct the 'providerInput' object matching the fal.ai model's expected input format.
            - Optimize prompts for the best artistic results.
@@ -46,15 +38,6 @@ public class FalModelExecutor extends AbstractModelExecutor {
            - If the user task is missing information that is MANDATORY for the model, \
              provide a concise 'errorMessage' explaining what's missing.
            - If you provide an 'errorMessage', 'providerInput' should be null.
-
-        OUTPUT:
-        Return ONLY valid JSON.
-        IMPORTANT: All string values MUST have newlines and special characters properly escaped.
-
-        {
-          "providerInput": { ... },
-          "errorMessage": null or "..."
-        }
         """;
   }
 
