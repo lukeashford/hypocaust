@@ -14,7 +14,7 @@ import org.springframework.ai.chat.client.ChatClient;
 public abstract class AbstractModelExecutor implements ModelExecutor {
 
   private static final AnthropicChatModelSpec PROMPT_ENG_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+      AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
 
   protected final ModelRegistry modelRegistry;
   protected final ObjectMapper objectMapper;

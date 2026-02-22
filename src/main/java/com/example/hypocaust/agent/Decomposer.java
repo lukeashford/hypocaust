@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
 public class Decomposer {
 
   private static final AnthropicChatModelSpec MODEL =
-      AnthropicChatModelSpec.CLAUDE_OPUS_4_5_20251101;
+      AnthropicChatModelSpec.CLAUDE_OPUS_4_6;
   private static final int MAX_CHILDREN = 3;
   private static final int MAX_RETRIES = 2;
 

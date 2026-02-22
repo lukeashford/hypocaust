@@ -30,7 +30,7 @@ import org.springframework.stereotype.Component;
 public class ProjectContextTool {
 
   private static final AnthropicChatModelSpec CONTEXT_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+      AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
   private static final int MAX_QUESTION_LENGTH = 1000;
 
   private final ModelRegistry modelRegistry;

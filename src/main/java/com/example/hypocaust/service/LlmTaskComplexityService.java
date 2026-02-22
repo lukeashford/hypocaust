@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class LlmTaskComplexityService implements TaskComplexityService {
 
   private static final AnthropicChatModelSpec JUDGE_MODEL =
-      AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+      AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
 
   private final ModelRegistry modelRegistry;
 

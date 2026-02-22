@@ -1,7 +1,6 @@
 package com.example.hypocaust.integration.fal;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -17,15 +16,10 @@ public class FalClient {
   private static final long MAX_WAIT_MS = 300_000; // 5 minutes
 
   private final RestClient restClient;
-  private final ObjectMapper objectMapper;
-  private final boolean enabled;
 
   public FalClient(
-      @Value("${app.fal.api-key:}") String apiKey,
-      ObjectMapper objectMapper
+      @Value("${app.fal.api-key:}") String apiKey
   ) {
-    this.objectMapper = objectMapper;
-    this.enabled = apiKey != null && !apiKey.isBlank();
     this.restClient = RestClient.builder()
         .baseUrl(BASE_URL)
         .defaultHeader("Authorization", "Key " + apiKey)
@@ -33,15 +27,11 @@ public class FalClient {
         .build();
   }
 
-  public boolean isEnabled() {
-    return enabled;
-  }
-
   public JsonNode submit(String modelPath, JsonNode input) {
     log.info("Submitting fal.ai job for model: {}", modelPath);
 
     var response = restClient.post()
-        .uri("/{modelPath}", modelPath)
+        .uri(uriBuilder -> uriBuilder.path("/" + modelPath).build())
         .contentType(MediaType.APPLICATION_JSON)
         .body(input)
         .retrieve()
@@ -66,7 +56,9 @@ public class FalClient {
 
     while (System.currentTimeMillis() - startTime < MAX_WAIT_MS) {
       var response = restClient.get()
-          .uri("/{modelPath}/requests/{requestId}/status", modelPath, requestId)
+          .uri(uriBuilder -> uriBuilder
+              .path("/" + modelPath + "/requests/" + requestId + "/status")
+              .build())
           .retrieve()
           .body(JsonNode.class);
 
@@ -79,7 +71,9 @@ public class FalClient {
                 System.currentTimeMillis() - startTime);
             // Fetch the result
             return restClient.get()
-                .uri("/{modelPath}/requests/{requestId}", modelPath, requestId)
+                .uri(uriBuilder -> uriBuilder
+                    .path("/" + modelPath + "/requests/" + requestId)
+                    .build())
                 .retrieve()
                 .body(JsonNode.class);
           }

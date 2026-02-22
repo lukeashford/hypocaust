@@ -11,9 +11,9 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum AnthropicChatModelSpec implements ModelSpecEnum {
-  CLAUDE_OPUS_4_5_20251101("claude-opus-4-5-20251101"),
-  CLAUDE_SONNET_4_20250514("claude-sonnet-4-20250514"),
-  CLAUDE_3_5_HAIKU_LATEST("claude-3-5-haiku-latest");
+  CLAUDE_OPUS_4_6("claude-opus-4-6"),
+  CLAUDE_SONNET_4_6("claude-sonnet-4-6"),
+  CLAUDE_HAIKU_4_5("claude-haiku-4-5");
 
   private final String modelName;
 

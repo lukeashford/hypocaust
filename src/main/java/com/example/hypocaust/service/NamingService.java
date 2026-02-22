@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class NamingService {
 
-  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_3_5_HAIKU_LATEST;
+  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
   private static final int MAX_RETRIES = 3;
 
   private final ModelRegistry modelRegistry;
