@@ -25,21 +25,25 @@ class ModelEmbeddingRegistryTest {
     Path replicateMd = tempDir.resolve("replicate.md");
     Files.writeString(replicateMd, """
         # Replicate
-
+        
         ## Flux.1 [schnell]
-
+        
         - **owner**: black-forest-labs
         - **id**: flux-schnell
         - **tier**: fast
-
+        - **input**: TEXT
+        - **output**: IMAGE
+        
         ### Description
         Fast model
-
+        
         ## Flux.1 [dev]
-
+        
         - **owner**: black-forest-labs
         - **id**: flux-dev
-
+        - **input**: TEXT
+        - **output**: IMAGE
+        
         ### Description
         Balanced model
         """);
@@ -59,7 +63,7 @@ class ModelEmbeddingRegistryTest {
     assertThat(chunks).hasSize(2);
 
     // Check first chunk (explicit tier, platform derived from filename)
-    Chunk chunk1 = chunks.get(0);
+    Chunk chunk1 = chunks.getFirst();
     assertThat(chunk1.name()).isEqualTo("Flux.1 [schnell]");
     assertThat(chunk1.tier()).isEqualTo("fast");
     assertThat(chunk1.platform()).isEqualTo("REPLICATE");
@@ -78,13 +82,15 @@ class ModelEmbeddingRegistryTest {
     // GIVEN
     Path falMd = tempDir.resolve("fal.md");
     Files.writeString(falMd, """
-        # fal.ai
-
+        # NOT_FAL_HEADER
+        
         ## FLUX.1 [schnell] (fal)
-
+        
         - **owner**: fal-ai
         - **id**: flux/schnell
-
+        - **input**: TEXT
+        - **output**: IMAGE
+        
         ### Description
         Fast image gen on fal.ai
         """);
@@ -102,7 +108,7 @@ class ModelEmbeddingRegistryTest {
 
     // THEN
     assertThat(chunks).hasSize(1);
-    assertThat(chunks.get(0).platform()).isEqualTo("FAL");
+    assertThat(chunks.getFirst().platform()).isEqualTo("FAL");
   }
 
   @Test

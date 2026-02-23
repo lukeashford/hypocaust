@@ -141,6 +141,20 @@ CREATE TABLE model_embeddings
 -- Model embeddings index
 CREATE INDEX idx_model_embeddings_vector ON model_embeddings USING ivfflat (embedding vector_cosine_ops);
 
+-- Model embedding inputs
+CREATE TABLE model_embedding_inputs
+(
+    model_embedding_id uuid NOT NULL REFERENCES model_embeddings (id) ON DELETE CASCADE,
+    kind               text NOT NULL
+);
+
+-- Model embedding outputs
+CREATE TABLE model_embedding_outputs
+(
+    model_embedding_id uuid NOT NULL REFERENCES model_embeddings (id) ON DELETE CASCADE,
+    kind               text NOT NULL
+);
+
 -- Workflow embeddings table
 CREATE TABLE workflow_embeddings
 (

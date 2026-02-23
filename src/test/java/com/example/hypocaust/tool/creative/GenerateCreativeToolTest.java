@@ -20,11 +20,12 @@ import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
-import com.example.hypocaust.service.TaskComplexityService;
+import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -33,9 +34,7 @@ import org.junit.jupiter.api.Test;
 class GenerateCreativeToolTest {
 
   private ModelEmbeddingRegistry modelRag;
-  private ExecutionRouter executionRouter;
   private ModelExecutor modelExecutor;
-  private TaskComplexityService complexityService;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
@@ -45,12 +44,11 @@ class GenerateCreativeToolTest {
   @BeforeEach
   void setUp() {
     modelRag = mock(ModelEmbeddingRegistry.class);
-    executionRouter = mock(ExecutionRouter.class);
+    ExecutionRouter executionRouter = mock(ExecutionRouter.class);
     modelExecutor = mock(ModelExecutor.class);
-    complexityService = mock(TaskComplexityService.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
-    tool = new GenerateCreativeTool(modelRag, executionRouter, complexityService,
+    tool = new GenerateCreativeTool(modelRag, executionRouter,
         wordingService, objectMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
@@ -78,13 +76,15 @@ class GenerateCreativeToolTest {
     String bestPractices = "Use clear prompts";
     String tier = "balanced";
 
-    when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
-    when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, description, bestPractices, tier, "REPLICATE")));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
+        new SearchResult("SDXL", owner, modelId, description, bestPractices, tier, "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
     var planInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
     when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+        anyString(), anyString()))
         .thenReturn(new ExecutionPlan(planInput, null));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
@@ -117,12 +117,14 @@ class GenerateCreativeToolTest {
 
   @Test
   void generate_noModelFound_returnsError() {
-    when(complexityService.evaluate(anyString(), any())).thenReturn("balanced");
-    when(modelRag.search(anyString())).thenReturn(List.of());
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), ArtifactKind.IMAGE, "balanced",
+            "Generate a sunset image"));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
 
     var result = tool.generate("Generate a sunset image", ArtifactKind.IMAGE);
 
-    assertThat(result.error()).contains("No suitable model found");
+    assertThat(result.error()).contains("No suitable model found matching requirements");
     assertThat(result.artifactName()).isNull();
   }
 
@@ -135,14 +137,16 @@ class GenerateCreativeToolTest {
     String modelId = "animate-diff";
     String tier = "balanced";
 
-    when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
-    when(modelRag.search(anyString())).thenReturn(
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(
         List.of(new SearchResult("AnimateDiff", owner, modelId, "A video model",
-            "Keep it short", tier, "REPLICATE")));
+            "Keep it short", tier, "REPLICATE", Set.of(ArtifactKind.TEXT),
+            Set.of(ArtifactKind.VIDEO))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+        anyString(), anyString()))
         .thenReturn(ExecutionPlan.error("Missing video length"));
 
     // WHEN
@@ -161,13 +165,15 @@ class GenerateCreativeToolTest {
     String modelId = "sdxl";
     String tier = "balanced";
 
-    when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
-    when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE")));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
+        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
     var planInput = objectMapper.createObjectNode().put("prompt", "cat");
     when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+        anyString(), anyString()))
         .thenReturn(new ExecutionPlan(planInput, null));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
@@ -196,13 +202,15 @@ class GenerateCreativeToolTest {
     String modelId = "sdxl";
     String tier = "balanced";
 
-    when(complexityService.evaluate(anyString(), any())).thenReturn(tier);
-    when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE")));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
+        new SearchResult("SDXL", owner, modelId, "desc", "best", tier, "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
     var planInput = objectMapper.createObjectNode().put("prompt", "thing");
     when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+        anyString(), anyString()))
         .thenReturn(new ExecutionPlan(planInput, null));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
@@ -231,13 +239,15 @@ class GenerateCreativeToolTest {
     String modelId = "claude-3-opus";
     String tier = "high";
 
-    when(complexityService.evaluate(anyString(), eq(kind))).thenReturn(tier);
-    when(modelRag.search(anyString())).thenReturn(List.of(
-        new SearchResult("Claude Opus", owner, modelId, "desc", "best", tier, "OPENROUTER")));
+    when(wordingService.generateModelRequirement(anyString(), eq(kind)))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
+        new SearchResult("Claude Opus", owner, modelId, "desc", "best", tier, "OPENROUTER",
+            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.TEXT))));
 
     var planInput = objectMapper.createObjectNode().put("prompt", "poem");
     when(modelExecutor.generatePlan(anyString(), eq(kind), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+        anyString(), anyString()))
         .thenReturn(new ExecutionPlan(planInput, null));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());

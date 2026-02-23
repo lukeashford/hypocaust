@@ -42,7 +42,6 @@ public final class CommonPromptFragments {
             INPUTS PROVIDED:
             1. User Task: The natural language description of what to generate/edit.
             2. Model Docs: Contextual information about the selected model.
-            3. Available Artifacts: Names of artifacts currently in the project.
             
             OUTPUT:
             Return ONLY valid JSON.

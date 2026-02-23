@@ -5,13 +5,15 @@
 - **owner**: runwayml
 - **id**: gen4-turbo
 - **tier**: powerful
+- **input**: TEXT, IMAGE
+- **output**: VIDEO
 
 ### Description
 
-Runway Gen-4 is a premium VIDEO text-to-video and image-to-video model producing cinematic,
-temporally consistent clips with industry-leading motion quality, camera control, and scene
-coherence. The current standard for AI-assisted filmmaking previs, mood reels, and high-end
-social content. Turbo mode balances quality with faster generation times.
+Runway Gen-4 is a premium VIDEO generation model producing cinematic, temporally consistent clips
+with industry-leading motion quality and scene coherence. It supports both text-to-video and
+image-to-video workflows. Best for AI-assisted filmmaking, mood reels, and high-end social
+content requiring professional-grade video output.
 
 ### Best Practices
 
@@ -28,13 +30,15 @@ social content. Turbo mode balances quality with faster generation times.
 - **owner**: runwayml
 - **id**: gen4-turbo-i2v
 - **tier**: powerful
+- **input**: IMAGE, TEXT
+- **output**: VIDEO
 
 ### Description
 
-Runway Gen-4 Image-to-Video animates a source image into a short cinematic clip guided by a text
-prompt, preserving subject identity and composition while generating high-quality motion. Ideal
-for bringing concept art, stills, or FLUX-generated keyframes to life with controlled camera work
-and natural movement.
+Runway Gen-4 Image-to-Video specialized model for animating source images into cinematic clips.
+It preserves subject identity and composition from the input image while generating high-quality,
+controllable motion. Best for bringing concept art, product stills, or generated keyframes to
+life with natural movement.
 
 ### Best Practices
 
@@ -49,13 +53,14 @@ and natural movement.
 - **owner**: runwayml
 - **id**: upscale-v1
 - **tier**: fast
+- **input**: IMAGE
+- **output**: IMAGE
 
 ### Description
 
-Runway Upscale is an IMAGE upscaling and enhancement model optimized for visually pleasing
-enlargement of creative assets. Smooths compression artifacts while retaining sharpness, useful
-for turning draft or AI-generated images into higher-res deliverables suitable for print or
-broadcast.
+Runway Upscale is an IMAGE enhancement model optimized for high-quality enlargement of visual
+assets. It reduces artifacts and improves sharpness for draft or AI-generated images. Best for
+preparing images for deliverables, print, or broadcast by increasing resolution and clarity.
 
 ### Best Practices
 

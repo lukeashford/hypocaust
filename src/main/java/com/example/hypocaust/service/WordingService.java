@@ -1,9 +1,14 @@
 package com.example.hypocaust.service;
 
+import com.example.hypocaust.common.JsonUtils;
+import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.exception.ExternalServiceException;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.WordingFragments;
+import com.example.hypocaust.rag.ModelRequirement;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -21,12 +26,13 @@ public class WordingService {
       AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
 
   private final ModelRegistry modelRegistry;
+  private final ObjectMapper objectMapper;
 
   /**
    * Generates a brief progress label (1-5 words) for a task.
    */
   public String generateTodoWording(String task) {
-    String label = generate(WordingFragments.todoLabel(), task, "Task: ");
+    String label = generate(WordingFragments.todoLabel(), task, "Task to convert to todo: ");
     return label.length() > 50 ? label.substring(0, 47) + "..." : label;
   }
 
@@ -34,7 +40,7 @@ public class WordingService {
    * Generates a brief commit message (1 sentence) for a completed task.
    */
   public String generateCommitMessage(String task) {
-    return generate(WordingFragments.commitMessage(), task, "Task: ");
+    return generate(WordingFragments.commitMessage(), task, "Task to make commit message from: ");
   }
 
   /**
@@ -42,7 +48,7 @@ public class WordingService {
    */
   public String generateArtifactTitle(String source) {
     return generate(WordingFragments.artifactTitle(), source,
-        "Generation Prompt to name/describe: ");
+        "Generation Prompt to name: ");
   }
 
   /**
@@ -50,8 +56,24 @@ public class WordingService {
    */
   public String generateArtifactDescription(String source) {
     String desc = generate(WordingFragments.artifactDescription(), source,
-        "Generation Prompt to name/describe: ");
+        "Generation Prompt to describe: ");
     return desc.length() > 100 ? desc.substring(0, 97) + "..." : desc;
+  }
+
+  /**
+   * Translates a task into structured model requirements.
+   */
+  public ModelRequirement generateModelRequirement(String task, ArtifactKind targetKind) {
+    String response = generate(WordingFragments.modelRequirement(),
+        String.format("Task: %s, Target: %s", task, targetKind),
+        "Requirement analysis: ");
+
+    try {
+      return objectMapper.readValue(JsonUtils.extractJson(response), ModelRequirement.class);
+    } catch (Exception e) {
+      log.warn("Failed to parse model requirements, using defaults", e);
+      throw new ExternalServiceException("Generated model requirements could not be parsed.", e);
+    }
   }
 
   private String generate(PromptFragment fragment, String source, String userPrefix) {
@@ -70,6 +92,6 @@ public class WordingService {
     } catch (Exception e) {
       log.warn("Failed to generate wording for {}: {}", fragment.id(), e.getMessage());
     }
-    return "Processing";
+    return source;
   }
 }

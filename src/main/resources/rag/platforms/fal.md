@@ -5,13 +5,14 @@
 - **owner**: fal-ai
 - **id**: flux/schnell
 - **tier**: fast
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 [schnell] on fal.ai is an ultra-fast IMAGE text-to-image generation endpoint with sub-second
-inference, optimized for low-latency workflows like realtime creative tooling, previews,
-storyboards,
-and thumbnails. Runs natively on fal.ai infrastructure for minimal cold-start.
+FLUX.1 [schnell] on fal.ai is an ultra-fast IMAGE generation model with sub-second inference.
+It is highly optimized for low-latency workflows such as real-time previews, storyboards, and
+thumbnails. Best for rapid iteration and creative tools requiring immediate visual feedback.
 
 ### Best Practices
 
@@ -26,13 +27,17 @@ and thumbnails. Runs natively on fal.ai infrastructure for minimal cold-start.
 - **owner**: fal-ai
 - **id**: flux-pro/v1.1-ultra
 - **tier**: powerful
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 [pro] v1.1 Ultra on fal.ai is a premium IMAGE generation model producing
+FLUX.1 [pro] v1.1 Ultra on fal.ai is a premium IMAGE generation model that produces
 ultra-high-resolution
-images (up to 2048px) with exceptional photorealism, fine detail, and strong prompt adherence. Ideal
-for commercial imagery, hero shots, editorial, and brand-grade visual content.
+images (up to 2048px). It features exceptional photorealism, fine detail, and strong prompt
+adherence.
+Best for commercial imagery, high-end hero shots, and brand-grade visual content requiring maximum
+fidelity.
 
 ### Best Practices
 
@@ -47,12 +52,15 @@ for commercial imagery, hero shots, editorial, and brand-grade visual content.
 - **owner**: fal-ai
 - **id**: kling-video/v1.6/standard/text-to-video
 - **tier**: powerful
+- **input**: TEXT
+- **output**: VIDEO
 
 ### Description
 
 Kling 1.6 on fal.ai is a high-quality VIDEO generation model capable of producing cinematic,
-coherent short video clips from text descriptions. Strong motion quality, temporal consistency,
-and visual fidelity for creative video production, social media content, and concept visualization.
+coherent clips. It features strong motion quality, temporal consistency, and high visual fidelity.
+Best for high-end creative video production, social media content, and complex cinematic concept
+visualizations from text.
 
 ### Best Practices
 
@@ -66,13 +74,15 @@ and visual fidelity for creative video production, social media content, and con
 - **owner**: fal-ai
 - **id**: minimax/video-01
 - **tier**: powerful
+- **input**: TEXT, IMAGE
+- **output**: VIDEO
 
 ### Description
 
-Minimax Video-01 (Hailuo) on fal.ai is a VIDEO text-to-video and image-to-video model known for
-excellent cinematic motion quality, strong temporal consistency, and high visual fidelity. A
-strong alternative to Runway for high-quality video generation with competitive pricing and fast
-serving on fal infrastructure.
+Minimax Video-01 (Hailuo) on fal.ai is a high-performance VIDEO generation model known for excellent
+cinematic motion and temporal consistency. It supports both text-to-video and image-to-video
+workflows.
+Best for generating high-quality video with complex motion beats and cinematic aesthetics.
 
 ### Best Practices
 
@@ -87,13 +97,14 @@ serving on fal infrastructure.
 - **owner**: fal-ai
 - **id**: luma-dream-machine/ray-2-720p
 - **tier**: powerful
+- **input**: TEXT, IMAGE
+- **output**: VIDEO
 
 ### Description
 
-Luma Ray 2 on fal.ai is a VIDEO generation model optimized for photorealistic motion, strong
-physics simulation, and coherent object interaction. Particularly strong for natural environments,
-product shots in motion, and any content where physical plausibility matters more than stylized
-aesthetics.
+Luma Ray 2 on fal.ai is a VIDEO generation model optimized for photorealistic motion and strong
+physics simulation. It excels at natural environments and coherent object interactions. Best for
+content where physical plausibility and realistic movement are more important than stylized looks.
 
 ### Best Practices
 
@@ -108,13 +119,15 @@ aesthetics.
 - **owner**: fal-ai
 - **id**: flux/dev
 - **tier**: balanced
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 [dev] on fal.ai is a higher-quality IMAGE text-to-image model optimized for fidelity,
-detail, and composition — the same model as Replicate's FLUX dev but served on fal.ai
-infrastructure for significantly faster cold starts and warm inference. Preferred over the
-Replicate version for interactive or time-sensitive workflows.
+FLUX.1 [dev] on fal.ai is a high-quality IMAGE generation model optimized for fidelity, detail,
+and complex compositions. It is served with fast cold starts on fal infrastructure. Best for
+professional creative workflows requiring high nuance, detailed materials, and complex scene
+layouts.
 
 ### Best Practices
 
@@ -130,13 +143,14 @@ Replicate version for interactive or time-sensitive workflows.
 - **owner**: fal-ai
 - **id**: flux/dev/lora
 - **tier**: balanced
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 LoRA on fal.ai is an IMAGE generation endpoint supporting custom LoRA weights on top of
-FLUX.1 [dev], enabling consistent character appearances, specific art styles, brand aesthetics,
-and repeatable visual identities across a production. Essential for maintaining visual continuity
-across a film's generated assets.
+FLUX.1 LoRA on fal.ai supports custom LoRA weights on top of the FLUX dev model. It enables
+consistent character appearances and specific art styles across a series of generations. Best for
+maintaining visual continuity and specific brand aesthetics across multiple visual assets.
 
 ### Best Practices
 
@@ -152,13 +166,14 @@ across a film's generated assets.
 - **owner**: fal-ai
 - **id**: esrgan
 - **tier**: fast
+- **input**: IMAGE
+- **output**: IMAGE
 
 ### Description
 
-Real-ESRGAN on fal.ai is an IMAGE super-resolution upscaler that increases resolution while
-restoring detail and reducing compression artifacts. Faster cold starts than the Replicate
-equivalent. Use for enhancing AI-generated frames, low-res references, or scanned materials
-before print or broadcast output.
+Real-ESRGAN on fal.ai is an IMAGE super-resolution model that increases resolution while reducing
+artifacts. It features very fast cold starts. Best for enhancing generated frames, improving
+low-res references, and preparing visual materials for higher-quality deliverables.
 
 ### Best Practices
 
@@ -172,13 +187,14 @@ before print or broadcast output.
 - **owner**: fal-ai
 - **id**: musicgen/melody
 - **tier**: balanced
+- **input**: AUDIO, TEXT
+- **output**: AUDIO
 
 ### Description
 
-MusicGen Melody on fal.ai is an AUDIO text-to-music model that accepts a reference audio clip
-as a melodic conditioning input and generates new music inspired by its harmonic and rhythmic
-structure while following a text style prompt. This is the primary model for "generate something
-that sounds like X reference track" workflows — essential for temp music replacement and
+MusicGen Melody on fal.ai is an AUDIO generation model that takes a reference audio clip as melodic
+conditioning. It generates new music inspired by the reference's harmonic and rhythmic structure
+while following text style prompts. Best for "sound-alike" workflows, temp music replacement, and
 thematic scoring iteration.
 
 ### Best Practices

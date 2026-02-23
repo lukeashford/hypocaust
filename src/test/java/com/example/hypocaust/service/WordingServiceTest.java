@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +25,7 @@ class WordingServiceTest {
     chatModel = mock(org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(com.example.hypocaust.models.enums.AnthropicChatModelSpec.class)))
         .thenReturn(chatModel);
-    wordingService = new WordingService(modelRegistry);
+    wordingService = new WordingService(modelRegistry, new ObjectMapper());
   }
 
   @Test
@@ -79,6 +80,30 @@ class WordingServiceTest {
 
     // THEN
     assertThat(result).isEqualTo("Hello world description");
+  }
+
+  @Test
+  void generateModelRequirement_success() {
+    // GIVEN
+    String jsonResponse = """
+        {
+          "inputs": ["IMAGE"],
+          "output": "VIDEO",
+          "tier": "powerful",
+          "searchString": "cinematic animation"
+        }
+        """;
+    mockChatResponse(jsonResponse);
+
+    // WHEN
+    var result = wordingService.generateModelRequirement("task",
+        com.example.hypocaust.domain.ArtifactKind.VIDEO);
+
+    // THEN
+    assertThat(result.inputs()).containsExactly(com.example.hypocaust.domain.ArtifactKind.IMAGE);
+    assertThat(result.output()).isEqualTo(com.example.hypocaust.domain.ArtifactKind.VIDEO);
+    assertThat(result.tier()).isEqualTo("powerful");
+    assertThat(result.searchString()).isEqualTo("cinematic animation");
   }
 
   private void mockChatResponse(String content) {

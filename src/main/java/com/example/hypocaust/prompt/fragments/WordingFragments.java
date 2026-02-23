@@ -1,5 +1,6 @@
 package com.example.hypocaust.prompt.fragments;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.prompt.PromptFragment;
 
 /**
@@ -95,5 +96,36 @@ public final class WordingFragments {
             IMPORTANT: You are NOT performing the task. You are only describing the expected outcome.
             Output ONLY the description."""
     );
+  }
+
+  /**
+   * Translates the user's task into a technical model requirement.
+   */
+  public static PromptFragment modelRequirement() {
+    String kindsJson = ArtifactKind.toJsonArray();
+    String body = (
+        """
+            Translate the user's task into a technical model requirement.
+            
+            Analyze the task and available artifacts to decide:
+            1. 'inputs': Which artifact types are REQUIRED as source? (e.g., if editing @image, input is [IMAGE]).
+            2. 'output': The target ArtifactKind.
+            3. 'tier': 'fast', 'balanced' (default), or 'powerful'.
+            4. 'searchString': Keywords for semantic search (e.g., 'photorealistic portrait', 'background removal').
+            
+            Allowed ArtifactKinds (for both 'inputs' and 'output'):
+            %s
+            
+            Output ONLY valid JSON:
+            {
+              "inputs": ["IMAGE", ...],
+              "output": "TEXT",
+              "tier": "balanced",
+              "searchString": "keywords"
+            }
+            """
+    ).formatted(kindsJson);
+
+    return new PromptFragment("wording-model-requirement", body);
   }
 }

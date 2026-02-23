@@ -5,12 +5,14 @@
 - **owner**: elevenlabs
 - **id**: v3
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-ElevenLabs v3 is an AUDIO high-quality TTS endpoint optimized for natural prosody, expressive
-delivery, and production-grade narration. Best-in-class for ads, audiobooks, character voice,
-and creator pipelines requiring convincing, emotionally nuanced speech.
+ElevenLabs v3 is a premium AUDIO generation model for high-quality text-to-speech. It is optimized
+for natural prosody, expressive delivery, and production-grade narration. Best-in-class for ads,
+audiobooks, character voices, and any project requiring convincing, emotionally nuanced speech.
 
 ### Best Practices
 
@@ -25,13 +27,15 @@ and creator pipelines requiring convincing, emotionally nuanced speech.
 - **owner**: elevenlabs
 - **id**: voice-design
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-ElevenLabs Voice Design is an AUDIO endpoint for generating and saving custom synthetic voices
-from a text description (age, gender, accent, tone, delivery style). Enables creation of unique
-character voices without needing a reference recording — ideal for animated content, games, and
-brand mascots.
+ElevenLabs Voice Design is an AUDIO generation model for creating custom synthetic voices from
+descriptive text (age, gender, accent, tone). It allows for the creation of unique character voices
+without a reference recording. Best for animated content, games, and brand mascots requiring
+original voice identities.
 
 ### Best Practices
 
@@ -46,13 +50,15 @@ brand mascots.
 - **owner**: elevenlabs
 - **id**: dubbing
 - **tier**: powerful
+- **input**: AUDIO, VIDEO
+- **output**: AUDIO, VIDEO
 
 ### Description
 
-ElevenLabs Dubbing is an AUDIO/VIDEO localization endpoint that translates and re-voices existing
-video or audio content into target languages while preserving original speaker timing, emotion,
-and lip-sync cadence. Critical for international distribution, accessibility, and multilingual
-content pipelines.
+ElevenLabs Dubbing is an AUDIO and VIDEO localization model that translates and re-voices content
+into target languages. It preserves original speaker timing, emotion, and cadence. Best for
+international distribution, accessibility, and multilingual content pipelines requiring high-quality
+re-voicing.
 
 ### Best Practices
 
@@ -67,12 +73,14 @@ content pipelines.
 - **owner**: elevenlabs
 - **id**: sound-generation
 - **tier**: fast
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-ElevenLabs Sound Effects is an AUDIO text-to-SFX endpoint that generates short, production-ready
-sound effect clips from descriptive prompts. Useful for rapid SFX prototyping, Foley replacement,
-and on-demand sound design without library licensing concerns.
+ElevenLabs Sound Effects is a fast AUDIO generation model for producing production-ready sound
+effect clips from descriptive prompts. It is ideal for rapid SFX prototyping, Foley replacement,
+and on-demand sound design. Best for generating specific, isolated sounds and textures.
 
 ### Best Practices
 

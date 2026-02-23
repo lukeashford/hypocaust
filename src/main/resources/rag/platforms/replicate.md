@@ -5,12 +5,15 @@
 - **owner**: black-forest-labs
 - **id**: flux-2-pro
 - **tier**: powerful
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.2 [pro] is a premium IMAGE generation model emphasizing photorealism, typography/signage
-stability, and high-end aesthetic coherence for commercial outputs (ads, product shots,
-fashion/editorial looks, and brand-grade imagery).
+FLUX.2 [pro] is a premium IMAGE generation model emphasizing extreme photorealism, precise
+typography/signage, and high-end aesthetic coherence. It excels at commercial outputs (ads,
+product shots, fashion/editorial looks, and brand-grade imagery). Best for high-stakes visual
+content where detail and brand consistency are paramount.
 
 ### Best Practices
 
@@ -26,12 +29,15 @@ fashion/editorial looks, and brand-grade imagery).
 - **owner**: black-forest-labs
 - **id**: flux-2-flex
 - **tier**: balanced
+- **input**: IMAGE, TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.2 [flex] is a flexible IMAGE generation endpoint designed for multi-reference workflows (e.g.,
-multiple input images / guidance signals) to improve identity, style, and composition consistency
-across iterative creative pipelines (lookdev, character sheets, product variants).
+FLUX.2 [flex] is a versatile IMAGE generation model designed for multi-reference workflows. It can
+take multiple input images and guidance signals to improve identity, style, and composition
+consistency. Ideal for iterative creative pipelines (lookdev, character sheets, product variants).
+Best for tasks requiring character or style consistency across different generations.
 
 ### Best Practices
 
@@ -46,12 +52,15 @@ across iterative creative pipelines (lookdev, character sheets, product variants
 - **owner**: black-forest-labs
 - **id**: flux-canny-pro
 - **tier**: powerful
+- **input**: IMAGE, TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 Canny [pro] is an IMAGE ControlNet-style edge-guided generator that follows canny/line edges
-for strong structure retention (poses, silhouettes, layout) while still producing high-quality
-textures and lighting—ideal for design-to-render, sketch-to-image, and composition lock.
+FLUX.1 Canny [pro] is an IMAGE generation model that uses Canny edge guidance to retain strong
+structure (poses, silhouettes, layout). It follows the edges of an input image while producing
+high-quality textures and lighting. Best for design-to-render, sketch-to-image, and cases where
+strict layout retention is necessary.
 
 ### Best Practices
 
@@ -65,12 +74,14 @@ textures and lighting—ideal for design-to-render, sketch-to-image, and composi
 - **owner**: black-forest-labs
 - **id**: flux-depth-pro
 - **tier**: powerful
+- **input**: IMAGE, TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 Depth [pro] is an IMAGE depth-guided generator that leverages depth/geometry conditioning to
-preserve perspective and 3D layout (great for architecture, interior renders, product staging, and
-camera-consistent scene variations).
+FLUX.1 Depth [pro] is an IMAGE generation model guided by depth/geometry information. It preserves
+perspective and 3D layout from an input image. Ideal for architecture, interior renders, product
+staging, and camera-consistent scene variations. Best for maintaining 3D spatial relationships.
 
 ### Best Practices
 
@@ -85,12 +96,15 @@ camera-consistent scene variations).
 - **owner**: black-forest-labs
 - **id**: flux-fill-pro
 - **tier**: powerful
+- **input**: IMAGE, TEXT
+- **output**: IMAGE
 
 ### Description
 
-FLUX.1 Fill [pro] is an IMAGE inpainting/outpainting model specialized for seamless content fill,
-object removal, background extension, and localized edits while keeping lighting continuity, texture
-coherence, and minimal seams (useful for cleanup, generative retouch, and layout expansion).
+FLUX.1 Fill [pro] is an IMAGE inpainting and outpainting model specialized for seamless content
+fill,
+object removal, and background extension. It maintains lighting continuity, texture coherence, and
+produces minimal seams. Best for generative retouching, cleaning up images, or expanding layouts.
 
 ### Best Practices
 
@@ -104,12 +118,15 @@ coherence, and minimal seams (useful for cleanup, generative retouch, and layout
 - **owner**: stability-ai
 - **id**: sdxl
 - **tier**: balanced
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-SDXL is a widely-used IMAGE text-to-image diffusion baseline prized for versatility, broad style
-coverage, strong community prompting patterns, and reliable 1024px-class outputs (excellent for
-general-purpose generation, stylization, and controllable workflows).
+SDXL is a widely-used IMAGE generation model prized for its versatility and broad style coverage. It
+is a reliable baseline for 1024px-class outputs, excellent for general-purpose generation,
+stylization, and controllable workflows with strong community support. Best for general creative
+tasks and broad stylistic exploration.
 
 ### Best Practices
 
@@ -125,12 +142,15 @@ general-purpose generation, stylization, and controllable workflows).
 - **owner**: stability-ai
 - **id**: stable-diffusion-3
 - **tier**: balanced
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-Stable Diffusion 3 is an IMAGE text-to-image model focused on improved prompt understanding, text
-rendering robustness, and higher semantic alignment than earlier SD generations (useful for complex
-scene briefs, product descriptions, and concept art with precise constraints).
+Stable Diffusion 3 is an IMAGE generation model focused on improved prompt understanding and robust
+text rendering. It has higher semantic alignment than earlier generations, making it excellent for
+complex scene briefs, product descriptions, and concept art with precise constraints. Best for
+cases where text must appear in the image or complex spatial layouts are required.
 
 ### Best Practices
 
@@ -145,12 +165,15 @@ scene briefs, product descriptions, and concept art with precise constraints).
 - **owner**: stability-ai
 - **id**: stable-diffusion-3.5-large
 - **tier**: powerful
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
 Stable Diffusion 3.5 Large is a high-capacity IMAGE generator targeting top-tier detail, realism,
-and nuanced aesthetics (strong for hero imagery, key visuals, editorial looks, and high-density
-scenes).
+and nuanced aesthetics. It is highly effective for hero imagery, key visuals, editorial looks, and
+high-density scenes. Best for professional visual production requiring the highest possible
+quality and adherence to complex lighting/camera cues.
 
 ### Best Practices
 
@@ -165,12 +188,15 @@ scenes).
 - **owner**: stability-ai
 - **id**: stable-diffusion-3.5-medium
 - **tier**: balanced
+- **input**: TEXT
+- **output**: IMAGE
 
 ### Description
 
-Stable Diffusion 3.5 Medium is an IMAGE model balancing quality and cost/latency, offering strong
-alignment and attractive outputs with lower compute than the Large variant (good for bulk
-generation, iteration loops, and mid-latency creative systems).
+Stable Diffusion 3.5 Medium is an IMAGE generation model balancing quality and cost/latency. It
+offers strong alignment and attractive outputs with lower compute requirements. Ideal for bulk
+generation, iteration loops, and mid-latency creative systems. Best for rapid visual
+exploration and prototyping.
 
 ### Best Practices
 
@@ -183,12 +209,15 @@ generation, iteration loops, and mid-latency creative systems).
 - **owner**: bria
 - **id**: remove-background
 - **tier**: fast
+- **input**: IMAGE
+- **output**: IMAGE
 
 ### Description
 
-Bria Remove Background is an IMAGE background removal / segmentation endpoint producing clean alpha
-mattes and cutouts for product shots, portraits, and compositing (fast, practical, and
-production-friendly for e-commerce and design pipelines).
+Bria Remove Background is an IMAGE specialized endpoint for background removal and segmentation.
+It produces clean alpha mattes and cutouts for product shots, portraits, and compositing.
+Extremely fast and reliable for production design pipelines. Best for isolated subject
+extraction and e-commerce workflows.
 
 ### Best Practices
 
@@ -202,12 +231,15 @@ production-friendly for e-commerce and design pipelines).
 - **owner**: christophy
 - **id**: stable-video-diffusion
 - **tier**: balanced
+- **input**: IMAGE, TEXT
+- **output**: VIDEO
 
 ### Description
 
-Stable Video Diffusion is a VIDEO image-to-video generator producing short motion clips from a
-single input frame, controllable via motion buckets and FPS (ideal for animating concept frames,
-product stills, and storyboard beats into quick previs).
+Stable Video Diffusion is a VIDEO generation model that animates a single input frame into a
+short motion clip. It allows for control via motion buckets and FPS. Ideal for animating
+concept frames, product stills, and storyboards into quick previs. Best for adding subtle,
+realistic motion to static images.
 
 ### Best Practices
 
@@ -222,12 +254,14 @@ product stills, and storyboard beats into quick previs).
 - **owner**: lightricks
 - **id**: ltx-video
 - **tier**: balanced
+- **input**: IMAGE, TEXT
+- **output**: VIDEO
 
 ### Description
 
-LTX-Video is a VIDEO text-to-video (and optional image-conditioned) model aimed at longer-form,
-higher-quality motion with prompt-following and controllability knobs (useful for cinematic clips,
-social content, stylized shots, and iterative video ideation).
+LTX-Video is a high-quality VIDEO generation model supporting both text-to-video and
+image-to-video. It is aimed at cinematic clips with strong prompt-following and controllability.
+Best for creating cinematic video clips, social content, and stylized shots with coherent motion.
 
 ### Best Practices
 
@@ -243,12 +277,15 @@ social content, stylized shots, and iterative video ideation).
 - **owner**: genmoai
 - **id**: mochi-1
 - **tier**: balanced
+- **input**: TEXT
+- **output**: VIDEO
 
 ### Description
 
-Mochi 1 is a VIDEO generative model oriented toward smooth motion, coherent scene continuity, and
-stylized cinematic aesthetics (useful for text-to-video ideation, mood reels, and animation-like
-sequences).
+Mochi 1 is a VIDEO generation model oriented toward smooth, coherent motion and cinematic scene
+continuity. It is particularly effective for generating motion that follows complex camera movements
+and maintaining stylistic aesthetics. Best for generating short, stylized cinematic sequences from
+text descriptions.
 
 ### Best Practices
 
@@ -264,12 +301,14 @@ sequences).
 - **owner**: genmoai
 - **id**: mochi-1-lora
 - **tier**: balanced
+- **input**: TEXT
+- **output**: VIDEO
 
 ### Description
 
-Mochi 1 LoRA is a VIDEO variant intended for LoRA-conditioned generation (style, character, brand
-look), enabling controllable aesthetics and repeatable outputs across multiple clips for consistent
-campaigns or episodic content.
+Mochi 1 LoRA is a VIDEO generation model that supports LoRA-conditioned aesthetics. It allows for
+highly controllable style, character, or brand looks across multiple video clips. Best for
+maintaining consistent visual styles across episodic content or campaigns.
 
 ### Best Practices
 
@@ -283,12 +322,14 @@ campaigns or episodic content.
 - **owner**: thudm
 - **id**: cogvideox-t2v
 - **tier**: balanced
+- **input**: TEXT
+- **output**: VIDEO
 
 ### Description
 
-CogVideoX T2V is a VIDEO text-to-video model designed for prompt-driven motion synthesis, enabling
-cinematic, stylized, or illustrative clips from pure text (good for rapid video concepting, visual
-beats, and generative motion experiments).
+CogVideoX T2V is a VIDEO generation model designed for prompt-driven motion synthesis. It produces
+cinematic, stylized, or illustrative clips directly from text. Best for rapid video concepting
+and generating visual beats from descriptive text.
 
 ### Best Practices
 
@@ -302,12 +343,14 @@ beats, and generative motion experiments).
 - **owner**: thudm
 - **id**: cogvideox-i2v
 - **tier**: balanced
+- **input**: IMAGE, TEXT
+- **output**: VIDEO
 
 ### Description
 
-CogVideoX I2V is a VIDEO image-to-video model that animates a source image into a short clip while
-following text guidance, supporting controllable motion without losing the core composition (useful
-for bringing still concept art/product frames to life).
+CogVideoX I2V is a VIDEO generation model that animates a source image while following text
+guidance. It supports controllable motion without losing the core composition of the input image.
+Best for bringing still concept art or product frames to life with specific motion instructions.
 
 ### Best Practices
 
@@ -322,12 +365,14 @@ for bringing still concept art/product frames to life).
 - **owner**: google-research
 - **id**: frame-interpolation
 - **tier**: balanced
+- **input**: IMAGE
+- **output**: IMAGE
 
 ### Description
 
-Google Research Frame Interpolation is an IMAGE-to-IMAGE interpolation model (often used for VIDEO
-pipelines) that synthesizes intermediate frames for smoother motion (slow-motion, FPS upconversion),
-though some older versions are disabled—this version is marked as “Latest” in the versions listing.
+Google Research Frame Interpolation is a model that synthesizes intermediate frames between two
+images. It is commonly used in VIDEO pipelines for slow-motion or FPS upconversion. Best for
+creating smooth transitions between keyframes or improving the fluidity of generated video.
 
 ### Best Practices
 
@@ -342,12 +387,14 @@ though some older versions are disabled—this version is marked as “Latest”
 - **owner**: zsxkib
 - **id**: film-frame-interpolation-for-large-motion
 - **tier**: balanced
+- **input**: IMAGE
+- **output**: IMAGE
 
 ### Description
 
-FILM (Frame Interpolation for Large Motion) is an interpolation model optimized for big scene motion
-and complex occlusions, producing smoother slow-motion and higher-FPS outputs with fewer edge tears
-than simpler flow approaches (useful for VFX, sports, action, and camera-heavy shots).
+FILM is a frame interpolation model optimized for handling large motion and complex occlusions.
+It produces smoother slow-motion and higher-FPS outputs with fewer artifacts than standard
+approaches. Best for VFX, sports, or action shots where subjects move significantly between frames.
 
 ### Best Practices
 
@@ -361,12 +408,14 @@ than simpler flow approaches (useful for VFX, sports, action, and camera-heavy s
 - **owner**: meta
 - **id**: sam-2-video
 - **tier**: powerful
+- **input**: VIDEO
+- **output**: VIDEO
 
 ### Description
 
-SAM 2 Video is a VIDEO object segmentation and tracking model that propagates masks across frames,
-enabling robust rotoscoping, background replacement prep, and motion-aware cutouts for editing/VFX
-pipelines.
+SAM 2 Video is a state-of-the-art VIDEO object segmentation and tracking model. It allows for robust
+tracking and masking of objects across multiple frames. Best for rotoscoping, background
+replacement preparation, and motion-aware cutouts in editing or VFX workflows.
 
 ### Best Practices
 
@@ -381,12 +430,14 @@ pipelines.
 - **owner**: lucataco
 - **id**: ollama-llama3.2-vision-90b
 - **tier**: powerful
+- **input**: IMAGE, TEXT
+- **output**: TEXT
 
 ### Description
 
-Llama 3.2 Vision 90B is a large multimodal VLM for IMAGE understanding + text output, suited for
-captioning, visual QA, scene analysis, and semi-structured extraction (OCR-like interpretation,
-layout reasoning, tool-using agents that need visual context).
+Llama 3.2 Vision 90B is a massive multimodal model for IMAGE understanding and analysis. It excels
+at captioning, visual QA, and structured data extraction from images. Best for tasks requiring
+deep reasoning about visual content or interpreting complex layouts and text within images.
 
 ### Best Practices
 
@@ -401,12 +452,14 @@ layout reasoning, tool-using agents that need visual context).
 - **owner**: openai
 - **id**: whisper
 - **tier**: fast
+- **input**: AUDIO
+- **output**: TEXT
 
 ### Description
 
-Whisper is an AUDIO speech recognition / transcription / translation model known for robust
-multilingual ASR, noisy-audio tolerance, and high-quality timestamps (ideal for subtitles,
-transcripts, diarization-adjacent pipelines, and audio indexing).
+Whisper is a robust AUDIO speech recognition and transcription model. it provides high-quality
+ASR with multilingual support and excellent noise tolerance. Best for generating subtitles,
+transcripts, and indexing audio content.
 
 ### Best Practices
 
@@ -421,12 +474,14 @@ transcripts, diarization-adjacent pipelines, and audio indexing).
 - **owner**: lucataco
 - **id**: xtts-v2
 - **tier**: balanced
+- **input**: TEXT, AUDIO
+- **output**: AUDIO
 
 ### Description
 
-XTTS v2 is an AUDIO multilingual TTS model supporting voice cloning via reference audio, enabling
-expressive speech synthesis for narration, character reads, localization, and prototyping voice
-performances.
+XTTS v2 is a multilingual AUDIO synthesis model that supports voice cloning. It can generate
+expressive speech from text using a short reference audio clip. Best for narration, character
+voice-overs, and localized audio content.
 
 ### Best Practices
 
@@ -440,12 +495,14 @@ performances.
 - **owner**: meta
 - **id**: musicgen
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-MusicGen is an AUDIO text-to-music generator producing short instrumental or stylized musical clips
-from prompts, useful for rapid scoring, mood exploration, temp tracks, and creative iteration across
-genres and instrumentation.
+MusicGen is a high-quality AUDIO generation model for text-to-music. It produces instrumental or
+stylized musical clips across diverse genres and tempos. Best for rapid musical scoring, mood
+exploration, and generating temp tracks for creative projects.
 
 ### Best Practices
 
@@ -460,12 +517,14 @@ genres and instrumentation.
 - **owner**: stability-ai
 - **id**: stable-audio-2.5
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-Stable Audio 2.5 is an AUDIO text-to-audio/music generation model aimed at higher fidelity, stronger
-prompt-to-sound alignment, and cleaner timbres (useful for SFX ideation, music beds, and creative
-sound design).
+Stable Audio 2.5 is an AUDIO generation model aimed at high-fidelity music and sound effect
+synthesis. It features strong prompt-to-sound alignment and clean timbres. Best for creative
+sound design, high-quality music beds, and realistic SFX ideation.
 
 ### Best Practices
 
@@ -480,12 +539,14 @@ sound design).
 - **owner**: stackadoc
 - **id**: stable-audio-open-1.0
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-Stable Audio Open 1.0 is an AUDIO open-weight text-to-audio generator suitable for experimentation,
-custom pipelines, and controllable sound synthesis with open tooling (good for researchy stacks and
-self-hostable workflows).
+Stable Audio Open 1.0 is an open-weight AUDIO generation model for controllable sound synthesis.
+It is suitable for research and experimentation in sound design. Best for research-oriented
+audio projects and self-hostable creative workflows.
 
 ### Best Practices
 
@@ -499,12 +560,14 @@ self-hostable workflows).
 - **owner**: pseudoram
 - **id**: rvc-v2
 - **tier**: balanced
+- **input**: AUDIO
+- **output**: AUDIO
 
 ### Description
 
-RVC v2 is an AUDIO voice conversion / voice cloning approach (RVC-style) for transforming source
-vocals into a target voice timbre, useful for creative vocal effects, character VO prototyping, and
-style transfer (ensure you have rights/permission for voices).
+RVC v2 is an AUDIO voice conversion model that transforms a source vocal into a target voice timbre.
+It allows for expressive character voice prototyping and vocal effects. Best for character
+voice-over transfer and creative vocal stylization.
 
 ### Best Practices
 
@@ -519,11 +582,14 @@ style transfer (ensure you have rights/permission for voices).
 - **owner**: riffusion
 - **id**: riffusion
 - **tier**: balanced
+- **input**: TEXT
+- **output**: AUDIO
 
 ### Description
 
-Riffusion is an AUDIO text-to-music generator using spectrogram diffusion, popular for quick riffs,
-loops, and stylized texture beds (great for rapid musical sketching and “idea spark” generation).
+Riffusion is an AUDIO generation model that uses spectrogram diffusion to create musical loops
+and riffs. It is excellent for quick musical sketches and background textures. Best for rapid
+loop generation and "idea spark" musical ideation.
 
 ### Best Practices
 
@@ -537,12 +603,14 @@ loops, and stylized texture beds (great for rapid musical sketching and “idea 
 - **owner**: lucataco
 - **id**: zeta-editing
 - **tier**: balanced
+- **input**: AUDIO, TEXT
+- **output**: AUDIO
 
 ### Description
 
-Zeta Editing is an AUDIO diffusion-based audio editing endpoint that transforms an input clip toward
-a target prompt while preserving structure depending on edit strength—useful for remixing, style
-shifts, sound redesign, and iterative audio direction.
+Zeta Editing is a diffusion-based AUDIO editing model that transforms an input clip toward a
+target prompt while preserving its original structure. Best for remixing, style shifts, and
+iterative audio direction where the core layout must remain consistent.
 
 ### Best Practices
 
@@ -558,12 +626,14 @@ shifts, sound redesign, and iterative audio direction.
 - **owner**: meta
 - **id**: meta-llama-3.1-405b-instruct
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Llama 3.1 405B Instruct is a frontier-scale JSON-capable text model optimized for
-high-quality instruction following, long-form generation, and strong general reasoning (excellent
-for complex agents, deep summarization, multi-step planning, and high-stakes drafting).
+Llama 3.1 405B Instruct is a frontier-scale TEXT generation model optimized for high-quality
+instruction following and complex reasoning. It excels at long-form drafting, deep summarization,
+and multi-step planning. Best for high-stakes agent logic, complex drafting, and deep analysis.
 
 ### Best Practices
 
@@ -578,12 +648,14 @@ for complex agents, deep summarization, multi-step planning, and high-stakes dra
 - **owner**: deepseek-ai
 - **id**: deepseek-r1
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-DeepSeek R1 is a JSON-capable reasoning-oriented text model suited to multi-step
-analysis, chain planning, code reasoning, and robust agent tool orchestration (useful when you need
-stronger deliberation than standard instruct models).
+DeepSeek R1 is a powerful TEXT generation model specifically optimized for chain-of-thought
+reasoning and logical analysis. It excels at complex planning, code reasoning, and multi-step
+problem solving. Best for tasks requiring deep deliberation and robust tool orchestration.
 
 ### Best Practices
 
@@ -598,13 +670,14 @@ stronger deliberation than standard instruct models).
 - **owner**: google-deepmind
 - **id**: gemma-3-27b-it
 - **tier**: powerful
+- **input**: TEXT, IMAGE
+- **output**: TEXT
 
 ### Description
 
-Gemma 3 27B IT is a large multimodal-capable (text + optional image input) instruct model for
-JSON-friendly generation, multilingual tasks, and long-context assistant use; **Version
-is a placeholder**—pin the exact 64-hex version from the model’s Replicate “Versions” page before
-production use.
+Gemma 3 27B IT is a large multimodal instruct model from Google. It excels at JSON-friendly
+generation, multilingual tasks, and reasoning across text and images. Best for high-capacity
+assistant tasks, visual interpretation, and long-context reasoning where quality is prioritized.
 
 ### Best Practices
 
@@ -619,12 +692,14 @@ production use.
 - **owner**: google-deepmind
 - **id**: gemma-3-12b-it
 - **tier**: balanced
+- **input**: TEXT, IMAGE
+- **output**: TEXT
 
 ### Description
 
-Gemma 3 12B IT is a multimodal-capable instruct model (text + optional image input) for
-JSON-style outputs, general assistant tasks, and efficient deployment with solid
-reasoning for its size (good for scalable agents and multimodal RAG helpers).
+Gemma 3 12B IT is a mid-sized multimodal model balancing reasoning capability and efficiency. It
+is effective for visual QA, general assistant tasks, and structured data generation. Best for
+scalable agent applications requiring both text and visual context processing.
 
 ### Best Practices
 
@@ -637,12 +712,14 @@ reasoning for its size (good for scalable agents and multimodal RAG helpers).
 - **owner**: google-deepmind
 - **id**: gemma-3-4b-it
 - **tier**: fast
+- **input**: TEXT, IMAGE
+- **output**: TEXT
 
 ### Description
 
-Gemma 3 4B IT is a smaller multimodal-capable instruct model optimized for fast, cost-effective
-JSON-friendly text generation and lightweight multimodal tasks (good for high-QPS
-assistants, extraction, and short-form creative outputs).
+Gemma 3 4B IT is a small, fast multimodal model optimized for low-latency tasks. It provides
+cost-effective JSON-friendly generation and lightweight visual interpretation. Best for high-QPS
+assistants, simple extraction, and short-form creative outputs.
 
 ### Best Practices
 
@@ -655,12 +732,14 @@ assistants, extraction, and short-form creative outputs).
 - **owner**: google-deepmind
 - **id**: gemma2-27b-it
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Gemma2 27B IT is a strong general-purpose instruct model for JSON-friendly generation,
-summarization, reasoning, and content drafting with a good quality/latency tradeoff (useful for
-agent planning, RAG synthesis, and long-form writing).
+Gemma2 27B IT is a strong general-purpose instruct model excelling at summarization, creative
+writing, and logical reasoning with a great quality-to-latency ratio. Best for long-form writing,
+RAG synthesis, and complex planning where a balanced performance is needed.
 
 ### Best Practices
 
@@ -673,12 +752,14 @@ agent planning, RAG synthesis, and long-form writing).
 - **owner**: google-deepmind
 - **id**: gemma2-9b-it
 - **tier**: balanced
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Gemma2 9B IT is an efficient instruct model for JSON-capable text generation,
-summarization, and everyday reasoning at lower cost; **Version is a placeholder**—pin the exact
-64-hex version from Replicate “Versions” before production deployment.
+Gemma2 9B IT is an efficient text generation model optimized for summarization, everyday
+reasoning, and instruction following. Best for cost-effective agent tasks, rapid summarization,
+and creative copy generation.
 
 ### Best Practices
 
@@ -691,12 +772,14 @@ summarization, and everyday reasoning at lower cost; **Version is a placeholder*
 - **owner**: microsoft
 - **id**: phi-3-mini-4k-instruct
 - **tier**: fast
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Phi-3 Mini 4K Instruct is a lightweight JSON-friendly text model optimized for fast
-responses and strong reasoning-per-parameter, ideal for low-latency assistants, code snippets, short
-planning, and scalable agent microservices.
+Phi-3 Mini 4K Instruct is a lightweight, high-performance model optimized for fast responses
+and strong reasoning relative to its size. Best for low-latency assistant tasks, simple code
+snippets, and short-form planning where speed is critical.
 
 ### Best Practices
 
@@ -709,12 +792,14 @@ planning, and scalable agent microservices.
 - **owner**: microsoft
 - **id**: phi-3-mini-128k-instruct
 - **tier**: fast
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Phi-3 Mini 128K Instruct is a long-context JSON-capable text model for large documents,
-extended conversations, and RAG-heavy synthesis where you need broad context retention with
-relatively low compute.
+Phi-3 Mini 128K Instruct provides long-context retention in a fast, efficient package. It is ideal
+for large document analysis and extended conversations. Best for RAG-heavy synthesis and
+summarizing long threads while maintaining low latency.
 
 ### Best Practices
 
@@ -728,12 +813,14 @@ relatively low compute.
 - **owner**: microsoft
 - **id**: phi-3-medium-4k-instruct
 - **tier**: balanced
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Phi-3 Medium 4K Instruct is a mid-size JSON-capable text model (14B class) offering
-stronger reasoning and robustness than Mini while still targeting efficient deployment for
-assistants, coding, and planning workloads.
+Phi-3 Medium 4K Instruct (14B) offers robust reasoning and instruction following for mid-range
+tasks. It provides a significant step up in quality from the Mini variant while remaining
+efficient. Best for assistant tasks, coding assistance, and more complex planning.
 
 ### Best Practices
 
@@ -746,12 +833,14 @@ assistants, coding, and planning workloads.
 - **owner**: lucataco
 - **id**: ollama-llama3.3-70b
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Ollama Llama 3.3 70B is a JSON-capable large text model wrapper optimized for assistant
-dialogue, multilingual generation, and strong general reasoning with long context (useful for
-self-contained deployments and agent backends that prefer Ollama-style serving).
+Ollama Llama 3.3 70B is a large-scale assistant model optimized for dialogue, multilingual
+generation, and strong general reasoning. Best for self-contained agent backends requiring
+frontier-level performance and large context handling.
 
 ### Best Practices
 
@@ -765,12 +854,14 @@ self-contained deployments and agent backends that prefer Ollama-style serving).
 - **owner**: lucataco
 - **id**: ollama-qwen2.5-72b
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Ollama Qwen2.5 72B is a large JSON-capable text model wrapper aimed at strong instruction
-following and multilingual utility; **Version is a placeholder**—pin the exact 64-hex version from
-Replicate “Versions” before production use.
+Ollama Qwen2.5 72B is a high-performance text model excelling in instruction following and
+multilingual utility. Best for complex agent logic, internationalized content generation, and
+structured data extraction tasks.
 
 ### Best Practices
 

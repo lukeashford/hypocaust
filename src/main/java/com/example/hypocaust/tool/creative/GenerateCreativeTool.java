@@ -7,7 +7,7 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
-import com.example.hypocaust.service.TaskComplexityService;
+import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,7 +32,6 @@ public class GenerateCreativeTool {
 
   private final ModelEmbeddingRegistry modelRag;
   private final ExecutionRouter executionRouter;
-  private final TaskComplexityService complexityService;
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
 
@@ -48,28 +47,27 @@ public class GenerateCreativeTool {
   ) {
     log.info("Creative generation request: {} (kind: {})", task, artifactKind);
 
-    // Step 0: Complexity analysis
-    String requiredTier = complexityService.evaluate(task, artifactKind);
+    // Step 1: Task-to-Requirement Rewriting
+    ModelRequirement req = wordingService.generateModelRequirement(task, artifactKind);
+    log.info("Model requirements: inputs={}, output={}, tier={}, search='{}'",
+        req.inputs(), req.output(), req.tier(), req.searchString());
 
-    // Step 1: Model selection via RAG
-    var modelResults = modelRag.search(task + " " + artifactKind + " tier: " + requiredTier);
+    // Step 2: Model selection via RAG
+    var modelResults = modelRag.search(req);
     if (modelResults.isEmpty()) {
-      return GenerateCreativeResult.error("No suitable model found for: " + task);
+      return GenerateCreativeResult.error("No suitable model found matching requirements: " + req);
     }
 
     var bestModel = modelResults.getFirst();
     log.info("Selected model: {} (platform: {})", bestModel.name(), bestModel.platform());
 
-    // Step 2: Resolve executor for this model's platform
+    // Step 3: Resolve executor for this model's platform
     var executor = executionRouter.resolve(bestModel.platform());
 
-    List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
-        .getAllWithChanges();
-
-    // Step 3: Generate provider input via executor
+    // Step 3: Generate provider input via executor (without artifacts)
     var plan = executor.generatePlan(task, artifactKind, bestModel.name(),
         bestModel.owner(), bestModel.modelId(), bestModel.description(),
-        bestModel.bestPractices(), availableArtifacts);
+        bestModel.bestPractices());
 
     if (plan.hasError()) {
       log.warn("Creative generation plan failed: {}", plan.errorMessage());
@@ -81,6 +79,8 @@ public class GenerateCreativeTool {
     String description = wordingService.generateArtifactDescription(task);
 
     // Step 4: Substitute artifact placeholders
+    List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
+        .getAllWithChanges();
     var finalInput = substituteArtifacts(plan.providerInput(), availableArtifacts);
 
     // Step 5: Schedule artifact
@@ -108,7 +108,7 @@ public class GenerateCreativeTool {
       // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
       ObjectNode genDetails = metadata.putObject("generation_details");
-      genDetails.put("provider", bestModel.platform().toString());
+      genDetails.put("provider", bestModel.platform());
       genDetails.put("model_name", bestModel.name());
       genDetails.put("owner", bestModel.owner());
       genDetails.put("model_id", bestModel.modelId());
@@ -152,8 +152,16 @@ public class GenerateCreativeTool {
     try {
       String jsonString = node.toString();
       for (Artifact artifact : artifacts) {
-        if (artifact.url() != null) {
-          jsonString = jsonString.replace("@" + artifact.name(), artifact.url());
+        String placeholder = "@" + artifact.name();
+        if (artifact.kind() == ArtifactKind.TEXT && artifact.inlineContent() != null) {
+          // Resolve to inline content for text
+          String content = artifact.inlineContent().isTextual()
+              ? artifact.inlineContent().asText()
+              : artifact.inlineContent().toString();
+          jsonString = jsonString.replace(placeholder, content);
+        } else if (artifact.url() != null) {
+          // Resolve to URL for others
+          jsonString = jsonString.replace(placeholder, artifact.url());
         }
       }
       return objectMapper.readTree(jsonString);

@@ -2,6 +2,7 @@ package com.example.hypocaust.rag;
 
 import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.db.ModelEmbedding;
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.repo.ModelEmbeddingRepository;
 import com.example.hypocaust.service.EmbeddingService;
 import jakarta.annotation.PostConstruct;
@@ -10,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +36,6 @@ public class ModelEmbeddingRegistry {
 
   // Constants
   private static final String EXT_MD = ".md";
-  private static final String H1_PREFIX = "# ";
   private static final String H2_PREFIX = "## ";
   private static final int DEFAULT_MAX_RESULTS = 5;
 
@@ -104,6 +106,8 @@ public class ModelEmbeddingRegistry {
                   .bestPractices(ch.bestPractices)
                   .tier(ch.tier)
                   .platform(ch.platform)
+                  .inputs(ch.inputs)
+                  .outputs(ch.outputs)
                   .build();
             } else {
               // Check for changes
@@ -113,14 +117,17 @@ public class ModelEmbeddingRegistry {
                   || !Objects.equals(existing.getDescription(), ch.description)
                   || !Objects.equals(existing.getBestPractices(), ch.bestPractices)
                   || !Objects.equals(existing.getTier(), ch.tier)
-                  || !Objects.equals(existing.getPlatform(), ch.platform);
+                  || !Objects.equals(existing.getPlatform(), ch.platform)
+                  || !Objects.equals(existing.getInputs(), ch.inputs)
+                  || !Objects.equals(existing.getOutputs(), ch.outputs);
 
               if (requiresReembed || metadataChanged) {
                 final float[] newEmbedding = requiresReembed
                     ? embeddingService.generateEmbedding(ch.embeddingText)
                     : null;
                 existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
-                    ch.description, ch.bestPractices, ch.tier, ch.platform);
+                    ch.description, ch.bestPractices, ch.tier, ch.platform,
+                    ch.inputs, ch.outputs);
                 return existing;
               }
             }
@@ -149,15 +156,17 @@ public class ModelEmbeddingRegistry {
   }
 
   /**
-   * Performs semantic search over document chunks.
+   * Performs semantic search over document chunks filtered by requirements.
    */
-  public List<SearchResult> search(String query) {
+  public List<SearchResult> search(ModelRequirement req) {
     final var pageable = PageRequest.of(0, DEFAULT_MAX_RESULTS);
     try {
-      final var queryEmbedding = embeddingService.generateEmbedding(query);
-      final var results = repository.findTopByEmbeddingSimilarity(queryEmbedding, pageable);
+      final var queryEmbedding = embeddingService.generateEmbedding(req.searchString());
+
       final var out = new ArrayList<SearchResult>();
-      for (final var r : results) {
+      for (final var r :
+          repository.findTopByEmbeddingSimilarityFiltered(queryEmbedding, req.tier(), req.output(),
+              req.inputs(), pageable)) {
         out.add(new SearchResult(
             r.getName(),
             r.getOwner(),
@@ -165,12 +174,14 @@ public class ModelEmbeddingRegistry {
             r.getDescription(),
             r.getBestPractices(),
             r.getTier(),
-            r.getPlatform()
+            r.getPlatform(),
+            r.getInputs(),
+            r.getOutputs()
         ));
       }
       return out;
     } catch (Exception e) {
-      log.error("Document semantic search failed for query: {}", query, e);
+      log.error("Document semantic search failed for requirements: {}", req, e);
       return List.of();
     }
   }
@@ -234,6 +245,8 @@ public class ModelEmbeddingRegistry {
     String tier = "balanced";
     String description = "";
     String bestPractices = "";
+    Set<ArtifactKind> inputs = new HashSet<>();
+    Set<ArtifactKind> outputs = new HashSet<>();
 
     String[] lines = m.body().split("\n");
     int i = 0;
@@ -245,6 +258,14 @@ public class ModelEmbeddingRegistry {
         modelId = line.substring("- **id**:".length()).trim();
       } else if (line.startsWith("- **tier**:")) {
         tier = line.substring("- **tier**:".length()).trim();
+      } else if (line.startsWith("- **input**:")) {
+        String val = line.substring("- **input**:".length()).trim();
+        Arrays.stream(val.split(",")).map(String::trim).map(String::toUpperCase)
+            .map(ArtifactKind::valueOf).forEach(inputs::add);
+      } else if (line.startsWith("- **output**:")) {
+        String val = line.substring("- **output**:".length()).trim();
+        Arrays.stream(val.split(",")).map(String::trim).map(String::toUpperCase)
+            .map(ArtifactKind::valueOf).forEach(outputs::add);
       } else if (line.startsWith("- **ID**:")) {
         String id = line.substring("- **ID**:".length()).trim();
         String[] parts = id.split("/");
@@ -280,12 +301,21 @@ public class ModelEmbeddingRegistry {
       throw new IllegalArgumentException("Missing required metadata (ID)");
     }
 
-    String hash = hashCalculator.calculateSha256Hash(description + " tier: " + tier);
+    if (inputs.isEmpty() || outputs.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Model " + m.modelName()
+              + " must have at least one input and output ArtifactKind defined.");
+    }
 
-    String embeddingText = m.modelName() + " " + description + " tier: " + tier;
+    String hash = hashCalculator.calculateSha256Hash(
+        description + " tier: " + tier + " inputs: " + inputs + " outputs: " + outputs);
+
+    String embeddingText =
+        m.modelName() + " " + description + " tier: " + tier + " inputs: " + inputs + " outputs: "
+            + outputs;
 
     return new Chunk(m.modelName(), embeddingText, hash, owner, modelId, description,
-        bestPractices, tier, platform);
+        bestPractices, tier, platform, inputs, outputs);
   }
 
   // Data holders
@@ -300,7 +330,9 @@ public class ModelEmbeddingRegistry {
       String description,
       String bestPractices,
       String tier,
-      String platform
+      String platform,
+      Set<ArtifactKind> inputs,
+      Set<ArtifactKind> outputs
   ) {
 
   }
@@ -314,7 +346,9 @@ public class ModelEmbeddingRegistry {
       String description,
       String bestPractices,
       String tier,
-      String platform
+      String platform,
+      Set<ArtifactKind> inputs,
+      Set<ArtifactKind> outputs
   ) {
 
   }

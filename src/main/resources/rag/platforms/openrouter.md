@@ -5,12 +5,16 @@
 - **owner**: meta-llama
 - **id**: llama-4-maverick
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-Llama 4 Maverick is a high-performance TEXT generation model from Meta, excelling at creative writing,
-long-form content generation, brainstorming, and nuanced language tasks. Strong instruction following
-with a large context window and excellent multilingual support.
+Llama 4 Maverick is a high-performance TEXT generation model from Meta, excelling at creative
+writing,
+poetry, long-form storytelling, brainstorming, and nuanced language tasks. It is a frontier-scale
+model with strong instruction following, a large context window, and excellent multilingual support.
+Best for complex creative tasks where high-quality prose and style are required.
 
 ### Best Practices
 
@@ -23,12 +27,15 @@ with a large context window and excellent multilingual support.
 - **owner**: deepseek
 - **id**: deepseek-chat-v3-0324
 - **tier**: balanced
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
-DeepSeek V3.1 is a balanced TEXT generation model optimized for reasoning, code generation, and
+DeepSeek V3.1 is a balanced TEXT generation model optimized for deep reasoning, code generation, and
 analytical writing. Strong performance on structured tasks, technical content, and step-by-step
-explanations with competitive cost efficiency.
+logical explanations with competitive cost efficiency. Best for logic-heavy tasks, coding
+assistance, and structured analytical output.
 
 ### Best Practices
 
@@ -41,12 +48,16 @@ explanations with competitive cost efficiency.
 - **owner**: qwen
 - **id**: qwen3-235b
 - **tier**: powerful
+- **input**: TEXT
+- **output**: TEXT
 
 ### Description
 
 Qwen3 235B is a large-scale TEXT generation model with exceptional capability in creative writing,
 translation, summarization, and complex reasoning tasks. Its large parameter count enables nuanced
-understanding and generation across diverse domains and languages.
+understanding and generation across diverse domains and languages. Best for high-volume
+summarization,
+nuanced translation, and tasks requiring a deep knowledge base.
 
 ### Best Practices
 
