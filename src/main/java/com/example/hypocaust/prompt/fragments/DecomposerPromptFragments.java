@@ -48,7 +48,12 @@ public final class DecomposerPromptFragments {
         """
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
-            been tried before and whether to regenerate or edit.""",
+            been tried before and whether to regenerate or edit.
+            When a task involves changing, improving, or refining an existing artifact, prioritize tools and workflows that accept that artifact as a **foundational input** (edit/modify) rather than tools that generate a replacement from scratch (new).
+            - Syntax: Explicitly reference existing artifacts using the `@artifact_name` syntax in tool parameters.
+            - Intent: Formulate task descriptions to focus on the specific changes or "deltas" required, rather than re-describing the entire desired output.
+            - Applicability: This applies to all tool types, including generative AI (e.g., image-to-video), deterministic engines (e.g., color grading), and utility tools (e.g., upscaling).
+            """,
         20
     );
   }

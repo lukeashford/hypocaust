@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration;
+package com.example.hypocaust.models;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;

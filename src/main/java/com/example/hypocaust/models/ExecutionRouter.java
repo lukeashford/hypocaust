@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration;
+package com.example.hypocaust.models;
 
 import java.util.EnumMap;
 import java.util.List;

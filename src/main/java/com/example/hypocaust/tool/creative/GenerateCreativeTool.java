@@ -5,7 +5,7 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.integration.ExecutionRouter;
+import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.service.TaskComplexityService;
 import com.example.hypocaust.service.WordingService;

@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration.openrouter;
+package com.example.hypocaust.models.openrouter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

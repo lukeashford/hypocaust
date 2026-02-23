@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration;
+package com.example.hypocaust.models.replicate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

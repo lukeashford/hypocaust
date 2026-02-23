@@ -1,26 +1,5 @@
 # Replicate
 
-## Flux.1 [dev]
-
-- **owner**: black-forest-labs
-- **id**: flux-dev
-- **tier**: balanced
-
-### Description
-
-Flux.1 [dev] is a higher-quality IMAGE text-to-image model tuned for fidelity, detail, and
-composition, typically outperforming speed-focused variants on lighting realism, texture, and prompt
-nuance (good for key art, marketing visuals, and high-detail concept frames).
-
-### Best Practices
-
-- Use longer prompts with structured detail (materials, era, mood, camera/lens, color palette) to
-  leverage its nuance.
-- If exposed, run higher step counts for micro-detail; adjust guidance for balance between adherence
-  and naturalism.
-- Control aspect ratio deliberately; generate multiple candidates per seed to explore composition
-  without drift.
-
 ## FLUX.2 [pro]
 
 - **owner**: black-forest-labs
@@ -218,25 +197,6 @@ production-friendly for e-commerce and design pipelines).
   edges (hair, smoke) preserved.
 - Enable `content_moderation` if you need safety filtering in automated workflows.
 
-## Real-ESRGAN Upscaler
-
-- **owner**: nightmareai
-- **id**: real-esrgan
-- **tier**: fast
-
-### Description
-
-Real-ESRGAN is an IMAGE super-resolution upscaler designed to increase resolution while restoring
-details and reducing compression artifacts (great for enhancing AI generations, old photos, and
-low-res assets before print or video use).
-
-### Best Practices
-
-- Upscale in stages (2× then 2×) if very large jumps produce ringing or “plastic” textures.
-- If the endpoint offers a face-enhance toggle, enable it for portraits but disable for
-  stylized/anime to avoid warping.
-- Prefer clean inputs; denoise first if the source is extremely noisy.
-
 ## Stable Video Diffusion (SVD / SVD-XT)
 
 - **owner**: christophy
@@ -396,24 +356,6 @@ than simpler flow approaches (useful for VFX, sports, action, and camera-heavy s
   edges).
 - If available, enable any “large motion” settings; denoise beforehand to reduce shimmering.
 
-## Runway Upscale
-
-- **owner**: runwayml
-- **id**: upscale-v1
-- **tier**: fast
-
-### Description
-
-Runway Upscale is an IMAGE upscaling/enhancement model focused on visually pleasing enlargement,
-often smoothing artifacts while retaining sharpness for creative assets (handy for turning draft
-images into higher-res deliverables).
-
-### Best Practices
-
-- Upscale after you’ve finalized composition; upscaling early can lock in unwanted artifacts.
-- If the endpoint offers denoise/sharpen tradeoffs, avoid extreme sharpening on skin and gradients.
-- Consider face-aware enhancement only for portrait-heavy imagery.
-
 ## SAM 2 Video
 
 - **owner**: meta
@@ -492,25 +434,6 @@ performances.
 - Keep text punctuation intentional; short sentences improve prosody control; specify emotion/style
   in prompt fields if available.
 - Tune speaking rate and temperature-like randomness cautiously to avoid slurring or instability.
-
-## ElevenLabs v3 (Text-to-Speech)
-
-- **owner**: elevenlabs
-- **id**: v3
-- **tier**: balanced
-
-### Description
-
-ElevenLabs v3 is an AUDIO high-quality TTS endpoint optimized for natural prosody, expressive
-delivery, and production-grade narration (good for ads, audiobooks, character voice, and creator
-pipelines that need convincing speech).
-
-### Best Practices
-
-- Provide pronunciation hints (phonetics/spelling) for names/brands; split long scripts into
-  paragraphs for steadier pacing.
-- Use lower temperature for consistent “announcer” reads; raise for more variation in acting.
-- If available, control stability/similarity or style settings to match the project tone.
 
 ## MusicGen
 

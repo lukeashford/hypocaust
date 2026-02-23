@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration.openrouter;
+package com.example.hypocaust.models.openrouter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,8 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.hypocaust.integration.Platform;
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.Platform;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

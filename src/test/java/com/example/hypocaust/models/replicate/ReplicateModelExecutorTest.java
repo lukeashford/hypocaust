@@ -1,13 +1,11 @@
-package com.example.hypocaust.integration.replicate;
+package com.example.hypocaust.models.replicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.hypocaust.integration.Platform;
-import com.example.hypocaust.integration.ReplicateClient;
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.Platform;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

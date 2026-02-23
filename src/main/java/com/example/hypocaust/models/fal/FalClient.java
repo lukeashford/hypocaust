@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration.fal;
+package com.example.hypocaust.models.fal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;

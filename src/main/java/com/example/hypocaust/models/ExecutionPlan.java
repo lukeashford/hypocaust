@@ -1,4 +1,4 @@
-package com.example.hypocaust.integration;
+package com.example.hypocaust.models;
 
 import com.fasterxml.jackson.databind.JsonNode;
 

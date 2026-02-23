@@ -98,6 +98,12 @@ app:
     api-key: ${FAL_API_KEY:}
   openrouter:
     api-key: ${OPENROUTER_API_KEY:}
+  runway:
+    api-key: ${RUNWAY_API_KEY:}
+  elevenlabs:
+    api-key: ${ELEVENLABS_API_KEY:}
+  assemblyai:
+    api-key: ${ASSEMBLYAI_API_KEY:}
 
   storage:
     provider: ${STORAGE_PROVIDER:r2}

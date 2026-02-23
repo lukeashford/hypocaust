@@ -1,9 +1,8 @@
-package com.example.hypocaust.integration;
+package com.example.hypocaust.models;
 
 import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
