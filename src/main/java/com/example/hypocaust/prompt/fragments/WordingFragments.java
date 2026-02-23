@@ -108,7 +108,9 @@ public final class WordingFragments {
             Translate the user's task into a technical model requirement.
             
             Analyze the task and available artifacts to decide:
-            1. 'inputs': Which artifact types are REQUIRED as source? (e.g., if editing @image, input is [IMAGE]).
+            1. 'inputs': Which artifact types are REQUIRED as source?
+               - If the task involves a prompt (text instruction), ALWAYS include "TEXT" as input.
+               - If editing an existing artifact (e.g., '@image'), include its kind (e.g., "IMAGE").
             2. 'output': The target ArtifactKind.
             3. 'tier': 'fast', 'balanced' (default), or 'powerful'.
             4. 'searchString': Keywords for semantic search (e.g., 'photorealistic portrait', 'background removal').
@@ -118,8 +120,8 @@ public final class WordingFragments {
             
             Output ONLY valid JSON:
             {
-              "inputs": ["IMAGE", ...],
-              "output": "TEXT",
+              "inputs": ["TEXT", "IMAGE"],
+              "output": "IMAGE",
               "tier": "balanced",
               "searchString": "keywords"
             }
