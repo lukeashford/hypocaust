@@ -13,6 +13,7 @@ import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -97,33 +98,40 @@ public class GenerateCreativeTool {
       var output = executor.execute(bestModel.owner(), bestModel.modelId(), finalInput);
 
       // Step 7: Extract result URL/content
-      var resultUrl = executor.extractOutputUrl(output);
+      var result = executor.extractOutputUrl(output);
 
-      if (resultUrl == null || resultUrl.isBlank() || "null".equals(resultUrl)) {
+      if (result == null || result.isBlank() || "null".equals(result)) {
         throw new IllegalStateException(
-            "Model returned no usable output URL (got: " + resultUrl + ")");
+            "Model returned no usable output (got: " + result + ")");
       }
 
       // Step 8: Update artifact
       ObjectNode metadata = objectMapper.createObjectNode();
       ObjectNode genDetails = metadata.putObject("generation_details");
-      genDetails.put("provider", bestModel.platform());
+      genDetails.put("provider", bestModel.platform().toString());
       genDetails.put("model_name", bestModel.name());
       genDetails.put("owner", bestModel.owner());
       genDetails.put("model_id", bestModel.modelId());
       genDetails.put("prompt", task);
       metadata.set("providerInput", finalInput);
 
+      var builder = Artifact.builder()
+          .name(artifactName)
+          .kind(artifactKind)
+          .title(title)
+          .description(description)
+          .metadata(metadata);
+
+      if (artifactKind == ArtifactKind.TEXT) {
+        builder.inlineContent(new TextNode(result))
+            .status(ArtifactStatus.MANIFESTED);
+      } else {
+        builder.url(result)
+            .status(ArtifactStatus.CREATED);
+      }
+
       TaskExecutionContextHolder.getContext().getArtifacts()
-          .updatePending(Artifact.builder()
-              .name(artifactName)
-              .kind(artifactKind)
-              .title(title)
-              .description(description)
-              .url(resultUrl)
-              .metadata(metadata)
-              .status(ArtifactStatus.CREATED)
-              .build());
+          .updatePending(builder.build());
 
       log.info("Creative generation complete: {}", artifactName);
       return GenerateCreativeResult.success(

@@ -21,7 +21,12 @@ public final class DecomposerPromptFragments {
     return new PromptFragment(
         "decomposer-core",
         """
-            You are a recursive task decomposition agent. Given a task:
+            You are a recursive task decomposition agent and orchestrator.
+            
+            CRITICAL: Do NOT perform creative tasks (writing, drawing, coding, etc.) yourself.
+            Your role is to DECIDE which tool to use or how to break down the task.
+            If the task requires generating or editing content, you MUST use a tool (like generate_creative) or delegate to sub-tasks.
+            Never include the full content of an artifact in your summary.
             
             1. If the task can be solved by a single available tool, call it.
                Evaluate the result. If it failed, diagnose and retry with adjusted

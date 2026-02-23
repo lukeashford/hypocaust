@@ -218,8 +218,55 @@ class GenerateCreativeToolTest {
     var result = tool.generate(task, kind);
 
     // THEN
-    assertThat(result.error()).contains("no usable output URL");
+    assertThat(result.error()).contains("no usable output");
     verify(artifactsContext).rollbackPending("thing-1");
+  }
+
+  @Test
+  void generate_text_inlineContent() {
+    // GIVEN
+    String task = "Write a poem";
+    ArtifactKind kind = ArtifactKind.TEXT;
+    String owner = "anthropic";
+    String modelId = "claude-3-opus";
+    String tier = "high";
+
+    when(complexityService.evaluate(anyString(), eq(kind))).thenReturn(tier);
+    when(modelRag.search(anyString())).thenReturn(List.of(
+        new SearchResult("Claude Opus", owner, modelId, "desc", "best", tier, "OPENROUTER")));
+
+    var planInput = objectMapper.createObjectNode().put("prompt", "poem");
+    when(modelExecutor.generatePlan(anyString(), eq(kind), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionPlan(planInput, null));
+
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Poem");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A poem");
+    when(artifactsContext.add(any())).thenReturn("poem-1");
+
+    String poemText = "Roses are red...";
+    JsonNode output = objectMapper.createObjectNode().set("choices",
+        objectMapper.createArrayNode().add(
+            objectMapper.createObjectNode().set("message",
+                objectMapper.createObjectNode().put("content", poemText))));
+
+    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(output);
+    when(modelExecutor.extractOutputUrl(output)).thenReturn(poemText);
+
+    // WHEN
+    var result = tool.generate(task, kind);
+
+    // THEN
+    assertThat(result.error()).isNull();
+    assertThat(result.artifactName()).isEqualTo("poem-1");
+
+    verify(artifactsContext).updatePending(argThat(artifact ->
+        artifact.kind() == ArtifactKind.TEXT &&
+            artifact.url() == null &&
+            artifact.inlineContent().asText().equals(poemText) &&
+            artifact.status() == ArtifactStatus.MANIFESTED
+    ));
   }
 
   @Nested

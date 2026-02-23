@@ -26,7 +26,8 @@ public class WordingService {
    * Generates a brief progress label (1-5 words) for a task.
    */
   public String generateTodoWording(String task) {
-    return generate(WordingFragments.todoLabel(), task, "Task: ");
+    String label = generate(WordingFragments.todoLabel(), task, "Task: ");
+    return label.length() > 50 ? label.substring(0, 47) + "..." : label;
   }
 
   /**
@@ -48,8 +49,9 @@ public class WordingService {
    * Generates a brief description for an artifact.
    */
   public String generateArtifactDescription(String source) {
-    return generate(WordingFragments.artifactDescription(), source,
+    String desc = generate(WordingFragments.artifactDescription(), source,
         "Generation Prompt to name/describe: ");
+    return desc.length() > 100 ? desc.substring(0, 97) + "..." : desc;
   }
 
   private String generate(PromptFragment fragment, String source, String userPrefix) {

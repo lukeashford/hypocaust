@@ -17,8 +17,9 @@ public final class WordingFragments {
     return new PromptFragment(
         "wording-todo-label",
         """
-            Generate a brief progress label (1-5 words) for this task.
-            Focus on the action. Start with a present participle like 'Adding', 'Creating', 'Updating'.
+            Generate a brief progress label (max 50 characters) for this task.
+            Focus on the action (e.g., 'Creating poem', 'Adding characters').
+            IMPORTANT: You are only labeling the task, NOT performing it.
             Output ONLY the label."""
     );
   }
@@ -88,7 +89,7 @@ public final class WordingFragments {
         "wording-artifact-description",
         """
             The user will provide a prompt describing a creative generation task.
-            Your job is to generate a brief, 1-2 sentence description for the artifact that will be produced by this task.
+            Your job is to generate a brief description (max 100 characters) for the artifact that will be produced by this task.
             Focus on the intended content, style, and subject matter.
             
             IMPORTANT: You are NOT performing the task. You are only describing the expected outcome.
