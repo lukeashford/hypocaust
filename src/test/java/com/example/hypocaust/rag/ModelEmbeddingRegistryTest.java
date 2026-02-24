@@ -117,4 +117,86 @@ class ModelEmbeddingRegistryTest {
     assertThat(ModelEmbeddingRegistry.derivePlatform("fal.md")).isEqualTo("FAL");
     assertThat(ModelEmbeddingRegistry.derivePlatform("openrouter.md")).isEqualTo("OPENROUTER");
   }
+
+  @Test
+  void hash_shouldIncludeModelName() throws Exception {
+    HashCalculator hashCalculator = new HashCalculator();
+    ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
+    EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
+        hashCalculator);
+    ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
+
+    Path file1 = tempDir.resolve("platform.md");
+    Files.writeString(file1, """
+        ## Model A
+        - **id**: same-id
+        - **input**: TEXT
+        - **output**: IMAGE
+        ### Description
+        Same description
+        """);
+
+    List<Chunk> chunks1 = registry.parseFile(file1);
+    String hash1 = chunks1.getFirst().hash();
+
+    Path file2 = tempDir.resolve("platform2.md");
+    Files.writeString(file2, """
+        ## Model B
+        - **id**: same-id
+        - **input**: TEXT
+        - **output**: IMAGE
+        ### Description
+        Same description
+        """);
+
+    List<Chunk> chunks2 = registry.parseFile(file2);
+    String hash2 = chunks2.getFirst().hash();
+
+    assertThat(hash1)
+        .as("Hash should be different for different model names because name is part of embedding text")
+        .isNotEqualTo(hash2);
+  }
+
+  @Test
+  void hash_shouldBeStableRegardlessOfArtifactOrder() throws Exception {
+    HashCalculator hashCalculator = new HashCalculator();
+    ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
+    EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
+        hashCalculator);
+    ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
+
+    Path file1 = tempDir.resolve("order1.md");
+    Files.writeString(file1, """
+        ## Model
+        - **id**: id
+        - **input**: TEXT, IMAGE
+        - **output**: VIDEO, AUDIO
+        ### Description
+        Desc
+        """);
+
+    Path file2 = tempDir.resolve("order2.md");
+    Files.writeString(file2, """
+        ## Model
+        - **id**: id
+        - **input**: IMAGE, TEXT
+        - **output**: AUDIO, VIDEO
+        ### Description
+        Desc
+        """);
+
+    String hash1 = registry.parseFile(file1).getFirst().hash();
+    String hash2 = registry.parseFile(file2).getFirst().hash();
+
+    assertThat(hash1)
+        .as("Hash should be the same for same artifacts regardless of order in file")
+        .isEqualTo(hash2);
+
+    // Check embedding text too
+    String text1 = registry.parseFile(file1).getFirst().embeddingText();
+    String text2 = registry.parseFile(file2).getFirst().embeddingText();
+    assertThat(text1).isEqualTo(text2);
+  }
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.util.Set;
@@ -42,13 +43,13 @@ public class ModelEmbedding extends AbstractEmbedding {
   @Column(nullable = false)
   private String platform;
 
-  @ElementCollection(targetClass = ArtifactKind.class)
+  @ElementCollection(targetClass = ArtifactKind.class, fetch = FetchType.EAGER)
   @CollectionTable(name = "model_embedding_inputs", joinColumns = @JoinColumn(name = "model_embedding_id"))
   @Column(name = "kind")
   @Enumerated(EnumType.STRING)
   private Set<ArtifactKind> inputs;
 
-  @ElementCollection(targetClass = ArtifactKind.class)
+  @ElementCollection(targetClass = ArtifactKind.class, fetch = FetchType.EAGER)
   @CollectionTable(name = "model_embedding_outputs", joinColumns = @JoinColumn(name = "model_embedding_id"))
   @Column(name = "kind")
   @Enumerated(EnumType.STRING)

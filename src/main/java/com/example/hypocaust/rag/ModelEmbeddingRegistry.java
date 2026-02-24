@@ -96,6 +96,7 @@ public class ModelEmbeddingRegistry {
             final ModelEmbedding existing = existingMap.get(ch.name);
             if (existing == null) {
               // New record
+              log.info("Generating embedding for chunk {}", ch.name);
               return ModelEmbedding.builder()
                   .name(ch.name)
                   .embedding(embeddingService.generateEmbedding(ch.embeddingText))
@@ -122,6 +123,7 @@ public class ModelEmbeddingRegistry {
                   || !Objects.equals(existing.getOutputs(), ch.outputs);
 
               if (requiresReembed || metadataChanged) {
+                log.info("Updating embedding for chunk {}", ch.name);
                 final float[] newEmbedding = requiresReembed
                     ? embeddingService.generateEmbedding(ch.embeddingText)
                     : null;
@@ -239,6 +241,13 @@ public class ModelEmbeddingRegistry {
     return name.toUpperCase();
   }
 
+  private String toStableString(Set<ArtifactKind> set) {
+    return set.stream()
+        .sorted()
+        .toList()
+        .toString();
+  }
+
   private Chunk parseModelChunk(ModelSection m, String platform) {
     String owner = "";
     String modelId = "";
@@ -307,12 +316,16 @@ public class ModelEmbeddingRegistry {
               + " must have at least one input and output ArtifactKind defined.");
     }
 
+    String stableInputs = toStableString(inputs);
+    String stableOutputs = toStableString(outputs);
+
     String hash = hashCalculator.calculateSha256Hash(
-        description + " tier: " + tier + " inputs: " + inputs + " outputs: " + outputs);
+        m.modelName() + " " + description + " tier: " + tier + " inputs: " + stableInputs
+            + " outputs: " + stableOutputs);
 
     String embeddingText =
-        m.modelName() + " " + description + " tier: " + tier + " inputs: " + inputs + " outputs: "
-            + outputs;
+        m.modelName() + " " + description + " tier: " + tier + " inputs: " + stableInputs
+            + " outputs: " + stableOutputs;
 
     return new Chunk(m.modelName(), embeddingText, hash, owner, modelId, description,
         bestPractices, tier, platform, inputs, outputs);
