@@ -9,7 +9,7 @@ spec:
         path: ${HOSTPATH}/podman/volumes/ffmpeg
   containers:
     - name: ffmpeg
-      image: docker.io/rendiffdev/ffmpeg-api:latest
+      image: localhost/hypocaust-ffmpeg-api:latest
       envFrom:
         - configMapRef:
             name: hypocaust-dev

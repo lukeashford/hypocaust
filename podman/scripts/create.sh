@@ -16,7 +16,20 @@ sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-minio.yaml | podman play
 # Nginx reverse proxy
 sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-nginx.yaml | podman play kube ${REPLACE} --configmap ./podman/local-dev/configmap-local-dev.yaml -
 
-# FFmpeg API
+# FFmpeg API — build image from source if not present
+FFMPEG_IMAGE="localhost/hypocaust-ffmpeg-api:latest"
+FFMPEG_REPO_DIR="./podman/build/ffmpeg-api"
+
+if ! podman image exists "${FFMPEG_IMAGE}"; then
+  echo "${CY}Building FFmpeg API image from source...${NC}"
+  if [ ! -d "${FFMPEG_REPO_DIR}" ]; then
+    mkdir -p ./podman/build
+    git clone --depth 1 https://github.com/rendiffdev/ffmpeg-api.git "${FFMPEG_REPO_DIR}"
+  fi
+  podman build -t "${FFMPEG_IMAGE}" "${FFMPEG_REPO_DIR}"
+  echo "${GR}FFmpeg API image built successfully.${NC}"
+fi
+
 sed "s|\${HOSTPATH}|$HOSTPATH|g" ./podman/local-dev/pod-ffmpeg.yaml | podman play kube ${REPLACE} --configmap ./podman/local-dev/configmap-local-dev.yaml -
 
 echo "${CY}#############################################################################################"
