@@ -6,7 +6,7 @@ import com.example.hypocaust.exception.ExternalServiceException;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.WordingFragments;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class WordingService {
    * Generates a brief progress label (1-5 words) for a task.
    */
   public String generateTodoWording(String task) {
-    String label = generate(WordingFragments.todoLabel(), task, "Task to convert to todo: ");
+    String label = generate(PromptFragments.todoLabel(), task, "Task to convert to todo: ");
     return label.length() > 50 ? label.substring(0, 47) + "..." : label;
   }
 
@@ -40,14 +40,14 @@ public class WordingService {
    * Generates a brief commit message (1 sentence) for a completed task.
    */
   public String generateCommitMessage(String task) {
-    return generate(WordingFragments.commitMessage(), task, "Task to make commit message from: ");
+    return generate(PromptFragments.commitMessage(), task, "Task to make commit message from: ");
   }
 
   /**
    * Generates a catchy title for an artifact.
    */
   public String generateArtifactTitle(String source) {
-    return generate(WordingFragments.artifactTitle(), source,
+    return generate(PromptFragments.artifactTitle(), source,
         "Generation Prompt to name: ");
   }
 
@@ -55,7 +55,7 @@ public class WordingService {
    * Generates a brief description for an artifact.
    */
   public String generateArtifactDescription(String source) {
-    String desc = generate(WordingFragments.artifactDescription(), source,
+    String desc = generate(PromptFragments.artifactDescription(), source,
         "Generation Prompt to describe: ");
     return desc.length() > 100 ? desc.substring(0, 97) + "..." : desc;
   }
@@ -64,7 +64,7 @@ public class WordingService {
    * Translates a task into structured model requirements.
    */
   public ModelRequirement generateModelRequirement(String task, ArtifactKind targetKind) {
-    String response = generate(WordingFragments.modelRequirement(),
+    String response = generate(PromptFragments.modelRequirement(),
         String.format("Task: %s, Target: %s", task, targetKind),
         "Requirement analysis: ");
 

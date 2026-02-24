@@ -7,8 +7,7 @@ import com.example.hypocaust.domain.event.DecomposerStartedEvent;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
-import com.example.hypocaust.prompt.fragments.CommonPromptFragments;
-import com.example.hypocaust.prompt.fragments.DecomposerPromptFragments;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
@@ -67,17 +66,16 @@ public class Decomposer {
     var indent = TaskExecutionContextHolder.getIndent();
     var depth = TaskExecutionContextHolder.getDepth();
 
-    log.info("{}[DECOMPOSER d={}] Starting: {}", indent, depth,
-        task.length() > 120 ? task.substring(0, 120) + "..." : task);
+    log.info("{}[DECOMPOSER d={}] Starting: {}", indent, depth, task);
 
     eventService.publish(new DecomposerStartedEvent(taskExecutionId, task));
 
     try {
       var systemPrompt = PromptBuilder.create()
-          .with(DecomposerPromptFragments.core())
-          .with(CommonPromptFragments.abilityAwareness())
-          .with(DecomposerPromptFragments.artifactAwareness())
-          .with(DecomposerPromptFragments.selfHealing())
+          .with(PromptFragments.decomposerCore())
+          .with(PromptFragments.abilityAwareness())
+          .with(PromptFragments.artifactAwareness())
+          .with(PromptFragments.selfHealing())
           .param("maxChildren", MAX_CHILDREN)
           .param("maxRetries", MAX_RETRIES)
           .build();

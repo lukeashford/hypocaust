@@ -5,7 +5,7 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.CommonPromptFragments;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -38,9 +38,9 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
       var additionalContext = additionalPlanContext(owner, modelId, description, bestPractices);
 
       var systemPrompt = PromptBuilder.create()
-          .with(CommonPromptFragments.planSystemPrompt())
+          .with(PromptFragments.planSystemPrompt())
           .with(new PromptFragment(platform().name().toLowerCase() + "-plan", planSystemPrompt()))
-          .with(CommonPromptFragments.abilityAwareness())
+          .with(PromptFragments.abilityAwareness())
           .build();
 
       var response = chatClient.prompt()

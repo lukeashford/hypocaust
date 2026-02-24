@@ -3,7 +3,7 @@ package com.example.hypocaust.service;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.WordingFragments;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
 import java.util.Collection;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +29,14 @@ public class NamingService {
    * Generates a unique artifact name.
    */
   public String generateArtifactName(String source, Collection<String> existing) {
-    return generateUnique(WordingFragments.artifactName(), source, existing, 30, "artifact");
+    return generateUnique(PromptFragments.artifactName(), source, existing, 30, "artifact");
   }
 
   /**
    * Generates a unique artifact name with a preferred choice.
    */
   public String generateArtifactName(String source, Collection<String> existing, String preferred) {
-    return generateUnique(WordingFragments.artifactName(), source, existing, 30, "artifact",
+    return generateUnique(PromptFragments.artifactName(), source, existing, 30, "artifact",
         preferred);
   }
 
@@ -44,7 +44,7 @@ public class NamingService {
    * Generates a unique task execution name.
    */
   public String generateExecutionName(String source, Collection<String> existing) {
-    return generateUnique(WordingFragments.taskExecutionName(), source, existing, 50, "task");
+    return generateUnique(PromptFragments.taskExecutionName(), source, existing, 50, "task");
   }
 
   private String generateUnique(PromptFragment fragment, String source, Collection<String> existing,
