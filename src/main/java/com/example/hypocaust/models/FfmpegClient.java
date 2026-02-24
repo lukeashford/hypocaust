@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * HTTP client for the FFmpeg API sidecar (rendiffdev/ffmpeg-api). Provides typed methods for common
- * operations (analyze, convert) and exposes the OpenAPI schema for the GeneralFfmpegTool fallback.
+ * HTTP client for the Hypocaust FFmpeg API sidecar. Provides typed methods for common operations
+ * (analyze, convert) and exposes the OpenAPI schema for the GeneralFfmpegTool fallback.
+ *
+ * @see com.example.hypocaust.tool.ffmpeg
  */
 @Component
 @Slf4j

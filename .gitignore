@@ -39,9 +39,6 @@ out/
 ### Storage ###
 /podman/volumes/*
 
-### Podman build artifacts (cloned repos for image builds) ###
-/podman/build/
-
 ### Local data directory ###
 /data/
 
