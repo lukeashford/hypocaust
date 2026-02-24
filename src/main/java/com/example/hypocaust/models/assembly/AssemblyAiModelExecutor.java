@@ -84,7 +84,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     // AssemblyAI transcription: return the full transcript text as the "output"
     // The client should poll until status == "completed" and return the resolved transcript object
     if (output.has("text") && output.get("text").isTextual()) {

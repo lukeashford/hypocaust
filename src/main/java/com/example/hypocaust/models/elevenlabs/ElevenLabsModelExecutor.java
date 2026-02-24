@@ -78,7 +78,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     // ElevenLabs returns audio as binary; client should upload and return a URL
     // Expected client convention: {"url": "https://..."}
     if (output.has("url")) {

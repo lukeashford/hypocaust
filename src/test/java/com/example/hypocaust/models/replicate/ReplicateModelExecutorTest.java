@@ -52,27 +52,27 @@ class ReplicateModelExecutorTest {
     @Test
     void textualNode_returnsText() {
       var node = objectMapper.valueToTree("https://example.com/img.png");
-      assertThat(executor.extractOutputUrl(node)).isEqualTo("https://example.com/img.png");
+      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/img.png");
     }
 
     @Test
     void arrayNode_returnsFirstElement() {
       var node = objectMapper.valueToTree(
           List.of("https://example.com/1.png", "https://example.com/2.png"));
-      assertThat(executor.extractOutputUrl(node)).isEqualTo("https://example.com/1.png");
+      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/1.png");
     }
 
     @Test
     void objectWithUrlField_returnsUrlValue() throws Exception {
       var node = objectMapper.readTree(
           "{\"url\": \"https://example.com/out.png\", \"other\": 42}");
-      assertThat(executor.extractOutputUrl(node)).isEqualTo("https://example.com/out.png");
+      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/out.png");
     }
 
     @Test
     void otherShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutputUrl(node)).isEqualTo("{\"data\":123}");
+      assertThat(executor.extractOutput(node)).isEqualTo("{\"data\":123}");
     }
   }
 }

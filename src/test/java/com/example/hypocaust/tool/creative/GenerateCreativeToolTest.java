@@ -97,7 +97,7 @@ class GenerateCreativeToolTest {
 
     JsonNode executorOutput = objectMapper.valueToTree("https://replicate.com/output.png");
     when(modelExecutor.execute(eq("stability-ai"), eq("sdxl"), any())).thenReturn(executorOutput);
-    when(modelExecutor.extractOutputUrl(executorOutput)).thenReturn(
+    when(modelExecutor.extractOutput(executorOutput)).thenReturn(
         "https://replicate.com/output.png");
 
     // WHEN
@@ -220,7 +220,7 @@ class GenerateCreativeToolTest {
 
     JsonNode nullOutput = objectMapper.nullNode();
     when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(nullOutput);
-    when(modelExecutor.extractOutputUrl(nullOutput)).thenReturn("null");
+    when(modelExecutor.extractOutput(nullOutput)).thenReturn("null");
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -262,7 +262,7 @@ class GenerateCreativeToolTest {
                 objectMapper.createObjectNode().put("content", poemText))));
 
     when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(output);
-    when(modelExecutor.extractOutputUrl(output)).thenReturn(poemText);
+    when(modelExecutor.extractOutput(output)).thenReturn(poemText);
 
     // WHEN
     var result = tool.generate(task, kind);

@@ -56,7 +56,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     // fal.ai image models: {"images": [{"url": "...", ...}]}
     if (output.has("images") && output.get("images").isArray()
         && !output.get("images").isEmpty()) {

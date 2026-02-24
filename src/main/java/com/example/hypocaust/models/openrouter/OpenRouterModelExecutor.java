@@ -63,7 +63,7 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     // OpenRouter returns OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
     if (output.has("choices") && output.get("choices").isArray()
         && !output.get("choices").isEmpty()) {

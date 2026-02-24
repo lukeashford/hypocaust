@@ -76,7 +76,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     // Runway tasks are async; client polls and resolves to a final output object
     // Expected resolved convention: {"url": "https://...", "status": "SUCCEEDED"}
     if (output.has("url")) {

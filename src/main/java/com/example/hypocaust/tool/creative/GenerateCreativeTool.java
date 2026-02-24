@@ -30,6 +30,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class GenerateCreativeTool {
 
+  private static final String LOG_PREFIX = "[CREATIVE] ";
+
   private final ModelEmbeddingRegistry modelRag;
   private final ExecutionRouter executionRouter;
   private final WordingService wordingService;
@@ -45,7 +47,7 @@ public class GenerateCreativeTool {
       @ToolParam(description = "What to generate or edit, in natural language") String task,
       @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
   ) {
-    log.info("Creative generation request: {} (kind: {})", task, artifactKind);
+    log.info("{} request: {} (kind: {})", LOG_PREFIX, task, artifactKind);
 
     // Step 1: Task-to-Requirement Rewriting
     ModelRequirement req = wordingService.generateModelRequirement(task, artifactKind);
@@ -59,7 +61,8 @@ public class GenerateCreativeTool {
     }
 
     var bestModel = modelResults.getFirst();
-    log.info("Selected model: {} (platform: {})", bestModel.name(), bestModel.platform());
+    log.info("{} Selected model: {} (platform: {})", LOG_PREFIX, bestModel.name(),
+        bestModel.platform());
 
     // Step 3: Resolve executor for this model's platform
     var executor = executionRouter.resolve(bestModel.platform());
@@ -70,7 +73,7 @@ public class GenerateCreativeTool {
         bestModel.bestPractices());
 
     if (plan.hasError()) {
-      log.warn("Creative generation plan failed: {}", plan.errorMessage());
+      log.warn("{} Planning failed: {}", LOG_PREFIX, plan.errorMessage());
       return GenerateCreativeResult.error(plan.errorMessage());
     }
 
@@ -91,21 +94,13 @@ public class GenerateCreativeTool {
         .status(ArtifactStatus.GESTATING)
         .build());
 
-    log.info("Scheduled artifact: {}", artifactName);
+    log.info("{} Scheduled artifact: {}", LOG_PREFIX, artifactName);
 
     try {
       // Step 6: Call provider
       var output = executor.execute(bestModel.owner(), bestModel.modelId(), finalInput);
 
-      // Step 7: Extract result URL/content
-      var result = executor.extractOutputUrl(output);
-
-      if (result == null || result.isBlank() || "null".equals(result)) {
-        throw new IllegalStateException(
-            "Model returned no usable output (got: " + result + ")");
-      }
-
-      // Step 8: Update artifact
+      // Step 7: Prepare metadata
       ObjectNode metadata = objectMapper.createObjectNode();
       ObjectNode genDetails = metadata.putObject("generation_details");
       genDetails.put("provider", bestModel.platform());
@@ -122,6 +117,13 @@ public class GenerateCreativeTool {
           .description(description)
           .metadata(metadata);
 
+      // Step 8: Extract result URL/content
+      var result = executor.extractOutput(output);
+
+      if (result == null || result.isBlank() || "null".equals(result)) {
+        throw new IllegalStateException(
+            "Model returned no usable output (got: " + result + ")");
+      }
       if (artifactKind == ArtifactKind.TEXT) {
         builder.inlineContent(new TextNode(result))
             .status(ArtifactStatus.MANIFESTED);
@@ -133,12 +135,12 @@ public class GenerateCreativeTool {
       TaskExecutionContextHolder.getContext().getArtifacts()
           .updatePending(builder.build());
 
-      log.info("Creative generation complete: {}", artifactName);
+      log.info("{} Complete: {}", LOG_PREFIX, artifactName);
       return GenerateCreativeResult.success(
           artifactName, "Generated " + artifactKind + " using " + bestModel.name());
 
     } catch (Exception e) {
-      log.error("Creative generation failed: {}", e.getMessage(), e);
+      log.error("{} Failed: {}", LOG_PREFIX, e.getMessage(), e);
       try {
         TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
       } catch (Exception rollbackEx) {

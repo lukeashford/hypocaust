@@ -47,6 +47,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
     try {
       var version = replicateClient.getLatestVersion(owner, modelId);
       var schema = replicateClient.getSchema(owner, modelId, version);
+      log.info("Fetched schema for {}/{}: {}", owner, modelId, schema);
       var modelDocs = description + "\n\nBest Practices:\n" + bestPractices;
       return String.format("Model Docs: %s\nSchema: %s", modelDocs, schema);
     } catch (Exception e) {
@@ -64,16 +65,28 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutputUrl(JsonNode output) {
+  public String extractOutput(JsonNode output) {
     if (output.isTextual()) {
       return output.asText();
     }
     if (output.isArray() && !output.isEmpty()) {
-      return output.get(0).asText();
+      String first = output.get(0).asText();
+      if (isUrl(first)) {
+        return first; // Take the first generated image
+      } else {
+        // Join tokens for LLM/Text models
+        StringBuilder sb = new StringBuilder();
+        output.forEach(node -> sb.append(node.asText()));
+        return sb.toString();
+      }
     }
     if (output.has("url")) {
       return output.get("url").asText();
     }
     return output.toString();
+  }
+
+  private boolean isUrl(String s) {
+    return s != null && (s.startsWith("http://") || s.startsWith("https://"));
   }
 }

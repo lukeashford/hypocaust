@@ -12,5 +12,5 @@ public interface ModelExecutor {
 
   JsonNode execute(String owner, String modelId, JsonNode input);
 
-  String extractOutputUrl(JsonNode output);
+  String extractOutput(JsonNode output);
 }
