@@ -7,9 +7,15 @@ spec:
     - name: ffmpeg_data
       hostPath:
         path: ${HOSTPATH}/podman/volumes/ffmpeg
+    - name: ffmpeg_source
+      hostPath:
+        path: ${HOSTPATH}/podman/ffmpeg-api
   containers:
     - name: ffmpeg
       image: localhost/hypocaust-ffmpeg-api:latest
+      env:
+        - name: DEBUG_PORT
+          value: "5678"
       envFrom:
         - configMapRef:
             name: hypocaust-dev
@@ -17,7 +23,12 @@ spec:
         - mountPath: /data:Z
           name: ffmpeg_data
           readOnly: false
+        - mountPath: /app:Z
+          name: ffmpeg_source
       ports:
         - containerPort: 8000
           hostPort: 8100
+          protocol: TCP
+        - containerPort: 5678
+          hostPort: 5678
           protocol: TCP

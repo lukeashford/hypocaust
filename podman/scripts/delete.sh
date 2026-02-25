@@ -8,11 +8,11 @@ echo "${CY}Stopping and removing all containers (keeping volumes)...${NC}"
 podman stop hypocaust-postgres-postgres hypocaust-postgres-pgadmin hypocaust-minio-minio hypocaust-nginx-nginx hypocaust-ffmpeg-ffmpeg 2>/dev/null || true
 podman rm hypocaust-postgres-postgres hypocaust-postgres-pgadmin hypocaust-minio-minio hypocaust-nginx-nginx hypocaust-ffmpeg-ffmpeg 2>/dev/null || true
 
-# Remove pods
-podman pod rm hypocaust-postgres 2>/dev/null || true
-podman pod rm hypocaust-minio 2>/dev/null || true
-podman pod rm hypocaust-nginx 2>/dev/null || true
-podman pod rm hypocaust-ffmpeg 2>/dev/null || true
+# Remove pods and all associated containers forcefully
+podman pod rm -f hypocaust-postgres 2>/dev/null || true
+podman pod rm -f hypocaust-minio 2>/dev/null || true
+podman pod rm -f hypocaust-nginx 2>/dev/null || true
+podman pod rm -f hypocaust-ffmpeg 2>/dev/null || true
 
 echo "${GR}All pods and containers removed. Volumes preserved at:${NC}"
 echo "${CY}  - ./podman/volumes/postgres/${NC}"
