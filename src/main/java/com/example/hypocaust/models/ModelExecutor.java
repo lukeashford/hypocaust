@@ -12,5 +12,12 @@ public interface ModelExecutor {
 
   JsonNode execute(String owner, String modelId, JsonNode input);
 
+  /**
+   * Executes with automatic retry on transient failures (network errors, 5xx). Returns structured
+   * attempt metadata for upstream reporting. Implementations that extend
+   * {@link AbstractModelExecutor} inherit this; others may override.
+   */
+  ExecutionAttempt executeWithRetry(String owner, String modelId, JsonNode input);
+
   String extractOutput(JsonNode output);
 }

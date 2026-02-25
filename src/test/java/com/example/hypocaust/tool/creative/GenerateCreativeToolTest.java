@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +16,7 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.models.ExecutionAttempt;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
@@ -25,6 +27,7 @@ import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,7 +99,10 @@ class GenerateCreativeToolTest {
     when(artifactsContext.add(any())).thenReturn("cute-cat-1");
 
     JsonNode executorOutput = objectMapper.valueToTree("https://replicate.com/output.png");
-    when(modelExecutor.execute(eq("stability-ai"), eq("sdxl"), any())).thenReturn(executorOutput);
+    when(modelExecutor.executeWithRetry(eq("stability-ai"), eq("sdxl"), any()))
+        .thenReturn(ExecutionAttempt.success(executorOutput, List.of(
+            Map.of("attempt", "1", "platform", "REPLICATE", "model", "stability-ai/sdxl",
+                "status", "success"))));
     when(modelExecutor.extractOutput(executorOutput)).thenReturn(
         "https://replicate.com/output.png");
 
@@ -107,6 +113,9 @@ class GenerateCreativeToolTest {
     assertThat(result.error()).isNull();
     assertThat(result.artifactName()).isEqualTo("cute-cat-1");
     assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.report()).isNotNull();
+    assertThat(result.report().success()).isTrue();
+    assertThat(result.report().artifactNames()).contains("cute-cat-1");
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.name().equals("cute-cat-1") &&
@@ -126,11 +135,13 @@ class GenerateCreativeToolTest {
 
     assertThat(result.error()).contains("No suitable model found matching requirements");
     assertThat(result.artifactName()).isNull();
+    assertThat(result.report()).isNotNull();
+    assertThat(result.report().success()).isFalse();
   }
 
   @Test
-  void generate_planReturnsErrorMessage_returnsError() {
-    // GIVEN
+  void generate_planReturnsErrorMessage_fallsThrough() {
+    // GIVEN — only one model candidate, plan fails → all models exhausted
     String task = "Make a video";
     ArtifactKind kind = ArtifactKind.VIDEO;
     String owner = "lucataco";
@@ -152,8 +163,10 @@ class GenerateCreativeToolTest {
     // WHEN
     var result = tool.generate(task, kind);
 
-    // THEN
-    assertThat(result.error()).isEqualTo("Missing video length");
+    // THEN — falls through as all candidates exhausted
+    assertThat(result.error()).contains("candidate models failed");
+    assertThat(result.report()).isNotNull();
+    assertThat(result.report().attempts()).isNotEmpty();
   }
 
   @Test
@@ -181,14 +194,16 @@ class GenerateCreativeToolTest {
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
     when(artifactsContext.add(any())).thenReturn("cat-1");
 
-    when(modelExecutor.execute(anyString(), anyString(), any()))
-        .thenThrow(new RuntimeException("Provider API timeout"));
+    when(modelExecutor.executeWithRetry(anyString(), anyString(), any()))
+        .thenReturn(ExecutionAttempt.failure(List.of(
+            Map.of("attempt", "1", "status", "failed", "error", "Provider API timeout",
+                "errorType", "RuntimeException", "transient", "false"))));
 
     // WHEN
     var result = tool.generate(task, kind);
 
     // THEN
-    assertThat(result.error()).contains("Provider API timeout");
+    assertThat(result.error()).contains("candidate models failed");
     assertThat(result.artifactName()).isNull();
     verify(artifactsContext).rollbackPending("cat-1");
   }
@@ -219,14 +234,16 @@ class GenerateCreativeToolTest {
     when(artifactsContext.add(any())).thenReturn("thing-1");
 
     JsonNode nullOutput = objectMapper.nullNode();
-    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(nullOutput);
+    when(modelExecutor.executeWithRetry(anyString(), anyString(), any()))
+        .thenReturn(ExecutionAttempt.success(nullOutput, List.of(
+            Map.of("attempt", "1", "status", "success"))));
     when(modelExecutor.extractOutput(nullOutput)).thenReturn("null");
 
     // WHEN
     var result = tool.generate(task, kind);
 
-    // THEN
-    assertThat(result.error()).contains("no usable output");
+    // THEN — extract_output failure, all candidates exhausted
+    assertThat(result.error()).contains("candidate models failed");
     verify(artifactsContext).rollbackPending("thing-1");
   }
 
@@ -261,7 +278,9 @@ class GenerateCreativeToolTest {
             objectMapper.createObjectNode().set("message",
                 objectMapper.createObjectNode().put("content", poemText))));
 
-    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(output);
+    when(modelExecutor.executeWithRetry(anyString(), anyString(), any()))
+        .thenReturn(ExecutionAttempt.success(output, List.of(
+            Map.of("attempt", "1", "status", "success"))));
     when(modelExecutor.extractOutput(output)).thenReturn(poemText);
 
     // WHEN
@@ -277,6 +296,112 @@ class GenerateCreativeToolTest {
             artifact.inlineContent().asText().equals(poemText) &&
             artifact.status() == ArtifactStatus.MANIFESTED
     ));
+  }
+
+  @Test
+  void generate_fallbackToSecondModel_onFirstModelFailure() {
+    // GIVEN — two models returned by RAG, first fails technically, second succeeds
+    String task = "Make a sunset";
+    ArtifactKind kind = ArtifactKind.IMAGE;
+    String tier = "balanced";
+
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, tier, task));
+
+    var model1 = new SearchResult("FluxDev", "black-forest-labs", "flux-dev",
+        "desc1", "best1", tier, "REPLICATE",
+        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
+    var model2 = new SearchResult("SDXL", "stability-ai", "sdxl",
+        "desc2", "best2", tier, "REPLICATE",
+        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
+
+    when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
+
+    // First model: plan OK, execution fails
+    var planInput1 = objectMapper.createObjectNode().put("prompt", "sunset flux");
+    when(modelExecutor.generatePlan(anyString(), any(), eq("FluxDev"), anyString(), anyString(),
+        anyString(), anyString()))
+        .thenReturn(new ExecutionPlan(planInput1, null));
+
+    // Second model: plan OK, execution succeeds
+    var planInput2 = objectMapper.createObjectNode().put("prompt", "sunset sdxl");
+    when(modelExecutor.generatePlan(anyString(), any(), eq("SDXL"), anyString(), anyString(),
+        anyString(), anyString()))
+        .thenReturn(new ExecutionPlan(planInput2, null));
+
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Sunset");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A sunset");
+    when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
+
+    // First executeWithRetry fails
+    when(modelExecutor.executeWithRetry(eq("black-forest-labs"), eq("flux-dev"), any()))
+        .thenReturn(ExecutionAttempt.failure(List.of(
+            Map.of("attempt", "1", "status", "failed", "error", "Model unavailable"))));
+
+    // Second executeWithRetry succeeds
+    JsonNode successOutput = objectMapper.valueToTree("https://replicate.com/sunset.png");
+    when(modelExecutor.executeWithRetry(eq("stability-ai"), eq("sdxl"), any()))
+        .thenReturn(ExecutionAttempt.success(successOutput, List.of(
+            Map.of("attempt", "1", "status", "success"))));
+    when(modelExecutor.extractOutput(successOutput)).thenReturn("https://replicate.com/sunset.png");
+
+    // WHEN
+    var result = tool.generate(task, kind);
+
+    // THEN — succeeded with second model
+    assertThat(result.error()).isNull();
+    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.report()).isNotNull();
+    assertThat(result.report().success()).isTrue();
+    // Report should contain attempts from both models
+    assertThat(result.report().attempts().size()).isGreaterThanOrEqualTo(2);
+
+    // First artifact should have been rolled back
+    verify(artifactsContext).rollbackPending("sunset-1");
+    // Second artifact should have been updated
+    verify(artifactsContext).updatePending(argThat(artifact ->
+        artifact.url().equals("https://replicate.com/sunset.png")));
+  }
+
+  @Test
+  void generate_reportContainsAttemptMetadata() {
+    // GIVEN
+    String task = "Make art";
+    ArtifactKind kind = ArtifactKind.IMAGE;
+
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(modelRag.search(any())).thenReturn(List.of(
+        new SearchResult("SDXL", "stability-ai", "sdxl", "d", "b", "balanced", "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+
+    var planInput = objectMapper.createObjectNode().put("prompt", "art");
+    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString())).thenReturn(new ExecutionPlan(planInput, null));
+
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Art");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("Art");
+    when(artifactsContext.add(any())).thenReturn("art-1");
+
+    JsonNode output = objectMapper.valueToTree("https://cdn.example.com/art.png");
+    when(modelExecutor.executeWithRetry(anyString(), anyString(), any()))
+        .thenReturn(ExecutionAttempt.success(output, List.of(
+            Map.of("attempt", "1", "platform", "REPLICATE",
+                "model", "stability-ai/sdxl", "status", "success"))));
+    when(modelExecutor.extractOutput(output)).thenReturn("https://cdn.example.com/art.png");
+
+    // WHEN
+    var result = tool.generate(task, kind);
+
+    // THEN — report has structured attempt data
+    assertThat(result.report()).isNotNull();
+    assertThat(result.report().success()).isTrue();
+    assertThat(result.report().attempts()).isNotEmpty();
+    var firstAttempt = result.report().attempts().getFirst();
+    assertThat(firstAttempt).containsKey("step");
+    assertThat(firstAttempt).containsEntry("status", "success");
   }
 
   @Nested
