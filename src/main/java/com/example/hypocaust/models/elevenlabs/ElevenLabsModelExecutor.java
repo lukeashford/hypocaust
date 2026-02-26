@@ -35,8 +35,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
            expected input format based on the model ID:
            - 'v3' (TTS): requires 'text' (the script), optionally 'voice_id', 'stability',
              'similarity_boost', 'style', 'use_speaker_boost'.
-           - 'voice-design': requires 'voice_description' (detailed vocal characteristics),
-             'text' (sample text to preview), optionally 'loudness', 'quality', 'age'.
+           - 'voice-design': requires 'voice_description' (detailed vocal characteristics like
+             "middle-aged British male, warm baritone, raspy"), 'text' (sample text to preview).
            - 'dubbing': requires 'source_url' or '@artifact_name' reference to source video/audio,
              'target_lang', optionally 'num_speakers', 'watermark'.
            - 'sound-generation': requires 'text' (sound description), optionally 'duration_seconds',
@@ -84,6 +84,23 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     if (output.has("url")) {
       return output.get("url").asText();
     }
+
+    // Voice design returns an array of previews
+    if (output.isArray() && !output.isEmpty()) {
+      JsonNode first = output.get(0);
+      if (first.has("generated_voice_id")) {
+        return first.get("generated_voice_id").asText();
+      }
+    }
+
+    // Dubbing finished
+    if (output.has("status") && "finished".equalsIgnoreCase(output.get("status").asText())) {
+      JsonNode targets = output.path("target_languages");
+      if (targets.isArray() && !targets.isEmpty()) {
+        return targets.get(0).path("dubbed_file_url").asText();
+      }
+    }
+
     // Dubbing returns a dubbing_id for async polling; surface the id as the result
     if (output.has("dubbing_id")) {
       return output.get("dubbing_id").asText();

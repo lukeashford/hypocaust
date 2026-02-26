@@ -82,6 +82,14 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
     if (output.has("url")) {
       return output.get("url").asText();
     }
+    // Check Gen-3 artifacts array
+    if (output.has("artifacts") && output.get("artifacts").isArray()
+        && !output.get("artifacts").isEmpty()) {
+      JsonNode first = output.get("artifacts").get(0);
+      if (first.has("url")) {
+        return first.get("url").asText();
+      }
+    }
     // Intermediate: task ID returned while polling
     if (output.has("id")) {
       return output.get("id").asText();

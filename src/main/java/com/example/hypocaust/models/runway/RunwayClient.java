@@ -36,24 +36,27 @@ public class RunwayClient {
   }
 
   public JsonNode generateVideo(String modelId, JsonNode input) {
-    return submitAndPoll(modelId, input);
+    return submitAndPoll("/text_to_video", modelId, input);
   }
 
   public JsonNode generateVideoFromImage(String modelId, JsonNode input) {
-    return submitAndPoll(modelId, input);
+    return submitAndPoll("/image_to_video", modelId, input);
   }
 
   public JsonNode upscale(JsonNode input) {
-    return submitAndPoll("upscale-v1", input);
+    return submitAndPoll("/tasks", "upscale-v1",
+        input); // Upscale often still uses /tasks or similar
   }
 
-  private JsonNode submitAndPoll(String model, JsonNode input) {
+  private JsonNode submitAndPoll(String endpoint, String model, JsonNode input) {
     ObjectNode payload = objectMapper.createObjectNode();
+    if (input.isObject()) {
+      payload.setAll((ObjectNode) input);
+    }
     payload.put("model", model);
-    payload.set("input", input);
 
     ObjectNode created = restClient.post()
-        .uri("/tasks")
+        .uri(endpoint)
         .contentType(MediaType.APPLICATION_JSON)
         .accept(MediaType.APPLICATION_JSON)
         .body(payload)
