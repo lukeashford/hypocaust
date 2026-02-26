@@ -72,7 +72,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
+  protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     return switch (modelId) {
       case "transcript" -> assemblyAiClient.transcribe(input);
       case "audio-intelligence" -> assemblyAiClient.transcribeWithIntelligence(input);

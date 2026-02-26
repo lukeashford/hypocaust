@@ -64,7 +64,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
+  protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     return switch (modelId) {
       case "v3" -> elevenLabsClient.textToSpeech(input);
       case "voice-design" -> elevenLabsClient.voiceDesign(input);

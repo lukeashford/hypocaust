@@ -10,12 +10,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
@@ -24,7 +21,7 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
   private static final AnthropicChatModelSpec PROMPT_ENG_MODEL =
       AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
-  private static final int MAX_TRANSIENT_RETRIES = 2;
+  private static final int MAX_RETRIES = 2;
   private static final long[] BACKOFF_MS = {1_000, 3_000};
 
   protected final ModelRegistry modelRegistry;
@@ -39,6 +36,11 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
   protected abstract String additionalPlanContext(String owner, String modelId,
       String description, String bestPractices);
+
+  /**
+   * Subclasses implement this to perform the actual provider API call.
+   */
+  protected abstract JsonNode doExecute(String owner, String modelId, JsonNode input);
 
   @Override
   public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
@@ -76,53 +78,32 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
     }
   }
 
+  /**
+   * Executes with automatic retry on transient failures. Returns output on success; throws on
+   * permanent or exhausted-retry failure. Callers never need to know retries happened.
+   */
   @Override
-  public ExecutionAttempt executeWithRetry(String owner, String modelId, JsonNode input) {
-    List<Map<String, String>> attempts = new ArrayList<>();
-
-    for (int attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt++) {
+  public final JsonNode execute(String owner, String modelId, JsonNode input) {
+    for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        var output = execute(owner, modelId, input);
-
-        var meta = new LinkedHashMap<String, String>();
-        meta.put("attempt", String.valueOf(attempt + 1));
-        meta.put("platform", platform().name());
-        meta.put("model", owner + "/" + modelId);
-        meta.put("status", "success");
-        attempts.add(meta);
-
-        return ExecutionAttempt.success(output, attempts);
+        return doExecute(owner, modelId, input);
       } catch (Exception e) {
-        var meta = new LinkedHashMap<String, String>();
-        meta.put("attempt", String.valueOf(attempt + 1));
-        meta.put("platform", platform().name());
-        meta.put("model", owner + "/" + modelId);
-        meta.put("status", "failed");
-        meta.put("error", e.getMessage());
-        meta.put("errorType", e.getClass().getSimpleName());
-        meta.put("transient", String.valueOf(isTransient(e)));
-        attempts.add(meta);
-
-        if (!isTransient(e) || attempt == MAX_TRANSIENT_RETRIES) {
-          log.warn("[{}] {} failure for {}/{}: {}",
-              platform(), isTransient(e) ? "Final transient" : "Non-transient",
+        if (!isTransient(e) || attempt == MAX_RETRIES) {
+          log.warn("[{}] {} for {}/{}: {}",
+              platform(), attempt > 0 ? "Exhausted " + (attempt + 1) + " attempts" : "Failed",
               owner, modelId, e.getMessage());
-          return ExecutionAttempt.failure(attempts);
+          throw e;
         }
-
-        long delay = BACKOFF_MS[attempt];
-        log.info("[{}] Transient error on attempt {} for {}/{}, retrying in {}ms: {}",
-            platform(), attempt + 1, owner, modelId, delay, e.getMessage());
-        sleep(delay);
+        log.info("[{}] Transient error (attempt {}/{}), retrying in {}ms: {}",
+            platform(), attempt + 1, MAX_RETRIES + 1, BACKOFF_MS[attempt], e.getMessage());
+        sleep(BACKOFF_MS[attempt]);
       }
     }
-
-    return ExecutionAttempt.failure(attempts);
+    throw new IllegalStateException("Unreachable");
   }
 
   /**
-   * Determines whether an exception is likely transient (network issue, server overload) and worth
-   * retrying, vs. a permanent failure (bad request, model not found) that should fail immediately.
+   * Classifies whether an exception represents a transient failure worth retrying.
    */
   static boolean isTransient(Throwable e) {
     if (e instanceof ResourceAccessException) {
@@ -130,11 +111,17 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
     }
     if (e instanceof HttpServerErrorException serverError) {
       int code = serverError.getStatusCode().value();
-      return code == 502 || code == 503 || code == 504 || code == 429;
+      return code == 502 || code == 503 || code == 504;
     }
-    Throwable cause = e.getCause();
-    if (cause instanceof ConnectException || cause instanceof SocketTimeoutException) {
-      return true;
+    if (e instanceof HttpClientErrorException clientError) {
+      return clientError.getStatusCode().value() == 429;
+    }
+    // Walk the full cause chain for underlying connection issues
+    Throwable cause = e;
+    while ((cause = cause.getCause()) != null) {
+      if (cause instanceof ConnectException || cause instanceof SocketTimeoutException) {
+        return true;
+      }
     }
     String msg = e.getMessage();
     if (msg != null) {

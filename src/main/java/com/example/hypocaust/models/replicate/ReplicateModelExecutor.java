@@ -59,7 +59,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
+  protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     var version = replicateClient.getLatestVersion(owner, modelId);
     return replicateClient.predict(owner, modelId, version, input);
   }

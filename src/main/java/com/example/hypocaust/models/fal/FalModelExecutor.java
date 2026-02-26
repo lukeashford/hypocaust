@@ -49,7 +49,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
+  protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     // fal.ai uses owner/modelId as the model path (e.g., "fal-ai/flux/schnell")
     var modelPath = owner + "/" + modelId;
     return falClient.submit(modelPath, input);

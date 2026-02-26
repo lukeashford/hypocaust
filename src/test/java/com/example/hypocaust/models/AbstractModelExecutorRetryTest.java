@@ -1,9 +1,9 @@
 package com.example.hypocaust.models;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import com.example.hypocaust.domain.ArtifactKind;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.ConnectException;
@@ -11,6 +11,8 @@ import java.net.SocketTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
@@ -37,22 +39,31 @@ class AbstractModelExecutorRetryTest {
     @Test
     void httpServerError502_isTransient() {
       assertThat(AbstractModelExecutor.isTransient(
-          new HttpServerErrorException(
-              org.springframework.http.HttpStatus.BAD_GATEWAY))).isTrue();
+          new HttpServerErrorException(HttpStatus.BAD_GATEWAY))).isTrue();
     }
 
     @Test
     void httpServerError503_isTransient() {
       assertThat(AbstractModelExecutor.isTransient(
-          new HttpServerErrorException(
-              org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE))).isTrue();
+          new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE))).isTrue();
     }
 
     @Test
     void httpServerError500_isNotTransient() {
       assertThat(AbstractModelExecutor.isTransient(
-          new HttpServerErrorException(
-              org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR))).isFalse();
+          new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))).isFalse();
+    }
+
+    @Test
+    void httpClientError429_isTransient() {
+      assertThat(AbstractModelExecutor.isTransient(
+          new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS))).isTrue();
+    }
+
+    @Test
+    void httpClientError400_isNotTransient() {
+      assertThat(AbstractModelExecutor.isTransient(
+          new HttpClientErrorException(HttpStatus.BAD_REQUEST))).isFalse();
     }
 
     @Test
@@ -65,6 +76,13 @@ class AbstractModelExecutorRetryTest {
     void socketTimeoutCause_isTransient() {
       var wrapper = new RuntimeException("wrapped", new SocketTimeoutException("read timed out"));
       assertThat(AbstractModelExecutor.isTransient(wrapper)).isTrue();
+    }
+
+    @Test
+    void deeplyNestedConnectException_isTransient() {
+      var deep = new RuntimeException("level2",
+          new RuntimeException("level1", new ConnectException("refused")));
+      assertThat(AbstractModelExecutor.isTransient(deep)).isTrue();
     }
 
     @Test
@@ -93,77 +111,50 @@ class AbstractModelExecutorRetryTest {
   }
 
   @Nested
-  class ExecuteWithRetry {
+  class Execute {
 
     @Test
     void successOnFirstAttempt_returnsImmediately() {
       var executor = new TestExecutor(modelRegistry, objectMapper, 0);
       var input = objectMapper.createObjectNode().put("prompt", "test");
 
-      var result = executor.executeWithRetry("owner", "model", input);
+      var result = executor.execute("owner", "model", input);
 
-      assertThat(result.succeeded()).isTrue();
-      assertThat(result.attempts()).hasSize(1);
-      assertThat(result.attempts().getFirst().get("status")).isEqualTo("success");
+      assertThat(result).isNotNull();
+      assertThat(result.asText()).isEqualTo("https://example.com/output.png");
     }
 
     @Test
     void transientFailureThenSuccess_retries() {
-      // Fails with transient error once, then succeeds
       var executor = new TestExecutor(modelRegistry, objectMapper, 1);
       var input = objectMapper.createObjectNode().put("prompt", "test");
 
-      var result = executor.executeWithRetry("owner", "model", input);
+      var result = executor.execute("owner", "model", input);
 
-      assertThat(result.succeeded()).isTrue();
-      assertThat(result.attempts()).hasSize(2);
-      assertThat(result.attempts().get(0).get("status")).isEqualTo("failed");
-      assertThat(result.attempts().get(0).get("transient")).isEqualTo("true");
-      assertThat(result.attempts().get(1).get("status")).isEqualTo("success");
+      assertThat(result).isNotNull();
+      assertThat(result.asText()).isEqualTo("https://example.com/output.png");
     }
 
     @Test
-    void nonTransientFailure_doesNotRetry() {
+    void nonTransientFailure_throwsImmediately() {
       var executor = new NonTransientFailExecutor(modelRegistry, objectMapper);
       var input = objectMapper.createObjectNode().put("prompt", "test");
 
-      var result = executor.executeWithRetry("owner", "model", input);
-
-      assertThat(result.succeeded()).isFalse();
-      assertThat(result.attempts()).hasSize(1);
-      assertThat(result.attempts().getFirst().get("transient")).isEqualTo("false");
+      assertThatThrownBy(() -> executor.execute("owner", "model", input))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Model not found");
     }
 
     @Test
-    void allTransientFailures_exhaustsRetries() {
-      // Always fails with transient errors
+    void allTransientFailures_throwsAfterExhaustedRetries() {
       var executor = new AlwaysTransientFailExecutor(modelRegistry, objectMapper);
       var input = objectMapper.createObjectNode().put("prompt", "test");
 
-      var result = executor.executeWithRetry("owner", "model", input);
-
-      assertThat(result.succeeded()).isFalse();
-      assertThat(result.attempts()).hasSize(3); // 1 initial + 2 retries
-    }
-
-    @Test
-    void attemptMetadata_containsExpectedKeys() {
-      var executor = new TestExecutor(modelRegistry, objectMapper, 0);
-      var input = objectMapper.createObjectNode().put("prompt", "test");
-
-      var result = executor.executeWithRetry("the-owner", "the-model", input);
-
-      var meta = result.attempts().getFirst();
-      assertThat(meta).containsEntry("attempt", "1");
-      assertThat(meta).containsEntry("platform", "REPLICATE");
-      assertThat(meta).containsEntry("model", "the-owner/the-model");
-      assertThat(meta).containsEntry("status", "success");
+      assertThatThrownBy(() -> executor.execute("owner", "model", input))
+          .isInstanceOf(ResourceAccessException.class);
     }
   }
 
-  /**
-   * Test executor that fails with transient errors N times then succeeds.
-   */
   static class TestExecutor extends AbstractModelExecutor {
 
     private int failuresRemaining;
@@ -190,7 +181,7 @@ class AbstractModelExecutorRetryTest {
     }
 
     @Override
-    public JsonNode execute(String owner, String modelId, JsonNode input) {
+    protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
       if (failuresRemaining > 0) {
         failuresRemaining--;
         throw new ResourceAccessException("Connection timed out");
@@ -227,7 +218,7 @@ class AbstractModelExecutorRetryTest {
     }
 
     @Override
-    public JsonNode execute(String owner, String modelId, JsonNode input) {
+    protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
       throw new IllegalArgumentException("Model not found: " + modelId);
     }
 
@@ -260,7 +251,7 @@ class AbstractModelExecutorRetryTest {
     }
 
     @Override
-    public JsonNode execute(String owner, String modelId, JsonNode input) {
+    protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
       throw new ResourceAccessException("Service unavailable");
     }
 

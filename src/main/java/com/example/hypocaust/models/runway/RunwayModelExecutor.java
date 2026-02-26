@@ -63,7 +63,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
+  protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     return switch (modelId) {
       case "gen4-turbo" -> runwayClient.generateVideo(modelId, input);
       case "gen4-turbo-i2v" -> runwayClient.generateVideoFromImage(modelId, input);

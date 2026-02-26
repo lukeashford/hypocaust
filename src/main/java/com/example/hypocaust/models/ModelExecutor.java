@@ -10,14 +10,11 @@ public interface ModelExecutor {
   ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices);
 
-  JsonNode execute(String owner, String modelId, JsonNode input);
-
   /**
-   * Executes with automatic retry on transient failures (network errors, 5xx). Returns structured
-   * attempt metadata for upstream reporting. Implementations that extend
-   * {@link AbstractModelExecutor} inherit this; others may override.
+   * Executes the model call. Implementations in {@link AbstractModelExecutor} automatically retry
+   * transient failures; throws on permanent failure.
    */
-  ExecutionAttempt executeWithRetry(String owner, String modelId, JsonNode input);
+  JsonNode execute(String owner, String modelId, JsonNode input);
 
   String extractOutput(JsonNode output);
 }

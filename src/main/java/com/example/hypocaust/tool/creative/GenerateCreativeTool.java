@@ -5,9 +5,7 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.models.ExecutionAttempt;
 import com.example.hypocaust.models.ExecutionRouter;
-import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
@@ -17,9 +15,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -30,16 +27,15 @@ import org.springframework.stereotype.Component;
  * everything internally: model selection via RAG, prompt engineering, title/description generation,
  * and provider API calling via the execution router.
  *
- * <p>On technical failure (provider error, network issue), automatically falls back to the
- * next-best model from RAG results before giving up. All attempts are recorded in the
- * {@link ExecutionReport} so the decomposer can make informed self-healing decisions.
+ * <p>On technical failure, automatically falls back to the next-best model from RAG results
+ * before giving up.
  */
 @RequiredArgsConstructor
 @Slf4j
 @Component
 public class GenerateCreativeTool {
 
-  private static final String LOG_PREFIX = "[CREATIVE] ";
+  private static final String LOG_PREFIX = "[CREATIVE]";
   private static final int MAX_MODEL_ATTEMPTS = 2;
 
   private final ModelEmbeddingRegistry modelRag;
@@ -58,170 +54,95 @@ public class GenerateCreativeTool {
       @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
   ) {
     log.info("{} request: {} (kind: {})", LOG_PREFIX, task, artifactKind);
-    var reportBuilder = ExecutionReport.builder();
 
-    // Step 1: Task-to-Requirement Rewriting
+    // Step 1: Find suitable models
     ModelRequirement req = wordingService.generateModelRequirement(task, artifactKind);
-    log.info("Model requirements: inputs={}, output={}, tier={}, search='{}'",
-        req.inputs(), req.output(), req.tier(), req.searchString());
-
-    // Step 2: Model selection via RAG (returns ranked list)
-    var modelResults = modelRag.search(req);
-    if (modelResults.isEmpty()) {
-      String error = "No suitable model found matching requirements: " + req;
-      reportBuilder.addAttempt(Map.of("step", "model_selection", "status", "failed",
-          "error", error));
-      return GenerateCreativeResult.error(error,
-          reportBuilder.success(false).summary(error).build());
+    var models = modelRag.search(req);
+    if (models.isEmpty()) {
+      return GenerateCreativeResult.error("No suitable model found for: " + req);
     }
 
-    // Step 3: Try models in ranked order (fallback on technical failure)
-    int modelsToTry = Math.min(MAX_MODEL_ATTEMPTS, modelResults.size());
-
-    for (int modelIndex = 0; modelIndex < modelsToTry; modelIndex++) {
-      var model = modelResults.get(modelIndex);
-      log.info("{} Trying model {}/{}: {} (platform: {})", LOG_PREFIX,
-          modelIndex + 1, modelsToTry, model.name(), model.platform());
-
-      var result = tryModel(task, artifactKind, model, reportBuilder);
-      if (result != null) {
-        return result;
+    // Step 2: Try models in ranked order, fall back on failure
+    var errors = new ArrayList<String>();
+    for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
+      try {
+        return executeWithModel(task, artifactKind, model);
+      } catch (Exception e) {
+        log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
+        errors.add(model.name() + ": " + e.getMessage());
       }
-      // If we get here, tryModel returned null meaning a technical failure occurred —
-      // the attempt was already recorded, continue to next model
     }
 
-    // All models exhausted
-    String error = "All " + modelsToTry + " candidate models failed";
-    return GenerateCreativeResult.error(error,
-        reportBuilder.success(false).summary(error).build());
+    return GenerateCreativeResult.error("All models failed — " + String.join("; ", errors));
   }
 
-  /**
-   * Attempts generation with a single model. Returns the result on success or a non-recoverable
-   * planning error. Returns null if the failure is technical and another model should be tried.
-   */
-  private GenerateCreativeResult tryModel(
-      String task, ArtifactKind artifactKind, SearchResult model,
-      ExecutionReport.Builder reportBuilder) {
+  private GenerateCreativeResult executeWithModel(
+      String task, ArtifactKind artifactKind, SearchResult model) {
 
-    ModelExecutor executor;
-    try {
-      executor = executionRouter.resolve(model.platform());
-    } catch (IllegalArgumentException e) {
-      reportBuilder.addAttempt(Map.of(
-          "step", "resolve_executor", "model", model.name(),
-          "platform", model.platform(), "status", "failed",
-          "error", e.getMessage()));
-      return null; // try next model
-    }
+    log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
+    var executor = executionRouter.resolve(model.platform());
 
-    // Generate plan
+    // Plan
     var plan = executor.generatePlan(task, artifactKind, model.name(),
-        model.owner(), model.modelId(), model.description(),
-        model.bestPractices());
-
+        model.owner(), model.modelId(), model.description(), model.bestPractices());
     if (plan.hasError()) {
-      log.warn("{} Planning failed for {}: {}", LOG_PREFIX, model.name(), plan.errorMessage());
-      reportBuilder.addAttempt(Map.of(
-          "step", "plan", "model", model.name(),
-          "platform", model.platform(), "status", "failed",
-          "error", plan.errorMessage()));
-      // Planning failures are model-specific — try the next model
-      return null;
+      throw new RuntimeException("Planning failed: " + plan.errorMessage());
     }
 
-    // Generate title and description
+    // Prepare input
     String title = wordingService.generateArtifactTitle(task);
     String description = wordingService.generateArtifactDescription(task);
-
-    // Substitute artifact placeholders
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
     var finalInput = substituteArtifacts(plan.providerInput(), availableArtifacts);
 
     // Schedule artifact
     var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
-        .kind(artifactKind)
-        .title(title)
-        .description(description)
-        .status(ArtifactStatus.GESTATING)
-        .build());
+        .kind(artifactKind).title(title).description(description)
+        .status(ArtifactStatus.GESTATING).build());
 
-    log.info("{} Scheduled artifact: {}", LOG_PREFIX, artifactName);
-
-    // Execute with retry (handles transient errors internally)
-    ExecutionAttempt attempt = executor.executeWithRetry(
-        model.owner(), model.modelId(), finalInput);
-
-    // Record all execution attempts
-    for (var attemptMeta : attempt.attempts()) {
-      var enriched = new LinkedHashMap<>(attemptMeta);
-      enriched.put("step", "execute");
-      enriched.put("modelName", model.name());
-      reportBuilder.addAttempt(enriched);
-    }
-
-    if (!attempt.succeeded()) {
-      log.warn("{} Execution failed for model {}: {}", LOG_PREFIX, model.name(),
-          attempt.lastError());
-      // Rollback the artifact and let the caller try the next model
-      rollbackArtifact(artifactName);
-      return null;
-    }
-
-    // Extract output and finalize
     try {
-      var output = attempt.output();
-
-      // Prepare metadata
-      ObjectNode metadata = objectMapper.createObjectNode();
-      ObjectNode genDetails = metadata.putObject("generation_details");
-      genDetails.put("provider", model.platform());
-      genDetails.put("model_name", model.name());
-      genDetails.put("owner", model.owner());
-      genDetails.put("model_id", model.modelId());
-      genDetails.put("prompt", task);
-      metadata.set("providerInput", finalInput);
-
-      var builder = Artifact.builder()
-          .name(artifactName)
-          .kind(artifactKind)
-          .title(title)
-          .description(description)
-          .metadata(metadata);
-
+      // Execute (retries transient failures internally)
+      var output = executor.execute(model.owner(), model.modelId(), finalInput);
       var result = executor.extractOutput(output);
 
       if (result == null || result.isBlank() || "null".equals(result)) {
-        throw new IllegalStateException(
-            "Model returned no usable output (got: " + result + ")");
+        throw new IllegalStateException("Model returned no usable output");
       }
+
+      // Finalize artifact
+      var builder = Artifact.builder()
+          .name(artifactName).kind(artifactKind).title(title).description(description)
+          .metadata(buildMetadata(model, task, finalInput));
+
       if (artifactKind == ArtifactKind.TEXT) {
-        builder.inlineContent(new TextNode(result))
-            .status(ArtifactStatus.MANIFESTED);
+        builder.inlineContent(new TextNode(result)).status(ArtifactStatus.MANIFESTED);
       } else {
-        builder.url(result)
-            .status(ArtifactStatus.CREATED);
+        builder.url(result).status(ArtifactStatus.CREATED);
       }
 
-      TaskExecutionContextHolder.getContext().getArtifacts()
-          .updatePending(builder.build());
-
+      TaskExecutionContextHolder.getContext().getArtifacts().updatePending(builder.build());
       log.info("{} Complete: {}", LOG_PREFIX, artifactName);
 
-      String summary = "Generated " + artifactKind + " using " + model.name();
-      reportBuilder.success(true).summary(summary).addArtifactName(artifactName);
-      return GenerateCreativeResult.success(artifactName, summary, reportBuilder.build());
+      return GenerateCreativeResult.success(artifactName,
+          "Generated " + artifactKind + " using " + model.name());
 
     } catch (Exception e) {
-      log.error("{} Post-execution failed: {}", LOG_PREFIX, e.getMessage(), e);
-      reportBuilder.addAttempt(Map.of(
-          "step", "extract_output", "model", model.name(),
-          "status", "failed", "error", e.getMessage()));
       rollbackArtifact(artifactName);
-      return null;
+      throw e;
     }
+  }
+
+  private ObjectNode buildMetadata(SearchResult model, String task, JsonNode input) {
+    ObjectNode metadata = objectMapper.createObjectNode();
+    ObjectNode genDetails = metadata.putObject("generation_details");
+    genDetails.put("provider", model.platform());
+    genDetails.put("model_name", model.name());
+    genDetails.put("owner", model.owner());
+    genDetails.put("model_id", model.modelId());
+    genDetails.put("prompt", task);
+    metadata.set("providerInput", input);
+    return metadata;
   }
 
   private void rollbackArtifact(String artifactName) {

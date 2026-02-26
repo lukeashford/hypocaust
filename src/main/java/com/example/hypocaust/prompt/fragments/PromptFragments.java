@@ -121,22 +121,13 @@ public final class PromptFragments {
     return new PromptFragment(
         "decomposer-self-healing",
         """
-            After any action, evaluate the result. Tool results include an 'report' object with:
-            - 'success': overall outcome
-            - 'attempts': ordered list of what was tried (model, platform, status, error, errorType, transient flag)
-            - 'artifactNames': artifacts produced
-
-            Use the report to diagnose failures precisely:
-            - If attempts show 'transient: true' errors across all retries (network, 5xx, rate-limit),
-              the infrastructure is down — do NOT retry the same tool. Report the infrastructure issue and stop.
-            - If attempts show the tool already tried multiple models and all failed technically,
-              do NOT call the tool again with a rephrased prompt — the problem is not your prompt.
-              Report the failure and stop.
-            - If the error is about missing parameters, unsupported task, or bad prompt structure,
-              adjust your parameters/prompt and retry (max {{maxRetries}} attempts per approach).
+            After any action, evaluate the result. If the tool returned an error:
+            - If it mentions timeout, network, or "All models failed": infrastructure is down.
+              Do NOT retry the same tool. Report the issue and stop.
+            - If it mentions missing parameters or invalid input: adjust your parameters and retry
+              (max {{maxRetries}} attempts per approach).
             - If one strategy is exhausted, try a fundamentally different one.
-            - When giving up, include the report's attempt details in your diagnosis so the parent
-              decomposer (or user) understands the root cause.""",
+            - When giving up, include the error details in your response.""",
         30
     );
   }
