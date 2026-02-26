@@ -46,6 +46,31 @@ class ReplicateModelExecutorTest {
     assertThat(result).isEqualTo(expectedOutput);
   }
 
+  @Test
+  void additionalPlanContext_extractsInputSchema() throws Exception {
+    String owner = "stability-ai";
+    String modelId = "sd3";
+    String version = "abc";
+    var fullSchema = objectMapper.readTree("""
+        {
+          "components": {
+            "schemas": {
+              "Input": { "type": "object", "properties": { "prompt": { "type": "string" } } },
+              "Other": { "type": "string" }
+            }
+          }
+        }
+        """);
+    when(replicateClient.getLatestVersion(owner, modelId)).thenReturn(version);
+    when(replicateClient.getSchema(owner, modelId, version)).thenReturn(fullSchema);
+
+    var result = executor.additionalPlanContext(owner, modelId, "desc", "best");
+
+    assertThat(result).contains(
+        "Schema: {\"type\":\"object\",\"properties\":{\"prompt\":{\"type\":\"string\"}}}");
+    assertThat(result).doesNotContain("\"Other\"");
+  }
+
   @Nested
   class ExtractOutputUrl {
 

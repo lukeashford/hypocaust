@@ -46,10 +46,18 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
       String description, String bestPractices) {
     try {
       var version = replicateClient.getLatestVersion(owner, modelId);
-      var schema = replicateClient.getSchema(owner, modelId, version);
-      log.info("Fetched schema for {}/{}: {}", owner, modelId, schema);
+      var fullSchema = replicateClient.getSchema(owner, modelId, version);
+
+      // Extract the specific input schema to reduce noise and ambiguity
+      var inputSchema = fullSchema.path("components").path("schemas").path("Input");
+      if (inputSchema.isMissingNode()) {
+        // Fallback to the full schema if "Input" schema isn't where we expect it
+        inputSchema = fullSchema;
+      }
+
+      log.info("Fetched input schema for {}/{}: {}", owner, modelId, inputSchema);
       var modelDocs = description + "\n\nBest Practices:\n" + bestPractices;
-      return String.format("Model Docs: %s\nSchema: %s", modelDocs, schema);
+      return String.format("Model Docs: %s\nSchema: %s", modelDocs, inputSchema);
     } catch (Exception e) {
       log.warn("Failed to fetch Replicate model context for {}/{}: {}", owner, modelId,
           e.getMessage());
