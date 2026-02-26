@@ -46,3 +46,6 @@ out/
 /logs/
 
 .env
+
+*.key
+*.crt

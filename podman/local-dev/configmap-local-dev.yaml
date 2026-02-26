@@ -12,7 +12,7 @@ data:
   POSTGRES_DB: "hypocaust"
 
   # pgadmin
-  PGADMIN_DEFAULT_EMAIL: "pgadmin@imp-ag.de"
+  PGADMIN_DEFAULT_EMAIL: "admin@localhost"
   PGADMIN_DEFAULT_PASSWORD: "postgres"
 
   # minio (server + console)
