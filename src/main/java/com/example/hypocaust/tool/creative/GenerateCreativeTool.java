@@ -158,14 +158,10 @@ public class GenerateCreativeTool {
       String jsonString = node.toString();
       for (Artifact artifact : artifacts) {
         String placeholder = "@" + artifact.name();
-        if (artifact.kind() == ArtifactKind.TEXT && artifact.inlineContent() != null) {
-          String content = artifact.inlineContent().isTextual()
-              ? artifact.inlineContent().asText()
-              : artifact.inlineContent().toString();
-          jsonString = jsonString.replace(placeholder, content);
-        } else if (artifact.url() != null) {
-          jsonString = jsonString.replace(placeholder, artifact.url());
-        }
+        String content = artifact.kind() == ArtifactKind.TEXT
+            ? artifact.description()
+            : artifact.url();
+        jsonString = jsonString.replace(placeholder, content);
       }
       return objectMapper.readTree(jsonString);
     } catch (Exception e) {

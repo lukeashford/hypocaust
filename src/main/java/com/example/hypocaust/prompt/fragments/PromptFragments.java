@@ -111,6 +111,13 @@ public final class PromptFragments {
             details directly in the tool's parameters. Do NOT just refer to an artifact by name (e.g., '@my_story') \
             expecting the tool to know what's in it.
             
+            Distinguish between **physical seeds** and **conceptual context**. \
+            Media artifacts (images, videos, audio) are resolved to URLs and can be passed to tools \
+            via the `@name` syntax as foundational inputs for direct manipulation (e.g., image-to-video). \
+            In contrast, text-based artifacts are sources of information; you must **digest and synthesize** \
+            their relevant content directly into your task description, as downstream generative models cannot \
+            'see' or 'read' text references as foundational inputs.
+            
             When a task involves changing, improving, or refining an existing artifact, prioritize tools and workflows that accept that artifact as a **foundational input** (edit/modify) rather than tools that generate a replacement from scratch (new).
             - Syntax: Explicitly reference existing artifacts using the `@artifact_name` syntax in tool parameters ONLY to identify which artifact is the primary subject of an edit or transformation (e.g., for image-to-video).
             - Intent: Formulate task descriptions to focus on the specific changes or "deltas" required, rather than re-describing the entire desired output.
