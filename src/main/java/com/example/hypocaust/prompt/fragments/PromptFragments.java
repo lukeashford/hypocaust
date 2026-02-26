@@ -103,8 +103,16 @@ public final class PromptFragments {
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
             been tried before and whether to regenerate or edit.
+            
+            IMPORTANT: Only you (the decomposer) have access to artifact contents via the project context tool. \
+            The downstream tools you call (e.g., GenerateCreativeTool) do NOT have access to these artifacts. \
+            If a tool needs information from an artifact (like character descriptions from a text artifact) \
+            to perform its task, you MUST query that artifact yourself and then explicitly include all relevant \
+            details directly in the tool's parameters. Do NOT just refer to an artifact by name (e.g., '@my_story') \
+            expecting the tool to know what's in it.
+            
             When a task involves changing, improving, or refining an existing artifact, prioritize tools and workflows that accept that artifact as a **foundational input** (edit/modify) rather than tools that generate a replacement from scratch (new).
-            - Syntax: Explicitly reference existing artifacts using the `@artifact_name` syntax in tool parameters.
+            - Syntax: Explicitly reference existing artifacts using the `@artifact_name` syntax in tool parameters ONLY to identify which artifact is the primary subject of an edit or transformation (e.g., for image-to-video).
             - Intent: Formulate task descriptions to focus on the specific changes or "deltas" required, rather than re-describing the entire desired output.
             - Applicability: This applies to all tool types, including generative AI (e.g., image-to-video), deterministic engines (e.g., color grading), and utility tools (e.g., upscaling).
             """,

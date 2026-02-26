@@ -3,6 +3,7 @@ package com.example.hypocaust.tool;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -77,6 +78,11 @@ public class ProjectContextTool {
               String.format("  Prompt: %s\n", genDetails.path("prompt").asText()));
         }
         contextBuilder.append(String.format("  Metadata: %s\n", artifact.metadata()));
+      }
+      if (artifact.kind() == ArtifactKind.TEXT && artifact.inlineContent() != null) {
+        contextBuilder.append(String.format("  Content: %s\n",
+            artifact.inlineContent().isTextual() ? artifact.inlineContent().asText()
+                : artifact.inlineContent().toString()));
       }
     }
 
