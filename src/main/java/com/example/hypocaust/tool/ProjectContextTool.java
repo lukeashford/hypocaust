@@ -4,6 +4,7 @@ import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -56,6 +57,9 @@ public class ProjectContextTool {
     var ctx = TaskExecutionContextHolder.getContext();
     var taskExecutionId = ctx.getTaskExecutionId();
     var projectId = ctx.getProjectId();
+    var indent = TaskExecutionContextHolder.getIndent();
+
+    log.info("{} [CONTEXT] Question: {}", indent, question);
 
     // Gather all relevant data for the inner LLM
     var contextBuilder = new StringBuilder();
@@ -103,28 +107,53 @@ public class ProjectContextTool {
       }
     }
 
-    // Call small LLM to interpret and answer
-    try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(CONTEXT_MODEL))
-          .build();
+    log.debug("{} [CONTEXT] Context gathered: {} artifacts, {} history entries",
+        indent, artifacts.size(), history.size());
 
-      return chatClient.prompt()
-          .system("""
-              You answer questions about a creative project's artifacts and version history.
-              Be concise and direct. When asked for an artifact name, reply with just the name.
-              When listing artifacts, use a clean format.
-              When explaining what happened, summarize the key changes.
-              When asked about prompts that were tried, include the full prompt text.
-              When asked about what failed, explain what was attempted and why it failed.
-              Task executions have stable snake_case names (shown before the dash in the history).
-              When asked about historical versions, always include the execution name.
-              """)
-          .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
-          .call()
-          .content();
-    } catch (Exception e) {
-      log.error("Failed to answer project context question: {}", e.getMessage());
-      return "Unable to answer: " + e.getMessage();
+    // Call small LLM to interpret and answer with retries
+    int maxRetries = 2;
+    long[] backoffMs = {1000, 3000};
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        ChatClient chatClient = ChatClient.builder(modelRegistry.get(CONTEXT_MODEL))
+            .build();
+
+        String answer = chatClient.prompt()
+            .system("""
+                You answer questions about a creative project's artifacts and version history.
+                Be concise and direct. When asked for an artifact name, reply with just the name.
+                When listing artifacts, use a clean format.
+                When explaining what happened, summarize the key changes.
+                When asked about prompts that were tried, include the full prompt text.
+                When asked about what failed, explain what was attempted and why it failed.
+                Task executions have stable snake_case names (shown before the dash in the history).
+                When asked about historical versions, always include the execution name.
+                """)
+            .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
+            .call()
+            .content();
+
+        log.info("{} [CONTEXT] Answer: {}", indent, answer);
+        return answer;
+
+      } catch (Exception e) {
+        if (attempt == maxRetries || !AbstractModelExecutor.isTransient(e)) {
+          log.error("{} [CONTEXT] Failed to answer (attempt {}/{}): {}",
+              indent, attempt + 1, maxRetries + 1, e.getMessage());
+          return "Unable to answer: " + e.getMessage();
+        }
+
+        log.info("{} [CONTEXT] Transient error (attempt {}/{}), retrying in {}ms: {}",
+            indent, attempt + 1, maxRetries + 1, backoffMs[attempt], e.getMessage());
+        try {
+          Thread.sleep(backoffMs[attempt]);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          return "Interrupted while retrying";
+        }
+      }
     }
+    return "Unable to answer: Max retries exceeded";
   }
 }

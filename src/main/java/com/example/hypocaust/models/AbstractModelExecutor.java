@@ -105,7 +105,7 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   /**
    * Classifies whether an exception represents a transient failure worth retrying.
    */
-  static boolean isTransient(Throwable e) {
+  public static boolean isTransient(Throwable e) {
     if (e instanceof ResourceAccessException) {
       return true;
     }
