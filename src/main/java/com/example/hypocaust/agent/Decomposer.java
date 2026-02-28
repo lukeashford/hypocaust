@@ -12,6 +12,7 @@ import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
+import com.example.hypocaust.tool.decomposition.SetPlanTool;
 import com.example.hypocaust.tool.discovery.ExecuteToolTool;
 import com.example.hypocaust.tool.discovery.SearchToolsTool;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Component;
  * <p>Direct tools (always in the ChatClient schema):
  * <ul>
  *   <li>{@code invoke_decomposer} - recursive child spawning</li>
+ *   <li>{@code set_plan} - declare the full list of sub-steps</li>
  *   <li>{@code search_tools} - semantic tool discovery</li>
  *   <li>{@code execute_tool} - generic tool invocation bridge</li>
  *   <li>{@code ask_project_context} - project knowledge (NL Q&A)</li>
@@ -47,6 +49,7 @@ public class Decomposer {
 
   private final ChatService chatService;
   private final InvokeDecomposerTool invokeDecomposerTool;
+  private final SetPlanTool setPlanTool;
   private final SearchToolsTool searchToolsTool;
   private final ExecuteToolTool executeToolTool;
   private final ProjectContextTool projectContextTool;
@@ -72,6 +75,7 @@ public class Decomposer {
     try {
       var systemPrompt = PromptBuilder.create()
           .with(PromptFragments.decomposerCore())
+          .with(PromptFragments.planning())
           .with(PromptFragments.abilityAwareness())
           .with(PromptFragments.artifactAwareness())
           .with(PromptFragments.selfHealing())
@@ -84,6 +88,7 @@ public class Decomposer {
           systemPrompt,
           task,
           invokeDecomposerTool,
+          setPlanTool,
           searchToolsTool,
           executeToolTool,
           projectContextTool,

@@ -2,7 +2,6 @@ package com.example.hypocaust.agent;
 
 import com.example.hypocaust.domain.Todo;
 import com.example.hypocaust.domain.TodoStatus;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +33,9 @@ public class TodoExecutor {
     UUID parentTodoId = TaskExecutionContextHolder.getCurrentTodoId();
     String indent = TaskExecutionContextHolder.getIndent();
 
-    // Create a todo for this task
-    Todo todo = new Todo(description, TodoStatus.PENDING);
-    TaskExecutionContextHolder.getTodos().registerSubtodos(parentTodoId, List.of(todo));
+    // Create or find a todo for this task
+    Todo todo = TaskExecutionContextHolder.getTodos().addOrUpdateTodo(
+        parentTodoId, new Todo(description, TodoStatus.PENDING));
 
     log.info("{}{} Starting: {}", indent, LOG_PREFIX, description);
 

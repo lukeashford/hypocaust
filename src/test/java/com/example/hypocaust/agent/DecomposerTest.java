@@ -8,6 +8,7 @@ import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
+import com.example.hypocaust.tool.decomposition.SetPlanTool;
 import com.example.hypocaust.tool.discovery.ExecuteToolTool;
 import com.example.hypocaust.tool.discovery.SearchToolsTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ class DecomposerTest {
     decomposer = new Decomposer(
         mock(ChatService.class),
         mock(InvokeDecomposerTool.class),
+        mock(SetPlanTool.class),
         mock(SearchToolsTool.class),
         mock(ExecuteToolTool.class),
         mock(ProjectContextTool.class),
