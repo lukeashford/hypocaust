@@ -11,6 +11,7 @@ import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -34,29 +35,59 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     return Platform.ELEVENLABS;
   }
 
+  // Model-specific input specs: only the relevant model's spec is shown to the planner,
+  // preventing cross-contamination (e.g. "voice-design" leaking into a voice_id field).
+  private static final Map<String, String> MODEL_INPUT_SPECS = Map.of(
+      "v3", """
+          Text-to-Speech: Construct providerInput with:
+            - 'text' (required): The script/dialogue to speak.
+            - 'voice_id' (optional): A valid ElevenLabs voice ID (20-char alphanumeric string).
+              Do NOT invent voice IDs. Omit this field to use the default voice.
+            - 'model_id' (optional): e.g. 'eleven_v3', 'eleven_multilingual_v2'. Defaults to 'eleven_v3'.
+          """,
+      "voice-design", """
+          Voice Design: Construct providerInput with:
+            - 'voice_description' (required): Detailed voice characteristics (age, gender, accent, tone, pace).
+              Must be 20-1000 characters.
+            - 'text' (optional): Preview script (100-1000 chars). Omit to auto-generate.
+          """,
+      "dubbing", """
+          Dubbing: Construct providerInput with:
+            - 'source_url' (required): URL of audio/video to dub. Use '@artifact_name' for existing artifacts.
+            - 'target_lang' (required): Target language code (e.g. 'es', 'fr', 'de').
+          """,
+      "sound-generation", """
+          Sound Effects: Construct providerInput with:
+            - 'text' (required): Descriptive prompt for the sound effect (duration, texture, perspective, intensity).
+          """
+  );
+
   @Override
   protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
+    var inputSpec = MODEL_INPUT_SPECS.getOrDefault(modelId,
+        "Unknown model ID '" + modelId + "'. Return an errorMessage.");
+
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.
-            
+
+            You are planning for model: %s (id: %s)
+
             YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object matching ElevenLabs:
-               - 'v3' (TTS): requires 'text' (the script), optionally 'voice_id'.
-               - 'voice-design': requires 'voice_description', 'text' (preview script).
-               - 'dubbing': requires 'source_url' ('@artifact_name'), 'target_lang'.
-               - 'sound-generation': requires 'text' (sound description).
+            1. Input Mapping: Construct the 'providerInput' object:
+               %s
                - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-            
+               - Do NOT invent IDs. If you don't have a specific voice_id, omit the field entirely.
+
             OUTPUT: Return ONLY valid JSON:
             {
-              "providerInput": { "text": "...", "voice_id": "...", ... },
+              "providerInput": { ... },
               "errorMessage": null or "..."
             }
-            """))
+            """.formatted(modelName, modelId, inputSpec)))
         .with(PromptFragments.abilityAwareness())
         .build();
 
@@ -64,7 +95,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         Task: %s
         Kind: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, kind, description, bestPractices);
@@ -104,7 +135,16 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       return output.get("url").asText();
     }
 
-    // Voice design returns an array of previews
+    // Voice design (/text-to-voice/design) returns {"previews": [{"generated_voice_id": "...", "audio": "base64..."}]}
+    JsonNode previews = output.path("previews");
+    if (previews.isArray() && !previews.isEmpty()) {
+      JsonNode first = previews.get(0);
+      if (first.has("generated_voice_id")) {
+        return first.get("generated_voice_id").asText();
+      }
+    }
+
+    // Legacy voice design returns an array of previews directly
     if (output.isArray() && !output.isEmpty()) {
       JsonNode first = output.get(0);
       if (first.has("generated_voice_id")) {

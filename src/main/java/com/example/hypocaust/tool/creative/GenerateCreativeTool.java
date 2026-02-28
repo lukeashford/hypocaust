@@ -65,16 +65,24 @@ public class GenerateCreativeTool {
 
     // Step 2: Try models in ranked order, fall back on failure
     var errors = new ArrayList<String>();
+    var failedPlatforms = new java.util.LinkedHashSet<String>();
     for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
       try {
         return executeWithModel(task, artifactKind, model);
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
+        failedPlatforms.add(model.platform());
       }
     }
 
-    return GenerateCreativeResult.error("All models failed — " + String.join("; ", errors));
+    // Build an actionable error: tell the decomposer not to retry this capability
+    var errorMsg = new StringBuilder("All models failed for " + artifactKind + " generation. ");
+    errorMsg.append("Providers attempted: ").append(String.join(", ", failedPlatforms)).append(". ");
+    errorMsg.append("Details: ").append(String.join("; ", errors)).append(". ");
+    errorMsg.append("DO NOT retry ").append(artifactKind)
+        .append(" generation with similar parameters — the underlying service appears unavailable.");
+    return GenerateCreativeResult.error(errorMsg.toString());
   }
 
   private GenerateCreativeResult executeWithModel(

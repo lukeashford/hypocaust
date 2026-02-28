@@ -1,6 +1,6 @@
 # ElevenLabs
 
-## ElevenLabs v3 Text-to-Speech
+## ElevenLabs Text-to-Speech
 
 - **owner**: elevenlabs
 - **id**: v3
@@ -10,9 +10,10 @@
 
 ### Description
 
-ElevenLabs v3 is a premium AUDIO generation model for high-quality text-to-speech. It is optimized
-for natural prosody, expressive delivery, and production-grade narration. Best-in-class for ads,
-audiobooks, character voices, and any project requiring convincing, emotionally nuanced speech.
+ElevenLabs Text-to-Speech converts text into natural, expressive speech using the eleven_v3 model.
+It is optimized for natural prosody, expressive delivery, and production-grade narration.
+Best-in-class for ads, audiobooks, character voices, and any project requiring convincing,
+emotionally nuanced speech. Supports 29+ languages with high emotional range.
 
 ### Best Practices
 
@@ -21,6 +22,7 @@ audiobooks, character voices, and any project requiring convincing, emotionally 
 - Use lower stability for consistent "announcer" reads; raise similarity_boost to stay closer to
   reference voice timbre.
 - If available, control style exaggeration and speaker boost settings to match the project tone.
+- The default voice is used unless a specific voice_id is provided. Do not invent voice IDs.
 
 ## ElevenLabs Voice Design
 
@@ -32,18 +34,18 @@ audiobooks, character voices, and any project requiring convincing, emotionally 
 
 ### Description
 
-ElevenLabs Voice Design is an AUDIO generation model for creating custom synthetic voices from
-descriptive text (age, gender, accent, tone). It allows for the creation of unique character voices
-without a reference recording. Best for animated content, games, and brand mascots requiring
-original voice identities.
+ElevenLabs Voice Design creates custom synthetic voices from descriptive text prompts via the
+/text-to-voice/design API. Describe age, gender, accent, tone, and personality to generate unique
+character voices without a reference recording. Returns voice previews with generated_voice_id.
+Best for animated content, games, and brand mascots requiring original voice identities.
 
 ### Best Practices
 
 - Describe voice characteristics precisely: "middle-aged British male, warm baritone, slightly
-  raspy, measured pace, authoritative news anchor delivery."
-- Generate multiple candidates (the API returns several) and preview before committing; fine-tune
-  description iteratively.
-- Save chosen voices to your ElevenLabs voice library for consistent reuse across projects.
+  raspy, measured pace, authoritative news anchor delivery." Description must be 20-1000 characters.
+- Generate multiple candidates (the API returns several previews) and preview before committing;
+  fine-tune description iteratively.
+- Optionally provide preview text (100-1000 chars) or let the API auto-generate suitable text.
 
 ## ElevenLabs Dubbing
 

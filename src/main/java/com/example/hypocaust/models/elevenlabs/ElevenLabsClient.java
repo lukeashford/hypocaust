@@ -38,12 +38,31 @@ public class ElevenLabsClient {
         .build();
   }
 
+  private static final String DEFAULT_VOICE_ID = "pMs2u0D27UcSQMey5Go3";
+  private static final String DEFAULT_TTS_MODEL = "eleven_v3";
+
   public JsonNode textToSpeech(JsonNode input) {
-    String voiceId = input.has("voice_id") ? input.get("voice_id").asText()
-        : "pMs2u0D27UcSQMey5Go3"; // Default voice
+    String voiceId = DEFAULT_VOICE_ID;
+    if (input.has("voice_id")) {
+      String candidate = input.get("voice_id").asText();
+      // Guard against model IDs or descriptive strings leaking in as voice_id.
+      // Real ElevenLabs voice IDs are 20-char alphanumeric strings.
+      if (candidate.matches("^[A-Za-z0-9]{15,30}$")) {
+        voiceId = candidate;
+      } else {
+        log.warn("Ignoring invalid voice_id '{}', using default", candidate);
+      }
+    }
+
+    ObjectNode body = input.deepCopy();
+    body.remove("voice_id");
+
+    // Ensure a model_id is always present
+    if (!body.has("model_id")) {
+      body.put("model_id", DEFAULT_TTS_MODEL);
+    }
 
     // Wrap voice settings if present
-    ObjectNode body = input.deepCopy();
     if (body.has("stability") || body.has("similarity_boost") || body.has("style") || body.has(
         "use_speaker_boost")) {
       ObjectNode settings = objectMapper.createObjectNode();
@@ -61,7 +80,6 @@ public class ElevenLabsClient {
       }
       body.set("voice_settings", settings);
     }
-    body.remove("voice_id");
 
     byte[] audio = restClient.post()
         .uri("/text-to-speech/{voiceId}", voiceId)
@@ -78,11 +96,21 @@ public class ElevenLabsClient {
   }
 
   public JsonNode voiceDesign(JsonNode input) {
+    ObjectNode body = input.deepCopy();
+    // Default to the multilingual TTV model if none specified
+    if (!body.has("model_id")) {
+      body.put("model_id", "eleven_multilingual_ttv_v2");
+    }
+    // Auto-generate preview text when no text is provided
+    if (!body.has("text") || body.get("text").asText().isBlank()) {
+      body.put("auto_generate_text", true);
+    }
+
     return restClient.post()
-        .uri("/voice-generation/generate-voice")
+        .uri("/text-to-voice/design")
         .contentType(MediaType.APPLICATION_JSON)
         .accept(MediaType.APPLICATION_JSON)
-        .body(input)
+        .body(body)
         .retrieve()
         .body(JsonNode.class);
   }

@@ -28,11 +28,11 @@ public class WordingService {
   private final ObjectMapper objectMapper;
 
   /**
-   * Generates a brief progress label (1-5 words) for a task.
+   * Generates a brief progress label for a task.
    */
   public String generateTodoWording(String task) {
     String label = generate(PromptFragments.todoLabel(), task, "Task to convert to todo: ");
-    return label.length() > 50 ? label.substring(0, 47) + "..." : label;
+    return label.length() > 80 ? label.substring(0, 77) + "..." : label;
   }
 
   /**
@@ -56,7 +56,7 @@ public class WordingService {
   public String generateArtifactDescription(String source) {
     String desc = generate(PromptFragments.artifactDescription(), source,
         "Generation Prompt to describe: ");
-    return desc.length() > 100 ? desc.substring(0, 97) + "..." : desc;
+    return desc.length() > 200 ? desc.substring(0, 197) + "..." : desc;
   }
 
   /**
