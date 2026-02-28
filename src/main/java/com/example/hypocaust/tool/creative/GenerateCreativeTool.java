@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -82,19 +83,10 @@ public class GenerateCreativeTool {
     log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
     var executor = executionRouter.resolve(model.platform());
 
-    // Plan
-    var plan = executor.generatePlan(task, artifactKind, model.name(),
-        model.owner(), model.modelId(), model.description(), model.bestPractices());
-    if (plan.hasError()) {
-      throw new RuntimeException("Planning failed: " + plan.errorMessage());
-    }
-
-    // Prepare input
     String title = wordingService.generateArtifactTitle(task);
     String description = wordingService.generateArtifactDescription(task);
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
-    var finalInput = substituteArtifacts(plan.providerInput(), availableArtifacts);
 
     // Schedule artifact
     var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
@@ -102,23 +94,24 @@ public class GenerateCreativeTool {
         .status(ArtifactStatus.GESTATING).build());
 
     try {
-      // Execute (retries transient failures internally)
-      var output = executor.execute(model.owner(), model.modelId(), finalInput);
-      var result = executor.extractOutput(output);
+      // Delegate full pipeline to executor: plan → substitute → execute (with retry) → extract
+      UnaryOperator<JsonNode> substitutor = input -> substituteArtifacts(input, availableArtifacts);
+      var result = executor.run(task, artifactKind, model.name(),
+          model.owner(), model.modelId(), model.description(), model.bestPractices(), substitutor);
 
-      if (result == null || result.isBlank() || "null".equals(result)) {
+      if (result.output() == null || result.output().isBlank() || "null".equals(result.output())) {
         throw new IllegalStateException("Model returned no usable output");
       }
 
       // Finalize artifact
       var builder = Artifact.builder()
           .name(artifactName).kind(artifactKind).title(title).description(description)
-          .metadata(buildMetadata(model, task, finalInput));
+          .metadata(buildMetadata(model, task, result.providerInput()));
 
       if (artifactKind == ArtifactKind.TEXT) {
-        builder.inlineContent(new TextNode(result)).status(ArtifactStatus.MANIFESTED);
+        builder.inlineContent(new TextNode(result.output())).status(ArtifactStatus.MANIFESTED);
       } else {
-        builder.url(result).status(ArtifactStatus.CREATED);
+        builder.url(result.output()).status(ArtifactStatus.CREATED);
       }
 
       TaskExecutionContextHolder.getContext().getArtifacts().updatePending(builder.build());

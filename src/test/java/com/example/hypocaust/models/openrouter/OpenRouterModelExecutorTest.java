@@ -38,13 +38,13 @@ class OpenRouterModelExecutorTest {
   }
 
   @Test
-  void execute_combinesOwnerAndModelId() {
+  void doExecute_combinesOwnerAndModelId() {
     var input = objectMapper.createObjectNode().put("prompt", "Write a poem");
     var expectedOutput = objectMapper.createObjectNode();
     when(openRouterClient.chatCompletion(eq("meta-llama/llama-4-maverick"), any()))
         .thenReturn(expectedOutput);
 
-    var result = executor.execute("meta-llama", "llama-4-maverick", input);
+    var result = executor.doExecute("meta-llama", "llama-4-maverick", input);
 
     verify(openRouterClient).chatCompletion("meta-llama/llama-4-maverick", input);
     assertThat(result).isEqualTo(expectedOutput);

@@ -37,7 +37,7 @@ class ReplicateModelExecutorTest {
   }
 
   @Test
-  void execute_callsReplicateClientPredictWithResolvedVersion() {
+  void doExecute_callsReplicateClientPredictWithResolvedVersion() {
     String owner = "stability-ai";
     String modelId = "sdxl";
     String version = "abc123";
@@ -47,7 +47,7 @@ class ReplicateModelExecutorTest {
     when(replicateClient.getLatestVersion(owner, modelId)).thenReturn(version);
     when(replicateClient.predict(owner, modelId, version, input)).thenReturn(expectedOutput);
 
-    var result = executor.execute(owner, modelId, input);
+    var result = executor.doExecute(owner, modelId, input);
     assertThat(result).isEqualTo(expectedOutput);
   }
 

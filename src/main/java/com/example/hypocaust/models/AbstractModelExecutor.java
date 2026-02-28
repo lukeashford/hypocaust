@@ -5,6 +5,7 @@ import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -28,26 +29,36 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   }
 
   /**
+   * Subclasses implement this to prepare provider-specific input from the user task.
+   */
+  protected abstract ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices);
+
+  /**
    * Subclasses implement this to perform the actual provider API call.
    */
   protected abstract JsonNode doExecute(String owner, String modelId, JsonNode input);
 
+  /**
+   * Subclasses implement this to extract the final result (URL, text, etc.) from provider output.
+   */
+  protected abstract String extractOutput(JsonNode output);
+
+  /**
+   * Orchestrates the full pipeline: plan → transform input → execute (with retry) → extract.
+   */
   @Override
-  public JsonNode planAndExecute(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
+  public ExecutionResult run(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices,
+      UnaryOperator<JsonNode> inputTransformer) {
     var plan = generatePlan(task, kind, modelName, owner, modelId, description, bestPractices);
     if (plan.hasError()) {
       throw new RuntimeException("Planning failed: " + plan.errorMessage());
     }
-    return execute(owner, modelId, plan.providerInput());
-  }
 
-  /**
-   * Executes with automatic retry on transient failures. Returns output on success; throws on
-   * permanent or exhausted-retry failure. Callers never need to know retries happened.
-   */
-  @Override
-  public JsonNode execute(String owner, String modelId, JsonNode input) {
-    return retryTemplate.execute(context -> doExecute(owner, modelId, input));
+    var finalInput = inputTransformer.apply(plan.providerInput());
+    var output = retryTemplate.execute(context -> doExecute(owner, modelId, finalInput));
+    var result = extractOutput(output);
+    return new ExecutionResult(result, finalInput);
   }
 }

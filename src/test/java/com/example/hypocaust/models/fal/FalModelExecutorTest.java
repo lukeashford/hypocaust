@@ -38,12 +38,12 @@ class FalModelExecutorTest {
   }
 
   @Test
-  void execute_usesOwnerSlashModelIdAsPath() {
+  void doExecute_usesOwnerSlashModelIdAsPath() {
     var input = objectMapper.createObjectNode().put("prompt", "a cat");
     var expectedOutput = objectMapper.createObjectNode();
     when(falClient.submit(eq("fal-ai/flux/schnell"), any())).thenReturn(expectedOutput);
 
-    var result = executor.execute("fal-ai", "flux/schnell", input);
+    var result = executor.doExecute("fal-ai", "flux/schnell", input);
 
     verify(falClient).submit("fal-ai/flux/schnell", input);
     assertThat(result).isEqualTo(expectedOutput);

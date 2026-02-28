@@ -29,7 +29,7 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
   }
@@ -49,7 +49,7 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     return output.path("content").asText();
   }
 }

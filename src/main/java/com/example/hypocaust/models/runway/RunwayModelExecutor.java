@@ -35,7 +35,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("runway-plan", """
@@ -96,7 +96,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     // Runway tasks are async; client polls and resolves to a final output object
     // Expected resolved convention: {"url": "https://...", "status": "SUCCEEDED"}
     if (output.has("url")) {

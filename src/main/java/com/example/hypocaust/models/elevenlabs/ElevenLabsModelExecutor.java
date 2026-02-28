@@ -35,7 +35,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
@@ -97,7 +97,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     // ElevenLabs returns audio as binary; client should upload and return a URL
     // Expected client convention: {"url": "https://..."}
     if (output.has("url")) {

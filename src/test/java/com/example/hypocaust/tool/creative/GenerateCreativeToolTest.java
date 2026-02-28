@@ -14,14 +14,13 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Set;
@@ -77,22 +76,16 @@ class GenerateCreativeToolTest {
             "Use clear prompts", "balanced", "REPLICATE",
             Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
-    var planInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
-    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput, null));
-
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cute Cat");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn(
         "A very cute cat illustration");
     when(artifactsContext.add(any())).thenReturn("cute-cat-1");
 
-    JsonNode executorOutput = objectMapper.valueToTree("https://replicate.com/output.png");
-    when(modelExecutor.execute(eq("stability-ai"), eq("sdxl"), any()))
-        .thenReturn(executorOutput);
-    when(modelExecutor.extractOutput(executorOutput)).thenReturn(
-        "https://replicate.com/output.png");
+    var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
+    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionResult("https://replicate.com/output.png", providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -136,9 +129,13 @@ class GenerateCreativeToolTest {
             Set.of(ArtifactKind.VIDEO))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(ExecutionPlan.error("Missing video length"));
+    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Video");
+    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
+    when(artifactsContext.add(any())).thenReturn("video-1");
+
+    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -160,17 +157,13 @@ class GenerateCreativeToolTest {
         new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
             Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
-    var planInput = objectMapper.createObjectNode().put("prompt", "cat");
-    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput, null));
-
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cat");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
     when(artifactsContext.add(any())).thenReturn("cat-1");
 
-    when(modelExecutor.execute(anyString(), anyString(), any()))
+    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
@@ -193,19 +186,15 @@ class GenerateCreativeToolTest {
         new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
             Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
 
-    var planInput = objectMapper.createObjectNode().put("prompt", "thing");
-    when(modelExecutor.generatePlan(anyString(), any(), anyString(), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput, null));
-
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Thing");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
     when(artifactsContext.add(any())).thenReturn("thing-1");
 
-    JsonNode nullOutput = objectMapper.nullNode();
-    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(nullOutput);
-    when(modelExecutor.extractOutput(nullOutput)).thenReturn("null");
+    var providerInput = objectMapper.createObjectNode().put("prompt", "thing");
+    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionResult("null", providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -227,24 +216,16 @@ class GenerateCreativeToolTest {
         new SearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
             "OPENROUTER", Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.TEXT))));
 
-    var planInput = objectMapper.createObjectNode().put("prompt", "poem");
-    when(modelExecutor.generatePlan(anyString(), eq(kind), anyString(), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput, null));
-
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Poem");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A poem");
     when(artifactsContext.add(any())).thenReturn("poem-1");
 
     String poemText = "Roses are red...";
-    JsonNode output = objectMapper.createObjectNode().set("choices",
-        objectMapper.createArrayNode().add(
-            objectMapper.createObjectNode().set("message",
-                objectMapper.createObjectNode().put("content", poemText))));
-
-    when(modelExecutor.execute(anyString(), anyString(), any())).thenReturn(output);
-    when(modelExecutor.extractOutput(output)).thenReturn(poemText);
+    var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
+    when(modelExecutor.run(anyString(), eq(kind), anyString(), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionResult(poemText, providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -279,32 +260,21 @@ class GenerateCreativeToolTest {
 
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 
-    // First model: plan OK, execution fails
-    var planInput1 = objectMapper.createObjectNode().put("prompt", "sunset flux");
-    when(modelExecutor.generatePlan(anyString(), any(), eq("FluxDev"), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput1, null));
-
-    // Second model: plan OK, execution succeeds
-    var planInput2 = objectMapper.createObjectNode().put("prompt", "sunset sdxl");
-    when(modelExecutor.generatePlan(anyString(), any(), eq("SDXL"), anyString(), anyString(),
-        anyString(), anyString()))
-        .thenReturn(new ExecutionPlan(planInput2, null));
-
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     when(wordingService.generateArtifactTitle(anyString())).thenReturn("Sunset");
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A sunset");
     when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
 
-    // First execute fails
-    when(modelExecutor.execute(eq("black-forest-labs"), eq("flux-dev"), any()))
+    // First model: run fails
+    when(modelExecutor.run(anyString(), any(), eq("FluxDev"), anyString(), anyString(),
+        anyString(), anyString(), any()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
-    // Second execute succeeds
-    JsonNode successOutput = objectMapper.valueToTree("https://replicate.com/sunset.png");
-    when(modelExecutor.execute(eq("stability-ai"), eq("sdxl"), any()))
-        .thenReturn(successOutput);
-    when(modelExecutor.extractOutput(successOutput)).thenReturn("https://replicate.com/sunset.png");
+    // Second model: run succeeds
+    var providerInput = objectMapper.createObjectNode().put("prompt", "sunset sdxl");
+    when(modelExecutor.run(anyString(), any(), eq("SDXL"), anyString(), anyString(),
+        anyString(), anyString(), any()))
+        .thenReturn(new ExecutionResult("https://replicate.com/sunset.png", providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);

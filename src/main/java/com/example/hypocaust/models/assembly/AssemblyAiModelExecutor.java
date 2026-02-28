@@ -35,7 +35,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("assemblyai-plan", """
@@ -93,7 +93,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     // AssemblyAI transcription: return the full transcript text as the "output"
     // The client should poll until status == "completed" and return the resolved transcript object
     if (output.has("text") && output.get("text").isTextual()) {

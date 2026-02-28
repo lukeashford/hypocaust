@@ -33,7 +33,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     String schemaContext;
     try {
@@ -101,7 +101,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     if (output.isTextual()) {
       return output.asText();
     }

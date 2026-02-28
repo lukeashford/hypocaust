@@ -35,7 +35,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("fal-plan", """
@@ -87,7 +87,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  public String extractOutput(JsonNode output) {
+  protected String extractOutput(JsonNode output) {
     // fal.ai image models: {"images": [{"url": "...", ...}]}
     if (output.has("images") && output.get("images").isArray()
         && !output.get("images").isEmpty()) {

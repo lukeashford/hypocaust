@@ -2,26 +2,17 @@ package com.example.hypocaust.models;
 
 import com.example.hypocaust.domain.ArtifactKind;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.function.UnaryOperator;
 
 public interface ModelExecutor {
 
   Platform platform();
 
-  ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices);
-
   /**
-   * Plans and executes the model call in one go. Planning is NOT retried (secured by ChatService),
-   * but execution IS retried on transient failures.
+   * Runs the full executor pipeline: plan the provider input, transform it (e.g. substitute
+   * artifact placeholders), execute the model call with retries, and extract the final output.
    */
-  JsonNode planAndExecute(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices);
-
-  /**
-   * Executes the model call. Implementations in {@link AbstractModelExecutor} automatically retry
-   * transient failures; throws on permanent failure.
-   */
-  JsonNode execute(String owner, String modelId, JsonNode input);
-
-  String extractOutput(JsonNode output);
+  ExecutionResult run(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices,
+      UnaryOperator<JsonNode> inputTransformer);
 }
