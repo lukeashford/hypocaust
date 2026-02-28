@@ -109,30 +109,12 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // ElevenLabs returns audio as binary; client should upload and return a URL
-    // Expected client convention: {"url": "https://..."}
+    // All audio-producing methods (TTS, sound-generation, voice-design) now return {"url": "..."}
     if (output.has("url")) {
       return output.get("url").asText();
     }
 
-    // Voice design (/text-to-voice/design) returns {"previews": [{"generated_voice_id": "...", "audio": "base64..."}]}
-    JsonNode previews = output.path("previews");
-    if (previews.isArray() && !previews.isEmpty()) {
-      JsonNode first = previews.get(0);
-      if (first.has("generated_voice_id")) {
-        return first.get("generated_voice_id").asText();
-      }
-    }
-
-    // Legacy voice design returns an array of previews directly
-    if (output.isArray() && !output.isEmpty()) {
-      JsonNode first = output.get(0);
-      if (first.has("generated_voice_id")) {
-        return first.get("generated_voice_id").asText();
-      }
-    }
-
-    // Dubbing finished
+    // Dubbing finished — extract the dubbed file URL
     if (output.has("status") && "finished".equalsIgnoreCase(output.get("status").asText())) {
       JsonNode targets = output.path("target_languages");
       if (targets.isArray() && !targets.isEmpty()) {
@@ -140,14 +122,11 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       }
     }
 
-    // Dubbing returns a dubbing_id for async polling; surface the id as the result
+    // Dubbing in-progress — surface the dubbing_id
     if (output.has("dubbing_id")) {
       return output.get("dubbing_id").asText();
     }
-    // Voice design returns voice_id
-    if (output.has("voice_id")) {
-      return output.get("voice_id").asText();
-    }
+
     return output.toString();
   }
 }

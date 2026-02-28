@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
+import java.util.Base64;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -86,15 +86,10 @@ public class ElevenLabsClient {
     byte[] audio = restClient.post()
         .uri("/text-to-speech/{voiceId}", voiceId)
         .contentType(MediaType.APPLICATION_JSON)
-        .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE)
         .body(body)
         .retrieve()
         .body(byte[].class);
-    String url = contentStorage.put("tts-" + System.currentTimeMillis() + ".mp3", audio,
-        MediaType.valueOf("audio/mpeg"));
-    ObjectNode out = objectMapper.createObjectNode();
-    out.put("url", url);
-    return out;
+    return storeAudio("tts", audio);
   }
 
   public JsonNode voiceDesign(JsonNode input) {
@@ -108,13 +103,36 @@ public class ElevenLabsClient {
       body.put("auto_generate_text", true);
     }
 
-    return restClient.post()
+    JsonNode response = restClient.post()
         .uri("/text-to-voice/design")
         .contentType(MediaType.APPLICATION_JSON)
         .accept(MediaType.APPLICATION_JSON)
         .body(body)
         .retrieve()
         .body(JsonNode.class);
+
+    // The API returns {"previews": [{"generated_voice_id": "...", "audio": "base64..."}]}
+    // Store the first preview's audio so the result includes a playable URL
+    ObjectNode result = objectMapper.createObjectNode();
+    JsonNode previews = response != null ? response.path("previews") : null;
+    if (previews != null && previews.isArray() && !previews.isEmpty()) {
+      JsonNode first = previews.get(0);
+      if (first.has("generated_voice_id")) {
+        result.put("generated_voice_id", first.get("generated_voice_id").asText());
+      }
+      if (first.has("audio")) {
+        byte[] audioBytes = Base64.getDecoder().decode(first.get("audio").asText());
+        String url = contentStorage.put(
+            "voice-preview-" + System.currentTimeMillis() + ".mp3",
+            audioBytes, MediaType.valueOf("audio/mpeg"));
+        result.put("url", url);
+      }
+    }
+    // Fallback: copy generated_voice_id from legacy response shapes
+    if (!result.has("generated_voice_id") && response != null && response.has("generated_voice_id")) {
+      result.put("generated_voice_id", response.get("generated_voice_id").asText());
+    }
+    return result;
   }
 
   public JsonNode dubbing(JsonNode input) {
@@ -170,14 +188,22 @@ public class ElevenLabsClient {
 
   public JsonNode soundGeneration(JsonNode input) {
     byte[] audio = restClient.post()
-        .uri("/sound-generation")
+        .uri("/text-to-sound-effects")
         .contentType(MediaType.APPLICATION_JSON)
-        .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_OCTET_STREAM_VALUE)
         .body(input)
         .retrieve()
         .body(byte[].class);
-    String url = contentStorage.put("sound-" + System.currentTimeMillis() + ".mp3", audio,
-        MediaType.valueOf("audio/mpeg"));
+    return storeAudio("sound", audio);
+  }
+
+  private ObjectNode storeAudio(String prefix, byte[] audio) {
+    if (audio == null || audio.length == 0) {
+      throw new IllegalStateException(
+          "ElevenLabs returned empty audio. The API call succeeded but produced no audio data.");
+    }
+    String url = contentStorage.put(
+        prefix + "-" + System.currentTimeMillis() + ".mp3",
+        audio, MediaType.valueOf("audio/mpeg"));
     ObjectNode out = objectMapper.createObjectNode();
     out.put("url", url);
     return out;
