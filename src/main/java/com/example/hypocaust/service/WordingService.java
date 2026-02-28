@@ -3,7 +3,6 @@ package com.example.hypocaust.service;
 import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.exception.ExternalServiceException;
-import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
@@ -11,11 +10,11 @@ import com.example.hypocaust.rag.ModelRequirement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for generating human-friendly non-unique wording (titles, descriptions, messages).
+ * Service for generating human-friendly non-unique wording (titles, descriptions, messages) using
+ * the unified ChatService.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,7 +24,7 @@ public class WordingService {
   private static final AnthropicChatModelSpec WORDING_MODEL =
       AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
 
-  private final ModelRegistry modelRegistry;
+  private final ChatService chatService;
   private final ObjectMapper objectMapper;
 
   /**
@@ -78,13 +77,7 @@ public class WordingService {
 
   private String generate(PromptFragment fragment, String source, String userPrefix) {
     try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(WORDING_MODEL)).build();
-
-      String response = chatClient.prompt()
-          .system(fragment.text())
-          .user(userPrefix + source)
-          .call()
-          .content();
+      String response = chatService.call(WORDING_MODEL, fragment.text(), userPrefix + source);
 
       if (response != null && !response.isBlank()) {
         return response.trim().replaceAll("^\"|\"$", "");

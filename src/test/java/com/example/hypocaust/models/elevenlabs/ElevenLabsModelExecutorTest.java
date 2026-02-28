@@ -3,23 +3,27 @@ package com.example.hypocaust.models.elevenlabs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.retry.support.RetryTemplate;
 
 class ElevenLabsModelExecutorTest {
 
   private ElevenLabsModelExecutor executor;
-  private ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   void setUp() {
     ModelRegistry modelRegistry = Mockito.mock(ModelRegistry.class);
+    ChatService chatService = Mockito.mock(ChatService.class);
     ElevenLabsClient elevenLabsClient = Mockito.mock(ElevenLabsClient.class);
-    executor = new ElevenLabsModelExecutor(modelRegistry, objectMapper, elevenLabsClient);
+    executor = new ElevenLabsModelExecutor(modelRegistry, objectMapper, chatService,
+        new RetryTemplate(), elevenLabsClient);
   }
 
   @Test

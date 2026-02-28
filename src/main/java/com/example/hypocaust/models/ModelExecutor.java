@@ -11,6 +11,13 @@ public interface ModelExecutor {
       String owner, String modelId, String description, String bestPractices);
 
   /**
+   * Plans and executes the model call in one go. Planning is NOT retried (secured by ChatService),
+   * but execution IS retried on transient failures.
+   */
+  JsonNode planAndExecute(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices);
+
+  /**
    * Executes the model call. Implementations in {@link AbstractModelExecutor} automatically retry
    * transient failures; throws on permanent failure.
    */

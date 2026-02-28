@@ -25,6 +25,8 @@ dependencies {
   // Core Spring Boot functionality (BOM managed)
   implementation(libs.bundles.spring.boot.core)
   implementation(libs.spring.boot.starter.oauth2.resource.server)
+  implementation(libs.spring.retry)
+  implementation(libs.spring.boot.starter.aop)
   implementation(libs.bundles.db)
 
   // Tools

@@ -1,12 +1,19 @@
 package com.example.hypocaust.models.runway;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
+import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.PromptFragment;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,8 +24,8 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   private final RunwayClient runwayClient;
 
   public RunwayModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      RunwayClient runwayClient) {
-    super(modelRegistry, objectMapper);
+      ChatService chatService, RetryTemplate retryTemplate, RunwayClient runwayClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate);
     this.runwayClient = runwayClient;
   }
 
@@ -28,38 +35,51 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String planSystemPrompt() {
-    return """
-        YOUR RESPONSIBILITIES:
-        1. Input Mapping: Construct the 'providerInput' object for the Runway API:
-           - Text-to-video models ('gen4-turbo'): requires 'promptText' describing the scene with
-             cinematographic detail (subject, action, camera move, lighting, mood). Optionally
-             'duration' (5 or 10 seconds), 'ratio' (e.g., "1280:720", "720:1280", "1104:832").
-           - Image-to-video models ('gen4-turbo-i2v'): requires 'promptImage' ('@artifact_name'
-             placeholder for the source image URL) and 'promptText' describing ONLY the desired
-             motion and camera behavior.
-           - Upscale ('upscale-v1'): requires 'inputImage' ('@artifact_name' placeholder).
-           - Optimize prompts for cinematic, filmmaker-quality output using shot description
-             vocabulary (lens, camera move, lighting setup, mood, color grade).
-           - If a field requires an image/video and the user refers to an artifact, use
-             '@artifact_name' as a placeholder.
-        2. Validation:
-           - Text-to-video requires a prompt. Image-to-video requires both an image artifact and
-             a motion prompt. Flag missing mandatory inputs with 'errorMessage'.
-           - If you provide an 'errorMessage', 'providerInput' should be null.
-        
-        OUTPUT: Return ONLY valid JSON.
-        {
-          "providerInput": { "promptText": "...", "duration": 10, "ratio": "1280:720" },
-          "errorMessage": null or "..."
-        }
-        """;
-  }
+  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices) {
+    var systemPrompt = PromptBuilder.create()
+        .with(new PromptFragment("runway-plan", """
+            You are an expert creative director. Prepare a Runway Gen-4 generation plan.
+            
+            YOUR RESPONSIBILITIES:
+            1. Input Mapping: Construct the 'providerInput' object for the Runway API:
+               - Text-to-video models ('gen4-turbo'): requires 'promptText' describing the scene with cinematographic detail.
+               - Image-to-video models ('gen4-turbo-i2v'): requires 'promptImage' ('@artifact_name' placeholder) and 'promptText' describing ONLY the desired motion.
+               - Upscale ('upscale-v1'): requires 'inputImage' ('@artifact_name' placeholder).
+               - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
+               - If a field requires an image/video and the user refers to an artifact, use '@artifact_name' as a placeholder.
+            2. Validation:
+               - If mandatory info is missing, provide an 'errorMessage'.
+            
+            OUTPUT: Return ONLY valid JSON:
+            {
+              "providerInput": { "promptText": "...", "duration": 10, "ratio": "1280:720" },
+              "errorMessage": null or "..."
+            }
+            """))
+        .with(PromptFragments.abilityAwareness())
+        .build();
 
-  @Override
-  protected String additionalPlanContext(String owner, String modelId,
-      String description, String bestPractices) {
-    return "Model Docs: " + description + "\n\nBest Practices:\n" + bestPractices;
+    var userPrompt = String.format("""
+        Task: %s
+        Kind: %s
+        Model Docs: %s
+        
+        Best Practices:
+        %s
+        """, task, kind, description, bestPractices);
+
+    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
+    try {
+      var node = objectMapper.readTree(
+          com.example.hypocaust.common.JsonUtils.extractJson(response));
+      return new ExecutionPlan(
+          node.path("providerInput"),
+          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
+      );
+    } catch (Exception e) {
+      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
+    }
   }
 
   @Override

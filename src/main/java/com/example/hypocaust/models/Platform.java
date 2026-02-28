@@ -8,4 +8,6 @@ public enum Platform {
   RUNWAY,
   SUNO,
   ASSEMBLYAI,
+  OPENAI,
+  ANTHROPIC,
 }

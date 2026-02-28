@@ -9,10 +9,12 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.retry.support.RetryTemplate;
 
 class OpenRouterModelExecutorTest {
 
@@ -23,9 +25,11 @@ class OpenRouterModelExecutorTest {
   @BeforeEach
   void setUp() {
     ModelRegistry modelRegistry = mock(ModelRegistry.class);
+    ChatService chatService = mock(ChatService.class);
     objectMapper = new ObjectMapper();
     openRouterClient = mock(OpenRouterClient.class);
-    executor = new OpenRouterModelExecutor(modelRegistry, objectMapper, openRouterClient);
+    executor = new OpenRouterModelExecutor(modelRegistry, objectMapper, chatService,
+        new RetryTemplate(), openRouterClient);
   }
 
   @Test

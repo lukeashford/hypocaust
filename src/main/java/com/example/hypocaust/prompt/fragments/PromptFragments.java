@@ -30,34 +30,6 @@ public final class PromptFragments {
     );
   }
 
-  /**
-   * Core generation planning prompt fragment. Instructs the LLM how to map a user task to a model's
-   * specific input schema.
-   */
-  public static PromptFragment planSystemPrompt() {
-    return new PromptFragment(
-        "common-plan-system-prompt",
-        """
-            You are an expert creative director and prompt engineer. Your goal is to prepare a generation plan \
-            for a model based on a user's task.
-            
-            INPUTS PROVIDED:
-            1. User Task: The natural language description of what to generate/edit.
-            2. Model Docs: Contextual information about the selected model.
-            
-            OUTPUT:
-            Return ONLY valid JSON.
-            IMPORTANT: All string values MUST have newlines and special characters properly escaped (e.g., use \\n for newlines).
-            
-            {
-              "providerInput": { ... },
-              "errorMessage": null or "..."
-            }
-            """,
-        0
-    );
-  }
-
   // --- Decomposer Fragments ---
 
   /**

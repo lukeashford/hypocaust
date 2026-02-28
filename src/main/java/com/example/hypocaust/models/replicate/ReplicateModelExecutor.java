@@ -1,11 +1,18 @@
 package com.example.hypocaust.models.replicate;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
+import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.PromptFragment;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,8 +22,8 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   private final ReplicateClient replicateClient;
 
   public ReplicateModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ReplicateClient replicateClient) {
-    super(modelRegistry, objectMapper);
+      ChatService chatService, RetryTemplate retryTemplate, ReplicateClient replicateClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate);
     this.replicateClient = replicateClient;
   }
 
@@ -26,43 +33,64 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String planSystemPrompt() {
-    return """
-        YOUR RESPONSIBILITIES:
-        1. Input Mapping: Construct the 'providerInput' object matching the provided OpenAPI schema.
-           - Optimize prompts for the best artistic results.
-           - Map user requirements to specific schema fields.
-           - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
-        2. Validation:
-           - Ensure all REQUIRED fields in the schema are present.
-           - If the user task is missing information that is MANDATORY for the model and cannot be reasonably defaulted, \
-             provide a concise but precise 'errorMessage' explaining what's missing (e.g., "This model requires a video length").
-           - If you provide an 'errorMessage', 'providerInput' should be null.
-        """;
-  }
-
-  @Override
-  protected String additionalPlanContext(String owner, String modelId,
-      String description, String bestPractices) {
+  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices) {
+    String schemaContext;
     try {
       var version = replicateClient.getLatestVersion(owner, modelId);
       var fullSchema = replicateClient.getSchema(owner, modelId, version);
-
-      // Extract the specific input schema to reduce noise and ambiguity
       var inputSchema = fullSchema.path("components").path("schemas").path("Input");
       if (inputSchema.isMissingNode()) {
-        // Fallback to the full schema if "Input" schema isn't where we expect it
         inputSchema = fullSchema;
       }
-
-      log.info("Fetched input schema for {}/{}: {}", owner, modelId, inputSchema);
-      var modelDocs = description + "\n\nBest Practices:\n" + bestPractices;
-      return String.format("Model Docs: %s\nSchema: %s", modelDocs, inputSchema);
+      schemaContext = "Schema: " + inputSchema;
     } catch (Exception e) {
-      log.warn("Failed to fetch Replicate model context for {}/{}: {}", owner, modelId,
-          e.getMessage());
-      var modelDocs = description + "\n\nBest Practices:\n" + bestPractices;
-      return "Model Docs: " + modelDocs + "\nSchema: unavailable";
+      log.warn("Failed to fetch Replicate schema for {}/{}: {}", owner, modelId, e.getMessage());
+      schemaContext = "Schema: unavailable";
+    }
+
+    var systemPrompt = PromptBuilder.create()
+        .with(new PromptFragment("replicate-plan", """
+            You are an expert creative director. Prepare a Replicate generation plan.
+            
+            YOUR RESPONSIBILITIES:
+            1. Input Mapping: Construct the 'providerInput' matching the OpenAPI schema.
+               - Optimize prompts for the best artistic results.
+               - Map user requirements to specific schema fields.
+               - If a field requires a URL and the user refers to an artifact, use '@artifact_name'.
+            2. Validation:
+               - Ensure all REQUIRED fields are present.
+               - If mandatory info is missing, provide a precise 'errorMessage'.
+            
+            OUTPUT: Return ONLY valid JSON:
+            {
+              "providerInput": { ... },
+              "errorMessage": null or "..."
+            }
+            """))
+        .with(PromptFragments.abilityAwareness())
+        .build();
+
+    var userPrompt = String.format("""
+        Task: %s
+        Kind: %s
+        Model Docs: %s
+        %s
+        
+        Best Practices:
+        %s
+        """, task, kind, description, schemaContext, bestPractices);
+
+    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
+    try {
+      var node = objectMapper.readTree(
+          com.example.hypocaust.common.JsonUtils.extractJson(response));
+      return new ExecutionPlan(
+          node.path("providerInput"),
+          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
+      );
+    } catch (Exception e) {
+      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
     }
   }
 

@@ -1,12 +1,19 @@
 package com.example.hypocaust.models.assembly;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
+import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.PromptFragment;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,8 +24,8 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   private final AssemblyAiClient assemblyAiClient;
 
   public AssemblyAiModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      AssemblyAiClient assemblyAiClient) {
-    super(modelRegistry, objectMapper);
+      ChatService chatService, RetryTemplate retryTemplate, AssemblyAiClient assemblyAiClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate);
     this.assemblyAiClient = assemblyAiClient;
   }
 
@@ -28,47 +35,49 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String planSystemPrompt() {
-    return """
-        YOUR RESPONSIBILITIES:
-        1. Input Mapping: Construct the 'providerInput' object for the AssemblyAI API:
-           - 'transcript' model: requires 'audio_url' (use '@artifact_name' if user refers to
-             an artifact). Optional but recommended fields:
-             - 'speaker_labels': true for multi-speaker content (interviews, dialogues).
-             - 'speakers_expected': integer hint for diarization accuracy.
-             - 'language_code': BCP-47 code (e.g., "en", "de", "fr") when language is known.
-             - 'custom_vocabulary': array of strings for production-specific proper nouns.
-             - 'punctuate': true (default), 'format_text': true for readable output.
-           - 'audio-intelligence' model: same as above PLUS intelligence feature flags:
-             - 'sentiment_analysis': true for per-sentence sentiment scoring.
-             - 'auto_chapters': true for automatic topic segmentation and summaries.
-             - 'content_safety': true for broadcast compliance flagging.
-             - 'entity_detection': true for named entity extraction.
-             - 'iab_categories': true for topic classification.
-             - Include only the intelligence features explicitly needed by the task.
-           - If a field requires an audio URL and the user refers to an artifact, use
-             '@artifact_name' as a placeholder.
-        2. Validation:
-           - Both models require an audio source (url or artifact reference). Flag missing audio
-             with 'errorMessage'.
-           - If you provide an 'errorMessage', 'providerInput' should be null.
-        
-        OUTPUT: Return ONLY valid JSON.
-        {
-          "providerInput": {
-            "audio_url": "...",
-            "speaker_labels": true,
-            "language_code": "en"
-          },
-          "errorMessage": null or "..."
-        }
-        """;
-  }
+  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices) {
+    var systemPrompt = PromptBuilder.create()
+        .with(new PromptFragment("assemblyai-plan", """
+            You are an expert creative director. Prepare an AssemblyAI transcription plan.
+            
+            YOUR RESPONSIBILITIES:
+            1. Input Mapping: Construct the 'providerInput' object for AssemblyAI:
+               - 'transcript': requires 'audio_url' ('@artifact_name').
+               - 'audio-intelligence': same as above plus feature flags: 'sentiment_analysis', 'auto_chapters', etc.
+               - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
+            2. Validation:
+               - If mandatory audio source is missing, provide an 'errorMessage'.
+            
+            OUTPUT: Return ONLY valid JSON:
+            {
+              "providerInput": { "audio_url": "...", "speaker_labels": true, ... },
+              "errorMessage": null or "..."
+            }
+            """))
+        .with(PromptFragments.abilityAwareness())
+        .build();
 
-  @Override
-  protected String additionalPlanContext(String owner, String modelId,
-      String description, String bestPractices) {
-    return "Model Docs: " + description + "\n\nBest Practices:\n" + bestPractices;
+    var userPrompt = String.format("""
+        Task: %s
+        Kind: %s
+        Model Docs: %s
+        
+        Best Practices:
+        %s
+        """, task, kind, description, bestPractices);
+
+    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
+    try {
+      var node = objectMapper.readTree(
+          com.example.hypocaust.common.JsonUtils.extractJson(response));
+      return new ExecutionPlan(
+          node.path("providerInput"),
+          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
+      );
+    } catch (Exception e) {
+      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
+    }
   }
 
   @Override

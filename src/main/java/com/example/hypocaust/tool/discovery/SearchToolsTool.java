@@ -29,7 +29,7 @@ public class SearchToolsTool {
   ) {
     log.info("{} [SEARCH_TOOLS] Task: {}", TaskExecutionContextHolder.getIndent(), taskDescription);
     var results = toolRegistry.searchByTask(taskDescription);
-    log.debug("{} [SEARCH_TOOLS] Found {} tools", TaskExecutionContextHolder.getIndent(),
+    log.info("{} [SEARCH_TOOLS] Found {} tools", TaskExecutionContextHolder.getIndent(),
         results.size());
     return results;
   }

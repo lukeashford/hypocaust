@@ -4,10 +4,10 @@ import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
-import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
@@ -20,12 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
  * The single recursive decomposition agent. Either calls one tool or delegates to child
- * decomposers. Each invocation creates a fresh ChatClient conversation for context isolation.
+ * decomposers. Each invocation uses the unified ChatService for network resilience.
  *
  * <p>Direct tools (always in the ChatClient schema):
  * <ul>
@@ -46,7 +45,7 @@ public class Decomposer {
   private static final int MAX_CHILDREN = 3;
   private static final int MAX_RETRIES = 2;
 
-  private final ModelRegistry modelRegistry;
+  private final ChatService chatService;
   private final InvokeDecomposerTool invokeDecomposerTool;
   private final SearchToolsTool searchToolsTool;
   private final ExecuteToolTool executeToolTool;
@@ -80,21 +79,16 @@ public class Decomposer {
           .param("maxRetries", MAX_RETRIES)
           .build();
 
-      var chatClient = ChatClient.builder(modelRegistry.get(MODEL))
-          .defaultTools(
-              invokeDecomposerTool,
-              searchToolsTool,
-              executeToolTool,
-              projectContextTool,
-              workflowSearchTool
-          )
-          .build();
-
-      var response = chatClient.prompt()
-          .system(systemPrompt)
-          .user(task)
-          .call()
-          .content();
+      var response = chatService.call(
+          MODEL.getModelName(),
+          systemPrompt,
+          task,
+          invokeDecomposerTool,
+          searchToolsTool,
+          executeToolTool,
+          projectContextTool,
+          workflowSearchTool
+      );
 
       var result = parseResult(response);
 

@@ -2,30 +2,26 @@ package com.example.hypocaust.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
 
 class WordingServiceTest {
 
-  private org.springframework.ai.anthropic.AnthropicChatModel chatModel;
+  private ChatService chatService;
   private WordingService wordingService;
 
   @BeforeEach
   void setUp() {
-    ModelRegistry modelRegistry = mock(ModelRegistry.class);
-    chatModel = mock(org.springframework.ai.anthropic.AnthropicChatModel.class);
-    when(modelRegistry.get(any(com.example.hypocaust.models.enums.AnthropicChatModelSpec.class)))
-        .thenReturn(chatModel);
-    wordingService = new WordingService(modelRegistry, new ObjectMapper());
+    chatService = mock(ChatService.class);
+    wordingService = new WordingService(chatService, new ObjectMapper());
   }
 
   @Test
@@ -107,11 +103,7 @@ class WordingServiceTest {
   }
 
   private void mockChatResponse(String content) {
-    ChatResponse response = mock(ChatResponse.class);
-    Generation generation = mock(Generation.class);
-    when(generation.getOutput()).thenReturn(
-        new org.springframework.ai.chat.messages.AssistantMessage(content));
-    when(response.getResult()).thenReturn(generation);
-    when(chatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class))).thenReturn(response);
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn(content);
   }
 }

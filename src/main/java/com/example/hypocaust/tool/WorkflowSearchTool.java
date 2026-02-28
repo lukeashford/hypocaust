@@ -22,7 +22,7 @@ public class WorkflowSearchTool {
   ) {
     log.info("{} [WORKFLOW_SEARCH] Query: {}", TaskExecutionContextHolder.getIndent(), query);
     var results = workflowEmbeddingRegistry.search(query);
-    log.debug("{} [WORKFLOW_SEARCH] Found {} results", TaskExecutionContextHolder.getIndent(),
+    log.info("{} [WORKFLOW_SEARCH] Found {} results", TaskExecutionContextHolder.getIndent(),
         results.size());
     return results;
   }

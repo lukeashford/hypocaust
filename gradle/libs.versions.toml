@@ -36,6 +36,8 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.
 testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers-minio" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop" }
+spring-retry = { module = "org.springframework.retry:spring-retry" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 # Mockito (BOM managed)

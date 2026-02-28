@@ -3,23 +3,27 @@ package com.example.hypocaust.models.runway;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.retry.support.RetryTemplate;
 
 class RunwayModelExecutorTest {
 
   private RunwayModelExecutor executor;
-  private ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   void setUp() {
     ModelRegistry modelRegistry = Mockito.mock(ModelRegistry.class);
+    ChatService chatService = Mockito.mock(ChatService.class);
     RunwayClient runwayClient = Mockito.mock(RunwayClient.class);
-    executor = new RunwayModelExecutor(modelRegistry, objectMapper, runwayClient);
+    executor = new RunwayModelExecutor(modelRegistry, objectMapper, chatService,
+        new RetryTemplate(), runwayClient);
   }
 
   @Test

@@ -1,4 +1,4 @@
-package com.example.hypocaust.models.openrouter;
+package com.example.hypocaust.models.anthropic;
 
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
@@ -8,27 +8,24 @@ import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "app.openrouter.api-key")
 @Slf4j
-public class OpenRouterModelExecutor extends AbstractModelExecutor {
+public class AnthropicModelExecutor extends AbstractModelExecutor {
 
-  private final OpenRouterClient openRouterClient;
-
-  public OpenRouterModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, OpenRouterClient openRouterClient) {
+  public AnthropicModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
+      ChatService chatService, RetryTemplate retryTemplate) {
     super(modelRegistry, objectMapper, chatService, retryTemplate);
-    this.openRouterClient = openRouterClient;
   }
 
   @Override
   public Platform platform() {
-    return Platform.OPENROUTER;
+    return Platform.ANTHROPIC;
   }
 
   @Override
@@ -39,17 +36,20 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
-    var model = owner + "/" + modelId;
-    return openRouterClient.chatCompletion(model, input);
+    var chatModel = modelRegistry.get(modelId);
+    String prompt = input.path("prompt").asText();
+
+    var response = ChatClient.builder(chatModel)
+        .build()
+        .prompt(prompt)
+        .call()
+        .content();
+
+    return objectMapper.valueToTree(Map.of("content", response));
   }
 
   @Override
   public String extractOutput(JsonNode output) {
-    // OpenRouter returns OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
-    if (output.has("choices") && output.get("choices").isArray()
-        && !output.get("choices").isEmpty()) {
-      return output.get("choices").get(0).path("message").path("content").asText();
-    }
-    return output.toString();
+    return output.path("content").asText();
   }
 }

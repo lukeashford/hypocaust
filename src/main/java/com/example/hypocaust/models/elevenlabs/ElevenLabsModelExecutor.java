@@ -1,12 +1,19 @@
 package com.example.hypocaust.models.elevenlabs;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
+import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.prompt.PromptBuilder;
+import com.example.hypocaust.prompt.PromptFragment;
+import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,8 +24,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   private final ElevenLabsClient elevenLabsClient;
 
   public ElevenLabsModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ElevenLabsClient elevenLabsClient) {
-    super(modelRegistry, objectMapper);
+      ChatService chatService, RetryTemplate retryTemplate, ElevenLabsClient elevenLabsClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate);
     this.elevenLabsClient = elevenLabsClient;
   }
 
@@ -28,39 +35,51 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String planSystemPrompt() {
-    return """
-        YOUR RESPONSIBILITIES:
-        1. Input Mapping: Construct the 'providerInput' object matching the ElevenLabs endpoint's
-           expected input format based on the model ID:
-           - 'v3' (TTS): requires 'text' (the script), optionally 'voice_id', 'stability',
-             'similarity_boost', 'style', 'use_speaker_boost'.
-           - 'voice-design': requires 'voice_description' (detailed vocal characteristics like
-             "middle-aged British male, warm baritone, raspy"), 'text' (sample text to preview).
-           - 'dubbing': requires 'source_url' or '@artifact_name' reference to source video/audio,
-             'target_lang', optionally 'num_speakers', 'watermark'.
-           - 'sound-generation': requires 'text' (sound description), optionally 'duration_seconds',
-             'prompt_influence'.
-           - Optimize prompts for natural, expressive audio output.
-           - If a field requires a URL/audio and the user refers to an artifact, use '@artifact_name'
-             as a placeholder.
-        2. Validation:
-           - If the user task is missing information that is MANDATORY (e.g., no script text for TTS,
-             no target language for dubbing), provide a concise 'errorMessage'.
-           - If you provide an 'errorMessage', 'providerInput' should be null.
-        
-        OUTPUT: Return ONLY valid JSON.
-        {
-          "providerInput": { "text": "...", "voice_id": "...", ... },
-          "errorMessage": null or "..."
-        }
-        """;
-  }
+  public ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
+      String owner, String modelId, String description, String bestPractices) {
+    var systemPrompt = PromptBuilder.create()
+        .with(new PromptFragment("elevenlabs-plan", """
+            You are an expert creative director. Prepare an ElevenLabs generation plan.
+            
+            YOUR RESPONSIBILITIES:
+            1. Input Mapping: Construct the 'providerInput' object matching ElevenLabs:
+               - 'v3' (TTS): requires 'text' (the script), optionally 'voice_id'.
+               - 'voice-design': requires 'voice_description', 'text' (preview script).
+               - 'dubbing': requires 'source_url' ('@artifact_name'), 'target_lang'.
+               - 'sound-generation': requires 'text' (sound description).
+               - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
+            2. Validation:
+               - If mandatory info is missing, provide an 'errorMessage'.
+            
+            OUTPUT: Return ONLY valid JSON:
+            {
+              "providerInput": { "text": "...", "voice_id": "...", ... },
+              "errorMessage": null or "..."
+            }
+            """))
+        .with(PromptFragments.abilityAwareness())
+        .build();
 
-  @Override
-  protected String additionalPlanContext(String owner, String modelId,
-      String description, String bestPractices) {
-    return "Model Docs: " + description + "\n\nBest Practices:\n" + bestPractices;
+    var userPrompt = String.format("""
+        Task: %s
+        Kind: %s
+        Model Docs: %s
+        
+        Best Practices:
+        %s
+        """, task, kind, description, bestPractices);
+
+    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
+    try {
+      var node = objectMapper.readTree(
+          com.example.hypocaust.common.JsonUtils.extractJson(response));
+      return new ExecutionPlan(
+          node.path("providerInput"),
+          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
+      );
+    } catch (Exception e) {
+      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
+    }
   }
 
   @Override
