@@ -39,19 +39,18 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("assemblyai-plan", """
-            You are an expert creative director. Prepare an AssemblyAI transcription plan.
-            
+            You are an expert creative director. Prepare an AssemblyAI processing plan.
+
             YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object for AssemblyAI:
-               - 'transcript': requires 'audio_url' ('@artifact_name').
-               - 'audio-intelligence': same as above plus feature flags: 'sentiment_analysis', 'auto_chapters', etc.
+            1. Input Mapping: Construct the 'providerInput' object following the model's input
+               spec described in the Model Docs and Best Practices below.
                - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
             2. Validation:
                - If mandatory audio source is missing, provide an 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
-              "providerInput": { "audio_url": "...", "speaker_labels": true, ... },
+              "providerInput": { ... },
               "errorMessage": null or "..."
             }
             """))

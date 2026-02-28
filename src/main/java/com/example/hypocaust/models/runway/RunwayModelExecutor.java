@@ -39,21 +39,19 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
       String owner, String modelId, String description, String bestPractices) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("runway-plan", """
-            You are an expert creative director. Prepare a Runway Gen-4 generation plan.
-            
+            You are an expert creative director. Prepare a Runway generation plan.
+
             YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object for the Runway API:
-               - Text-to-video models ('gen4-turbo'): requires 'promptText' describing the scene with cinematographic detail.
-               - Image-to-video models ('gen4-turbo-i2v'): requires 'promptImage' ('@artifact_name' placeholder) and 'promptText' describing ONLY the desired motion.
-               - Upscale ('upscale-v1'): requires 'inputImage' ('@artifact_name' placeholder).
+            1. Input Mapping: Construct the 'providerInput' object following the model's input
+               spec described in the Model Docs and Best Practices below.
                - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
                - If a field requires an image/video and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
-              "providerInput": { "promptText": "...", "duration": 10, "ratio": "1280:720" },
+              "providerInput": { ... },
               "errorMessage": null or "..."
             }
             """))

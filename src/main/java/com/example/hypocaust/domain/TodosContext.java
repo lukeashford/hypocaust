@@ -77,4 +77,13 @@ public class TodosContext {
     eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
   }
 
+  /**
+   * Return the number of direct children (plan steps) under the given parent todo. Returns 0 if
+   * the parent has no children or is not found.
+   */
+  public int getChildCount(UUID parentId) {
+    int count = list.getChildCount(parentId);
+    return Math.max(count, 0);
+  }
+
 }

@@ -38,21 +38,23 @@ public class ElevenLabsClient {
         .build();
   }
 
-  private static final String DEFAULT_VOICE_ID = "pMs2u0D27UcSQMey5Go3";
   private static final String DEFAULT_TTS_MODEL = "eleven_v3";
 
   public JsonNode textToSpeech(JsonNode input) {
-    String voiceId = DEFAULT_VOICE_ID;
-    if (input.has("voice_id")) {
-      String candidate = input.get("voice_id").asText();
-      // Guard against model IDs or descriptive strings leaking in as voice_id.
-      // Real ElevenLabs voice IDs are 20-char alphanumeric strings.
-      if (candidate.matches("^[A-Za-z0-9]{15,30}$")) {
-        voiceId = candidate;
-      } else {
-        log.warn("Ignoring invalid voice_id '{}', using default", candidate);
-      }
+    if (!input.has("voice_id") || input.get("voice_id").asText().isBlank()) {
+      throw new IllegalArgumentException(
+          "voice_id is required for Text-to-Speech. Use Voice Design (voice-design) "
+              + "to generate a voice from a description, or provide a valid voice_id "
+              + "from your ElevenLabs voice library.");
     }
+
+    String candidate = input.get("voice_id").asText();
+    if (!candidate.matches("^[A-Za-z0-9]{15,30}$")) {
+      throw new IllegalArgumentException(
+          "Invalid voice_id '" + candidate + "'. ElevenLabs voice IDs are 20-char "
+              + "alphanumeric strings. Do not use descriptive text as a voice_id.");
+    }
+    String voiceId = candidate;
 
     ObjectNode body = input.deepCopy();
     body.remove("voice_id");

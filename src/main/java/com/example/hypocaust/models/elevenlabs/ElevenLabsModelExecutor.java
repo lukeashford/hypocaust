@@ -11,7 +11,6 @@ import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -35,39 +34,9 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     return Platform.ELEVENLABS;
   }
 
-  // Model-specific input specs: only the relevant model's spec is shown to the planner,
-  // preventing cross-contamination (e.g. "voice-design" leaking into a voice_id field).
-  private static final Map<String, String> MODEL_INPUT_SPECS = Map.of(
-      "v3", """
-          Text-to-Speech: Construct providerInput with:
-            - 'text' (required): The script/dialogue to speak.
-            - 'voice_id' (optional): A valid ElevenLabs voice ID (20-char alphanumeric string).
-              Do NOT invent voice IDs. Omit this field to use the default voice.
-            - 'model_id' (optional): e.g. 'eleven_v3', 'eleven_multilingual_v2'. Defaults to 'eleven_v3'.
-          """,
-      "voice-design", """
-          Voice Design: Construct providerInput with:
-            - 'voice_description' (required): Detailed voice characteristics (age, gender, accent, tone, pace).
-              Must be 20-1000 characters.
-            - 'text' (optional): Preview script (100-1000 chars). Omit to auto-generate.
-          """,
-      "dubbing", """
-          Dubbing: Construct providerInput with:
-            - 'source_url' (required): URL of audio/video to dub. Use '@artifact_name' for existing artifacts.
-            - 'target_lang' (required): Target language code (e.g. 'es', 'fr', 'de').
-          """,
-      "sound-generation", """
-          Sound Effects: Construct providerInput with:
-            - 'text' (required): Descriptive prompt for the sound effect (duration, texture, perspective, intensity).
-          """
-  );
-
   @Override
   protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
       String owner, String modelId, String description, String bestPractices) {
-    var inputSpec = MODEL_INPUT_SPECS.getOrDefault(modelId,
-        "Unknown model ID '" + modelId + "'. Return an errorMessage.");
-
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.
@@ -75,19 +44,30 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
             You are planning for model: %s (id: %s)
 
             YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object:
-               %s
+            1. Input Mapping: Construct the 'providerInput' object following the model's input
+               spec described in the Model Docs and Best Practices below.
                - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
                - Do NOT invent IDs. If you don't have a specific voice_id, omit the field entirely.
+
+            PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
+            - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
+            - Do NOT reference real people, celebrities, or public figures by name in voice descriptions.
+            - Do NOT reference real artists, actors, or voice actors by name (e.g., "sounds like Morgan Freeman").
+            - Do NOT request voices for sexual, violent, or hateful content.
+            - Instead, describe vocal qualities abstractly: pitch (high/low), tone (warm/sharp/breathy),
+              pace (measured/rapid), texture (smooth/raspy/gravelly), accent, and emotional register
+              (cheerful/somber/authoritative).
+            - For character voices in children's stories: describe the voice as "high-pitched and energetic"
+              or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
 
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
               "errorMessage": null or "..."
             }
-            """.formatted(modelName, modelId, inputSpec)))
+            """.formatted(modelName, modelId)))
         .with(PromptFragments.abilityAwareness())
         .build();
 

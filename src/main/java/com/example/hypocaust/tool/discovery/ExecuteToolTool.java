@@ -2,6 +2,7 @@ package com.example.hypocaust.tool.discovery;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.tool.registry.ToolRegistry;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -14,6 +15,10 @@ import org.springframework.stereotype.Component;
  *
  * <p>Leverages Spring AI's {@code ToolCallback} infrastructure for type-safe parameter
  * deserialization and return type serialization.
+ *
+ * <p><b>Delegation enforcement:</b> If the current decomposer declared a plan (via {@code
+ * set_plan}) with more than one step, direct tool execution is blocked. The decomposer must use
+ * {@code invoke_decomposer} instead, ensuring context isolation per subtask.
  */
 @Component
 @RequiredArgsConstructor
@@ -28,6 +33,19 @@ public class ExecuteToolTool {
       @ToolParam(description = "The name of the tool to execute") String toolName,
       @ToolParam(description = "JSON object with the tool's parameters") String parametersJson
   ) {
+    // Enforce delegation: if the current decomposer's plan has >1 step, block direct execution.
+    UUID currentTodoId = TaskExecutionContextHolder.getCurrentTodoId();
+    int planSteps = TaskExecutionContextHolder.getTodos().getChildCount(currentTodoId);
+    if (planSteps > 1) {
+      log.warn("{} [EXECUTE_TOOL] Blocked: plan has {} steps, must use invoke_decomposer",
+          TaskExecutionContextHolder.getIndent(), planSteps);
+      return ("{\"error\": \"DELEGATION_REQUIRED\", "
+          + "\"message\": \"Your plan has " + planSteps + " steps. "
+          + "When a task has multiple steps, you MUST delegate each step to a child "
+          + "via invoke_decomposer. Direct execute_tool calls are only allowed for "
+          + "single-step tasks.\"}");
+    }
+
     log.info("{} [EXECUTE_TOOL] Executing: {} with params: {}",
         TaskExecutionContextHolder.getIndent(), toolName, parametersJson);
     var callbackOpt = toolRegistry.getCallback(toolName);

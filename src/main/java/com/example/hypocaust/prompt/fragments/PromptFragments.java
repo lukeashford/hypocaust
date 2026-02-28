@@ -63,15 +63,21 @@ public final class PromptFragments {
             constraints. Do not add your own artistic preferences, suggested filenames, or internal
             identifiers — these are decided downstream.
             
-            1. If the task can be solved by a single available tool, call it.
+            1. If the task can be solved by a single available tool, call it directly.
                Evaluate the result. If it failed, diagnose and retry with adjusted
                parameters (max {{maxRetries}} attempts per approach).
-            
+
             2. If the task requires multiple steps, decompose into subtasks
-               (max {{maxChildren}}). Declare your plan with `set_plan`, then delegate each to a child decomposer.
-            
+               (max {{maxChildren}}). Declare your plan with `set_plan`, then delegate
+               each step to a child decomposer via `invoke_decomposer`.
+
             Never mix these: either call one tool, or delegate to children.
-            
+
+            ENFORCEMENT: If your plan (set_plan) declares more than 1 step, `execute_tool`
+            will be BLOCKED and return a DELEGATION_REQUIRED error. You MUST use
+            `invoke_decomposer` for each step instead. Do not work around this by reducing
+            your plan to 1 step — declare your honest, complete plan first, then delegate.
+
             When done, return:
             {"success": true/false, "summary": "...", "artifactNames": [...], "errorMessage": "..."}""",
         10

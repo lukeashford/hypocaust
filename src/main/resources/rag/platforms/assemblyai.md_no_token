@@ -14,6 +14,15 @@ punctuation, word-level timestamps, and custom vocabulary — essential for proc
 rushes, documentary footage, on-set recorded dialogue, and any spoken word audio that requires
 structured, searchable transcripts.
 
+### Input Spec
+
+Construct providerInput with:
+- 'audio_url' (required): URL of audio to transcribe. Use '@artifact_name' for existing artifacts.
+- 'speaker_labels' (optional): Enable speaker diarization for multi-speaker content.
+- 'speakers_expected' (optional): Number of expected speakers (improves diarization accuracy).
+- 'language_code' (optional): Language code (e.g. 'en', 'es'). Omit for auto-detection.
+- 'custom_vocabulary' (optional): Array of custom terms for domain-specific jargon.
+
 ### Best Practices
 
 - Enable `speaker_labels` for multi-speaker content (interviews, roundtables, dialogue scenes);
@@ -35,6 +44,15 @@ AssemblyAI Audio Intelligence is an AUDIO analysis endpoint layered on transcrip
 sentiment analysis, content moderation, topic detection, chapter/summary generation, and entity
 detection from spoken audio. Valuable for automated rushes review, content tagging, highlight
 reel generation, and compliance checking in post-production pipelines.
+
+### Input Spec
+
+Construct providerInput with:
+- 'audio_url' (required): URL of audio to analyze. Use '@artifact_name' for existing artifacts.
+- 'speaker_labels' (optional): Enable speaker diarization.
+- 'sentiment_analysis' (optional): Enable per-utterance sentiment analysis.
+- 'auto_chapters' (optional): Enable automatic chapter/summary segmentation.
+- 'content_safety' (optional): Enable content safety flagging.
 
 ### Best Practices
 

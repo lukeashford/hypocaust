@@ -128,6 +128,30 @@ public class TodoList {
         : node.toBuilder().children(updated).build();
   }
 
+  /**
+   * Return the number of direct children of the given parent. If parentId is null, returns the
+   * count of top-level todos. Returns -1 if the parent is not found.
+   */
+  public synchronized int getChildCount(UUID parentId) {
+    if (parentId == null) {
+      return topLevel.size();
+    }
+    return recursiveChildCount(topLevel, parentId);
+  }
+
+  private int recursiveChildCount(List<Todo> nodes, UUID parentId) {
+    for (Todo node : nodes) {
+      if (node.id().equals(parentId)) {
+        return node.children().size();
+      }
+      int found = recursiveChildCount(node.children(), parentId);
+      if (found >= 0) {
+        return found;
+      }
+    }
+    return -1;
+  }
+
   public List<Todo> toList() {
     return topLevel;
   }

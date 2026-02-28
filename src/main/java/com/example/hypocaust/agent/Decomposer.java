@@ -44,7 +44,7 @@ public class Decomposer {
 
   private static final AnthropicChatModelSpec MODEL =
       AnthropicChatModelSpec.CLAUDE_OPUS_4_6;
-  private static final int MAX_CHILDREN = 3;
+  private static final int MAX_CHILDREN = 5;
   private static final int MAX_RETRIES = 2;
 
   private final ChatService chatService;

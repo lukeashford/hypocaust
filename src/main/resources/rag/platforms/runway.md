@@ -15,6 +15,14 @@ with industry-leading motion quality and scene coherence. It supports both text-
 image-to-video workflows. Best for AI-assisted filmmaking, mood reels, and high-end social
 content requiring professional-grade video output.
 
+### Input Spec
+
+Construct providerInput with:
+- 'promptText' (required): Cinematographic scene description with subject action, camera move,
+  lens, lighting, mood, and color grade.
+- 'duration' (optional): Clip duration in seconds (default 10).
+- 'ratio' (optional): Aspect ratio (e.g. '1280:720').
+
 ### Best Practices
 
 - Write prompts as cinematographer's shot descriptions: subject action + camera move + lens +
@@ -40,6 +48,15 @@ It preserves subject identity and composition from the input image while generat
 controllable motion. Best for bringing concept art, product stills, or generated keyframes to
 life with natural movement.
 
+### Input Spec
+
+Construct providerInput with:
+- 'promptImage' (required): Source image URL. Use '@artifact_name' for existing artifacts.
+- 'promptText' (required): Describe ONLY the desired motion and camera behavior. Let the image
+  handle composition, color, and character appearance.
+- 'duration' (optional): Clip duration in seconds (default 10).
+- 'ratio' (optional): Aspect ratio (e.g. '1280:720').
+
 ### Best Practices
 
 - Start from a sharp, well-lit image with a clear focal subject at intended final resolution.
@@ -61,6 +78,11 @@ life with natural movement.
 Runway Upscale is an IMAGE enhancement model optimized for high-quality enlargement of visual
 assets. It reduces artifacts and improves sharpness for draft or AI-generated images. Best for
 preparing images for deliverables, print, or broadcast by increasing resolution and clarity.
+
+### Input Spec
+
+Construct providerInput with:
+- 'inputImage' (required): Source image URL. Use '@artifact_name' for existing artifacts.
 
 ### Best Practices
 
