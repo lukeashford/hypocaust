@@ -78,7 +78,7 @@ Content-Type: application/json
 
 ### List models (select the "local" environment from the IDE drop-down)
 @replicateBase = https://api.replicate.com/v1
-@replicateToken = r8_Wke9S4clis5oinqAf1MnApxPfL7WH9D0pfQsA
+@replicateToken = add_here
 GET {{replicateBase}}/models
 Authorization: Bearer {{replicateToken}}
 Accept: application/json

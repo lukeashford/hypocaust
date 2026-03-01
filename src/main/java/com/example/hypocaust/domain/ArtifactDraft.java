@@ -14,7 +14,6 @@ public record ArtifactDraft(
     @NonNull String title,
     @NonNull String description,
     @NonNull ArtifactStatus status,
-    String url,
     JsonNode inlineContent,
     JsonNode metadata
 ) {

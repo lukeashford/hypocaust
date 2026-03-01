@@ -49,6 +49,7 @@ class DecomposerIntegrationTest {
   void setUp() {
     chatModel = org.mockito.Mockito.mock(AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
+    when(modelRegistry.get(any(String.class))).thenReturn(chatModel);
 
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());

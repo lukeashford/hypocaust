@@ -54,7 +54,7 @@ class DecompositionScenarioTest {
   @BeforeEach
   void setUp() {
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
-    var todosContext = org.mockito.Mockito.mock(TodosContext.class);
+    var todosContext = new TodosContext(UUID.randomUUID(), eventService);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
     TaskExecutionContextHolder.setContext(context);
@@ -70,6 +70,7 @@ class DecompositionScenarioTest {
     var mockChatModel = org.mockito.Mockito.mock(
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
+    when(modelRegistry.get(any(String.class))).thenReturn(mockChatModel);
 
     var resultJson = """
         {"success": true, \
@@ -99,6 +100,7 @@ class DecompositionScenarioTest {
     var mockChatModel = org.mockito.Mockito.mock(
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
+    when(modelRegistry.get(any(String.class))).thenReturn(mockChatModel);
 
     var childResultJson = """
         {"success": true, "summary": "Child completed", "artifactNames": ["child-img-001"]}""";

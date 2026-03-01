@@ -1,0 +1,44 @@
+# Suno
+
+## Suno v4 Text-to-Song
+
+- **owner**: suno-ai
+- **id**: chirp-v4
+- **tier**: powerful
+
+### Description
+
+Suno v4 is an AUDIO text-to-song model that generates complete musical compositions with vocals,
+instrumentation, and production from a text prompt or lyrics. The leading model for AI-generated
+songs across all genres — essential for temp tracks, theme song prototyping, mood reels, and
+content that needs licensed-free original music with singing.
+
+### Best Practices
+
+- Provide both a style descriptor and explicit lyrics for best control: use `[Verse]`, `[Chorus]`,
+  `[Bridge]` structural tags in the lyrics field to guide song architecture.
+- Style prompt should specify genre + sub-genre + instrumentation + mood + era + vocal style
+  ("indie folk, fingerpicked acoustic guitar, breathy female vocal, melancholic, early 2000s").
+- Generate multiple seeds and pick the strongest take; vocal phrasing varies significantly between
+  runs. Use the extend/continue feature to build longer compositions from a strong 30-second seed.
+
+## Suno v4 Instrumental
+
+- **owner**: suno-ai
+- **id**: chirp-v4-instrumental
+- **tier**: balanced
+
+### Description
+
+Suno v4 Instrumental is an AUDIO text-to-music model generating full instrumental compositions
+without vocals — ideal for background scoring, temp tracks, transition music, title sequences,
+and any use case where vocals would compete with dialogue or narration.
+
+### Best Practices
+
+- Specify instrumentation explicitly rather than just genre: "orchestral strings, muted trumpet,
+  brushed snare, upright bass, jazz club atmosphere, slow burn tension."
+- Include tempo/BPM hints and dynamic arc cues ("builds from sparse intro to full ensemble at
+  0:30") for better structural control.
+- Generate 4–6 candidates per prompt and curate; loop-friendly prompts ("seamless, 4/4, no
+  dramatic ending") help for background use.

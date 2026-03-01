@@ -2,16 +2,15 @@ package com.example.hypocaust.tool;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
+import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.TaskExecutionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
@@ -33,14 +32,16 @@ public class ProjectContextTool {
       AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
   private static final int MAX_QUESTION_LENGTH = 1000;
 
-  private final ModelRegistry modelRegistry;
+  private final ChatService chatService;
   private final TaskExecutionService taskExecutionService;
   private final TaskExecutionRepository taskExecutionRepository;
 
   @Tool(name = "ask_project_context",
-      description = "Answer questions about project artifacts, their descriptions, prompts, "
-          + "models, version history, and past task executions. Ask specific questions to get "
-          + "precise answers.")
+      description = "Answer targeted questions about project artifacts, version history, and past "
+          + "task executions. This tool returns concise summaries, not raw content. "
+          + "Ask specific questions like 'What are the names and personalities of the lead "
+          + "characters in artifact X?' or 'Which models were used for artifact Y?'. "
+          + "Avoid asking for full artifact content — ask about the specific details you need.")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {
@@ -52,17 +53,19 @@ public class ProjectContextTool {
           "Question exceeds maximum length of " + MAX_QUESTION_LENGTH + " characters");
     }
 
-    var ctx = TaskExecutionContextHolder.getContext();
-    var taskExecutionId = ctx.getTaskExecutionId();
-    var projectId = ctx.getProjectId();
+    var taskExecutionId = TaskExecutionContextHolder.getTaskExecutionId();
+    var projectId = TaskExecutionContextHolder.getProjectId();
+    var indent = TaskExecutionContextHolder.getIndent();
+
+    log.info("{} [CONTEXT] Question: {}", indent, question);
 
     // Gather all relevant data for the inner LLM
     var contextBuilder = new StringBuilder();
 
     // Current artifacts with full details
-    List<Artifact> artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
+    final var artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
     contextBuilder.append("Current artifacts:\n");
-    for (Artifact artifact : artifacts) {
+    for (var artifact : artifacts) {
       contextBuilder.append(String.format("- %s (%s, %s): %s\n",
           artifact.name(),
           artifact.kind(),
@@ -77,6 +80,11 @@ public class ProjectContextTool {
               String.format("  Prompt: %s\n", genDetails.path("prompt").asText()));
         }
         contextBuilder.append(String.format("  Metadata: %s\n", artifact.metadata()));
+      }
+      if (artifact.kind() == ArtifactKind.TEXT && artifact.inlineContent() != null) {
+        contextBuilder.append(String.format("  Content: %s\n",
+            artifact.inlineContent().isTextual() ? artifact.inlineContent().asText()
+                : artifact.inlineContent().toString()));
       }
     }
 
@@ -97,27 +105,37 @@ public class ProjectContextTool {
       }
     }
 
-    // Call small LLM to interpret and answer
-    try {
-      ChatClient chatClient = ChatClient.builder(modelRegistry.get(CONTEXT_MODEL))
-          .build();
+    log.debug("{} [CONTEXT] Context gathered: {} artifacts, {} history entries",
+        indent, artifacts.size(), history.size());
 
-      return chatClient.prompt()
-          .system("""
+    // Call LLM to interpret and answer
+    try {
+      String answer = chatService.call(
+          CONTEXT_MODEL,
+          """
               You answer questions about a creative project's artifacts and version history.
-              Be concise and direct. When asked for an artifact name, reply with just the name.
-              When listing artifacts, use a clean format.
-              When explaining what happened, summarize the key changes.
-              When asked about prompts that were tried, include the full prompt text.
-              When asked about what failed, explain what was attempted and why it failed.
-              Task executions have stable snake_case names (shown before the dash in the history).
-              When asked about historical versions, always include the execution name.
-              """)
-          .user("Context:\n" + contextBuilder + "\n\nQuestion: " + question)
-          .call()
-          .content();
+              
+              RULES:
+              - Be concise and direct. Answer ONLY what was asked.
+              - NEVER reproduce full artifact content verbatim. Always summarize and extract
+                only the specific details requested (e.g., character names, key themes, style notes).
+              - When asked for an artifact name, reply with just the name.
+              - When listing artifacts, use a clean format.
+              - When explaining what happened, summarize the key changes.
+              - When asked about prompts that were tried, include the full prompt text.
+              - When asked about what failed, explain what was attempted and why it failed.
+              - Task executions have stable snake_case names (shown before the dash in the history).
+              - When asked about historical versions, always include the execution name.
+              - Keep your answer under 500 characters unless the question explicitly requires more detail.
+              """,
+          "Context:\n" + contextBuilder + "\n\nQuestion: " + question
+      );
+
+      log.info("{} [CONTEXT] Answer: {}", indent, answer);
+      return answer;
+
     } catch (Exception e) {
-      log.error("Failed to answer project context question: {}", e.getMessage());
+      log.error("{} [CONTEXT] Failed to answer: {}", indent, e.getMessage());
       return "Unable to answer: " + e.getMessage();
     }
   }

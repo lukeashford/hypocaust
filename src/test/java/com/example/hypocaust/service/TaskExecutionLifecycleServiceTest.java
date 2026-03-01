@@ -121,11 +121,15 @@ class TaskExecutionLifecycleServiceTest {
         com.example.hypocaust.domain.TodosContext.class);
     com.example.hypocaust.domain.TodoList todoList = org.mockito.Mockito.mock(
         com.example.hypocaust.domain.TodoList.class);
+    com.example.hypocaust.domain.Changelist changelist = new com.example.hypocaust.domain.Changelist();
 
     when(context.getArtifacts()).thenReturn(artifacts);
+    when(artifacts.getChangelist()).thenReturn(changelist);
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
     when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");
+    when(versionService.persist(any(), any(), any()))
+        .thenReturn(new com.example.hypocaust.domain.TaskExecutionDelta());
 
     // When
     lifecycleService.commitExecution(executionId, projectId, "test task", context);
@@ -136,7 +140,7 @@ class TaskExecutionLifecycleServiceTest {
     assertThat(updated.getCompletedAt()).isNotNull();
     assertThat(updated.getCommitMessage()).isNotNull();
 
-    verify(versionService).materialize(any(), eq(executionId), eq(projectId));
+    verify(versionService).persist(any(), eq(executionId), eq(projectId));
     verify(todoService).materialize(any(), eq(executionId));
     verify(eventService).publish(
         any(com.example.hypocaust.domain.event.TaskExecutionCompletedEvent.class));

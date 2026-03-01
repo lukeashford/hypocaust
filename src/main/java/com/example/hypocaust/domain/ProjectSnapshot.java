@@ -1,5 +1,6 @@
 package com.example.hypocaust.domain;
 
+import com.example.hypocaust.dto.ArtifactDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +24,7 @@ public record ProjectSnapshot(
         + "Artifacts with status GESTATING have no content yet — display a skeleton placeholder. "
         + "Artifacts with status MANIFESTED include either inline content or a URL to fetch the resource from.",
         requiredMode = Schema.RequiredMode.REQUIRED)
-    List<Artifact> artifacts,
+    List<ArtifactDto> artifacts,
 
     @Schema(description = "Current todo / progress tree (full list, not a diff)",
         requiredMode = Schema.RequiredMode.REQUIRED)

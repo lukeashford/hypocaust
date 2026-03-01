@@ -1,15 +1,21 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.TaskExecutionEntity;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
+import com.example.hypocaust.domain.Changelist;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionDelta;
+import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -36,25 +42,17 @@ public class TaskExecutionLifecycleService {
 
   /**
    * Initialize a task execution. Transitions to RUNNING synchronously.
-   *
-   * @param projectId The project ID
-   * @param task The task description
-   * @param predecessorIdInput The optional predecessor ID
-   * @return TaskInitializationResult containing all IDs needed for orchestration
    */
   @Transactional
   public TaskInitializationResult startExecution(UUID projectId, String task,
       UUID predecessorIdInput) {
-    // Resolve predecessorId: use provided or find most recent completed
     UUID predecessorId = Optional.ofNullable(predecessorIdInput)
         .orElseGet(() -> versionService.getMostRecentTaskExecutionId(projectId)
             .orElse(null));
 
-    // Generate execution name upfront so the entity is named from creation
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
     String name = namingService.generateExecutionName(task, existingNames);
 
-    // Create TaskExecution entity and transition to RUNNING synchronously
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
         .task(task)
@@ -65,7 +63,6 @@ public class TaskExecutionLifecycleService {
     taskExecutionRepository.save(taskExecution);
     final var taskExecutionId = taskExecution.getId();
 
-    // Publish the started event synchronously
     final UUID firstEventId = eventService.publish(
         new TaskExecutionStartedEvent(taskExecutionId));
 
@@ -77,13 +74,8 @@ public class TaskExecutionLifecycleService {
   }
 
   /**
-   * Commit a successful task execution. Materializes pending artifacts, generates commit message,
-   * and publishes completion event.
-   *
-   * @param taskExecutionId The TaskExecution to commit
-   * @param projectId The project ID (for events)
-   * @param task The original task description (for message generation)
-   * @param context The execution context containing artifacts and todos
+   * Commit a successful task execution. Persists finalized artifacts, generates commit message, and
+   * publishes completion event.
    */
   @Transactional
   public void commitExecution(UUID taskExecutionId, UUID projectId, String task,
@@ -92,34 +84,70 @@ public class TaskExecutionLifecycleService {
         .orElseThrow(
             () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
-    ArtifactsContext artifacts = context.getArtifacts();
+    try {
+      ArtifactsContext artifacts = context.getArtifacts();
+      Changelist changelist = artifacts.getChangelist();
 
-    // Materialize artifacts and get delta
-    TaskExecutionDelta delta = versionService.materialize(artifacts.getChangelist(),
-        taskExecutionId,
-        projectId);
+      // 1. Persist artifacts (already finalized — no downloading)
+      TaskExecutionDelta delta = versionService.persist(changelist, taskExecutionId, projectId);
 
-    // Materialize todos
-    todoService.materialize(context.getTodos().getList(), taskExecutionId);
+      // 2. Persist todos
+      try {
+        todoService.materialize(context.getTodos().getList(), taskExecutionId);
+      } catch (Exception e) {
+        log.warn("Failed to materialize todos for execution {}: {}", taskExecutionId,
+            e.getMessage());
+      }
 
-    // Generate commit message
-    String commitMessage = wordingService.generateCommitMessage(task);
+      // 3. Generate commit message
+      String commitMessage = wordingService.generateCommitMessage(task);
 
-    // Complete the task execution
-    taskExecution.complete(commitMessage, delta);
-    taskExecutionRepository.save(taskExecution);
+      // 4. Determine status from artifact states
+      List<Artifact> allArtifacts = new ArrayList<>(changelist.getAdded());
+      allArtifacts.addAll(changelist.getEdited());
 
-    // Publish completion event
-    eventService.publish(
-        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, taskExecution.getName(),
+      long failedCount = allArtifacts.stream()
+          .filter(a -> a.status() == ArtifactStatus.FAILED)
+          .count();
+      boolean allFailed = !allArtifacts.isEmpty() && failedCount == allArtifacts.size();
+      boolean anyFailed = failedCount > 0;
+
+      if (allFailed) {
+        log.warn("All artifacts failed for execution {}", taskExecutionId);
+        taskExecution.fail("All artifacts failed: " + commitMessage);
+      } else if (anyFailed) {
+        log.info("Execution {} partially successful", taskExecutionId);
+        taskExecution.partiallySuccessful(commitMessage, delta);
+      } else {
+        taskExecution.complete(commitMessage, delta);
+      }
+
+      taskExecutionRepository.save(taskExecution);
+
+      // 5. Publish event
+      if (taskExecution.getStatus() == TaskExecutionStatus.FAILED) {
+        eventService.publish(new TaskExecutionFailedEvent(taskExecutionId,
+            taskExecution.getCommitMessage()));
+      } else {
+        eventService.publish(new TaskExecutionCompletedEvent(
+            taskExecutionId,
+            delta != null && delta.hasChanges(),
+            taskExecution.getName(),
             commitMessage));
+      }
+
+    } catch (Exception e) {
+      log.error("Critical failure during commit of execution {}: {}", taskExecutionId,
+          e.getMessage(), e);
+      taskExecution.fail("Critical error: " + e.getMessage());
+      taskExecutionRepository.save(taskExecution);
+      eventService.publish(new TaskExecutionFailedEvent(taskExecutionId,
+          taskExecution.getCommitMessage()));
+    }
   }
 
   /**
    * Fail a task execution. Publishes failure event. Pending artifacts are simply not persisted.
-   *
-   * @param taskExecutionId The TaskExecution to fail
-   * @param errorMessage The error message describing the failure
    */
   @Transactional
   public void failExecution(UUID taskExecutionId, String errorMessage) {
@@ -127,13 +155,9 @@ public class TaskExecutionLifecycleService {
         .orElseThrow(
             () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
-    // Pending changes are simply not persisted - no explicit discard needed
-
-    // Fail the task execution with error message as commitMessage
     taskExecution.fail(errorMessage);
     taskExecutionRepository.save(taskExecution);
 
-    // Publish failure event
     eventService.publish(new TaskExecutionFailedEvent(taskExecutionId, errorMessage));
   }
 }

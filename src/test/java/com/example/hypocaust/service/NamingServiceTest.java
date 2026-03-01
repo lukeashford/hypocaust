@@ -2,32 +2,24 @@ package com.example.hypocaust.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.anthropic.AnthropicChatModel;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.chat.prompt.Prompt;
 
 class NamingServiceTest {
 
-  private AnthropicChatModel chatModel;
+  private ChatService chatService;
   private NamingService service;
 
   @BeforeEach
   void setUp() {
-    ModelRegistry modelRegistry = mock(ModelRegistry.class);
-    chatModel = mock(AnthropicChatModel.class);
-    when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(chatModel);
-    service = new NamingService(modelRegistry);
+    chatService = mock(ChatService.class);
+    service = new NamingService(chatService);
   }
 
   @Test
@@ -60,7 +52,8 @@ class NamingServiceTest {
 
   @Test
   void generateArtifactName_fallsBackToCounterOnLlmFailure() {
-    when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("LLM error"));
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenThrow(new RuntimeException("LLM error"));
     String name = service.generateArtifactName("source", Set.of("source"));
     assertThat(name).isEqualTo("source_2");
   }
@@ -74,9 +67,7 @@ class NamingServiceTest {
   }
 
   private void stubLlmResponse(String responseText) {
-    ChatResponse chatResponse = ChatResponse.builder()
-        .generations(List.of(new Generation(new AssistantMessage(responseText))))
-        .build();
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn(responseText);
   }
 }

@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.domain.TodosContext;
 import com.example.hypocaust.tool.registry.ToolRegistry;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.tool.ToolCallback;
@@ -19,6 +24,17 @@ class ExecuteToolToolTest {
   void setUp() {
     toolRegistry = mock(ToolRegistry.class);
     executeToolTool = new ExecuteToolTool(toolRegistry);
+
+    var context = mock(TaskExecutionContext.class);
+    var todosContext = mock(TodosContext.class);
+    when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
+    when(context.getTodos()).thenReturn(todosContext);
+    TaskExecutionContextHolder.setContext(context);
+  }
+
+  @AfterEach
+  void tearDown() {
+    TaskExecutionContextHolder.clear();
   }
 
   @Test

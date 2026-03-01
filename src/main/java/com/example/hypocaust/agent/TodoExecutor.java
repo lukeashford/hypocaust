@@ -2,7 +2,6 @@ package com.example.hypocaust.agent;
 
 import com.example.hypocaust.domain.Todo;
 import com.example.hypocaust.domain.TodoStatus;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class TodoExecutor {
 
+  private static final String LOG_PREFIX = "[TODO] ";
+
   /**
    * Execute a piece of work as a task with a human-readable description.
    *
@@ -27,15 +28,16 @@ public class TodoExecutor {
    * @return The result of the work
    */
   public <T> T execute(String description, Supplier<T> work) {
+
     TaskExecutionContextHolder.incrementDepth();
     UUID parentTodoId = TaskExecutionContextHolder.getCurrentTodoId();
     String indent = TaskExecutionContextHolder.getIndent();
 
-    // Create a todo for this task
-    Todo todo = new Todo(description, TodoStatus.PENDING);
-    TaskExecutionContextHolder.getTodos().registerSubtodos(parentTodoId, List.of(todo));
+    // Create or find a todo for this task
+    Todo todo = TaskExecutionContextHolder.getTodos().addOrUpdateTodo(
+        parentTodoId, new Todo(description, TodoStatus.PENDING));
 
-    log.info("{}[DECOMPOSER] Starting: {}", indent, description);
+    log.info("{}{} Starting: {}", indent, LOG_PREFIX, description);
 
     TaskExecutionContextHolder.pushTodoId(todo.id());
     TaskExecutionContextHolder.markCurrentTodoRunning();
@@ -47,21 +49,21 @@ public class TodoExecutor {
       if (result instanceof DecomposerResult dr) {
         if (dr.success()) {
           TaskExecutionContextHolder.markCurrentTodoCompleted();
-          log.info("{}[DECOMPOSER] Completed: {}", indent, description);
+          log.info("{}{} Completed: {}", indent, LOG_PREFIX, description);
         } else {
           TaskExecutionContextHolder.markCurrentTodoFailed();
-          log.warn("{}[DECOMPOSER] Failed: {} - {}", indent, description, dr.errorMessage());
+          log.warn("{}{} Failed: {} - {}", indent, LOG_PREFIX, description, dr.errorMessage());
         }
       } else {
         // For other types of work, assume success if no exception was thrown
         TaskExecutionContextHolder.markCurrentTodoCompleted();
-        log.info("{}[DECOMPOSER] Completed: {}", indent, description);
+        log.info("{}{} Completed: {}", indent, LOG_PREFIX, description);
       }
 
       return result;
     } catch (Exception e) {
       TaskExecutionContextHolder.markCurrentTodoFailed();
-      log.error("{}[DECOMPOSER] Error: {} - {}", indent, description, e.getMessage(), e);
+      log.error("{}{} Error: {} - {}", indent, LOG_PREFIX, description, e.getMessage(), e);
       throw e;
     } finally {
       TaskExecutionContextHolder.popTodoId();

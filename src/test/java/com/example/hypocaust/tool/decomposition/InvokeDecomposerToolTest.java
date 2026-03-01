@@ -11,6 +11,7 @@ import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.agent.TodoExecutor;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
+import com.example.hypocaust.service.events.EventService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -29,7 +30,8 @@ class InvokeDecomposerToolTest {
     invokeDecomposerTool = new InvokeDecomposerTool(decomposer, todoExecutor);
 
     var context = mock(TaskExecutionContext.class);
-    var todosContext = mock(TodosContext.class);
+    var eventService = mock(EventService.class);
+    var todosContext = new TodosContext(UUID.randomUUID(), eventService);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
     TaskExecutionContextHolder.setContext(context);

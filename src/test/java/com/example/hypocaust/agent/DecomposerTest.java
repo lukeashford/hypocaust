@@ -3,11 +3,12 @@ package com.example.hypocaust.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.events.EventService;
 import com.example.hypocaust.tool.ProjectContextTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
+import com.example.hypocaust.tool.decomposition.SetPlanTool;
 import com.example.hypocaust.tool.discovery.ExecuteToolTool;
 import com.example.hypocaust.tool.discovery.SearchToolsTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,8 +23,9 @@ class DecomposerTest {
   @BeforeEach
   void setUp() {
     decomposer = new Decomposer(
-        mock(ModelRegistry.class),
+        mock(ChatService.class),
         mock(InvokeDecomposerTool.class),
+        mock(SetPlanTool.class),
         mock(SearchToolsTool.class),
         mock(ExecuteToolTool.class),
         mock(ProjectContextTool.class),

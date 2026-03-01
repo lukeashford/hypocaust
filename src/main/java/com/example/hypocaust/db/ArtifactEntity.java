@@ -120,4 +120,10 @@ public class ArtifactEntity extends BaseEntity {
    */
   private String mimeType;
 
+  /**
+   * Error message describing why generation or storage failed (null if no error).
+   */
+  @Column(columnDefinition = "text")
+  private String errorMessage;
+
 }

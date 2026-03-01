@@ -6,7 +6,12 @@ public record RestoreResult(
     String executionName,
     String summary,
     String error
-) {
+) implements ToolResult {
+
+  @Override
+  public boolean success() {
+    return error == null;
+  }
 
   public static RestoreResult success(
       String originalName, String restoredName, String executionName, String summary) {

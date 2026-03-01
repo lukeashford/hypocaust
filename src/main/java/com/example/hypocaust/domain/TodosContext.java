@@ -29,6 +29,20 @@ public class TodosContext {
   }
 
   /**
+   * Add a todo under a parent, returning the existing one if it matches by description. Publishes
+   * an update event if the list changed.
+   */
+  public Todo addOrUpdateTodo(UUID parentId, Todo todo) {
+    Todo effective = list.addOrUpdateTodo(parentId, todo);
+    // Note: currently addOrUpdateTodo returns the existing instance if found, 
+    // or the new one if added. If it was added, the list changed.
+    // If it was found, the list didn't change (stateless comparison in list is not perfect here,
+    // but for now we always publish to be safe, or we could check if effective == todo).
+    eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
+    return effective;
+  }
+
+  /**
    * Update a todo's status to IN_PROGRESS.
    */
   public void markRunning(UUID todoId) {
@@ -61,6 +75,15 @@ public class TodosContext {
   public void updateStatus(UUID todoId, TodoStatus status) {
     list.updateStatus(todoId, status);
     eventService.publish(new TodoListUpdatedEvent(taskExecutionId, list));
+  }
+
+  /**
+   * Return the number of direct children (plan steps) under the given parent todo. Returns 0 if
+   * the parent has no children or is not found.
+   */
+  public int getChildCount(UUID parentId) {
+    int count = list.getChildCount(parentId);
+    return Math.max(count, 0);
   }
 
 }

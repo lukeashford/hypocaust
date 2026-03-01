@@ -64,6 +64,7 @@ class SimpleToolCallScenarioTest {
     var mockChatModel = org.mockito.Mockito.mock(
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
+    when(modelRegistry.get(any(String.class))).thenReturn(mockChatModel);
 
     var resultJson = """
         {"success": true, "summary": "Generated sunset landscape using SDXL", \
@@ -92,6 +93,7 @@ class SimpleToolCallScenarioTest {
     var mockChatModel = org.mockito.Mockito.mock(
         org.springframework.ai.anthropic.AnthropicChatModel.class);
     when(modelRegistry.get(any(AnthropicChatModelSpec.class))).thenReturn(mockChatModel);
+    when(modelRegistry.get(any(String.class))).thenReturn(mockChatModel);
 
     var resultJson = "{\"success\": false, \"errorMessage\": \"No suitable model found\"}";
     var generation = new Generation(new AssistantMessage(resultJson));

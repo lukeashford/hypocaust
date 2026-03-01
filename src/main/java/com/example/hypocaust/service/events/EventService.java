@@ -1,6 +1,11 @@
 package com.example.hypocaust.service.events;
 
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.event.ArtifactAddedEvent;
+import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.Event;
+import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.mapper.EventMapper;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
@@ -25,6 +30,7 @@ public class EventService {
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
   private final TaskExecutionRepository taskExecutionRepository;
+  private final ArtifactMapper artifactMapper;
 
   @Transactional
   public UUID publish(Event<?> event, boolean doPersist) {
@@ -50,7 +56,9 @@ public class EventService {
           .ifPresent(ctx -> ctx.updateLastEventId(entity.getId()));
     }
 
-    sseHub.broadcast(executionId, entity.getId(), event);
+    // Broadcast with externalized URLs for the frontend
+    Event<?> externalizedEvent = externalizeArtifactEvent(event);
+    sseHub.broadcast(executionId, entity.getId(), externalizedEvent);
     return entity.getId();
   }
 
@@ -76,7 +84,7 @@ public class EventService {
   }
 
   /**
-   * Get all events for a TaskExecution.
+   * Get all events for a TaskExecution. Artifact payloads are externalized with presigned URLs.
    *
    * @param taskExecutionId the execution ID
    * @return list of events
@@ -85,6 +93,7 @@ public class EventService {
     return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
         .stream()
         .map(eventMapper::toDomain)
+        .map(this::externalizeArtifactEvent)
         .collect(Collectors.toList());
   }
 
@@ -94,7 +103,10 @@ public class EventService {
       // No lastEventId means this is a new connection - replay all events for this execution
       return eventLogRepository.findByTaskExecutionIdOrderById(taskExecutionId)
           .parallelStream()
-          .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
+          .map(entity -> {
+            Event<?> event = externalizeArtifactEvent(eventMapper.toDomain(entity));
+            return new SseHub.ReplayItem(entity.getId(), event);
+          })
           .toList();
     }
 
@@ -107,7 +119,28 @@ public class EventService {
     return eventLogRepository.findByTaskExecutionIdAndIdGreaterThanOrderById(taskExecutionId,
             lastEventId)
         .parallelStream()
-        .map(entity -> new SseHub.ReplayItem(entity.getId(), eventMapper.toDomain(entity)))
+        .map(entity -> {
+          Event<?> event = externalizeArtifactEvent(eventMapper.toDomain(entity));
+          return new SseHub.ReplayItem(entity.getId(), event);
+        })
         .toList();
+  }
+
+  /**
+   * Convert artifact event payloads from internal Artifact (storageKey) to ArtifactDto (presigned
+   * URL) for frontend consumption.
+   */
+  private Event<?> externalizeArtifactEvent(Event<?> event) {
+    if (event instanceof ArtifactAddedEvent addedEvent
+        && addedEvent.getPayload() instanceof Artifact artifact) {
+      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
+      return new ArtifactAddedEvent(addedEvent.getTaskExecutionId(), dto);
+    }
+    if (event instanceof ArtifactUpdatedEvent updatedEvent
+        && updatedEvent.getPayload() instanceof Artifact artifact) {
+      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
+      return new ArtifactUpdatedEvent(updatedEvent.getTaskExecutionId(), dto);
+    }
+    return event;
   }
 }

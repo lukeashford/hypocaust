@@ -1,0 +1,64 @@
+# AssemblyAI
+
+## AssemblyAI Transcription
+
+- **owner**: assemblyai
+- **id**: transcript
+- **tier**: balanced
+
+### Description
+
+AssemblyAI Transcription is an AUDIO speech-to-text endpoint with best-in-class accuracy for
+production transcription workflows. Supports automatic speaker diarization (who said what),
+punctuation, word-level timestamps, and custom vocabulary — essential for processing interview
+rushes, documentary footage, on-set recorded dialogue, and any spoken word audio that requires
+structured, searchable transcripts.
+
+### Input Spec
+
+Construct providerInput with:
+- 'audio_url' (required): URL of audio to transcribe. Use '@artifact_name' for existing artifacts.
+- 'speaker_labels' (optional): Enable speaker diarization for multi-speaker content.
+- 'speakers_expected' (optional): Number of expected speakers (improves diarization accuracy).
+- 'language_code' (optional): Language code (e.g. 'en', 'es'). Omit for auto-detection.
+- 'custom_vocabulary' (optional): Array of custom terms for domain-specific jargon.
+
+### Best Practices
+
+- Enable `speaker_labels` for multi-speaker content (interviews, roundtables, dialogue scenes);
+  specify expected `speakers_expected` count if known to improve diarization.
+- Use `custom_vocabulary` for production-specific names, brand terms, or technical jargon that
+  standard ASR misrecognizes.
+- Submit high-quality audio (24-bit, minimal noise) and specify `language_code` when known to
+  avoid language auto-detection errors.
+
+## AssemblyAI Audio Intelligence
+
+- **owner**: assemblyai
+- **id**: audio-intelligence
+- **tier**: balanced
+
+### Description
+
+AssemblyAI Audio Intelligence is an AUDIO analysis endpoint layered on transcription, providing
+sentiment analysis, content moderation, topic detection, chapter/summary generation, and entity
+detection from spoken audio. Valuable for automated rushes review, content tagging, highlight
+reel generation, and compliance checking in post-production pipelines.
+
+### Input Spec
+
+Construct providerInput with:
+- 'audio_url' (required): URL of audio to analyze. Use '@artifact_name' for existing artifacts.
+- 'speaker_labels' (optional): Enable speaker diarization.
+- 'sentiment_analysis' (optional): Enable per-utterance sentiment analysis.
+- 'auto_chapters' (optional): Enable automatic chapter/summary segmentation.
+- 'content_safety' (optional): Enable content safety flagging.
+
+### Best Practices
+
+- Combine with `speaker_labels` to get per-speaker sentiment — useful for interview analysis and
+  identifying emotionally strong takes.
+- Use `auto_chapters` for long-form content (documentaries, podcasts) to automatically segment
+  and summarize scenes or topics.
+- Enable `content_safety` for automated flagging of broadcast-restricted language in raw footage
+  before review.
