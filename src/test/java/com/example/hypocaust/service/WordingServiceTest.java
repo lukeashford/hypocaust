@@ -34,7 +34,7 @@ class WordingServiceTest {
     String result = wordingService.generateTodoWording("task");
 
     // THEN
-    assertThat(result).hasSize(50);
+    assertThat(result).hasSize(80);
     assertThat(result).endsWith("...");
   }
 
@@ -54,14 +54,14 @@ class WordingServiceTest {
   @Test
   void generateArtifactDescription_truncatesAt100() {
     // GIVEN
-    String longResponse = IntStream.range(0, 200).mapToObj(i -> "a").collect(Collectors.joining());
+    String longResponse = IntStream.range(0, 250).mapToObj(i -> "a").collect(Collectors.joining());
     mockChatResponse(longResponse);
 
     // WHEN
     String result = wordingService.generateArtifactDescription("source");
 
     // THEN
-    assertThat(result).hasSize(100);
+    assertThat(result).hasSize(200);
     assertThat(result).endsWith("...");
   }
 

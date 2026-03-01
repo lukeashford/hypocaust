@@ -54,7 +54,7 @@ class DecompositionScenarioTest {
   @BeforeEach
   void setUp() {
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
-    var todosContext = org.mockito.Mockito.mock(TodosContext.class);
+    var todosContext = new TodosContext(UUID.randomUUID(), eventService);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
     TaskExecutionContextHolder.setContext(context);

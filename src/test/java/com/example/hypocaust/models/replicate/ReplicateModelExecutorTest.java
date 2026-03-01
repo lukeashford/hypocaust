@@ -28,7 +28,7 @@ class ReplicateModelExecutorTest {
     objectMapper = new ObjectMapper();
     replicateClient = mock(ReplicateClient.class);
     executor = new ReplicateModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), replicateClient);
+        new RetryTemplate(), null, replicateClient);
   }
 
   @Test

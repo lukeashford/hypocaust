@@ -6,12 +6,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.EventEntity;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.mapper.EventMapper;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.UUID;
@@ -33,7 +33,7 @@ class EventServiceTest {
     eventMapper = mock(EventMapper.class);
     TaskExecutionRepository taskExecutionRepository = mock(TaskExecutionRepository.class);
     eventService = new EventService(sseHub, eventLogRepository, eventMapper,
-        taskExecutionRepository);
+        taskExecutionRepository, null);
   }
 
   @AfterEach

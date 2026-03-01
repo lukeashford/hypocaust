@@ -23,7 +23,7 @@ class RunwayModelExecutorTest {
     ChatService chatService = Mockito.mock(ChatService.class);
     RunwayClient runwayClient = Mockito.mock(RunwayClient.class);
     executor = new RunwayModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), runwayClient);
+        new RetryTemplate(), null, runwayClient);
   }
 
   @Test

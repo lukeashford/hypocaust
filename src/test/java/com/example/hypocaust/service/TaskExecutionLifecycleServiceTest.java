@@ -121,8 +121,10 @@ class TaskExecutionLifecycleServiceTest {
         com.example.hypocaust.domain.TodosContext.class);
     com.example.hypocaust.domain.TodoList todoList = org.mockito.Mockito.mock(
         com.example.hypocaust.domain.TodoList.class);
+    com.example.hypocaust.domain.Changelist changelist = new com.example.hypocaust.domain.Changelist();
 
     when(context.getArtifacts()).thenReturn(artifacts);
+    when(artifacts.getChangelist()).thenReturn(changelist);
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
     when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");

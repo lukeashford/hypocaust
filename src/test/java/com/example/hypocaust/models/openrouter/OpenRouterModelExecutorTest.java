@@ -29,7 +29,7 @@ class OpenRouterModelExecutorTest {
     objectMapper = new ObjectMapper();
     openRouterClient = mock(OpenRouterClient.class);
     executor = new OpenRouterModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), openRouterClient);
+        new RetryTemplate(), null, openRouterClient);
   }
 
   @Test

@@ -22,7 +22,7 @@ class ElevenLabsModelExecutorTest {
     ChatService chatService = Mockito.mock(ChatService.class);
     ElevenLabsClient elevenLabsClient = Mockito.mock(ElevenLabsClient.class);
     executor = new ElevenLabsModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), elevenLabsClient);
+        new RetryTemplate(), null, elevenLabsClient);
   }
 
   @Test

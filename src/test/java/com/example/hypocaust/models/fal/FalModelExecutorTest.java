@@ -29,7 +29,7 @@ class FalModelExecutorTest {
     objectMapper = new ObjectMapper();
     falClient = mock(FalClient.class);
     executor = new FalModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), falClient);
+        new RetryTemplate(), null, falClient);
   }
 
   @Test
