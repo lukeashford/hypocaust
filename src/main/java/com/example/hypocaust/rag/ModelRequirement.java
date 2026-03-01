@@ -5,7 +5,6 @@ import java.util.Set;
 
 public record ModelRequirement(
     Set<ArtifactKind> inputs,
-    ArtifactKind output,
     String tier,
     String searchString
 ) {

@@ -1,6 +1,5 @@
 package com.example.hypocaust.models.assembly;
 
-import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
@@ -8,10 +7,12 @@ import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -37,19 +38,18 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("assemblyai-plan", """
             You are an expert creative director. Prepare an AssemblyAI processing plan.
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
                - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
             2. Validation:
                - If mandatory audio source is missing, provide an 'errorMessage'.
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -61,12 +61,11 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
 
     var userPrompt = String.format("""
         Task: %s
-        Kind: %s
         Model Docs: %s
-
+        
         Best Practices:
         %s
-        """, task, kind, description, bestPractices);
+        """, task, model.description(), model.bestPractices());
 
     var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
     try {
@@ -94,16 +93,16 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
+  protected List<String> extractOutputs(JsonNode output) {
     if (output.has("text") && output.get("text").isTextual()) {
-      return output.get("text").asText();
+      return List.of(output.get("text").asText());
     }
     if (output.has("id")) {
-      return output.get("id").asText();
+      return List.of(output.get("id").asText());
     }
     if (output.has("chapters")) {
-      return output.toString();
+      return List.of(output.toString());
     }
-    return output.toString();
+    return List.of(output.toString());
   }
 }

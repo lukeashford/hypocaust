@@ -4,6 +4,7 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,7 +14,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
@@ -42,8 +43,7 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   /**
    * Subclasses implement this to prepare provider-specific input from the user task.
    */
-  protected abstract ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices);
+  protected abstract ExecutionPlan generatePlan(String task, ModelSearchResult model);
 
   /**
    * Subclasses implement this to perform the actual provider API call.
@@ -51,35 +51,44 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   protected abstract JsonNode doExecute(String owner, String modelId, JsonNode input);
 
   /**
-   * Subclasses implement this to extract the final result (URL, text, etc.) from provider output.
+   * Subclasses implement this to extract the final results (URL, text, etc.) from provider output.
    */
-  protected abstract String extractOutput(JsonNode output);
+  protected abstract List<String> extractOutputs(JsonNode output);
 
   /**
    * Orchestrates the full pipeline: plan → transform input → execute (with retry) → extract →
-   * download/store → finalize artifact.
+   * download/store → finalize artifacts.
    */
   @Override
-  public ExecutionResult run(Artifact artifact, String task, String modelName,
-      String owner, String modelId, String description, String bestPractices,
+  public ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
       UnaryOperator<JsonNode> inputTransformer) {
-    var plan = generatePlan(task, artifact.kind(), modelName, owner, modelId, description,
-        bestPractices);
+    var plan = generatePlan(task, model);
     if (plan.hasError()) {
       throw new RuntimeException("Planning failed: " + plan.errorMessage());
     }
 
     var finalInput = inputTransformer.apply(plan.providerInput());
-    var output = retryTemplate.execute(context -> doExecute(owner, modelId, finalInput));
-    var extractedOutput = extractOutput(output);
+    var output = retryTemplate.execute(
+        context -> doExecute(model.owner(), model.modelId(), finalInput));
+    var extractedOutputs = extractOutputs(output);
 
-    if (extractedOutput == null || extractedOutput.isBlank() || "null".equals(extractedOutput)) {
+    if (extractedOutputs == null || extractedOutputs.isEmpty() || "null".equals(
+        extractedOutputs.get(0))) {
       throw new IllegalStateException("Model returned no usable output");
     }
 
-    // Finalize artifact: store content and set status
-    Artifact finalized = finalizeArtifact(artifact, extractedOutput);
-    return new ExecutionResult(finalized, finalInput);
+    if (extractedOutputs.size() != artifacts.size()) {
+      throw new IllegalStateException(
+          "Model returned " + extractedOutputs.size() + " outputs, but " + artifacts.size()
+              + " were expected.");
+    }
+
+    List<Artifact> finalizedArtifacts = new java.util.ArrayList<>();
+    for (int i = 0; i < artifacts.size(); i++) {
+      finalizedArtifacts.add(finalizeArtifact(artifacts.get(i), extractedOutputs.get(i)));
+    }
+
+    return new ExecutionResult(finalizedArtifacts, finalInput);
   }
 
   /**

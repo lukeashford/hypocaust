@@ -1,7 +1,6 @@
 package com.example.hypocaust.service;
 
 import com.example.hypocaust.common.JsonUtils;
-import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.exception.ExternalServiceException;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.PromptFragment;
@@ -46,26 +45,28 @@ public class WordingService {
   /**
    * Generates a catchy title for an artifact.
    */
-  public String generateArtifactTitle(String source) {
-    return generate(PromptFragments.artifactTitle(), source,
-        "Generation Prompt to name: ");
+  public String generateArtifactTitle(String source, String outputDescription) {
+    return generate(PromptFragments.artifactTitle(),
+        String.format("Task/Prompt: %s\nOutput Role: %s", source, outputDescription),
+        "Generation context: ");
   }
 
   /**
    * Generates a brief description for an artifact.
    */
-  public String generateArtifactDescription(String source) {
-    String desc = generate(PromptFragments.artifactDescription(), source,
-        "Generation Prompt to describe: ");
+  public String generateArtifactDescription(String source, String outputDescription) {
+    String desc = generate(PromptFragments.artifactDescription(),
+        String.format("Task/Prompt: %s\nOutput Role: %s", source, outputDescription),
+        "Generation context: ");
     return truncateWithEllipsis(desc, 200);
   }
 
   /**
    * Translates a task into structured model requirements.
    */
-  public ModelRequirement generateModelRequirement(String task, ArtifactKind targetKind) {
+  public ModelRequirement generateModelRequirement(String task) {
     String response = generate(PromptFragments.modelRequirement(),
-        String.format("Task: %s, Target: %s", task, targetKind),
+        String.format("Task: %s", task),
         "Requirement analysis: ");
 
     try {

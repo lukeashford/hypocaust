@@ -8,7 +8,7 @@ import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
-import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
@@ -52,13 +52,12 @@ public class GenerateCreativeTool {
           + "photorealistic, creative), include them in the task. To use existing artifacts "
           + "as inputs, refer to them using the @ prefix (e.g., 'Make @user_photo a cartoon').")
   public GenerateCreativeResult generate(
-      @ToolParam(description = "What to generate or edit, in natural language") String task,
-      @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
+      @ToolParam(description = "What to generate or edit, in natural language") String task
   ) {
-    log.info("{} request: {} (kind: {})", LOG_PREFIX, task, artifactKind);
+    log.info("{} request: {}", LOG_PREFIX, task);
 
     // Step 1: Find suitable models
-    ModelRequirement req = wordingService.generateModelRequirement(task, artifactKind);
+    ModelRequirement req = wordingService.generateModelRequirement(task);
     var models = modelRag.search(req);
     if (models.isEmpty()) {
       return GenerateCreativeResult.error("No suitable model found for: " + req);
@@ -69,7 +68,7 @@ public class GenerateCreativeTool {
     var failedPlatforms = new java.util.LinkedHashSet<String>();
     for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
       try {
-        return executeWithModel(task, artifactKind, model);
+        return executeWithModel(task, model);
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
@@ -78,62 +77,87 @@ public class GenerateCreativeTool {
     }
 
     // Build an actionable error: tell the decomposer not to retry this capability
-    var errorMsg = new StringBuilder("All models failed for " + artifactKind + " generation. ");
-    errorMsg.append("Providers attempted: ").append(String.join(", ", failedPlatforms)).append(". ");
-    errorMsg.append("Details: ").append(String.join("; ", errors)).append(". ");
-    errorMsg.append("DO NOT retry ").append(artifactKind)
-        .append(" generation with similar parameters — the underlying service appears unavailable.");
-    return GenerateCreativeResult.error(errorMsg.toString());
+    String errorMsg =
+        "All models failed. Providers attempted: " + String.join(", ", failedPlatforms)
+            + ". Details: " + String.join("; ", errors) + ". "
+            + "DO NOT retry generation with similar parameters — the underlying service appears unavailable.";
+    return GenerateCreativeResult.error(errorMsg);
   }
 
-  private GenerateCreativeResult executeWithModel(
-      String task, ArtifactKind artifactKind, SearchResult model) {
+  private GenerateCreativeResult executeWithModel(String task, ModelSearchResult model) {
 
     log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
     var executor = executionRouter.resolve(model.platform());
 
-    String title = wordingService.generateArtifactTitle(task);
-    String description = wordingService.generateArtifactDescription(task);
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
 
-    // Schedule GESTATING artifact
-    var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
-        .kind(artifactKind).title(title).description(description)
-        .status(ArtifactStatus.GESTATING).build());
+    List<Artifact> gestatingArtifacts = new ArrayList<>();
+    List<String> artifactNames = new ArrayList<>();
 
-    try {
-      // Build the GESTATING artifact to pass to the executor
-      var gestatingArtifact = Artifact.builder()
-          .name(artifactName).kind(artifactKind).title(title).description(description)
+    for (var outputSpec : model.outputs()) {
+      String title = wordingService.generateArtifactTitle(task, outputSpec.getDescription());
+      String description = wordingService.generateArtifactDescription(task,
+          outputSpec.getDescription());
+
+      // Schedule GESTATING artifact
+      var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
+          .kind(outputSpec.getKind()).title(title).description(description)
+          .status(ArtifactStatus.GESTATING).build());
+
+      artifactNames.add(artifactName);
+
+      gestatingArtifacts.add(Artifact.builder()
+          .name(artifactName).kind(outputSpec.getKind()).title(title).description(description)
           .status(ArtifactStatus.GESTATING)
           .metadata(buildMetadata(model, task, null))
-          .build();
+          .build());
+    }
 
+    try {
       // Delegate full pipeline to executor: plan → substitute → execute → download/store
       UnaryOperator<JsonNode> substitutor = input -> substituteArtifacts(input, availableArtifacts);
-      var result = executor.run(gestatingArtifact, task, model.name(),
-          model.owner(), model.modelId(), model.description(), model.bestPractices(), substitutor);
+      var result = executor.run(gestatingArtifacts, task, model, substitutor);
 
-      // Update metadata with providerInput
-      var finalizedArtifact = result.artifact()
-          .withMetadata(buildMetadata(model, task, result.providerInput()));
+      // Validation: If the executor returns a list of artifacts that doesn't exactly match the count and kinds expected, throw an exception
+      if (result.artifacts().size() != gestatingArtifacts.size()) {
+        throw new IllegalStateException("Executor returned " + result.artifacts().size()
+            + " artifacts, but expected " + gestatingArtifacts.size());
+      }
+      for (int i = 0; i < gestatingArtifacts.size(); i++) {
+        if (result.artifacts().get(i).kind() != gestatingArtifacts.get(i).kind()) {
+          throw new IllegalStateException(
+              "Executor returned artifact of kind " + result.artifacts().get(i).kind()
+                  + " at index " + i + ", but expected " + gestatingArtifacts.get(i).kind());
+        }
+      }
 
-      // Update the changelist with the finalized artifact
-      TaskExecutionContextHolder.getContext().getArtifacts().updatePending(finalizedArtifact);
-      log.info("{} Complete: {} (status: {})", LOG_PREFIX, artifactName,
-          finalizedArtifact.status());
+      List<String> finalizedNames = new ArrayList<>();
+      for (var finalized : result.artifacts()) {
+        // Update metadata with providerInput
+        var updated = finalized.withMetadata(
+            buildMetadata(model, task, result.providerInput()));
+        // Update the changelist with the finalized artifact
+        TaskExecutionContextHolder.getContext().getArtifacts().updatePending(updated);
+        finalizedNames.add(updated.name());
+        log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(),
+            updated.status());
+      }
 
-      return GenerateCreativeResult.success(artifactName,
-          "Generated " + artifactKind + " using " + model.name());
+      String successSummary =
+          "Generated artifacts: " + String.join(", ", finalizedNames) + " using "
+              + model.name();
+      return GenerateCreativeResult.success(finalizedNames, successSummary);
 
     } catch (Exception e) {
-      rollbackArtifact(artifactName);
+      for (String name : artifactNames) {
+        rollbackArtifact(name);
+      }
       throw e;
     }
   }
 
-  private ObjectNode buildMetadata(SearchResult model, String task, JsonNode input) {
+  private ObjectNode buildMetadata(ModelSearchResult model, String task, JsonNode input) {
     ObjectNode metadata = objectMapper.createObjectNode();
     ObjectNode genDetails = metadata.putObject("generation_details");
     genDetails.put("provider", model.platform());

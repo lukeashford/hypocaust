@@ -23,7 +23,7 @@ CREATE TABLE task_execution
     task           text,
     status         text        NOT NULL CHECK (status IN
                                                ('QUEUED', 'RUNNING', 'REQUIRES_ACTION', 'COMPLETED',
-                                                'FAILED', 'CANCELLED')),
+                                                'PARTIALLY_SUCCESSFUL', 'FAILED', 'CANCELLED')),
     started_at     timestamptz,
     completed_at   timestamptz,
     predecessor_id uuid REFERENCES task_execution (id),
@@ -48,7 +48,7 @@ CREATE TABLE artifact
                                                    ('IMAGE', 'PDF', 'AUDIO',
                                                     'VIDEO', 'TEXT', 'OTHER')),
     status            text         NOT NULL CHECK (status IN
-                                                   ('GESTATING', 'CREATED', 'MANIFESTED',
+                                                   ('GESTATING', 'MANIFESTED',
                                                     'CANCELLED',
                                                     'FAILED')),
     title             text,
@@ -58,6 +58,7 @@ CREATE TABLE artifact
     mime_type         text,
     name              varchar(100) NOT NULL,
     description       text,
+    error_message     text,
     task_execution_id uuid REFERENCES task_execution (id)
 );
 
@@ -152,7 +153,8 @@ CREATE TABLE model_embedding_inputs
 CREATE TABLE model_embedding_outputs
 (
     model_embedding_id uuid NOT NULL REFERENCES model_embeddings (id) ON DELETE CASCADE,
-    kind               text NOT NULL
+    kind        text NOT NULL,
+    description text NOT NULL
 );
 
 -- Workflow embeddings table

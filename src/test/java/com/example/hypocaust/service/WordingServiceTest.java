@@ -58,7 +58,7 @@ class WordingServiceTest {
     mockChatResponse(longResponse);
 
     // WHEN
-    String result = wordingService.generateArtifactDescription("source");
+    String result = wordingService.generateArtifactDescription("source", "desc");
 
     // THEN
     assertThat(result).hasSize(200);
@@ -72,7 +72,7 @@ class WordingServiceTest {
     mockChatResponse(shortResponse);
 
     // WHEN
-    String result = wordingService.generateArtifactDescription("source");
+    String result = wordingService.generateArtifactDescription("source", "desc");
 
     // THEN
     assertThat(result).isEqualTo("Hello world description");
@@ -84,7 +84,6 @@ class WordingServiceTest {
     String jsonResponse = """
         {
           "inputs": ["IMAGE"],
-          "output": "VIDEO",
           "tier": "powerful",
           "searchString": "cinematic animation"
         }
@@ -92,12 +91,10 @@ class WordingServiceTest {
     mockChatResponse(jsonResponse);
 
     // WHEN
-    var result = wordingService.generateModelRequirement("task",
-        com.example.hypocaust.domain.ArtifactKind.VIDEO);
+    var result = wordingService.generateModelRequirement("task");
 
     // THEN
     assertThat(result.inputs()).containsExactly(com.example.hypocaust.domain.ArtifactKind.IMAGE);
-    assertThat(result.output()).isEqualTo(com.example.hypocaust.domain.ArtifactKind.VIDEO);
     assertThat(result.tier()).isEqualTo("powerful");
     assertThat(result.searchString()).isEqualTo("cinematic animation");
   }

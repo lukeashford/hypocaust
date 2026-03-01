@@ -7,6 +7,7 @@ import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.Chunk;
 import com.example.hypocaust.repo.ModelEmbeddingRepository;
 import com.example.hypocaust.service.EmbeddingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -22,42 +23,41 @@ class ModelEmbeddingRegistryTest {
   @Test
   void parseFile_extractsTierAndPlatform() throws Exception {
     // GIVEN
-    Path replicateMd = tempDir.resolve("replicate.md");
-    Files.writeString(replicateMd, """
-        # Replicate
-        
-        ## Flux.1 [schnell]
-        
-        - **owner**: black-forest-labs
-        - **id**: flux-schnell
-        - **tier**: fast
-        - **input**: TEXT
-        - **output**: IMAGE
-        
-        ### Description
-        Fast model
-        
-        ## Flux.1 [dev]
-        
-        - **owner**: black-forest-labs
-        - **id**: flux-dev
-        - **input**: TEXT
-        - **output**: IMAGE
-        
-        ### Description
-        Balanced model
+    Path replicateJson = tempDir.resolve("replicate.json");
+    Files.writeString(replicateJson, """
+        [
+          {
+            "name": "Flux.1 [schnell]",
+            "owner": "black-forest-labs",
+            "id": "flux-schnell",
+            "tier": "fast",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Fast model"
+          },
+          {
+            "name": "Flux.1 [dev]",
+            "owner": "black-forest-labs",
+            "id": "flux-dev",
+            "tier": "balanced",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Balanced model"
+          }
+        ]
         """);
 
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
     HashCalculator hashCalculator = new HashCalculator();
+    ObjectMapper objectMapper = new ObjectMapper();
 
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator);
+        hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     // WHEN
-    List<Chunk> chunks = registry.parseFile(replicateMd);
+    List<Chunk> chunks = registry.parseFile(replicateJson);
 
     // THEN
     assertThat(chunks).hasSize(2);
@@ -80,31 +80,31 @@ class ModelEmbeddingRegistryTest {
   @Test
   void parseFile_derivesPlatformFromFilename() throws Exception {
     // GIVEN
-    Path falMd = tempDir.resolve("fal.md");
-    Files.writeString(falMd, """
-        # NOT_FAL_HEADER
-        
-        ## FLUX.1 [schnell] (fal)
-        
-        - **owner**: fal-ai
-        - **id**: flux/schnell
-        - **input**: TEXT
-        - **output**: IMAGE
-        
-        ### Description
-        Fast image gen on fal.ai
+    Path falJson = tempDir.resolve("fal.json");
+    Files.writeString(falJson, """
+        [
+          {
+            "name": "FLUX.1 [schnell] (fal)",
+            "owner": "fal-ai",
+            "id": "flux/schnell",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Fast image gen on fal.ai"
+          }
+        ]
         """);
 
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
     HashCalculator hashCalculator = new HashCalculator();
+    ObjectMapper objectMapper = new ObjectMapper();
 
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator);
+        hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     // WHEN
-    List<Chunk> chunks = registry.parseFile(falMd);
+    List<Chunk> chunks = registry.parseFile(falJson);
 
     // THEN
     assertThat(chunks).hasSize(1);
@@ -113,9 +113,9 @@ class ModelEmbeddingRegistryTest {
 
   @Test
   void derivePlatform_mapsFilenames() {
-    assertThat(ModelEmbeddingRegistry.derivePlatform("replicate.md")).isEqualTo("REPLICATE");
-    assertThat(ModelEmbeddingRegistry.derivePlatform("fal.md")).isEqualTo("FAL");
-    assertThat(ModelEmbeddingRegistry.derivePlatform("openrouter.md")).isEqualTo("OPENROUTER");
+    assertThat(ModelEmbeddingRegistry.derivePlatform("replicate.json")).isEqualTo("REPLICATE");
+    assertThat(ModelEmbeddingRegistry.derivePlatform("fal.json")).isEqualTo("FAL");
+    assertThat(ModelEmbeddingRegistry.derivePlatform("openrouter.json")).isEqualTo("OPENROUTER");
   }
 
   @Test
@@ -123,31 +123,38 @@ class ModelEmbeddingRegistryTest {
     HashCalculator hashCalculator = new HashCalculator();
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ObjectMapper objectMapper = new ObjectMapper();
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator);
+        hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
-    Path file1 = tempDir.resolve("platform.md");
+    Path file1 = tempDir.resolve("platform.json");
     Files.writeString(file1, """
-        ## Model A
-        - **id**: same-id
-        - **input**: TEXT
-        - **output**: IMAGE
-        ### Description
-        Same description
+        [
+          {
+            "name": "Model A",
+            "id": "same-id",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Same description"
+          }
+        ]
         """);
 
     List<Chunk> chunks1 = registry.parseFile(file1);
     String hash1 = chunks1.getFirst().hash();
 
-    Path file2 = tempDir.resolve("platform2.md");
+    Path file2 = tempDir.resolve("platform2.json");
     Files.writeString(file2, """
-        ## Model B
-        - **id**: same-id
-        - **input**: TEXT
-        - **output**: IMAGE
-        ### Description
-        Same description
+        [
+          {
+            "name": "Model B",
+            "id": "same-id",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Same description"
+          }
+        ]
         """);
 
     List<Chunk> chunks2 = registry.parseFile(file2);
@@ -163,28 +170,35 @@ class ModelEmbeddingRegistryTest {
     HashCalculator hashCalculator = new HashCalculator();
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ObjectMapper objectMapper = new ObjectMapper();
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator);
+        hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
-    Path file1 = tempDir.resolve("order1.md");
+    Path file1 = tempDir.resolve("order1.json");
     Files.writeString(file1, """
-        ## Model
-        - **id**: id
-        - **input**: TEXT, IMAGE
-        - **output**: VIDEO, AUDIO
-        ### Description
-        Desc
+        [
+          {
+            "name": "Model",
+            "id": "id",
+            "inputs": ["TEXT", "IMAGE"],
+            "outputs": [{"kind": "VIDEO", "description": "vid"}, {"kind": "AUDIO", "description": "aud"}],
+            "description": "Desc"
+          }
+        ]
         """);
 
-    Path file2 = tempDir.resolve("order2.md");
+    Path file2 = tempDir.resolve("order2.json");
     Files.writeString(file2, """
-        ## Model
-        - **id**: id
-        - **input**: IMAGE, TEXT
-        - **output**: AUDIO, VIDEO
-        ### Description
-        Desc
+        [
+          {
+            "name": "Model",
+            "id": "id",
+            "inputs": ["IMAGE", "TEXT"],
+            "outputs": [{"kind": "AUDIO", "description": "aud"}, {"kind": "VIDEO", "description": "vid"}],
+            "description": "Desc"
+          }
+        ]
         """);
 
     String hash1 = registry.parseFile(file1).getFirst().hash();

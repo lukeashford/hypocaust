@@ -66,18 +66,18 @@ public final class PromptFragments {
             1. If the task can be solved by a single available tool, call it directly.
                Evaluate the result. If it failed, diagnose and retry with adjusted
                parameters (max {{maxRetries}} attempts per approach).
-
+            
             2. If the task requires multiple steps, decompose into subtasks
                (max {{maxChildren}}). Declare your plan with `set_plan`, then delegate
                each step to a child decomposer via `invoke_decomposer`.
-
+            
             Never mix these: either call one tool, or delegate to children.
-
+            
             ENFORCEMENT: If your plan (set_plan) declares more than 1 step, `execute_tool`
             will be BLOCKED and return a DELEGATION_REQUIRED error. You MUST use
             `invoke_decomposer` for each step instead. Do not work around this by reducing
             your plan to 1 step — declare your honest, complete plan first, then delegate.
-
+            
             When done, return:
             {"success": true/false, "summary": "...", "artifactNames": [...], "errorMessage": "..."}""",
         10
@@ -228,8 +228,8 @@ public final class PromptFragments {
     return new PromptFragment(
         "wording-artifact-title",
         """
-            The user will provide a prompt describing a creative generation task.
-            Your job is to generate a catchy, human-friendly title (max 60 characters) for the artifact that will be produced by this task.
+            The user will provide a prompt describing a creative generation task and the specific role of this output.
+            Your job is to generate a catchy, human-friendly title (max 60 characters) that is unique within the project.
             
             IMPORTANT: You are NOT performing the task. You are only naming the expected outcome.
             Output ONLY the title, without quotes or explanation."""
@@ -243,8 +243,8 @@ public final class PromptFragments {
     return new PromptFragment(
         "wording-artifact-description",
         """
-            The user will provide a prompt describing a creative generation task.
-            Your job is to generate a brief description (1 sentence, max 200 characters) for the artifact that will be produced by this task.
+            The user will provide a prompt describing a creative generation task and the specific role of this output.
+            Your job is to generate a brief description (1 sentence, max 200 characters) for the artifact that will be produced.
             Focus on the intended content, style, and subject matter.
             
             IMPORTANT: You are NOT performing the task. You are only describing the expected outcome.
@@ -265,17 +265,15 @@ public final class PromptFragments {
             1. 'inputs': Which artifact types are REQUIRED as source?
                - If the task involves a prompt (text instruction), ALWAYS include "TEXT" as input.
                - If editing an existing artifact (e.g., '@image'), include its kind (e.g., "IMAGE").
-            2. 'output': The target ArtifactKind.
-            3. 'tier': 'fast', 'balanced' (default), or 'powerful'.
-            4. 'searchString': Keywords for semantic search (e.g., 'photorealistic portrait', 'background removal').
+            2. 'tier': 'fast', 'balanced' (default), or 'powerful'.
+            3. 'searchString': Keywords for semantic search (e.g., 'photorealistic portrait', 'background removal').
             
-            Allowed ArtifactKinds (for both 'inputs' and 'output'):
+            Allowed ArtifactKinds (for 'inputs'):
             %s
             
             Output ONLY valid JSON:
             {
               "inputs": ["TEXT", "IMAGE"],
-              "output": "IMAGE",
               "tier": "balanced",
               "searchString": "keywords"
             }

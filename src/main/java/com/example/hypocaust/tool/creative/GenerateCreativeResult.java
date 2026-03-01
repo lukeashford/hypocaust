@@ -1,7 +1,9 @@
 package com.example.hypocaust.tool.creative;
 
+import java.util.List;
+
 public record GenerateCreativeResult(
-    String artifactName,
+    List<String> artifactNames,
     String summary,
     String error
 ) implements ToolResult {
@@ -11,8 +13,8 @@ public record GenerateCreativeResult(
     return error == null;
   }
 
-  public static GenerateCreativeResult success(String artifactName, String summary) {
-    return new GenerateCreativeResult(artifactName, summary, null);
+  public static GenerateCreativeResult success(List<String> artifactNames, String summary) {
+    return new GenerateCreativeResult(artifactNames, summary, null);
   }
 
   public static GenerateCreativeResult error(String error) {

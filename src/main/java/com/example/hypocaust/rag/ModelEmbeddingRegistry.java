@@ -3,22 +3,24 @@ package com.example.hypocaust.rag;
 import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.db.ModelEmbedding;
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.repo.ModelEmbeddingRepository;
 import com.example.hypocaust.service.EmbeddingService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -35,13 +37,13 @@ import org.springframework.stereotype.Component;
 public class ModelEmbeddingRegistry {
 
   // Constants
-  private static final String EXT_MD = ".md";
-  private static final String H2_PREFIX = "## ";
+  private static final String EXT_JSON = ".json";
   private static final int DEFAULT_MAX_RESULTS = 5;
 
   private final ModelEmbeddingRepository repository;
   private final EmbeddingService embeddingService;
   private final HashCalculator hashCalculator;
+  private final ObjectMapper objectMapper;
 
   @Value("${app.rag.platforms-path:src/main/resources/rag/platforms}")
   private String platformsDir;
@@ -68,10 +70,10 @@ public class ModelEmbeddingRegistry {
     final List<Chunk> chunks = new ArrayList<>();
 
     try {
-      // Collect chunks from all markdown files in directory
+      // Collect chunks from all JSON files in directory
       try (var paths = Files.walk(dir)) {
         paths.filter(Files::isRegularFile)
-            .filter(p -> p.getFileName().toString().toLowerCase().endsWith(EXT_MD))
+            .filter(p -> p.getFileName().toString().toLowerCase().endsWith(EXT_JSON))
             .forEach(p -> {
               try {
                 chunks.addAll(parseFile(p));
@@ -160,16 +162,16 @@ public class ModelEmbeddingRegistry {
   /**
    * Performs semantic search over document chunks filtered by requirements.
    */
-  public List<SearchResult> search(ModelRequirement req) {
+  public List<ModelSearchResult> search(ModelRequirement req) {
     final var pageable = PageRequest.of(0, DEFAULT_MAX_RESULTS);
     try {
       final var queryEmbedding = embeddingService.generateEmbedding(req.searchString());
 
-      final var out = new ArrayList<SearchResult>();
+      final var out = new ArrayList<ModelSearchResult>();
       for (final var r :
-          repository.findTopByEmbeddingSimilarityFiltered(queryEmbedding, req.tier(), req.output(),
+          repository.findTopByEmbeddingSimilarityFiltered(queryEmbedding, req.tier(),
               req.inputs(), pageable)) {
-        out.add(new SearchResult(
+        out.add(new ModelSearchResult(
             r.getName(),
             r.getOwner(),
             r.getModelId(),
@@ -190,153 +192,85 @@ public class ModelEmbeddingRegistry {
 
   // Parser
   List<Chunk> parseFile(Path file) throws IOException {
-    final var content = Files.readString(file, StandardCharsets.UTF_8);
-    final var lines = content.replace("\r\n", "\n").replace('\r', '\n').split("\n");
-
-    // Derive platform from filename: replicate.md -> REPLICATE, fal.md -> FAL, openrouter.md -> OPENROUTER
     final var platform = derivePlatform(file.getFileName().toString());
-
-    final var models = new ArrayList<ModelSection>();
-
-    String currentModelTitle = null;
-    final var buffer = new ArrayList<String>();
-
-    for (final var line : lines) {
-      if (line.startsWith(H2_PREFIX)) {
-        // flush previous
-        if (currentModelTitle != null) {
-          models.add(new ModelSection(currentModelTitle, String.join("\n", buffer)));
-          buffer.clear();
-        }
-        currentModelTitle = line.substring(H2_PREFIX.length()).trim();
-        continue;
-      }
-      if (currentModelTitle != null) {
-        buffer.add(line);
-      }
-    }
-    if (currentModelTitle != null) {
-      models.add(new ModelSection(currentModelTitle, String.join("\n", buffer)));
-    }
+    final List<ModelJson> models = objectMapper.readValue(file.toFile(),
+        new TypeReference<>() {
+        });
 
     final var chunks = new ArrayList<Chunk>();
-
     for (final var m : models) {
       try {
-        chunks.add(parseModelChunk(m, platform));
+        chunks.add(toChunk(m, platform));
       } catch (Exception e) {
-        log.warn("Failed to parse model chunk '{}' in file {}: {}", m.modelName(), file,
-            e.getMessage());
+        log.warn("Failed to process model '{}' in file {}: {}", m.name(), file, e.getMessage());
       }
     }
-
     return chunks;
   }
 
   static String derivePlatform(String filename) {
     var name = filename.toLowerCase();
-    if (name.endsWith(EXT_MD)) {
-      name = name.substring(0, name.length() - EXT_MD.length());
+    if (name.endsWith(EXT_JSON)) {
+      name = name.substring(0, name.length() - EXT_JSON.length());
     }
     return name.toUpperCase();
   }
 
-  private String toStableString(Set<ArtifactKind> set) {
+  private String toStableInputsString(Set<ArtifactKind> set) {
     return set.stream()
         .sorted()
         .toList()
         .toString();
   }
 
-  private Chunk parseModelChunk(ModelSection m, String platform) {
-    String owner = "";
-    String modelId = "";
-    String tier = "balanced";
-    String description = "";
-    String bestPractices = "";
-    Set<ArtifactKind> inputs = new HashSet<>();
-    Set<ArtifactKind> outputs = new HashSet<>();
+  private String toStableOutputsString(List<OutputSpec> list) {
+    return list.stream()
+        .map(o -> o.getKind().name() + ":" + o.getDescription())
+        .sorted()
+        .toList()
+        .toString();
+  }
 
-    String[] lines = m.body().split("\n");
-    int i = 0;
-    while (i < lines.length) {
-      String line = lines[i].trim();
-      if (line.startsWith("- **owner**:")) {
-        owner = line.substring("- **owner**:".length()).trim();
-      } else if (line.startsWith("- **id**:")) {
-        modelId = line.substring("- **id**:".length()).trim();
-      } else if (line.startsWith("- **tier**:")) {
-        tier = line.substring("- **tier**:".length()).trim();
-      } else if (line.startsWith("- **input**:")) {
-        String val = line.substring("- **input**:".length()).trim();
-        Arrays.stream(val.split(",")).map(String::trim).map(String::toUpperCase)
-            .map(ArtifactKind::valueOf).forEach(inputs::add);
-      } else if (line.startsWith("- **output**:")) {
-        String val = line.substring("- **output**:".length()).trim();
-        Arrays.stream(val.split(",")).map(String::trim).map(String::toUpperCase)
-            .map(ArtifactKind::valueOf).forEach(outputs::add);
-      } else if (line.startsWith("- **ID**:")) {
-        String id = line.substring("- **ID**:".length()).trim();
-        String[] parts = id.split("/");
-        if (parts.length == 2) {
-          owner = parts[0].trim();
-          modelId = parts[1].trim();
-        } else {
-          modelId = id;
-        }
-      } else if (line.equals("### Description")) {
-        i++;
-        StringBuilder sb = new StringBuilder();
-        while (i < lines.length && !lines[i].startsWith("###")) {
-          sb.append(lines[i]).append("\n");
-          i++;
-        }
-        description = sb.toString().trim();
-        continue;
-      } else if (line.equals("### Best Practices")) {
-        i++;
-        StringBuilder sb = new StringBuilder();
-        while (i < lines.length && !lines[i].startsWith("###")) {
-          sb.append(lines[i]).append("\n");
-          i++;
-        }
-        bestPractices = sb.toString().trim();
-        continue;
-      }
-      i++;
+  private Chunk toChunk(ModelJson m, String platform) {
+    if (m.id() == null || m.id().isEmpty()) {
+      throw new IllegalArgumentException("Missing required metadata (id)");
     }
-
-    if (modelId.isEmpty()) {
-      throw new IllegalArgumentException("Missing required metadata (ID)");
-    }
-
-    if (inputs.isEmpty() || outputs.isEmpty()) {
+    if (m.inputs() == null || m.inputs().isEmpty() || m.outputs() == null || m.outputs()
+        .isEmpty()) {
       throw new IllegalArgumentException(
-          "Model " + m.modelName()
-              + " must have at least one input and output ArtifactKind defined.");
+          "Model " + m.name() + " must have at least one input and output defined.");
     }
 
-    String stableInputs = toStableString(inputs);
-    String stableOutputs = toStableString(outputs);
-
-    String hash = hashCalculator.calculateSha256Hash(
-        m.modelName() + " " + description + " tier: " + tier + " inputs: " + stableInputs
-            + " outputs: " + stableOutputs);
+    String stableInputs = toStableInputsString(m.inputs());
+    String stableOutputs = toStableOutputsString(m.outputs());
 
     String embeddingText =
-        m.modelName() + " " + description + " tier: " + tier + " inputs: " + stableInputs
+        m.name() + " " + m.description() + " tier: " + m.tier() + " inputs: " + stableInputs
             + " outputs: " + stableOutputs;
 
-    return new Chunk(m.modelName(), embeddingText, hash, owner, modelId, description,
-        bestPractices, tier, platform, inputs, outputs);
+    String hash = hashCalculator.calculateSha256Hash(embeddingText);
+
+    return new Chunk(m.name(), embeddingText, hash, m.owner(), m.id(), m.description(),
+        m.bestPractices(), m.tier(), platform, m.inputs(), m.outputs());
   }
 
   // Data holders
-  private record ModelSection(String modelName, String body) {
+  @Builder
+  @Jacksonized
+  private record ModelJson(
+      String name,
+      String owner,
+      String id,
+      String tier,
+      Set<ArtifactKind> inputs,
+      List<OutputSpec> outputs,
+      String description,
+      String bestPractices
+  ) {
 
   }
 
-  public record SearchResult(
+  public record ModelSearchResult(
       String name,
       String owner,
       String modelId,
@@ -345,7 +279,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
-      Set<ArtifactKind> outputs
+      List<OutputSpec> outputs
   ) {
 
   }
@@ -361,7 +295,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
-      Set<ArtifactKind> outputs
+      List<OutputSpec> outputs
   ) {
 
   }

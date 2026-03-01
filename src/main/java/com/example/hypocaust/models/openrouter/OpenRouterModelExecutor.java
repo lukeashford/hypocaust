@@ -1,14 +1,15 @@
 package com.example.hypocaust.models.openrouter;
 
-import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -34,23 +35,22 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
   }
 
   @Override
   protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
-    var model = owner + "/" + modelId;
-    return openRouterClient.chatCompletion(model, input);
+    var fullModelId = owner + "/" + modelId;
+    return openRouterClient.chatCompletion(fullModelId, input);
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
+  protected List<String> extractOutputs(JsonNode output) {
     if (output.has("choices") && output.get("choices").isArray()
         && !output.get("choices").isEmpty()) {
-      return output.get("choices").get(0).path("message").path("content").asText();
+      return List.of(output.get("choices").get(0).path("message").path("content").asText());
     }
-    return output.toString();
+    return List.of(output.toString());
   }
 }

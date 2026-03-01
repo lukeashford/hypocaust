@@ -23,6 +23,18 @@ public class NamingService {
   private final ChatService chatService;
 
   /**
+   * Derives a unique snake_case name from a human-readable title.
+   */
+  public String deriveNameFromTitle(String title, Collection<String> existing) {
+    if (title == null || title.isBlank()) {
+      return generateArtifactName("unnamed_artifact", existing);
+    }
+    String baseName = sanitize(title, 30);
+    Set<String> taken = (existing instanceof Set<String> s) ? s : Set.copyOf(existing);
+    return appendCounterIfExists(baseName, taken);
+  }
+
+  /**
    * Generates a unique artifact name.
    */
   public String generateArtifactName(String source, Collection<String> existing) {

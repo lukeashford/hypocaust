@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.elevenlabs;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.service.ChatService;
@@ -29,7 +29,7 @@ class ElevenLabsModelExecutorTest {
   void testExtractOutput_Url() {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("url", "https://example.com/audio.mp3");
-    assertEquals("https://example.com/audio.mp3", executor.extractOutput(node));
+    assertThat(executor.extractOutputs(node)).containsExactly("https://example.com/audio.mp3");
   }
 
   @Test
@@ -38,7 +38,8 @@ class ElevenLabsModelExecutorTest {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("url", "https://example.com/voice-preview.mp3");
     node.put("generated_voice_id", "v123");
-    assertEquals("https://example.com/voice-preview.mp3", executor.extractOutput(node));
+    assertThat(executor.extractOutputs(node)).containsExactly(
+        "https://example.com/voice-preview.mp3");
   }
 
   @Test
@@ -49,13 +50,13 @@ class ElevenLabsModelExecutorTest {
     ObjectNode target = targets.addObject();
     target.put("language", "es");
     target.put("dubbed_file_url", "https://example.com/dubbed.mp3");
-    assertEquals("https://example.com/dubbed.mp3", executor.extractOutput(node));
+    assertThat(executor.extractOutputs(node)).containsExactly("https://example.com/dubbed.mp3");
   }
 
   @Test
   void testExtractOutput_DubbingId() {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("dubbing_id", "d456");
-    assertEquals("d456", executor.extractOutput(node));
+    assertThat(executor.extractOutputs(node)).containsExactly("d456");
   }
 }

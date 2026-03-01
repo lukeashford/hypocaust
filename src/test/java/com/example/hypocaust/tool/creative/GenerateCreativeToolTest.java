@@ -2,6 +2,7 @@ package com.example.hypocaust.tool.creative;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.argThat;
@@ -14,13 +15,14 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
+import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
-import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,16 +76,17 @@ class GenerateCreativeToolTest {
     String task = "Make a cute cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
             "Use clear prompts", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cute Cat");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn(
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Cute Cat");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
         "A very cute cat illustration");
     when(artifactsContext.add(any())).thenReturn("cute-cat-1");
 
@@ -96,17 +99,16 @@ class GenerateCreativeToolTest {
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN
     assertThat(result.error()).isNull();
-    assertThat(result.artifactName()).isEqualTo("cute-cat-1");
-    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.artifactNames()).containsExactly("cute-cat-1");
+    assertThat(result.summary()).contains("Generated artifacts: cute-cat-1 using SDXL");
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.name().equals("cute-cat-1") &&
@@ -117,15 +119,15 @@ class GenerateCreativeToolTest {
 
   @Test
   void generate_noModelFound_returnsError() {
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), ArtifactKind.IMAGE, "balanced",
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced",
             "Generate a sunset image"));
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
 
-    var result = tool.generate("Generate a sunset image", ArtifactKind.IMAGE);
+    var result = tool.generate("Generate a sunset image");
 
     assertThat(result.error()).contains("No suitable model found");
-    assertThat(result.artifactName()).isNull();
+    assertThat(result.artifactNames()).isNull();
   }
 
   @Test
@@ -134,24 +136,25 @@ class GenerateCreativeToolTest {
     String task = "Make a video";
     ArtifactKind kind = ArtifactKind.VIDEO;
 
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    var outputSpec = new OutputSpec(kind, "the video");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(
-        List.of(new SearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
+        List.of(new ModelSearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
             "Keep it short", "balanced", "REPLICATE", Set.of(ArtifactKind.TEXT),
-            Set.of(ArtifactKind.VIDEO))));
+            List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Video");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Video");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
+        "A video");
     when(artifactsContext.add(any())).thenReturn("video-1");
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -164,23 +167,24 @@ class GenerateCreativeToolTest {
     String task = "Make a cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
+            "REPLICATE",
+            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cat");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Cat");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn("A cat");
     when(artifactsContext.add(any())).thenReturn("cat-1");
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -193,23 +197,25 @@ class GenerateCreativeToolTest {
     String task = "Make something";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    var outputSpec = new OutputSpec(kind, "the thing");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
+            "REPLICATE",
+            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Thing");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Thing");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
+        "A thing");
     when(artifactsContext.add(any())).thenReturn("thing-1");
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new IllegalStateException("Model returned no usable output"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -222,15 +228,16 @@ class GenerateCreativeToolTest {
     String task = "Write a poem";
     ArtifactKind kind = ArtifactKind.TEXT;
 
-    when(wordingService.generateModelRequirement(anyString(), eq(kind)))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "high", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "high", task));
+    var outputSpec = new OutputSpec(kind, "the poem");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
-            "OPENROUTER", Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.TEXT))));
+        new ModelSearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
+            "OPENROUTER", Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Poem");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A poem");
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Poem");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn("A poem");
     when(artifactsContext.add(any())).thenReturn("poem-1");
 
     String poemText = "Roses are red...";
@@ -242,16 +249,15 @@ class GenerateCreativeToolTest {
         .mimeType("text/plain")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), eq(task), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class), any()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN
     assertThat(result.error()).isNull();
-    assertThat(result.artifactName()).isEqualTo("poem-1");
+    assertThat(result.artifactNames()).containsExactly("poem-1");
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.kind() == ArtifactKind.TEXT &&
@@ -267,26 +273,28 @@ class GenerateCreativeToolTest {
     String task = "Make a sunset";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+    when(wordingService.generateModelRequirement(anyString()))
+        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
 
-    var model1 = new SearchResult("FluxDev", "black-forest-labs", "flux-dev",
+    var outputSpec = new OutputSpec(kind, "the image");
+    var model1 = new ModelSearchResult("FluxDev", "black-forest-labs", "flux-dev",
         "desc1", "best1", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
-    var model2 = new SearchResult("SDXL", "stability-ai", "sdxl",
+        Set.of(ArtifactKind.TEXT), List.of(outputSpec));
+    var model2 = new ModelSearchResult("SDXL", "stability-ai", "sdxl",
         "desc2", "best2", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
+        Set.of(ArtifactKind.TEXT), List.of(outputSpec));
 
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Sunset");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A sunset");
+    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Sunset");
+    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
+        "A sunset");
     when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
 
     // First model: run fails
-    when(modelExecutor.run(any(Artifact.class), anyString(), eq("FluxDev"), anyString(),
-        anyString(), anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(),
+        argThat(m -> m != null && "FluxDev".equals(m.name())), any()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
     // Second model: run succeeds
@@ -298,16 +306,16 @@ class GenerateCreativeToolTest {
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), eq("SDXL"), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), anyString(),
+        argThat(m -> m != null && "SDXL".equals(m.name())), any()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task);
 
     // THEN — succeeded with second model
     assertThat(result.error()).isNull();
-    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.summary()).contains("Generated artifacts: sunset-2 using SDXL");
 
     // First artifact should have been rolled back
     verify(artifactsContext).rollbackPending("sunset-1");

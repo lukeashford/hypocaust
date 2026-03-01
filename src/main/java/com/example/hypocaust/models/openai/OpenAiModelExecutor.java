@@ -1,14 +1,15 @@
 package com.example.hypocaust.models.openai;
 
-import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,8 +31,7 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
   }
 
@@ -50,7 +50,7 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
-    return output.path("content").asText();
+  protected List<String> extractOutputs(JsonNode output) {
+    return List.of(output.path("content").asText());
   }
 }

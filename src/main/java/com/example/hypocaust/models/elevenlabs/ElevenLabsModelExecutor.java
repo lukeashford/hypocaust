@@ -1,6 +1,5 @@
 package com.example.hypocaust.models.elevenlabs;
 
-import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
@@ -8,10 +7,12 @@ import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -37,14 +38,13 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.
-
+            
             You are planning for model: %s (id: %s)
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
@@ -52,7 +52,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
                - Do NOT invent IDs. If you don't have a specific voice_id, omit the field entirely.
-
+            
             PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
             - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
             - Do NOT reference real people, celebrities, or public figures by name in voice descriptions.
@@ -63,24 +63,23 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
               (cheerful/somber/authoritative).
             - For character voices in children's stories: describe the voice as "high-pitched and energetic"
               or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
               "errorMessage": null or "..."
             }
-            """.formatted(modelName, modelId)))
+            """.formatted(model.name(), model.modelId())))
         .with(PromptFragments.abilityAwareness())
         .build();
 
     var userPrompt = String.format("""
         Task: %s
-        Kind: %s
         Model Docs: %s
-
+        
         Best Practices:
         %s
-        """, task, kind, description, bestPractices);
+        """, task, model.description(), model.bestPractices());
 
     var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
     try {
@@ -110,19 +109,19 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
+  protected List<String> extractOutputs(JsonNode output) {
     if (output.has("url")) {
-      return output.get("url").asText();
+      return List.of(output.get("url").asText());
     }
     if (output.has("status") && "finished".equalsIgnoreCase(output.get("status").asText())) {
       JsonNode targets = output.path("target_languages");
       if (targets.isArray() && !targets.isEmpty()) {
-        return targets.get(0).path("dubbed_file_url").asText();
+        return List.of(targets.get(0).path("dubbed_file_url").asText());
       }
     }
     if (output.has("dubbing_id")) {
-      return output.get("dubbing_id").asText();
+      return List.of(output.get("dubbing_id").asText());
     }
-    return output.toString();
+    return List.of(output.toString());
   }
 }

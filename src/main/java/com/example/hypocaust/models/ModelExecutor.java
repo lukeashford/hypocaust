@@ -1,7 +1,9 @@
 package com.example.hypocaust.models;
 
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import java.util.function.UnaryOperator;
 
 public interface ModelExecutor {
@@ -12,20 +14,16 @@ public interface ModelExecutor {
    * Runs the full executor pipeline: plan the provider input, transform it, execute the model call
    * with retries, download/store the result, and finalize the artifact.
    *
-   * <p>The artifact is passed in with status GESTATING. The executor fills in
-   * storageKey/inlineContent, mimeType, status (MANIFESTED or FAILED), and optionally errorMessage.
+   * <p>The artifacts are passed in with status GESTATING. The executor fills in
+   * storageKey/inlineContent, mimeType, status (MANIFESTED or FAILED), and optionally
+   * errorMessage.
    *
-   * @param artifact the GESTATING artifact to finalize
+   * @param artifacts the GESTATING artifacts to finalize
    * @param task the user task description
-   * @param modelName human-readable model name
-   * @param owner model owner/namespace
-   * @param modelId model identifier
-   * @param description model description/docs
-   * @param bestPractices model best practices
+   * @param model the consolidated model context
    * @param inputTransformer transforms provider input (e.g. artifact placeholder substitution)
    * @return the finalized artifact and the provider input used
    */
-  ExecutionResult run(Artifact artifact, String task, String modelName,
-      String owner, String modelId, String description, String bestPractices,
+  ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
       UnaryOperator<JsonNode> inputTransformer);
 }

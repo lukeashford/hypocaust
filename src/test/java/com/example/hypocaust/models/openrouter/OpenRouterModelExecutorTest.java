@@ -58,13 +58,13 @@ class OpenRouterModelExecutorTest {
       var node = objectMapper.readTree("""
           {"choices": [{"message": {"role": "assistant", "content": "Once upon a time..."}}]}
           """);
-      assertThat(executor.extractOutput(node)).isEqualTo("Once upon a time...");
+      assertThat(executor.extractOutputs(node)).containsExactly("Once upon a time...");
     }
 
     @Test
     void unknownShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutput(node)).isEqualTo("{\"data\":123}");
+      assertThat(executor.extractOutputs(node)).containsExactly("{\"data\":123}");
     }
   }
 }

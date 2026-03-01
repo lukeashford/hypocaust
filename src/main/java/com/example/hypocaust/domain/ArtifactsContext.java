@@ -39,7 +39,7 @@ public class ArtifactsContext {
    * Schedule a new artifact for creation.
    */
   public synchronized String add(ArtifactDraft draft) {
-    String name = generateUniqueName(draft.description());
+    String name = namingService.deriveNameFromTitle(draft.title(), collectTakenNames());
     Artifact artifact = Artifact.fromDraft(name, draft);
     changelist.addArtifact(artifact);
 
@@ -152,10 +152,6 @@ public class ArtifactsContext {
     taken.addAll(changelist.getEditedNames());
     changelist.getDeletedNames().forEach(taken::remove);
     return taken;
-  }
-
-  private synchronized String generateUniqueName(String description) {
-    return namingService.generateArtifactName(description, collectTakenNames());
   }
 
   public synchronized Optional<Artifact> get(String name) {
