@@ -1,5 +1,6 @@
 package com.example.hypocaust.service;
 
+import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
@@ -9,7 +10,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -137,28 +137,37 @@ public class ArtifactService {
               .withMimeType(mimeType)
               .withMetadata(metadata);
         }
-      } catch (IOException e) {
+      } catch (URISyntaxException e) {
+        log.warn("Invalid artifact URL for artifact {}: {}", pendingArtifact.name(),
+            pendingArtifact.url());
+        return pendingArtifact.withStatus(ArtifactStatus.FAILED);
+      } catch (Exception e) {
+        log.warn("Attempt {} failed for artifact {}: {}", attempt + 1, pendingArtifact.name(),
+            e.getMessage());
         try {
           Thread.sleep(500L * attempt);
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
         }
-      } catch (URISyntaxException e) {
-        log.warn("Invalid artifact URL: {}", pendingArtifact.url());
-        return pendingArtifact.withStatus(ArtifactStatus.FAILED);
       }
     }
 
+    log.error("Failed to materialize artifact {} after {} attempts", pendingArtifact.name(),
+        maxAttempts);
     return pendingArtifact.withStatus(ArtifactStatus.FAILED);
   }
 
   @Transactional
-  UUID materialize(Artifact pendingArtifact, UUID projectId, UUID taskExecutionId) {
-    return artifactRepository.save(artifactMapper.toEntity(
-        pendingArtifact.url() == null
-            ? pendingArtifact
-            : downloadArtifact(pendingArtifact),
+  Artifact materialize(Artifact pendingArtifact, UUID projectId, UUID taskExecutionId) {
+    Artifact processed = pendingArtifact.url() == null
+        ? pendingArtifact
+        : downloadArtifact(pendingArtifact);
+
+    ArtifactEntity saved = artifactRepository.save(artifactMapper.toEntity(
+        processed,
         projectId, taskExecutionId)
-    ).getId();
+    );
+
+    return artifactMapper.toDomain(saved);
   }
 }

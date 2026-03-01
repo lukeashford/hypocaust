@@ -93,10 +93,18 @@ class ArtifactServiceTest {
     when(artifactMapper.toEntity(any(Artifact.class), eq(projectId),
         eq(taskExecutionId))).thenReturn(entity);
     when(artifactRepository.save(entity)).thenReturn(entity);
+    when(artifactMapper.toDomain(entity)).thenReturn(Artifact.builder()
+        .id(entity.getId())
+        .name(entity.getName())
+        .kind(entity.getKind())
+        .status(entity.getStatus())
+        .title("Title")
+        .description("Desc")
+        .build());
 
-    UUID resultId = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
+    Artifact result = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
 
-    assertThat(resultId).isEqualTo(entity.getId());
+    assertThat(result.id()).isEqualTo(entity.getId());
     verify(artifactRepository).save(entity);
   }
 
@@ -136,9 +144,23 @@ class ArtifactServiceTest {
           return entity;
         });
 
-    UUID resultId = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
+    when(artifactMapper.toDomain(any(ArtifactEntity.class))).thenAnswer(
+        invocation -> {
+          ArtifactEntity entity = invocation.getArgument(0);
+          return Artifact.builder()
+              .id(entity.getId())
+              .name(entity.getName())
+              .kind(entity.getKind())
+              .status(entity.getStatus())
+              .inlineContent(entity.getInlineContent())
+              .title("Title")
+              .description("Desc")
+              .build();
+        });
 
-    assertThat(resultId).isNotNull();
+    Artifact result = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
+
+    assertThat(result.id()).isNotNull();
 
     org.mockito.ArgumentCaptor<Artifact> artifactCaptor = org.mockito.ArgumentCaptor.forClass(
         Artifact.class);

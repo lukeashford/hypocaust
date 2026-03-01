@@ -31,15 +31,16 @@ public class WordingService {
    * Generates a brief progress label for a task.
    */
   public String generateTodoWording(String task) {
-    String label = generate(PromptFragments.todoLabel(), task, "Task to convert to todo: ");
-    return label.length() > 80 ? label.substring(0, 77) + "..." : label;
+    return truncateWithEllipsis(
+        generate(PromptFragments.todoLabel(), task, "Task to convert to todo: "), 80);
   }
 
   /**
    * Generates a brief commit message (1 sentence) for a completed task.
    */
   public String generateCommitMessage(String task) {
-    return generate(PromptFragments.commitMessage(), task, "Task to make commit message from: ");
+    return truncateWithEllipsis(generate(PromptFragments.commitMessage(), task,
+        "Task to make commit message from: "), 100);
   }
 
   /**
@@ -56,7 +57,7 @@ public class WordingService {
   public String generateArtifactDescription(String source) {
     String desc = generate(PromptFragments.artifactDescription(), source,
         "Generation Prompt to describe: ");
-    return desc.length() > 200 ? desc.substring(0, 197) + "..." : desc;
+    return truncateWithEllipsis(desc, 200);
   }
 
   /**
@@ -86,5 +87,12 @@ public class WordingService {
       log.warn("Failed to generate wording for {}: {}", fragment.id(), e.getMessage());
     }
     return source;
+  }
+
+  private String truncateWithEllipsis(String text, int maxLength) {
+    if (text.length() <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength - 3) + "...";
   }
 }

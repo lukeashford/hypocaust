@@ -126,6 +126,9 @@ class TaskExecutionLifecycleServiceTest {
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
     when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");
+    when(versionService.materialize(any(), any(), any()))
+        .thenReturn(new VersionManagementService.MaterializationResult(
+            new com.example.hypocaust.domain.TaskExecutionDelta(), false, false));
 
     // When
     lifecycleService.commitExecution(executionId, projectId, "test task", context);

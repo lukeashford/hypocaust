@@ -4,6 +4,7 @@ import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionDelta;
+import com.example.hypocaust.domain.TaskExecutionStatus;
 import com.example.hypocaust.domain.event.TaskExecutionCompletedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionFailedEvent;
 import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
@@ -92,27 +93,59 @@ public class TaskExecutionLifecycleService {
         .orElseThrow(
             () -> new IllegalStateException("TaskExecution not found: " + taskExecutionId));
 
-    ArtifactsContext artifacts = context.getArtifacts();
+    try {
+      ArtifactsContext artifacts = context.getArtifacts();
 
-    // Materialize artifacts and get delta
-    TaskExecutionDelta delta = versionService.materialize(artifacts.getChangelist(),
-        taskExecutionId,
-        projectId);
+      // 1. Materialize artifacts and get result
+      VersionManagementService.MaterializationResult materializationResult =
+          versionService.materialize(artifacts.getChangelist(), taskExecutionId, projectId);
+      TaskExecutionDelta delta = materializationResult.delta();
 
-    // Materialize todos
-    todoService.materialize(context.getTodos().getList(), taskExecutionId);
+      // 2. Materialize todos
+      try {
+        todoService.materialize(context.getTodos().getList(), taskExecutionId);
+      } catch (Exception e) {
+        log.warn("Failed to materialize todos for execution {}: {}", taskExecutionId,
+            e.getMessage());
+      }
 
-    // Generate commit message
-    String commitMessage = wordingService.generateCommitMessage(task);
+      // 3. Generate commit message
+      String commitMessage = wordingService.generateCommitMessage(task);
 
-    // Complete the task execution
-    taskExecution.complete(commitMessage, delta);
-    taskExecutionRepository.save(taskExecution);
+      // 4. Update status based on materialization result
+      if (materializationResult.allFailed()) {
+        log.warn("All artifacts failed for execution {}", taskExecutionId);
+        taskExecution.fail("All artifacts failed: " + commitMessage);
+      } else if (materializationResult.anyFailed()) {
+        log.info("Execution {} partially successful", taskExecutionId);
+        taskExecution.partiallySuccessful(commitMessage, delta);
+      } else {
+        taskExecution.complete(commitMessage, delta);
+      }
 
-    // Publish completion event
-    eventService.publish(
-        new TaskExecutionCompletedEvent(taskExecutionId, delta != null, taskExecution.getName(),
+      taskExecutionRepository.save(taskExecution);
+
+      // 5. Publish event
+      if (taskExecution.getStatus() == TaskExecutionStatus.FAILED) {
+        eventService.publish(new TaskExecutionFailedEvent(taskExecutionId,
+            taskExecution.getCommitMessage()));
+      } else {
+        eventService.publish(new TaskExecutionCompletedEvent(
+            taskExecutionId,
+            delta != null && delta.hasChanges(),
+            taskExecution.getName(),
             commitMessage));
+      }
+
+    } catch (Exception e) {
+      log.error("Critical failure during commit of execution {}: {}", taskExecutionId,
+          e.getMessage(), e);
+      // Fallback failure - ensure we save at least this
+      taskExecution.fail("Critical error: " + e.getMessage());
+      taskExecutionRepository.save(taskExecution);
+      eventService.publish(new TaskExecutionFailedEvent(taskExecutionId,
+          taskExecution.getCommitMessage()));
+    }
   }
 
   /**

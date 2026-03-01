@@ -3,12 +3,17 @@ package com.example.hypocaust.domain;
 import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 
 @Builder
 @Schema(description = "A generated artifact (image, document, structured data, etc.)")
 public record Artifact(
+    @Schema(description = "ID of the artifact version (null if not yet persisted)",
+        nullable = true)
+    UUID id,
+
     @Schema(description = "Project-unique semantic name used to identify and deduplicate artifacts",
         example = "cat-astronaut-illustration",
         requiredMode = Schema.RequiredMode.REQUIRED)
@@ -44,6 +49,7 @@ public record Artifact(
 
   public static Artifact fromDraft(String name, ArtifactDraft draft) {
     return Artifact.builder()
+        .id(null)
         .name(name)
         .kind(draft.kind())
         .url(draft.url())
@@ -57,27 +63,27 @@ public record Artifact(
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, metadata,
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
         mimeType);
   }
 
   public Artifact withUrl(String url) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, metadata,
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
         mimeType);
   }
 
   public Artifact withMimeType(String mimeType) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, metadata,
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
         mimeType);
   }
 
   public Artifact withMetadata(JsonNode metadata) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, metadata,
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
         mimeType);
   }
 
   public Artifact withInlineContent(JsonNode inlineContent) {
-    return new Artifact(name, kind, url, inlineContent, title, description, status, metadata,
+    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
         mimeType);
   }
 }

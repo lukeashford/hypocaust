@@ -3,6 +3,7 @@ package com.example.hypocaust.service;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactChange;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.Changelist;
 import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -124,12 +125,9 @@ public class VersionManagementService {
   // === Artifact Materialization Operations ===
 
   @Transactional
-  protected ArtifactChange materializeArtifact(Artifact pendingArtifact, UUID projectId,
+  protected Artifact materializeArtifact(Artifact pendingArtifact, UUID projectId,
       UUID taskExecutionId) {
-    return new ArtifactChange(
-        pendingArtifact.name(),
-        artifactService.materialize(pendingArtifact, projectId, taskExecutionId)
-    );
+    return artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
   }
 
   /**
@@ -142,22 +140,30 @@ public class VersionManagementService {
    * @return The delta of changes, or null if no changes
    */
   @Transactional
-  public TaskExecutionDelta materialize(Changelist pending, UUID taskExecutionId,
+  public MaterializationResult materialize(Changelist pending, UUID taskExecutionId,
       UUID projectId) {
     if (!pending.hasChanges()) {
       log.info("No pending changes to materialize");
-      return new TaskExecutionDelta();
+      return new MaterializationResult(new TaskExecutionDelta(), false, false);
     }
 
-    List<ArtifactChange> added = new ArrayList<>();
+    List<Artifact> materializedAdded = new ArrayList<>();
     for (Artifact artifact : pending.getAdded()) {
-      added.add(materializeArtifact(artifact, projectId, taskExecutionId));
+      materializedAdded.add(materializeArtifact(artifact, projectId, taskExecutionId));
     }
 
-    List<ArtifactChange> edited = new ArrayList<>();
+    List<Artifact> materializedEdited = new ArrayList<>();
     for (Artifact artifact : pending.getEdited()) {
-      edited.add(materializeArtifact(artifact, projectId, taskExecutionId));
+      materializedEdited.add(materializeArtifact(artifact, projectId, taskExecutionId));
     }
+
+    List<ArtifactChange> added = materializedAdded.stream()
+        .map(a -> new ArtifactChange(a.name(), a.id()))
+        .toList();
+
+    List<ArtifactChange> edited = materializedEdited.stream()
+        .map(a -> new ArtifactChange(a.name(), a.id()))
+        .toList();
 
     List<String> deleted = new ArrayList<>(pending.getDeletedNames());
 
@@ -168,7 +174,26 @@ public class VersionManagementService {
         delta.edited().size(),
         delta.deleted().size());
 
-    return delta;
+    // Evaluate success/failure
+    List<Artifact> allMaterialized = new ArrayList<>(materializedAdded);
+    allMaterialized.addAll(materializedEdited);
+
+    long failedCount = allMaterialized.stream()
+        .filter(a -> a.status() == ArtifactStatus.FAILED)
+        .count();
+
+    boolean anyFailed = failedCount > 0;
+    boolean allFailed = !allMaterialized.isEmpty() && failedCount == allMaterialized.size();
+
+    return new MaterializationResult(delta, anyFailed, allFailed);
+  }
+
+  public record MaterializationResult(
+      TaskExecutionDelta delta,
+      boolean anyFailed,
+      boolean allFailed
+  ) {
+
   }
 
   /**

@@ -86,6 +86,19 @@ public class TaskExecutionEntity extends BaseEntity {
   }
 
   /**
+   * Complete with partial failures.
+   *
+   * @param commitMessage Summary of what was done
+   * @param delta The changes delta (including failed artifacts)
+   */
+  public void partiallySuccessful(String commitMessage, TaskExecutionDelta delta) {
+    this.completedAt = Instant.now();
+    this.status = TaskExecutionStatus.PARTIALLY_SUCCESSFUL;
+    this.commitMessage = commitMessage;
+    this.delta = delta;
+  }
+
+  /**
    * Mark as failed with error message.
    *
    * @param commitMessage The error message describing why it failed
