@@ -43,25 +43,6 @@ public class WordingService {
   }
 
   /**
-   * Generates a catchy title for an artifact.
-   */
-  public String generateArtifactTitle(String source, String outputDescription) {
-    return generate(PromptFragments.artifactTitle(),
-        String.format("Task/Prompt: %s\nOutput Role: %s", source, outputDescription),
-        "Generation context: ");
-  }
-
-  /**
-   * Generates a brief description for an artifact.
-   */
-  public String generateArtifactDescription(String source, String outputDescription) {
-    String desc = generate(PromptFragments.artifactDescription(),
-        String.format("Task/Prompt: %s\nOutput Role: %s", source, outputDescription),
-        "Generation context: ");
-    return truncateWithEllipsis(desc, 200);
-  }
-
-  /**
    * Translates a task into structured model requirements.
    */
   public ModelRequirement generateModelRequirement(String task) {

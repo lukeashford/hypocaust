@@ -192,6 +192,28 @@ public final class PromptFragments {
     );
   }
 
+  public static PromptFragment artifactNaming() {
+    return new PromptFragment("artifact_naming", """
+        You are an expert at naming artifacts for a creative project.
+        Given a task description, an output kind, and its role, generate:
+        1. Title: A catchy, unique human-readable title (e.g. "Cat Astronaut Illustration").
+        2. Name: A project-unique, snake_case identifier (e.g. "cat_astronaut_illustration").
+        3. Description: A concise, one-sentence summary.
+        
+        Example of a good description:
+        "A futuristic UI design for a galactic trading post, featuring neon accents and holograms."
+        
+        Existing names and titles are provided for deduplication. You MUST generate unique ones.
+        
+        Respond ONLY with JSON:
+        {
+          "title": "...",
+          "name": "...",
+          "description": "..."
+        }
+        """);
+  }
+
   /**
    * Generates a short snake_case name for a task execution (max 50 chars).
    */
@@ -204,51 +226,6 @@ public final class PromptFragments {
             Use only lowercase letters, numbers, and underscores.
             Reply with ONLY the name, nothing else.
             Examples: initial_character_designs, hair_color_change, forest_background_added"""
-    );
-  }
-
-  /**
-   * Generates a short snake_case name for an artifact (max 30 chars).
-   */
-  public static PromptFragment artifactName() {
-    return new PromptFragment(
-        "wording-artifact-name",
-        """
-            Generate a short snake_case name for an artifact (max 30 chars).
-            Use only lowercase letters, numbers, and underscores.
-            Reply with ONLY the name, nothing else.
-            Examples: hero_portrait, forest_background, main_script"""
-    );
-  }
-
-  /**
-   * Generates a catchy title (max 60 chars) for a creative artifact.
-   */
-  public static PromptFragment artifactTitle() {
-    return new PromptFragment(
-        "wording-artifact-title",
-        """
-            The user will provide a prompt describing a creative generation task and the specific role of this output.
-            Your job is to generate a catchy, human-friendly title (max 60 characters) that is unique within the project.
-            
-            IMPORTANT: You are NOT performing the task. You are only naming the expected outcome.
-            Output ONLY the title, without quotes or explanation."""
-    );
-  }
-
-  /**
-   * Generates a brief description (1-2 sentences) for a creative artifact.
-   */
-  public static PromptFragment artifactDescription() {
-    return new PromptFragment(
-        "wording-artifact-description",
-        """
-            The user will provide a prompt describing a creative generation task and the specific role of this output.
-            Your job is to generate a brief description (1 sentence, max 200 characters) for the artifact that will be produced.
-            Focus on the intended content, style, and subject matter.
-            
-            IMPORTANT: You are NOT performing the task. You are only describing the expected outcome.
-            Output ONLY the description."""
     );
   }
 

@@ -2,9 +2,7 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
@@ -96,22 +94,14 @@ public class GenerateCreativeTool {
     List<String> artifactNames = new ArrayList<>();
 
     for (var outputSpec : model.outputs()) {
-      String title = wordingService.generateArtifactTitle(task, outputSpec.getDescription());
-      String description = wordingService.generateArtifactDescription(task,
-          outputSpec.getDescription());
+      var metadata = buildMetadata(model, task, null);
 
       // Schedule GESTATING artifact
-      var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
-          .kind(outputSpec.getKind()).title(title).description(description)
-          .status(ArtifactStatus.GESTATING).build());
+      Artifact gestating = TaskExecutionContextHolder.addArtifact(
+          task, outputSpec.getDescription(), outputSpec.getKind(), metadata);
 
-      artifactNames.add(artifactName);
-
-      gestatingArtifacts.add(Artifact.builder()
-          .name(artifactName).kind(outputSpec.getKind()).title(title).description(description)
-          .status(ArtifactStatus.GESTATING)
-          .metadata(buildMetadata(model, task, null))
-          .build());
+      artifactNames.add(gestating.name());
+      gestatingArtifacts.add(gestating);
     }
 
     try {
@@ -138,7 +128,7 @@ public class GenerateCreativeTool {
         var updated = finalized.withMetadata(
             buildMetadata(model, task, result.providerInput()));
         // Update the changelist with the finalized artifact
-        TaskExecutionContextHolder.getContext().getArtifacts().updatePending(updated);
+        TaskExecutionContextHolder.updateArtifact(updated);
         finalizedNames.add(updated.name());
         log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(),
             updated.status());
@@ -173,7 +163,7 @@ public class GenerateCreativeTool {
 
   private void rollbackArtifact(String artifactName) {
     try {
-      TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
+      TaskExecutionContextHolder.rollbackArtifact(artifactName);
     } catch (Exception rollbackEx) {
       log.warn("Failed to rollback artifact: {}", rollbackEx.getMessage());
     }

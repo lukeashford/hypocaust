@@ -51,19 +51,6 @@ public record Artifact(
     String errorMessage
 ) implements ArtifactEventPayload {
 
-  public static Artifact fromDraft(String name, ArtifactDraft draft) {
-    return Artifact.builder()
-        .id(null)
-        .name(name)
-        .kind(draft.kind())
-        .inlineContent(draft.inlineContent())
-        .title(draft.title())
-        .description(draft.description())
-        .status(draft.status())
-        .metadata(draft.metadata())
-        .build();
-  }
-
   public Artifact withStatus(ArtifactStatus status) {
     return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
         metadata, mimeType, errorMessage);

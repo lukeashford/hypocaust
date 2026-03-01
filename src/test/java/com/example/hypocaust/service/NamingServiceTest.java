@@ -6,7 +6,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,43 +21,44 @@ class NamingServiceTest {
   @BeforeEach
   void setUp() {
     chatService = mock(ChatService.class);
-    service = new NamingService(chatService);
+    ObjectMapper objectMapper = new ObjectMapper();
+    service = new NamingService(chatService, objectMapper);
   }
 
   @Test
-  void generateArtifactName_withPreferredAvailable_usesPreferred() {
-    String name = service.generateArtifactName("source", Set.of("other"), "preferred");
-    assertThat(name).isEqualTo("preferred");
+  void generateArtifactNaming_callsLlmAndParsesJson() {
+    stubLlmResponse(
+        "```json\n{\"title\": \"Cat Art\", \"name\": \"cat_art\", \"description\": \"A cute cat\"}\n```");
+    NamingService.ArtifactNaming naming = service.generateArtifactNaming(
+        "Make a cat", "the image", ArtifactKind.IMAGE, Set.of(), Set.of());
+
+    assertThat(naming.title()).isEqualTo("Cat Art");
+    assertThat(naming.name()).isEqualTo("cat_art");
+    assertThat(naming.description()).isEqualTo("A cute cat");
   }
 
   @Test
-  void generateArtifactName_withPreferredTaken_callsLlm() {
-    stubLlmResponse("llm_generated_name");
-    String name = service.generateArtifactName("source", Set.of("preferred"), "preferred");
-    assertThat(name).isEqualTo("llm_generated_name");
+  void generateArtifactNaming_handlesTakenNamesAndTitles() {
+    stubLlmResponse(
+        "{\"title\": \"Cat Art\", \"name\": \"cat_art\", \"description\": \"A cute cat\"}");
+    NamingService.ArtifactNaming naming = service.generateArtifactNaming(
+        "Make a cat", "the image", ArtifactKind.IMAGE, Set.of("cat_art"), Set.of("Cat Art"));
+
+    assertThat(naming.title()).isEqualTo("Cat Art_2");
+    assertThat(naming.name()).isEqualTo("cat_art_2");
   }
 
   @Test
-  void generateArtifactName_sanitizesLlmResponse() {
-    stubLlmResponse("  My Artifact Name!  ");
-    String name = service.generateArtifactName("source", Set.of());
-    assertThat(name).isEqualTo("my_artifact_name");
-  }
-
-  @Test
-  void generateArtifactName_truncatesLongNames() {
-    stubLlmResponse("this_is_a_very_long_name_that_exceeds_thirty_characters");
-    String name = service.generateArtifactName("source", Set.of());
-    assertThat(name).hasSizeLessThanOrEqualTo(30);
-    assertThat(name).isEqualTo("this_is_a_very_long_name_that");
-  }
-
-  @Test
-  void generateArtifactName_fallsBackToCounterOnLlmFailure() {
+  void generateArtifactNaming_fallsBackOnLlmFailure() {
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
         .thenThrow(new RuntimeException("LLM error"));
-    String name = service.generateArtifactName("source", Set.of("source"));
-    assertThat(name).isEqualTo("source_2");
+
+    NamingService.ArtifactNaming naming = service.generateArtifactNaming(
+        "Make a cat", "the image", ArtifactKind.IMAGE, Set.of(), Set.of());
+
+    assertThat(naming.title()).isEqualTo("Make a cat");
+    assertThat(naming.name()).isEqualTo("make_a_cat");
+    assertThat(naming.description()).isEqualTo("Generated image");
   }
 
   @Test

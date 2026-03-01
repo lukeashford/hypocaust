@@ -85,10 +85,12 @@ class GenerateCreativeToolTest {
             Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Cute Cat");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
-        "A very cute cat illustration");
-    when(artifactsContext.add(any())).thenReturn("cute-cat-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("cute-cat-1").kind(kind).title("Cute Cat")
+        .description("A very cute cat illustration")
+        .status(ArtifactStatus.GESTATING)
+        .build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
     var finalizedArtifact = Artifact.builder()
@@ -145,10 +147,10 @@ class GenerateCreativeToolTest {
             List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Video");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
-        "A video");
-    when(artifactsContext.add(any())).thenReturn("video-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("video-1").kind(kind).title("Video").description("A video")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
@@ -176,9 +178,10 @@ class GenerateCreativeToolTest {
             Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Cat");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn("A cat");
-    when(artifactsContext.add(any())).thenReturn("cat-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("cat-1").kind(kind).title("Cat").description("A cat")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new RuntimeException("Provider API timeout"));
@@ -206,10 +209,10 @@ class GenerateCreativeToolTest {
             Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Thing");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
-        "A thing");
-    when(artifactsContext.add(any())).thenReturn("thing-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("thing-1").kind(kind).title("Thing").description("A thing")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
         .thenThrow(new IllegalStateException("Model returned no usable output"));
@@ -236,9 +239,10 @@ class GenerateCreativeToolTest {
             "OPENROUTER", Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Poem");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn("A poem");
-    when(artifactsContext.add(any())).thenReturn("poem-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("poem-1").kind(kind).title("Poem").description("A poem")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     String poemText = "Roses are red...";
     var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
@@ -287,10 +291,14 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString(), anyString())).thenReturn("Sunset");
-    when(wordingService.generateArtifactDescription(anyString(), anyString())).thenReturn(
-        "A sunset");
-    when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
+    Artifact mockGestating1 = Artifact.builder()
+        .name("sunset-1").kind(kind).title("Sunset").description("A sunset")
+        .status(ArtifactStatus.GESTATING).build();
+    Artifact mockGestating2 = Artifact.builder()
+        .name("sunset-2").kind(kind).title("Sunset").description("A sunset")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(eq(task), anyString(), eq(kind), any()))
+        .thenReturn(mockGestating1, mockGestating2);
 
     // First model: run fails
     when(modelExecutor.run(anyList(), anyString(),

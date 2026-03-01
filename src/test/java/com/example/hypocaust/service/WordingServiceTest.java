@@ -52,33 +52,6 @@ class WordingServiceTest {
   }
 
   @Test
-  void generateArtifactDescription_truncatesAt100() {
-    // GIVEN
-    String longResponse = IntStream.range(0, 250).mapToObj(i -> "a").collect(Collectors.joining());
-    mockChatResponse(longResponse);
-
-    // WHEN
-    String result = wordingService.generateArtifactDescription("source", "desc");
-
-    // THEN
-    assertThat(result).hasSize(200);
-    assertThat(result).endsWith("...");
-  }
-
-  @Test
-  void generateArtifactDescription_shortResponse_noTruncation() {
-    // GIVEN
-    String shortResponse = "Hello world description";
-    mockChatResponse(shortResponse);
-
-    // WHEN
-    String result = wordingService.generateArtifactDescription("source", "desc");
-
-    // THEN
-    assertThat(result).isEqualTo("Hello world description");
-  }
-
-  @Test
   void generateModelRequirement_success() {
     // GIVEN
     String jsonResponse = """

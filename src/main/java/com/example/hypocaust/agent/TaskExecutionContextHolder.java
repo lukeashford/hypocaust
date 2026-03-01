@@ -1,9 +1,10 @@
 package com.example.hypocaust.agent;
 
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactDraft;
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
@@ -76,10 +77,11 @@ public final class TaskExecutionContextHolder {
   /**
    * Schedule a new artifact for creation.
    *
-   * @return the generated artifact name
+   * @return the generated artifact
    */
-  public static String addArtifact(ArtifactDraft draft) {
-    return getContext().getArtifacts().add(draft);
+  public static Artifact addArtifact(String task, String outputDescription, ArtifactKind kind,
+      JsonNode metadata) {
+    return getContext().getArtifacts().add(task, outputDescription, kind, metadata);
   }
 
   /**
@@ -119,13 +121,6 @@ public final class TaskExecutionContextHolder {
    */
   public static String restoreArtifact(String artifactName, String executionName) {
     return getContext().getArtifacts().restore(artifactName, executionName);
-  }
-
-  /**
-   * Check if an artifact exists.
-   */
-  public static boolean artifactExists(String name) {
-    return getContext().getArtifacts().exists(name);
   }
 
   // === Todo lifecycle convenience methods ===
