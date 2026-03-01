@@ -1,8 +1,8 @@
 package com.example.hypocaust.mapper;
 
 import com.example.hypocaust.db.EventEntity;
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
+import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
@@ -26,14 +26,14 @@ public interface EventMapper {
   default ArtifactAddedEvent toArtifactAddedEvent(EventEntity entity) {
     return new ArtifactAddedEvent(
         entity.getTaskExecutionId(),
-        (Artifact) entity.getPayload()
+        (ArtifactEventPayload) entity.getPayload()
     );
   }
 
   default ArtifactUpdatedEvent toArtifactUpdatedEvent(EventEntity entity) {
     return new ArtifactUpdatedEvent(
         entity.getTaskExecutionId(),
-        (Artifact) entity.getPayload()
+        (ArtifactEventPayload) entity.getPayload()
     );
   }
 

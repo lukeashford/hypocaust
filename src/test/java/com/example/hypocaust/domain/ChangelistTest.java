@@ -24,7 +24,7 @@ class ChangelistTest {
         .kind(ArtifactKind.IMAGE)
         .title("Title")
         .description("Desc")
-        .status(ArtifactStatus.CREATED)
+        .status(ArtifactStatus.MANIFESTED)
         .build();
   }
 
@@ -34,7 +34,7 @@ class ChangelistTest {
         .kind(ArtifactKind.IMAGE)
         .title(title)
         .description("Desc")
-        .status(ArtifactStatus.CREATED)
+        .status(ArtifactStatus.MANIFESTED)
         .build();
   }
 

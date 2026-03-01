@@ -78,13 +78,12 @@ class ArtifactsContextRestoreTest {
         .title("Protagonist Portrait")
         .description("A portrait of the protagonist")
         .status(ArtifactStatus.MANIFESTED)
-        .url("https://storage.example.com/protagonist.webp")
+        .storageKey("blobs/ab/cd/protagonist.webp")
         .build();
 
     when(versionService.getMaterializedArtifactAtExecution(
         "protagonist", "initial_character_designs", PROJECT_ID))
         .thenReturn(Optional.of(source));
-    // No existing artifacts in snapshot
 
     String finalName = context.restore("protagonist", "initial_character_designs");
 
@@ -100,14 +99,13 @@ class ArtifactsContextRestoreTest {
         .title("Protagonist Portrait")
         .description("A portrait of the protagonist")
         .status(ArtifactStatus.MANIFESTED)
-        .url("https://storage.example.com/protagonist.webp")
+        .storageKey("blobs/ab/cd/protagonist.webp")
         .build();
 
     when(versionService.getMaterializedArtifactAtExecution(
         "protagonist", "initial_character_designs", PROJECT_ID))
         .thenReturn(Optional.of(source));
 
-    // Existing snapshot already contains "protagonist"
     when(versionService.computeArtifactSnapshotAt(PREDECESSOR_ID))
         .thenReturn(Map.of("protagonist", UUID.randomUUID()));
     when(namingService.generateArtifactName(
@@ -122,14 +120,14 @@ class ArtifactsContextRestoreTest {
   }
 
   @Test
-  void restore_imageArtifact_setsStatusToCreated() {
+  void restore_imageArtifact_keepsOriginalStatus() {
     Artifact source = Artifact.builder()
         .name("protagonist")
         .kind(ArtifactKind.IMAGE)
         .title("Protagonist Portrait")
         .description("Portrait")
         .status(ArtifactStatus.MANIFESTED)
-        .url("https://storage.example.com/protagonist.webp")
+        .storageKey("blobs/ab/cd/protagonist.webp")
         .build();
 
     when(versionService.getMaterializedArtifactAtExecution(any(), any(), any()))
@@ -137,14 +135,13 @@ class ArtifactsContextRestoreTest {
 
     context.restore("protagonist", "initial_character_designs");
 
-    // Verify the artifact in the changelist has CREATED status (needed for materialization)
     Optional<Artifact> restored = context.getChangelist().getAdded().stream()
         .filter(a -> a.name().equals("protagonist"))
         .findFirst();
 
     assertThat(restored).isPresent();
-    assertThat(restored.get().status()).isEqualTo(ArtifactStatus.CREATED);
-    assertThat(restored.get().url()).isEqualTo("https://storage.example.com/protagonist.webp");
+    assertThat(restored.get().status()).isEqualTo(ArtifactStatus.MANIFESTED);
+    assertThat(restored.get().storageKey()).isEqualTo("blobs/ab/cd/protagonist.webp");
   }
 
   @Test
@@ -155,7 +152,6 @@ class ArtifactsContextRestoreTest {
         .title("Story Outline")
         .description("Initial story outline")
         .status(ArtifactStatus.MANIFESTED)
-        .url(null)
         .inlineContent(com.fasterxml.jackson.databind.node.TextNode.valueOf("Once upon a time..."))
         .build();
 
@@ -172,7 +168,7 @@ class ArtifactsContextRestoreTest {
 
     assertThat(restored).isPresent();
     assertThat(restored.get().status()).isEqualTo(ArtifactStatus.MANIFESTED);
-    assertThat(restored.get().url()).isNull();
+    assertThat(restored.get().storageKey()).isNull();
     assertThat(restored.get().inlineContent()).isNotNull();
   }
 
@@ -184,7 +180,7 @@ class ArtifactsContextRestoreTest {
         .title("Protagonist Portrait")
         .description("A detailed portrait")
         .status(ArtifactStatus.MANIFESTED)
-        .url("https://storage.example.com/img.webp")
+        .storageKey("blobs/ab/cd/img.webp")
         .mimeType("image/webp")
         .build();
 
@@ -198,6 +194,6 @@ class ArtifactsContextRestoreTest {
     assertThat(restored.title()).isEqualTo("Protagonist Portrait");
     assertThat(restored.description()).isEqualTo("A detailed portrait");
     assertThat(restored.mimeType()).isEqualTo("image/webp");
-    assertThat(restored.url()).isEqualTo("https://storage.example.com/img.webp");
+    assertThat(restored.storageKey()).isEqualTo("blobs/ab/cd/img.webp");
   }
 }

@@ -108,7 +108,8 @@ public class ArtifactsContext {
    *
    * <p>Retrieves the artifact as it existed at the named task execution, then adds it as a new
    * artifact. The original name is reused if it is currently free; otherwise a new unique name is
-   * generated automatically.
+   * generated automatically. The artifact retains its original status since storageKey persists
+   * across executions.
    *
    * @param artifactName the artifact's semantic name in the historical snapshot
    * @param executionName the readable task execution name (e.g. "initial_character_designs")
@@ -123,20 +124,16 @@ public class ArtifactsContext {
     String finalName = namingService.generateArtifactName(source.description(),
         collectTakenNames(), artifactName);
 
-    // URL-based artifacts must enter the changelist as CREATED so that materialization
-    // re-downloads and creates a new storage record under the new task execution.
-    ArtifactStatus restoredStatus = source.url() != null ? ArtifactStatus.CREATED : source.status();
-
     Artifact restored = Artifact.builder()
         .name(finalName)
         .kind(source.kind())
         .title(source.title())
         .description(source.description())
-        .url(source.url())
+        .storageKey(source.storageKey())
         .inlineContent(source.inlineContent())
         .metadata(source.metadata())
         .mimeType(source.mimeType())
-        .status(restoredStatus)
+        .status(source.status())
         .build();
 
     changelist.addArtifact(restored);

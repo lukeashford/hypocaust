@@ -9,6 +9,7 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,9 @@ public class FalModelExecutor extends AbstractModelExecutor {
   private final FalClient falClient;
 
   public FalModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, FalClient falClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      FalClient falClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.falClient = falClient;
   }
 
@@ -40,14 +42,14 @@ public class FalModelExecutor extends AbstractModelExecutor {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("fal-plan", """
             You are an expert creative director. Prepare a fal.ai generation plan.
-            
+
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object matching the fal.ai model's expected input format.
                - Optimize prompts for the best artistic results.
                - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -61,7 +63,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
         Task: %s
         Kind: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, kind, description, bestPractices);
@@ -81,27 +83,22 @@ public class FalModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
-    // fal.ai uses owner/modelId as the model path (e.g., "fal-ai/flux/schnell")
     var modelPath = owner + "/" + modelId;
     return falClient.submit(modelPath, input);
   }
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // fal.ai image models: {"images": [{"url": "...", ...}]}
     if (output.has("images") && output.get("images").isArray()
         && !output.get("images").isEmpty()) {
       return output.get("images").get(0).path("url").asText();
     }
-    // fal.ai video models: {"video": {"url": "..."}}
     if (output.has("video") && output.get("video").has("url")) {
       return output.get("video").path("url").asText();
     }
-    // fal.ai audio models: {"audio": {"url": "..."}}
     if (output.has("audio") && output.get("audio").has("url")) {
       return output.get("audio").path("url").asText();
     }
-    // Generic fallback: look for top-level url
     if (output.has("url")) {
       return output.get("url").asText();
     }

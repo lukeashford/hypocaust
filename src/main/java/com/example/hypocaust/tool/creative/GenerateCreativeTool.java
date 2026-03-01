@@ -5,6 +5,7 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactDraft;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
+import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
@@ -14,7 +15,6 @@ import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
@@ -43,6 +43,7 @@ public class GenerateCreativeTool {
   private final ExecutionRouter executionRouter;
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
+  private final ArtifactMapper artifactMapper;
 
   @DiscoverableTool(
       name = "generate_creative",
@@ -96,34 +97,32 @@ public class GenerateCreativeTool {
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
 
-    // Schedule artifact
+    // Schedule GESTATING artifact
     var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
         .kind(artifactKind).title(title).description(description)
         .status(ArtifactStatus.GESTATING).build());
 
     try {
-      // Delegate full pipeline to executor: plan → substitute → execute (with retry) → extract
+      // Build the GESTATING artifact to pass to the executor
+      var gestatingArtifact = Artifact.builder()
+          .name(artifactName).kind(artifactKind).title(title).description(description)
+          .status(ArtifactStatus.GESTATING)
+          .metadata(buildMetadata(model, task, null))
+          .build();
+
+      // Delegate full pipeline to executor: plan → substitute → execute → download/store
       UnaryOperator<JsonNode> substitutor = input -> substituteArtifacts(input, availableArtifacts);
-      var result = executor.run(task, artifactKind, model.name(),
+      var result = executor.run(gestatingArtifact, task, model.name(),
           model.owner(), model.modelId(), model.description(), model.bestPractices(), substitutor);
 
-      if (result.output() == null || result.output().isBlank() || "null".equals(result.output())) {
-        throw new IllegalStateException("Model returned no usable output");
-      }
+      // Update metadata with providerInput
+      var finalizedArtifact = result.artifact()
+          .withMetadata(buildMetadata(model, task, result.providerInput()));
 
-      // Finalize artifact
-      var builder = Artifact.builder()
-          .name(artifactName).kind(artifactKind).title(title).description(description)
-          .metadata(buildMetadata(model, task, result.providerInput()));
-
-      if (artifactKind == ArtifactKind.TEXT) {
-        builder.inlineContent(new TextNode(result.output())).status(ArtifactStatus.MANIFESTED);
-      } else {
-        builder.url(result.output()).status(ArtifactStatus.CREATED);
-      }
-
-      TaskExecutionContextHolder.getContext().getArtifacts().updatePending(builder.build());
-      log.info("{} Complete: {}", LOG_PREFIX, artifactName);
+      // Update the changelist with the finalized artifact
+      TaskExecutionContextHolder.getContext().getArtifacts().updatePending(finalizedArtifact);
+      log.info("{} Complete: {} (status: {})", LOG_PREFIX, artifactName,
+          finalizedArtifact.status());
 
       return GenerateCreativeResult.success(artifactName,
           "Generated " + artifactKind + " using " + model.name());
@@ -142,7 +141,9 @@ public class GenerateCreativeTool {
     genDetails.put("owner", model.owner());
     genDetails.put("model_id", model.modelId());
     genDetails.put("prompt", task);
-    metadata.set("providerInput", input);
+    if (input != null) {
+      metadata.set("providerInput", input);
+    }
     return metadata;
   }
 
@@ -159,10 +160,17 @@ public class GenerateCreativeTool {
       String jsonString = node.toString();
       for (Artifact artifact : artifacts) {
         String placeholder = "@" + artifact.name();
-        String content = artifact.kind() == ArtifactKind.TEXT
-            ? artifact.description()
-            : artifact.url();
-        jsonString = jsonString.replace(placeholder, content);
+        String content;
+        if (artifact.kind() == ArtifactKind.TEXT) {
+          content = artifact.description();
+        } else if (artifact.storageKey() != null) {
+          content = artifactMapper.toPresignedUrl(artifact.storageKey());
+        } else {
+          continue;
+        }
+        if (content != null) {
+          jsonString = jsonString.replace(placeholder, content);
+        }
       }
       return objectMapper.readTree(jsonString);
     } catch (Exception e) {

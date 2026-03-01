@@ -126,9 +126,8 @@ class TaskExecutionLifecycleServiceTest {
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
     when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");
-    when(versionService.materialize(any(), any(), any()))
-        .thenReturn(new VersionManagementService.MaterializationResult(
-            new com.example.hypocaust.domain.TaskExecutionDelta(), false, false));
+    when(versionService.persist(any(), any(), any()))
+        .thenReturn(new com.example.hypocaust.domain.TaskExecutionDelta());
 
     // When
     lifecycleService.commitExecution(executionId, projectId, "test task", context);
@@ -139,7 +138,7 @@ class TaskExecutionLifecycleServiceTest {
     assertThat(updated.getCompletedAt()).isNotNull();
     assertThat(updated.getCommitMessage()).isNotNull();
 
-    verify(versionService).materialize(any(), eq(executionId), eq(projectId));
+    verify(versionService).persist(any(), eq(executionId), eq(projectId));
     verify(todoService).materialize(any(), eq(executionId));
     verify(eventService).publish(
         any(com.example.hypocaust.domain.event.TaskExecutionCompletedEvent.class));

@@ -22,9 +22,10 @@ public record Artifact(
     @Schema(description = "Content type category", requiredMode = Schema.RequiredMode.REQUIRED)
     @NonNull ArtifactKind kind,
 
-    @Schema(description = "URL to fetch the resource from (available once status is MANIFESTED)",
+    @Schema(description = "Storage key for file-based artifacts (internal). "
+        + "Mapped to a presigned URL at API boundaries.",
         nullable = true)
-    String url,
+    String storageKey,
 
     @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
         nullable = true, type = "string")
@@ -44,7 +45,10 @@ public record Artifact(
     JsonNode metadata,
 
     @Schema(description = "Technical MIME type", example = "image/webp")
-    String mimeType
+    String mimeType,
+
+    @Schema(description = "Error message describing why generation or storage failed", nullable = true)
+    String errorMessage
 ) implements ArtifactEventPayload {
 
   public static Artifact fromDraft(String name, ArtifactDraft draft) {
@@ -52,38 +56,41 @@ public record Artifact(
         .id(null)
         .name(name)
         .kind(draft.kind())
-        .url(draft.url())
         .inlineContent(draft.inlineContent())
         .title(draft.title())
         .description(draft.description())
         .status(draft.status())
         .metadata(draft.metadata())
-        .mimeType(null) // Drafts don't have mimeType yet
         .build();
   }
 
   public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
-        mimeType);
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
   }
 
-  public Artifact withUrl(String url) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
-        mimeType);
+  public Artifact withStorageKey(String storageKey) {
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
   }
 
   public Artifact withMimeType(String mimeType) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
-        mimeType);
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
   }
 
   public Artifact withMetadata(JsonNode metadata) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
-        mimeType);
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
   }
 
   public Artifact withInlineContent(JsonNode inlineContent) {
-    return new Artifact(id, name, kind, url, inlineContent, title, description, status, metadata,
-        mimeType);
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
+  }
+
+  public Artifact withErrorMessage(String errorMessage) {
+    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
+        metadata, mimeType, errorMessage);
   }
 }

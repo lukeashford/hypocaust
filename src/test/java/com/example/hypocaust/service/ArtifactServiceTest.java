@@ -13,7 +13,6 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.repo.ArtifactRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,23 +21,18 @@ import org.junit.jupiter.api.Test;
 class ArtifactServiceTest {
 
   private ArtifactRepository artifactRepository;
-  private StorageService storageService;
   private ArtifactMapper artifactMapper;
-  private ObjectMapper objectMapper;
   private ArtifactService artifactService;
 
   @BeforeEach
   void setUp() {
     artifactRepository = mock(ArtifactRepository.class);
-    storageService = mock(StorageService.class);
     artifactMapper = mock(ArtifactMapper.class);
-    objectMapper = new ObjectMapper();
-    artifactService = new ArtifactService(artifactRepository, storageService, artifactMapper,
-        objectMapper);
+    artifactService = new ArtifactService(artifactRepository, artifactMapper);
   }
 
   @Test
-  void shouldGetArtifactWithExternalizedUrl() {
+  void shouldGetArtifact() {
     ArtifactEntity entity = ArtifactEntity.builder()
         .name("test")
         .kind(ArtifactKind.IMAGE)
@@ -50,7 +44,7 @@ class ArtifactServiceTest {
     Artifact domainArtifact = Artifact.builder()
         .name("test")
         .kind(ArtifactKind.IMAGE)
-        .url("http://presigned-url")
+        .storageKey("blobs/12/34/hash.png")
         .status(ArtifactStatus.MANIFESTED)
         .title("Test Title")
         .description("Test Description")
@@ -62,19 +56,22 @@ class ArtifactServiceTest {
     Optional<Artifact> result = artifactService.getArtifact(artifactId);
 
     assertThat(result).isPresent();
-    assertThat(result.get().url()).isEqualTo("http://presigned-url");
+    assertThat(result.get().storageKey()).isEqualTo("blobs/12/34/hash.png");
     verify(artifactMapper).toDomain(entity);
   }
 
   @Test
-  void shouldMaterializeArtifact() {
+  void shouldPersistArtifact() {
     UUID projectId = UUID.randomUUID();
     UUID taskExecutionId = UUID.randomUUID();
-    Artifact pendingArtifact = Artifact.builder()
+    UUID artifactId = UUID.randomUUID();
+
+    Artifact artifact = Artifact.builder()
         .name("new_artifact")
         .kind(ArtifactKind.IMAGE)
-        .status(ArtifactStatus.CREATED)
-        .url("http://temp-url")
+        .status(ArtifactStatus.MANIFESTED)
+        .storageKey("blobs/ab/cd/hash.png")
+        .mimeType("image/png")
         .title("Title")
         .description("Desc")
         .build();
@@ -88,91 +85,69 @@ class ArtifactServiceTest {
         .taskExecutionId(taskExecutionId)
         .build();
 
-    when(storageService.store(any(byte[].class), any(String.class))).thenReturn(
-        "blobs/ab/cd/hash.png");
-    when(artifactMapper.toEntity(any(Artifact.class), eq(projectId),
-        eq(taskExecutionId))).thenReturn(entity);
-    when(artifactRepository.save(entity)).thenReturn(entity);
-    when(artifactMapper.toDomain(entity)).thenReturn(Artifact.builder()
-        .id(entity.getId())
-        .name(entity.getName())
-        .kind(entity.getKind())
-        .status(entity.getStatus())
-        .title("Title")
-        .description("Desc")
-        .build());
-
-    Artifact result = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
-
-    assertThat(result.id()).isEqualTo(entity.getId());
-    verify(artifactRepository).save(entity);
-  }
-
-  @Test
-  void shouldMaterializeTextArtifactInline() throws java.io.IOException {
-    UUID projectId = UUID.randomUUID();
-    UUID taskExecutionId = UUID.randomUUID();
-
-    java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("test", ".txt");
-    java.nio.file.Files.writeString(tempFile, "Hello World");
-
-    Artifact pendingArtifact = Artifact.builder()
-        .name("text_artifact")
-        .kind(ArtifactKind.TEXT)
-        .status(ArtifactStatus.CREATED)
-        .url(tempFile.toUri().toURL().toString())
+    Artifact persisted = Artifact.builder()
+        .id(artifactId)
+        .name("new_artifact")
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.MANIFESTED)
+        .storageKey("blobs/ab/cd/hash.png")
         .title("Title")
         .description("Desc")
         .build();
 
-    when(artifactMapper.toEntity(any(Artifact.class), eq(projectId),
-        eq(taskExecutionId))).thenAnswer(invocation -> {
-      Artifact arg = invocation.getArgument(0);
-      return ArtifactEntity.builder()
-          .name(arg.name())
-          .kind(arg.kind())
-          .status(arg.status())
-          .inlineContent(arg.inlineContent())
-          .projectId(projectId)
-          .taskExecutionId(taskExecutionId)
-          .build();
-    });
+    when(artifactMapper.toEntity(artifact, projectId, taskExecutionId)).thenReturn(entity);
+    when(artifactRepository.save(entity)).thenReturn(entity);
+    when(artifactMapper.toDomain(entity)).thenReturn(persisted);
 
-    when(artifactRepository.save(any(ArtifactEntity.class))).thenAnswer(
-        invocation -> {
-          ArtifactEntity entity = invocation.getArgument(0);
-          return entity;
-        });
+    Artifact result = artifactService.persist(artifact, projectId, taskExecutionId);
 
-    when(artifactMapper.toDomain(any(ArtifactEntity.class))).thenAnswer(
-        invocation -> {
-          ArtifactEntity entity = invocation.getArgument(0);
-          return Artifact.builder()
-              .id(entity.getId())
-              .name(entity.getName())
-              .kind(entity.getKind())
-              .status(entity.getStatus())
-              .inlineContent(entity.getInlineContent())
-              .title("Title")
-              .description("Desc")
-              .build();
-        });
-
-    Artifact result = artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
-
-    assertThat(result.id()).isNotNull();
-
-    org.mockito.ArgumentCaptor<Artifact> artifactCaptor = org.mockito.ArgumentCaptor.forClass(
-        Artifact.class);
-    verify(artifactMapper).toEntity(artifactCaptor.capture(), eq(projectId), eq(taskExecutionId));
-
-    Artifact materialized = artifactCaptor.getValue();
-    assertThat(materialized.status()).isEqualTo(ArtifactStatus.MANIFESTED);
-    assertThat(materialized.inlineContent()).isNotNull();
-    assertThat(materialized.inlineContent().asText()).isEqualTo("Hello World");
-    assertThat(materialized.url()).isNull(); // Should be null for inline
-
-    java.nio.file.Files.deleteIfExists(tempFile);
+    assertThat(result.id()).isEqualTo(artifactId);
+    verify(artifactRepository).save(entity);
+    verify(artifactMapper).toEntity(artifact, projectId, taskExecutionId);
   }
 
+  @Test
+  void shouldPersistFailedArtifact() {
+    UUID projectId = UUID.randomUUID();
+    UUID taskExecutionId = UUID.randomUUID();
+    UUID artifactId = UUID.randomUUID();
+
+    Artifact artifact = Artifact.builder()
+        .name("failed_artifact")
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.FAILED)
+        .errorMessage("Download failed after 3 attempts")
+        .title("Title")
+        .description("Desc")
+        .build();
+
+    ArtifactEntity entity = ArtifactEntity.builder()
+        .name("failed_artifact")
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.FAILED)
+        .errorMessage("Download failed after 3 attempts")
+        .projectId(projectId)
+        .taskExecutionId(taskExecutionId)
+        .build();
+
+    Artifact persisted = Artifact.builder()
+        .id(artifactId)
+        .name("failed_artifact")
+        .kind(ArtifactKind.IMAGE)
+        .status(ArtifactStatus.FAILED)
+        .errorMessage("Download failed after 3 attempts")
+        .title("Title")
+        .description("Desc")
+        .build();
+
+    when(artifactMapper.toEntity(artifact, projectId, taskExecutionId)).thenReturn(entity);
+    when(artifactRepository.save(entity)).thenReturn(entity);
+    when(artifactMapper.toDomain(entity)).thenReturn(persisted);
+
+    Artifact result = artifactService.persist(artifact, projectId, taskExecutionId);
+
+    assertThat(result.id()).isEqualTo(artifactId);
+    assertThat(result.status()).isEqualTo(ArtifactStatus.FAILED);
+    assertThat(result.errorMessage()).isEqualTo("Download failed after 3 attempts");
+  }
 }

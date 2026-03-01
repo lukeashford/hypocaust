@@ -3,7 +3,6 @@ package com.example.hypocaust.service;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactChange;
-import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.Changelist;
 import com.example.hypocaust.domain.TaskExecutionDelta;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -21,9 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for artifact version management operations. Handles artifact materialization and
- * resolution, but NOT task execution lifecycle. Task execution lifecycle (commit/fail) is managed
- * by TaskService.
+ * Service for artifact version management operations. Handles artifact persistence and resolution.
+ * Artifacts arrive already finalized (MANIFESTED or FAILED) from executors — no downloading
+ * happens here.
  */
 @Service
 @RequiredArgsConstructor
@@ -83,12 +82,7 @@ public class VersionManagementService {
   }
 
   /**
-   * Gets the most recent committed snapshot of an artifact at a given task execution. DOES NOT
-   * include ongoing changes.
-   *
-   * @param name the artifact name
-   * @param taskExecutionId the task execution id (predecessor is used if still in progress)
-   * @return the artifact, or empty if not found or deleted
+   * Gets the most recent committed snapshot of an artifact at a given task execution.
    */
   public Optional<Artifact> getMaterializedArtifactAt(@NonNull String name,
       UUID taskExecutionId) {
@@ -122,89 +116,54 @@ public class VersionManagementService {
     return getArtifactWithChanges(name, taskExecutionId, changelist).isPresent();
   }
 
-  // === Artifact Materialization Operations ===
-
-  @Transactional
-  protected Artifact materializeArtifact(Artifact pendingArtifact, UUID projectId,
-      UUID taskExecutionId) {
-    return artifactService.materialize(pendingArtifact, projectId, taskExecutionId);
-  }
-
   /**
-   * Materialize all pending artifacts by downloading external inlineContent and storing in
-   * database. Returns the delta representing what changed, or null if no changes.
+   * Persist all pending artifacts to the database. Artifacts are already finalized — no downloading
+   * or status transitions happen here.
    *
-   * @param pending The accumulated changes containing artifacts to materialize
+   * @param pending The accumulated changes containing artifacts to persist
    * @param taskExecutionId The TaskExecution these artifacts belong to
    * @param projectId The project these artifacts belong to
-   * @return The delta of changes, or null if no changes
+   * @return The delta of changes, or an empty delta if no changes
    */
   @Transactional
-  public MaterializationResult materialize(Changelist pending, UUID taskExecutionId,
-      UUID projectId) {
+  public TaskExecutionDelta persist(Changelist pending, UUID taskExecutionId, UUID projectId) {
     if (!pending.hasChanges()) {
-      log.info("No pending changes to materialize");
-      return new MaterializationResult(new TaskExecutionDelta(), false, false);
+      log.info("No pending changes to persist");
+      return new TaskExecutionDelta();
     }
 
-    List<Artifact> materializedAdded = new ArrayList<>();
+    List<Artifact> persistedAdded = new ArrayList<>();
     for (Artifact artifact : pending.getAdded()) {
-      materializedAdded.add(materializeArtifact(artifact, projectId, taskExecutionId));
+      persistedAdded.add(artifactService.persist(artifact, projectId, taskExecutionId));
     }
 
-    List<Artifact> materializedEdited = new ArrayList<>();
+    List<Artifact> persistedEdited = new ArrayList<>();
     for (Artifact artifact : pending.getEdited()) {
-      materializedEdited.add(materializeArtifact(artifact, projectId, taskExecutionId));
+      persistedEdited.add(artifactService.persist(artifact, projectId, taskExecutionId));
     }
 
-    List<ArtifactChange> added = materializedAdded.stream()
+    List<ArtifactChange> added = persistedAdded.stream()
         .map(a -> new ArtifactChange(a.name(), a.id()))
         .toList();
 
-    List<ArtifactChange> edited = materializedEdited.stream()
+    List<ArtifactChange> edited = persistedEdited.stream()
         .map(a -> new ArtifactChange(a.name(), a.id()))
         .toList();
 
     List<String> deleted = new ArrayList<>(pending.getDeletedNames());
 
     TaskExecutionDelta delta = new TaskExecutionDelta(added, edited, deleted);
-    log.info("Materialized {} artifacts (added: {}, edited: {}, deleted: {})",
+    log.info("Persisted {} artifacts (added: {}, edited: {}, deleted: {})",
         added.size() + edited.size(),
         delta.added().size(),
         delta.edited().size(),
         delta.deleted().size());
 
-    // Evaluate success/failure
-    List<Artifact> allMaterialized = new ArrayList<>(materializedAdded);
-    allMaterialized.addAll(materializedEdited);
-
-    long failedCount = allMaterialized.stream()
-        .filter(a -> a.status() == ArtifactStatus.FAILED)
-        .count();
-
-    boolean anyFailed = failedCount > 0;
-    boolean allFailed = !allMaterialized.isEmpty() && failedCount == allMaterialized.size();
-
-    return new MaterializationResult(delta, anyFailed, allFailed);
-  }
-
-  public record MaterializationResult(
-      TaskExecutionDelta delta,
-      boolean anyFailed,
-      boolean allFailed
-  ) {
-
+    return delta;
   }
 
   /**
-   * Gets a historical artifact version by artifact name and execution name. This is the primary
-   * entry point for LLM-driven version lookbacks: "get protagonist_portrait at
-   * initial_character_designs".
-   *
-   * @param artifactName the artifact's semantic name
-   * @param executionName the execution's readable name
-   * @param projectId the project scope
-   * @return the artifact as it existed at that execution, or empty if not found
+   * Gets a historical artifact version by artifact name and execution name.
    */
   public Optional<Artifact> getMaterializedArtifactAtExecution(@NonNull String artifactName,
       @NonNull String executionName, @NonNull UUID projectId) {

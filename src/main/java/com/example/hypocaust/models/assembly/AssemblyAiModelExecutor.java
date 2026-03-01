@@ -9,6 +9,7 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,9 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   private final AssemblyAiClient assemblyAiClient;
 
   public AssemblyAiModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, AssemblyAiClient assemblyAiClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      AssemblyAiClient assemblyAiClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.assemblyAiClient = assemblyAiClient;
   }
 
@@ -61,7 +63,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
         Task: %s
         Kind: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, kind, description, bestPractices);
@@ -93,16 +95,12 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // AssemblyAI transcription: return the full transcript text as the "output"
-    // The client should poll until status == "completed" and return the resolved transcript object
     if (output.has("text") && output.get("text").isTextual()) {
       return output.get("text").asText();
     }
-    // Interim: job submitted, return transcript ID for polling
     if (output.has("id")) {
       return output.get("id").asText();
     }
-    // Audio intelligence: return JSON summary if text not present
     if (output.has("chapters")) {
       return output.toString();
     }

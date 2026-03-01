@@ -6,6 +6,7 @@ import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,9 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   private final OpenRouterClient openRouterClient;
 
   public OpenRouterModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, OpenRouterClient openRouterClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      OpenRouterClient openRouterClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.openRouterClient = openRouterClient;
   }
 
@@ -45,7 +47,6 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // OpenRouter returns OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
     if (output.has("choices") && output.get("choices").isArray()
         && !output.get("choices").isEmpty()) {
       return output.get("choices").get(0).path("message").path("content").asText();

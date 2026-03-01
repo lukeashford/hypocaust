@@ -9,6 +9,7 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,9 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   private final ElevenLabsClient elevenLabsClient;
 
   public ElevenLabsModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, ElevenLabsClient elevenLabsClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      ElevenLabsClient elevenLabsClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.elevenLabsClient = elevenLabsClient;
   }
 
@@ -109,24 +111,18 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // All audio-producing methods (TTS, sound-generation, voice-design) now return {"url": "..."}
     if (output.has("url")) {
       return output.get("url").asText();
     }
-
-    // Dubbing finished — extract the dubbed file URL
     if (output.has("status") && "finished".equalsIgnoreCase(output.get("status").asText())) {
       JsonNode targets = output.path("target_languages");
       if (targets.isArray() && !targets.isEmpty()) {
         return targets.get(0).path("dubbed_file_url").asText();
       }
     }
-
-    // Dubbing in-progress — surface the dubbing_id
     if (output.has("dubbing_id")) {
       return output.get("dubbing_id").asText();
     }
-
     return output.toString();
   }
 }

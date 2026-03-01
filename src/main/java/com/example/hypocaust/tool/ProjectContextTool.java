@@ -2,7 +2,6 @@ package com.example.hypocaust.tool;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.repo.TaskExecutionRepository;
@@ -32,7 +31,6 @@ public class ProjectContextTool {
   private static final AnthropicChatModelSpec CONTEXT_MODEL =
       AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
   private static final int MAX_QUESTION_LENGTH = 1000;
-  private static final int MAX_INLINE_CONTENT_CHARS = 500;
 
   private final ChatService chatService;
   private final TaskExecutionService taskExecutionService;
@@ -65,9 +63,9 @@ public class ProjectContextTool {
     var contextBuilder = new StringBuilder();
 
     // Current artifacts with full details
-    List<Artifact> artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
+    final var artifacts = taskExecutionService.getState(taskExecutionId).artifacts();
     contextBuilder.append("Current artifacts:\n");
-    for (Artifact artifact : artifacts) {
+    for (var artifact : artifacts) {
       contextBuilder.append(String.format("- %s (%s, %s): %s\n",
           artifact.name(),
           artifact.kind(),

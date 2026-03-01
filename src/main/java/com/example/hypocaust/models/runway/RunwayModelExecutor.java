@@ -9,6 +9,7 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,9 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   private final RunwayClient runwayClient;
 
   public RunwayModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, RunwayClient runwayClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      RunwayClient runwayClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.runwayClient = runwayClient;
   }
 
@@ -62,7 +64,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
         Task: %s
         Kind: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, kind, description, bestPractices);
@@ -95,12 +97,9 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected String extractOutput(JsonNode output) {
-    // Runway tasks are async; client polls and resolves to a final output object
-    // Expected resolved convention: {"url": "https://...", "status": "SUCCEEDED"}
     if (output.has("url")) {
       return output.get("url").asText();
     }
-    // Check Gen-3 artifacts array
     if (output.has("artifacts") && output.get("artifacts").isArray()
         && !output.get("artifacts").isEmpty()) {
       JsonNode first = output.get("artifacts").get(0);
@@ -108,11 +107,9 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
         return first.get("url").asText();
       }
     }
-    // Intermediate: task ID returned while polling
     if (output.has("id")) {
       return output.get("id").asText();
     }
-    // Nested output array: {"output": ["https://..."]}
     if (output.has("output") && output.get("output").isArray()
         && !output.get("output").isEmpty()) {
       return output.get("output").get(0).asText();

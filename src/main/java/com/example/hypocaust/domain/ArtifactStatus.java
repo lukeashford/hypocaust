@@ -9,11 +9,7 @@ public enum ArtifactStatus {
    */
   GESTATING,
   /**
-   * Generated but not yet persisted to storage.
-   */
-  CREATED,
-  /**
-   * Fully persisted — inline content or URL is available.
+   * Fully persisted — inline content or storage key is available.
    */
   MANIFESTED,
   /**

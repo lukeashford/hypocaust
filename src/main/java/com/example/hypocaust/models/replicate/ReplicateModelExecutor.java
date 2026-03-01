@@ -9,6 +9,7 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.PromptFragment;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +23,9 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   private final ReplicateClient replicateClient;
 
   public ReplicateModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, ReplicateClient replicateClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate);
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      ReplicateClient replicateClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
     this.replicateClient = replicateClient;
   }
 
@@ -52,7 +54,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("replicate-plan", """
             You are an expert creative director. Prepare a Replicate generation plan.
-            
+
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' matching the OpenAPI schema.
                - Optimize prompts for the best artistic results.
@@ -61,7 +63,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
             2. Validation:
                - Ensure all REQUIRED fields are present.
                - If mandatory info is missing, provide a precise 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -76,7 +78,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
         Kind: %s
         Model Docs: %s
         %s
-        
+
         Best Practices:
         %s
         """, task, kind, description, schemaContext, bestPractices);
@@ -108,9 +110,8 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
     if (output.isArray() && !output.isEmpty()) {
       String first = output.get(0).asText();
       if (isUrl(first)) {
-        return first; // Take the first generated image
+        return first;
       } else {
-        // Join tokens for LLM/Text models
         StringBuilder sb = new StringBuilder();
         output.forEach(node -> sb.append(node.asText()));
         return sb.toString();

@@ -10,10 +10,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
+import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
@@ -22,6 +24,7 @@ import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -35,6 +38,7 @@ class GenerateCreativeToolTest {
   private ModelExecutor modelExecutor;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
+  private ArtifactMapper artifactMapper;
   private GenerateCreativeTool tool;
 
   private ArtifactsContext artifactsContext;
@@ -46,8 +50,9 @@ class GenerateCreativeToolTest {
     modelExecutor = mock(ModelExecutor.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
+    artifactMapper = mock(ArtifactMapper.class);
     tool = new GenerateCreativeTool(modelRag, executionRouter,
-        wordingService, objectMapper);
+        wordingService, objectMapper, artifactMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -83,9 +88,17 @@ class GenerateCreativeToolTest {
     when(artifactsContext.add(any())).thenReturn("cute-cat-1");
 
     var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
-    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+    var finalizedArtifact = Artifact.builder()
+        .name("cute-cat-1").kind(kind).title("Cute Cat")
+        .description("A very cute cat illustration")
+        .status(ArtifactStatus.MANIFESTED)
+        .storageKey("blobs/ab/cd/hash.png")
+        .mimeType("image/png")
+        .build();
+
+    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
         anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult("https://replicate.com/output.png", providerInput));
+        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -97,8 +110,8 @@ class GenerateCreativeToolTest {
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.name().equals("cute-cat-1") &&
-            artifact.url().equals("https://replicate.com/output.png") &&
-            artifact.status().equals(ArtifactStatus.CREATED)
+            artifact.storageKey().equals("blobs/ab/cd/hash.png") &&
+            artifact.status().equals(ArtifactStatus.MANIFESTED)
     ));
   }
 
@@ -133,7 +146,7 @@ class GenerateCreativeToolTest {
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
     when(artifactsContext.add(any())).thenReturn("video-1");
 
-    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
         anyString(), anyString(), any()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
@@ -162,7 +175,7 @@ class GenerateCreativeToolTest {
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
     when(artifactsContext.add(any())).thenReturn("cat-1");
 
-    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
         anyString(), anyString(), any()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
@@ -175,8 +188,8 @@ class GenerateCreativeToolTest {
   }
 
   @Test
-  void generate_nullOutputUrl_returnsError() {
-    // GIVEN
+  void generate_nullOutputUrl_rollsBackAndFails() {
+    // GIVEN — executor throws when output is "null"
     String task = "Make something";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
@@ -191,10 +204,9 @@ class GenerateCreativeToolTest {
     when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
     when(artifactsContext.add(any())).thenReturn("thing-1");
 
-    var providerInput = objectMapper.createObjectNode().put("prompt", "thing");
-    when(modelExecutor.run(anyString(), any(), anyString(), anyString(), anyString(),
+    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
         anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult("null", providerInput));
+        .thenThrow(new IllegalStateException("Model returned no usable output"));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -223,9 +235,16 @@ class GenerateCreativeToolTest {
 
     String poemText = "Roses are red...";
     var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
-    when(modelExecutor.run(anyString(), eq(kind), anyString(), anyString(), anyString(),
+    var finalizedArtifact = Artifact.builder()
+        .name("poem-1").kind(kind).title("Poem").description("A poem")
+        .status(ArtifactStatus.MANIFESTED)
+        .inlineContent(new TextNode(poemText))
+        .mimeType("text/plain")
+        .build();
+
+    when(modelExecutor.run(any(Artifact.class), eq(task), anyString(), anyString(), anyString(),
         anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(poemText, providerInput));
+        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -236,7 +255,7 @@ class GenerateCreativeToolTest {
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.kind() == ArtifactKind.TEXT &&
-            artifact.url() == null &&
+            artifact.storageKey() == null &&
             artifact.inlineContent().asText().equals(poemText) &&
             artifact.status() == ArtifactStatus.MANIFESTED
     ));
@@ -266,15 +285,22 @@ class GenerateCreativeToolTest {
     when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
 
     // First model: run fails
-    when(modelExecutor.run(anyString(), any(), eq("FluxDev"), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(any(Artifact.class), anyString(), eq("FluxDev"), anyString(),
+        anyString(), anyString(), anyString(), any()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
     // Second model: run succeeds
     var providerInput = objectMapper.createObjectNode().put("prompt", "sunset sdxl");
-    when(modelExecutor.run(anyString(), any(), eq("SDXL"), anyString(), anyString(),
+    var finalizedArtifact = Artifact.builder()
+        .name("sunset-2").kind(kind).title("Sunset").description("A sunset")
+        .status(ArtifactStatus.MANIFESTED)
+        .storageKey("blobs/ab/cd/sunset.png")
+        .mimeType("image/png")
+        .build();
+
+    when(modelExecutor.run(any(Artifact.class), anyString(), eq("SDXL"), anyString(), anyString(),
         anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult("https://replicate.com/sunset.png", providerInput));
+        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
 
     // WHEN
     var result = tool.generate(task, kind);
@@ -287,27 +313,31 @@ class GenerateCreativeToolTest {
     verify(artifactsContext).rollbackPending("sunset-1");
     // Second artifact should have been updated
     verify(artifactsContext).updatePending(argThat(artifact ->
-        artifact.url().equals("https://replicate.com/sunset.png")));
+        artifact.storageKey().equals("blobs/ab/cd/sunset.png")));
   }
 
   @Nested
   class SubstituteArtifacts {
 
     @Test
-    void replacesPlaceholderWithUrl() throws Exception {
+    void replacesPlaceholderWithPresignedUrl() throws Exception {
       var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = com.example.hypocaust.domain.Artifact.builder()
+      var artifact = Artifact.builder()
           .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
-          .status(ArtifactStatus.CREATED).url("https://cdn.example.com/photo.png").build();
+          .status(ArtifactStatus.MANIFESTED).storageKey("blobs/ab/cd/photo.png").build();
+
+      when(artifactMapper.toPresignedUrl("blobs/ab/cd/photo.png"))
+          .thenReturn("https://cdn.example.com/presigned/photo.png");
 
       var result = tool.substituteArtifacts(input, List.of(artifact));
-      assertThat(result.get("image").asText()).isEqualTo("https://cdn.example.com/photo.png");
+      assertThat(result.get("image").asText()).isEqualTo(
+          "https://cdn.example.com/presigned/photo.png");
     }
 
     @Test
-    void nullUrl_leavesPlaceholderAsIs() throws Exception {
+    void nullStorageKey_leavesPlaceholderAsIs() throws Exception {
       var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = com.example.hypocaust.domain.Artifact.builder()
+      var artifact = Artifact.builder()
           .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
           .status(ArtifactStatus.GESTATING).build();
 
