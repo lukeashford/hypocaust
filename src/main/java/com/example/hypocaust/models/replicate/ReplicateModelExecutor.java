@@ -2,6 +2,7 @@ package com.example.hypocaust.models.replicate;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
@@ -103,24 +104,24 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.isTextual()) {
-      return List.of(output.asText());
+      return List.of(ExtractedOutput.ofContent(output.asText()));
     }
     if (output.isArray() && !output.isEmpty()) {
       String first = output.get(0).asText();
       if (isUrl(first)) {
-        return List.of(first);
+        return List.of(ExtractedOutput.ofContent(first));
       } else {
         StringBuilder sb = new StringBuilder();
         output.forEach(node -> sb.append(node.asText()));
-        return List.of(sb.toString());
+        return List.of(ExtractedOutput.ofContent(sb.toString()));
       }
     }
     if (output.has("url")) {
-      return List.of(output.get("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("url").asText()));
     }
-    return List.of(output.toString());
+    return List.of(ExtractedOutput.ofContent(output.toString()));
   }
 
   private boolean isUrl(String s) {

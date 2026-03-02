@@ -113,7 +113,14 @@ public final class PromptFragments {
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
             been tried before and whether to regenerate or edit.
-            
+
+            When the task mentions specific named entities, distinctive characteristics, or recurring \
+            resources — such as a character, a particular style, a named voice, or a recognizable visual \
+            element — proactively check whether a matching artifact already captures that information \
+            using `ask_project_context` before generating anything new. Pass the artifact name to \
+            downstream tools using the `@name` syntax so they can resolve the relevant details \
+            automatically.
+
             IMPORTANT: Only you (the decomposer) have access to artifact contents via the project context tool. \
             The downstream tools you call (e.g., GenerateCreativeTool) do NOT have access to these artifacts. \
             If a tool needs information from an artifact (like character descriptions from a text artifact) \

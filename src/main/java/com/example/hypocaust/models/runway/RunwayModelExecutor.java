@@ -2,6 +2,7 @@ package com.example.hypocaust.models.runway;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
@@ -95,24 +96,24 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("url")) {
-      return List.of(output.get("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("url").asText()));
     }
     if (output.has("artifacts") && output.get("artifacts").isArray()
         && !output.get("artifacts").isEmpty()) {
       JsonNode first = output.get("artifacts").get(0);
       if (first.has("url")) {
-        return List.of(first.get("url").asText());
+        return List.of(ExtractedOutput.ofContent(first.get("url").asText()));
       }
     }
     if (output.has("id")) {
-      return List.of(output.get("id").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("id").asText()));
     }
     if (output.has("output") && output.get("output").isArray()
         && !output.get("output").isEmpty()) {
-      return List.of(output.get("output").get(0).asText());
+      return List.of(ExtractedOutput.ofContent(output.get("output").get(0).asText()));
     }
-    return List.of(output.toString());
+    return List.of(ExtractedOutput.ofContent(output.toString()));
   }
 }

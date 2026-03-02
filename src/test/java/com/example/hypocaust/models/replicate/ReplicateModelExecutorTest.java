@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -88,27 +89,27 @@ class ReplicateModelExecutorTest {
     @Test
     void textualNode_returnsText() {
       var node = objectMapper.valueToTree("https://example.com/img.png");
-      assertThat(executor.extractOutputs(node)).containsExactly("https://example.com/img.png");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/img.png");
     }
 
     @Test
     void arrayNode_returnsFirstElement() {
       var node = objectMapper.valueToTree(
           List.of("https://example.com/1.png", "https://example.com/2.png"));
-      assertThat(executor.extractOutputs(node)).containsExactly("https://example.com/1.png");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/1.png");
     }
 
     @Test
     void objectWithUrlField_returnsUrlValue() throws Exception {
       var node = objectMapper.readTree(
           "{\"url\": \"https://example.com/out.png\", \"other\": 42}");
-      assertThat(executor.extractOutputs(node)).containsExactly("https://example.com/out.png");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/out.png");
     }
 
     @Test
     void otherShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutputs(node)).containsExactly("{\"data\":123}");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("{\"data\":123}");
     }
   }
 }

@@ -17,7 +17,6 @@ import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class GenerateCreativeToolTest {
@@ -40,7 +38,7 @@ class GenerateCreativeToolTest {
   private ModelExecutor modelExecutor;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
-  private ArtifactMapper artifactMapper;
+  private ArtifactResolver artifactResolver;
   private GenerateCreativeTool tool;
 
   private ArtifactsContext artifactsContext;
@@ -52,9 +50,9 @@ class GenerateCreativeToolTest {
     modelExecutor = mock(ModelExecutor.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
-    artifactMapper = mock(ArtifactMapper.class);
+    artifactResolver = mock(ArtifactResolver.class);
     tool = new GenerateCreativeTool(modelRag, executionRouter,
-        wordingService, objectMapper, artifactMapper);
+        wordingService, objectMapper, artifactResolver);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -63,6 +61,9 @@ class GenerateCreativeToolTest {
     TaskExecutionContextHolder.setContext(context);
 
     when(executionRouter.resolve(anyString())).thenReturn(modelExecutor);
+
+    // Default: ArtifactResolver passes through unchanged
+    when(artifactResolver.resolve(any(), anyList())).thenAnswer(inv -> inv.getArgument(0));
   }
 
   @AfterEach
@@ -330,35 +331,5 @@ class GenerateCreativeToolTest {
     // Second artifact should have been updated
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.storageKey().equals("blobs/ab/cd/sunset.png")));
-  }
-
-  @Nested
-  class SubstituteArtifacts {
-
-    @Test
-    void replacesPlaceholderWithPresignedUrl() throws Exception {
-      var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = Artifact.builder()
-          .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
-          .status(ArtifactStatus.MANIFESTED).storageKey("blobs/ab/cd/photo.png").build();
-
-      when(artifactMapper.toPresignedUrl("blobs/ab/cd/photo.png"))
-          .thenReturn("https://cdn.example.com/presigned/photo.png");
-
-      var result = tool.substituteArtifacts(input, List.of(artifact));
-      assertThat(result.get("image").asText()).isEqualTo(
-          "https://cdn.example.com/presigned/photo.png");
-    }
-
-    @Test
-    void nullStorageKey_leavesPlaceholderAsIs() throws Exception {
-      var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = Artifact.builder()
-          .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
-          .status(ArtifactStatus.GESTATING).build();
-
-      var result = tool.substituteArtifacts(input, List.of(artifact));
-      assertThat(result.get("image").asText()).isEqualTo("@photo");
-    }
   }
 }

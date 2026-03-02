@@ -2,8 +2,6 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -15,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -41,7 +38,7 @@ public class GenerateCreativeTool {
   private final ExecutionRouter executionRouter;
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
-  private final ArtifactMapper artifactMapper;
+  private final ArtifactResolver artifactResolver;
 
   @DiscoverableTool(
       name = "generate_creative",
@@ -105,9 +102,9 @@ public class GenerateCreativeTool {
     }
 
     try {
-      // Delegate full pipeline to executor: plan → substitute → execute → download/store
-      UnaryOperator<JsonNode> substitutor = input -> substituteArtifacts(input, availableArtifacts);
-      var result = executor.run(gestatingArtifacts, task, model, substitutor);
+      // Delegate full pipeline to executor: plan → resolve artifact refs → execute → download/store
+      var result = executor.run(gestatingArtifacts, task, model,
+          input -> artifactResolver.resolve(input, availableArtifacts));
 
       // Validation: If the executor returns a list of artifacts that doesn't exactly match the count and kinds expected, throw an exception
       if (result.artifacts().size() != gestatingArtifacts.size()) {
@@ -124,9 +121,10 @@ public class GenerateCreativeTool {
 
       List<String> finalizedNames = new ArrayList<>();
       for (var finalized : result.artifacts()) {
-        // Update metadata with providerInput
+        // Merge generation_details into existing metadata (preserves executor-provided
+        // fields like voiceId that were set via ExtractedOutput.metadata)
         var updated = finalized.withMetadata(
-            buildMetadata(model, task, result.providerInput()));
+            mergeMetadata(finalized.metadata(), model, task, result.providerInput()));
         // Update the changelist with the finalized artifact
         TaskExecutionContextHolder.updateArtifact(updated);
         finalizedNames.add(updated.name());
@@ -161,35 +159,27 @@ public class GenerateCreativeTool {
     return metadata;
   }
 
+  /**
+   * Merge generation_details into existing artifact metadata without overwriting executor-provided
+   * fields (e.g., voiceId set by ElevenLabs executor via ExtractedOutput).
+   */
+  private ObjectNode mergeMetadata(JsonNode existingMetadata, ModelSearchResult model, String task,
+      JsonNode input) {
+    ObjectNode genMeta = buildMetadata(model, task, input);
+    if (existingMetadata != null && existingMetadata.isObject()) {
+      // Start with existing metadata (preserves voiceId, etc.), then add generation_details
+      ObjectNode merged = existingMetadata.deepCopy();
+      merged.setAll(genMeta);
+      return merged;
+    }
+    return genMeta;
+  }
+
   private void rollbackArtifact(String artifactName) {
     try {
       TaskExecutionContextHolder.rollbackArtifact(artifactName);
     } catch (Exception rollbackEx) {
       log.warn("Failed to rollback artifact: {}", rollbackEx.getMessage());
-    }
-  }
-
-  JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {
-    try {
-      String jsonString = node.toString();
-      for (Artifact artifact : artifacts) {
-        String placeholder = "@" + artifact.name();
-        String content;
-        if (artifact.kind() == ArtifactKind.TEXT) {
-          content = artifact.description();
-        } else if (artifact.storageKey() != null) {
-          content = artifactMapper.toPresignedUrl(artifact.storageKey());
-        } else {
-          continue;
-        }
-        if (content != null) {
-          jsonString = jsonString.replace(placeholder, content);
-        }
-      }
-      return objectMapper.readTree(jsonString);
-    } catch (Exception e) {
-      log.error("Failed to substitute artifact placeholders", e);
-      return node;
     }
   }
 }

@@ -2,6 +2,7 @@ package com.example.hypocaust.models.anthropic;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -50,7 +51,7 @@ public class AnthropicModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
-    return List.of(output.path("content").asText());
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
+    return List.of(ExtractedOutput.ofContent(output.path("content").asText()));
   }
 }

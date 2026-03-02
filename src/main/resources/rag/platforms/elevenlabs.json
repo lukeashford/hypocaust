@@ -2,7 +2,7 @@
   {
     "name": "ElevenLabs Text-to-Speech",
     "owner": "elevenlabs",
-    "id": "v3",
+    "id": "tts",
     "tier": "balanced",
     "inputs": [
       "TEXT"
@@ -10,11 +10,11 @@
     "outputs": [
       {
         "kind": "AUDIO",
-        "description": "the generated audio"
+        "description": "the generated speech audio"
       }
     ],
-    "description": "ElevenLabs Text-to-Speech converts text into natural, expressive speech using the eleven_v3 model.\nIt is optimized for natural prosody, expressive delivery, and production-grade narration.\nBest-in-class for ads, audiobooks, character voices, and any project requiring convincing,\nemotionally nuanced speech. Supports 29+ languages with high emotional range.",
-    "bestPractices": "- Provide pronunciation hints (phonetics/spelling) for names and brands; split long scripts into\n  paragraphs for steadier pacing.\n- Use lower stability for consistent \"announcer\" reads; raise similarity_boost to stay closer to\n  reference voice timbre.\n- If available, control style exaggeration and speaker boost settings to match the project tone."
+    "description": "Converts text into natural, expressive speech using the eleven_v3 model. If a voice_id is provided (from a previous voice design artifact), it uses that voice directly. If only a voice description is given, the system automatically designs, saves, and uses a matching voice before generating speech. Best for narration, dialogue, character voices, and any text-to-speech task.",
+    "bestPractices": "- If a voice artifact exists, reference it: set voice_id to '@artifact_name.metadata.voiceId'. Do NOT invent voice IDs.\n- If no voice exists, omit voice_id and provide 'voice_description' (e.g., 'warm British baritone, measured pace') plus 'text' (the speech content).\n- Provide 'text' containing the exact words to be spoken.\n- Pronunciation hints (phonetics/spelling) help for names and brands; split long scripts into paragraphs for steadier pacing."
   },
   {
     "name": "ElevenLabs Voice Design",
@@ -27,11 +27,36 @@
     "outputs": [
       {
         "kind": "AUDIO",
-        "description": "the generated audio"
+        "description": "voice preview sample 1"
+      },
+      {
+        "kind": "AUDIO",
+        "description": "voice preview sample 2"
+      },
+      {
+        "kind": "AUDIO",
+        "description": "voice preview sample 3"
       }
     ],
-    "description": "ElevenLabs Voice Design creates custom synthetic voices from descriptive text prompts via the\n/text-to-voice/design API. Describe age, gender, accent, tone, and personality to generate unique\ncharacter voices without a reference recording. Returns voice previews with generated_voice_id.\nBest for animated content, games, and brand mascots requiring original voice identities.",
-    "bestPractices": "- Describe voice characteristics precisely: \"middle-aged British male, warm baritone, slightly\n  raspy, measured pace, authoritative news anchor delivery.\" Description must be 20-1000 characters.\n- Generate multiple candidates (the API returns several previews) and preview before committing;\n  fine-tune description iteratively.\n- For character voices: focus on vocal qualities (pitch, breathiness, energy, warmth) rather than\n  age or identity references that may trigger content filters."
+    "description": "Creates custom synthetic voices from text descriptions. Returns three preview samples for comparison. Use this when the goal is to explore and preview voice options — NOT for generating final speech. Each preview is saved as a reusable voice with a permanent voiceId in its artifact metadata.",
+    "bestPractices": "- Provide 'voice_description' with precise vocal qualities: pitch (high/low), tone (warm/sharp/breathy), pace (measured/rapid), texture (smooth/raspy/gravelly), accent, and emotional register. Description must be 20-1000 characters.\n- Optionally provide 'text' with a sample line for the preview audio.\n- Focus on vocal qualities rather than age or identity references that may trigger content filters."
+  },
+  {
+    "name": "ElevenLabs Sound Effects",
+    "owner": "elevenlabs",
+    "id": "sound-generation",
+    "tier": "fast",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated sound effect"
+      }
+    ],
+    "description": "Generates production-ready sound effect clips from text descriptions. Ideal for SFX prototyping, Foley replacement, and on-demand sound design. Supports up to 30 seconds per clip.",
+    "bestPractices": "- Use precise sonic descriptors: duration, texture, perspective, intensity (e.g., 'short metallic clank, mid-distance, dry room, medium impact').\n- Provide 'text' with the sound effect description.\n- Set 'duration_seconds' if a specific length is needed (max 30s)."
   },
   {
     "name": "ElevenLabs Dubbing",
@@ -45,31 +70,14 @@
     "outputs": [
       {
         "kind": "AUDIO",
-        "description": "the generated audio"
+        "description": "the dubbed audio"
       },
       {
         "kind": "VIDEO",
-        "description": "the generated video"
+        "description": "the dubbed video"
       }
     ],
-    "description": "ElevenLabs Dubbing is an AUDIO and VIDEO localization model that translates and re-voices content\ninto target languages. It preserves original speaker timing, emotion, and cadence. Best for\ninternational distribution, accessibility, and multilingual content pipelines requiring high-quality\nre-voicing.",
-    "bestPractices": "- Provide clean source audio with minimal background noise and music; mixed audio reduces speaker\n  separation quality.\n- Specify target language and whether to use automatic speaker detection or manual voice mapping.\n- Review dub output per segment; the API supports partial re-generation of specific time ranges\n  for corrections."
-  },
-  {
-    "name": "ElevenLabs Sound Effects",
-    "owner": "elevenlabs",
-    "id": "sound-generation",
-    "tier": "fast",
-    "inputs": [
-      "TEXT"
-    ],
-    "outputs": [
-      {
-        "kind": "AUDIO",
-        "description": "the generated audio"
-      }
-    ],
-    "description": "ElevenLabs Sound Effects is a fast AUDIO generation model for producing production-ready sound\neffect clips from descriptive prompts. It is ideal for rapid SFX prototyping, Foley replacement,\nand on-demand sound design. Best for generating specific, isolated sounds and textures.",
-    "bestPractices": "- Prompt with precise sonic descriptors: duration, texture, perspective, and intensity (\"short\n  metallic clank, mid-distance, dry room, medium impact\").\n- Generate several candidates per prompt; SFX generation has high variance and curation is faster\n  than prompt iteration.\n- Layer and process outputs externally in your DAW \u2014 these are raw stems, not finished SFX."
+    "description": "Translates and re-voices audio/video content into target languages. Preserves speaker timing, emotion, and cadence. Best for international distribution and multilingual content pipelines.",
+    "bestPractices": "- Provide clean source audio with minimal background noise.\n- Specify 'source_lang' and 'target_lang' (ISO 639-1 codes).\n- Provide 'source_url' pointing to the audio/video file (use @artifact_name for existing artifacts)."
   }
 ]

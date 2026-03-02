@@ -3,6 +3,7 @@ package com.example.hypocaust.models.elevenlabs;
 import com.example.hypocaust.service.ContentStorage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
 import java.util.Base64;
@@ -21,6 +22,15 @@ import org.springframework.web.client.RestClient;
 public class ElevenLabsClient {
 
   private static final String BASE_URL = "https://api.elevenlabs.io/v1";
+  private static final String DEFAULT_TTS_MODEL = "eleven_v3";
+  private static final String DEFAULT_TTV_MODEL = "eleven_ttv_v3";
+
+  // Sensible defaults for voice settings
+  private static final double DEFAULT_STABILITY = 0.5;
+  private static final double DEFAULT_SIMILARITY_BOOST = 0.75;
+  private static final double DEFAULT_STYLE = 0.0;
+  private static final double DEFAULT_GUIDANCE = 0.5;
+  private static final double DEFAULT_QUALITY = 0.5;
 
   private final ObjectMapper objectMapper;
   private final ContentStorage contentStorage;
@@ -38,8 +48,10 @@ public class ElevenLabsClient {
         .build();
   }
 
-  private static final String DEFAULT_TTS_MODEL = "eleven_v3";
-
+  /**
+   * Text-to-Speech. Requires voice_id in the input.
+   * Returns {@code {"url": "..."}} with the stored audio URL.
+   */
   public JsonNode textToSpeech(JsonNode input) {
     if (!input.has("voice_id") || input.get("voice_id").asText().isBlank()) {
       throw new IllegalArgumentException(
@@ -58,30 +70,26 @@ public class ElevenLabsClient {
 
     ObjectNode body = input.deepCopy();
     body.remove("voice_id");
+    // Remove fields that are not part of the TTS API
+    body.remove("voice_description");
 
-    // Ensure a model_id is always present
     if (!body.has("model_id")) {
       body.put("model_id", DEFAULT_TTS_MODEL);
     }
 
-    // Wrap voice settings if present
-    if (body.has("stability") || body.has("similarity_boost") || body.has("style") || body.has(
-        "use_speaker_boost")) {
-      ObjectNode settings = objectMapper.createObjectNode();
-      if (body.has("stability")) {
-        settings.set("stability", body.remove("stability"));
-      }
-      if (body.has("similarity_boost")) {
-        settings.set("similarity_boost", body.remove("similarity_boost"));
-      }
-      if (body.has("style")) {
-        settings.set("style", body.remove("style"));
-      }
-      if (body.has("use_speaker_boost")) {
-        settings.set("use_speaker_boost", body.remove("use_speaker_boost"));
-      }
-      body.set("voice_settings", settings);
+    // Build voice_settings with defaults for any unspecified values
+    ObjectNode settings = objectMapper.createObjectNode();
+    settings.put("stability",
+        body.has("stability") ? body.remove("stability").doubleValue() : DEFAULT_STABILITY);
+    settings.put("similarity_boost",
+        body.has("similarity_boost") ? body.remove("similarity_boost").doubleValue()
+            : DEFAULT_SIMILARITY_BOOST);
+    settings.put("style",
+        body.has("style") ? body.remove("style").doubleValue() : DEFAULT_STYLE);
+    if (body.has("use_speaker_boost")) {
+      settings.set("use_speaker_boost", body.remove("use_speaker_boost"));
     }
+    body.set("voice_settings", settings);
 
     byte[] audio = restClient.post()
         .uri("/text-to-speech/{voiceId}", voiceId)
@@ -92,11 +100,23 @@ public class ElevenLabsClient {
     return storeAudio("tts", audio);
   }
 
+  /**
+   * Voice Design. Returns all previews:
+   * {@code {"previews": [{"url": "...", "generated_voice_id": "..."}, ...]}}
+   */
   public JsonNode voiceDesign(JsonNode input) {
     ObjectNode body = input.deepCopy();
-    // Default to the multilingual TTV model if none specified
+    // Remove fields that are not part of the voice design API
+    body.remove("voice_id");
+
     if (!body.has("model_id")) {
-      body.put("model_id", "eleven_multilingual_ttv_v2");
+      body.put("model_id", DEFAULT_TTV_MODEL);
+    }
+    if (!body.has("guidance")) {
+      body.put("guidance", DEFAULT_GUIDANCE);
+    }
+    if (!body.has("quality")) {
+      body.put("quality", DEFAULT_QUALITY);
     }
     // Auto-generate preview text when no text is provided
     if (!body.has("text") || body.get("text").asText().isBlank()) {
@@ -112,27 +132,72 @@ public class ElevenLabsClient {
         .body(JsonNode.class);
 
     // The API returns {"previews": [{"generated_voice_id": "...", "audio": "base64..."}]}
-    // Store the first preview's audio so the result includes a playable URL
+    // Store all previews' audio so results include playable URLs
     ObjectNode result = objectMapper.createObjectNode();
+    ArrayNode previewsOut = result.putArray("previews");
+
     JsonNode previews = response != null ? response.path("previews") : null;
-    if (previews != null && previews.isArray() && !previews.isEmpty()) {
-      JsonNode first = previews.get(0);
-      if (first.has("generated_voice_id")) {
-        result.put("generated_voice_id", first.get("generated_voice_id").asText());
-      }
-      if (first.has("audio")) {
-        byte[] audioBytes = Base64.getDecoder().decode(first.get("audio").asText());
-        String url = contentStorage.put(
-            "voice-preview-" + System.currentTimeMillis() + ".mp3",
-            audioBytes, MediaType.valueOf("audio/mpeg"));
-        result.put("url", url);
+    if (previews != null && previews.isArray()) {
+      for (int i = 0; i < previews.size(); i++) {
+        JsonNode preview = previews.get(i);
+        ObjectNode entry = previewsOut.addObject();
+
+        if (preview.has("generated_voice_id")) {
+          entry.put("generated_voice_id", preview.get("generated_voice_id").asText());
+        }
+        if (preview.has("audio")) {
+          byte[] audioBytes = Base64.getDecoder().decode(preview.get("audio").asText());
+          String url = contentStorage.put(
+              "voice-preview-" + System.currentTimeMillis() + "-" + i + ".mp3",
+              audioBytes, MediaType.valueOf("audio/mpeg"));
+          entry.put("url", url);
+        }
       }
     }
-    // Fallback: copy generated_voice_id from legacy response shapes
-    if (!result.has("generated_voice_id") && response != null && response.has("generated_voice_id")) {
-      result.put("generated_voice_id", response.get("generated_voice_id").asText());
-    }
+
     return result;
+  }
+
+  /**
+   * Save a designed voice permanently.
+   * Returns {@code {"voice_id": "permanent_id"}}.
+   */
+  public JsonNode saveVoice(String generatedVoiceId, String voiceName, String voiceDescription) {
+    ObjectNode body = objectMapper.createObjectNode();
+    body.put("generated_voice_id", generatedVoiceId);
+    body.put("voice_name", voiceName);
+    body.put("voice_description", voiceDescription);
+
+    JsonNode response = restClient.post()
+        .uri("/text-to-voice/create")
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .body(body)
+        .retrieve()
+        .body(JsonNode.class);
+
+    log.info("Saved voice '{}' with generated_voice_id '{}' → voice_id '{}'",
+        voiceName, generatedVoiceId,
+        response != null ? response.path("voice_id").asText() : "null");
+
+    return response;
+  }
+
+  /**
+   * Search the user's voice library by keyword.
+   * Returns the voices array from the API response.
+   */
+  public JsonNode searchVoices(String query) {
+    JsonNode response = restClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .path("/voices")
+            .queryParam("search", query)
+            .build())
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .body(JsonNode.class);
+
+    return response != null ? response.path("voices") : objectMapper.createArrayNode();
   }
 
   public JsonNode dubbing(JsonNode input) {

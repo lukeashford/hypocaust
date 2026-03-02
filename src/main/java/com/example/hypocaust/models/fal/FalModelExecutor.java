@@ -2,6 +2,7 @@ package com.example.hypocaust.models.fal;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
@@ -87,20 +88,20 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("images") && output.get("images").isArray()
         && !output.get("images").isEmpty()) {
-      return List.of(output.get("images").get(0).path("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("images").get(0).path("url").asText()));
     }
     if (output.has("video") && output.get("video").has("url")) {
-      return List.of(output.get("video").path("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("video").path("url").asText()));
     }
     if (output.has("audio") && output.get("audio").has("url")) {
-      return List.of(output.get("audio").path("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("audio").path("url").asText()));
     }
     if (output.has("url")) {
-      return List.of(output.get("url").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("url").asText()));
     }
-    return List.of(output.toString());
+    return List.of(ExtractedOutput.ofContent(output.toString()));
   }
 }

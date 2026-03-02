@@ -2,6 +2,7 @@ package com.example.hypocaust.models.assembly;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.prompt.PromptBuilder;
@@ -93,16 +94,16 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("text") && output.get("text").isTextual()) {
-      return List.of(output.get("text").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("text").asText()));
     }
     if (output.has("id")) {
-      return List.of(output.get("id").asText());
+      return List.of(ExtractedOutput.ofContent(output.get("id").asText()));
     }
     if (output.has("chapters")) {
-      return List.of(output.toString());
+      return List.of(ExtractedOutput.ofContent(output.toString()));
     }
-    return List.of(output.toString());
+    return List.of(ExtractedOutput.ofContent(output.toString()));
   }
 }

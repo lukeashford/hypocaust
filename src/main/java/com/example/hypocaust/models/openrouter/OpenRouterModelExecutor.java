@@ -2,6 +2,7 @@ package com.example.hypocaust.models.openrouter;
 
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -46,11 +47,12 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<String> extractOutputs(JsonNode output) {
+  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("choices") && output.get("choices").isArray()
         && !output.get("choices").isEmpty()) {
-      return List.of(output.get("choices").get(0).path("message").path("content").asText());
+      return List.of(ExtractedOutput.ofContent(
+          output.get("choices").get(0).path("message").path("content").asText()));
     }
-    return List.of(output.toString());
+    return List.of(ExtractedOutput.ofContent(output.toString()));
   }
 }

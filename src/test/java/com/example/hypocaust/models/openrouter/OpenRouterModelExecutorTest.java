@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.service.ChatService;
@@ -58,13 +59,13 @@ class OpenRouterModelExecutorTest {
       var node = objectMapper.readTree("""
           {"choices": [{"message": {"role": "assistant", "content": "Once upon a time..."}}]}
           """);
-      assertThat(executor.extractOutputs(node)).containsExactly("Once upon a time...");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("Once upon a time...");
     }
 
     @Test
     void unknownShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutputs(node)).containsExactly("{\"data\":123}");
+      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("{\"data\":123}");
     }
   }
 }

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
@@ -51,13 +52,35 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   protected abstract JsonNode doExecute(String owner, String modelId, JsonNode input);
 
   /**
-   * Subclasses implement this to extract the final results (URL, text, etc.) from provider output.
+   * Subclasses implement this to extract the final results from provider output. Each
+   * {@link ExtractedOutput} carries the content (URL or text) and optional metadata to merge into
+   * the artifact (e.g., voiceId for ElevenLabs voices).
    */
-  protected abstract List<String> extractOutputs(JsonNode output);
+  protected abstract List<ExtractedOutput> extractOutputs(JsonNode output);
 
   /**
-   * Orchestrates the full pipeline: plan → transform input → execute (with retry) → extract →
-   * download/store → finalize artifacts.
+   * A single step in the execution pipeline. Each phase receives the original (resolved) input and
+   * the previous phase's output, allowing multi-step flows where later phases use earlier results.
+   */
+  @FunctionalInterface
+  protected interface ExecutionPhase {
+
+    JsonNode execute(JsonNode originalInput, JsonNode previousOutput);
+  }
+
+  /**
+   * Build the execution phases for this request. Default: a single phase wrapping
+   * {@link #doExecute}. Subclasses override to define multi-step flows (e.g., voice design → save →
+   * TTS) where each phase gets its own retry.
+   */
+  protected List<ExecutionPhase> buildExecutionPhases(String owner, String modelId,
+      JsonNode input) {
+    return List.of((originalInput, previousOutput) -> doExecute(owner, modelId, originalInput));
+  }
+
+  /**
+   * Orchestrates the full pipeline: plan → transform input → execute phases (each with retry) →
+   * extract → download/store → finalize artifacts.
    */
   @Override
   public ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
@@ -68,12 +91,20 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
     }
 
     var finalInput = inputTransformer.apply(plan.providerInput());
-    var output = retryTemplate.execute(
-        context -> doExecute(model.owner(), model.modelId(), finalInput));
+
+    // Execute all phases sequentially, each with its own retry
+    var phases = buildExecutionPhases(model.owner(), model.modelId(), finalInput);
+    JsonNode output = null;
+    for (var phase : phases) {
+      final var previousOutput = output;
+      output = retryTemplate.execute(
+          context -> phase.execute(finalInput, previousOutput));
+    }
+
     var extractedOutputs = extractOutputs(output);
 
     if (extractedOutputs == null || extractedOutputs.isEmpty() || "null".equals(
-        extractedOutputs.get(0))) {
+        extractedOutputs.getFirst().content())) {
       throw new IllegalStateException("Model returned no usable output");
     }
 
@@ -83,9 +114,24 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
               + " were expected.");
     }
 
-    List<Artifact> finalizedArtifacts = new java.util.ArrayList<>();
+    List<Artifact> finalizedArtifacts = new ArrayList<>();
     for (int i = 0; i < artifacts.size(); i++) {
-      finalizedArtifacts.add(finalizeArtifact(artifacts.get(i), extractedOutputs.get(i)));
+      var extracted = extractedOutputs.get(i);
+      var artifact = finalizeArtifact(artifacts.get(i), extracted.content());
+
+      // Merge executor-provided metadata (e.g., voiceId) into the artifact
+      if (extracted.metadata() != null && !extracted.metadata().isEmpty()) {
+        JsonNode existingMeta = artifact.metadata();
+        if (existingMeta == null || existingMeta.isNull()) {
+          existingMeta = objectMapper.createObjectNode();
+        }
+        if (existingMeta.isObject()) {
+          ((ObjectNode) existingMeta).setAll((ObjectNode) extracted.metadata());
+        }
+        artifact = artifact.withMetadata(existingMeta);
+      }
+
+      finalizedArtifacts.add(artifact);
     }
 
     return new ExecutionResult(finalizedArtifacts, finalInput);
