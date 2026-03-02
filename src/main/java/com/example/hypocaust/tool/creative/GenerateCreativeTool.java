@@ -2,11 +2,14 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
+import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +32,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 @Component
-public class GenerateCreativeTool {
+public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeResult> {
 
   private static final String LOG_PREFIX = "[CREATIVE]";
   private static final int MAX_MODEL_ATTEMPTS = 2;
@@ -39,6 +42,9 @@ public class GenerateCreativeTool {
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
   private final ArtifactResolver artifactResolver;
+
+  private static final ThreadLocal<ModelSearchResult> currentModel = new ThreadLocal<>();
+  private final ArtifactMapper artifactMapper;
 
   @DiscoverableTool(
       name = "generate_creative",
@@ -63,11 +69,15 @@ public class GenerateCreativeTool {
     var failedPlatforms = new java.util.LinkedHashSet<String>();
     for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
       try {
-        return executeWithModel(task, model);
+        currentModel.set(model);
+        log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
+        return orchestrate(task, model.outputs());
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
         failedPlatforms.add(model.platform());
+      } finally {
+        currentModel.remove();
       }
     }
 
@@ -79,70 +89,55 @@ public class GenerateCreativeTool {
     return GenerateCreativeResult.error(errorMsg);
   }
 
-  private GenerateCreativeResult executeWithModel(String task, ModelSearchResult model) {
-
-    log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
+  @Override
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
+      List<IntentMapping> mappings) {
+    ModelSearchResult model = currentModel.get();
     var executor = executionRouter.resolve(model.platform());
 
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
 
-    List<Artifact> gestatingArtifacts = new ArrayList<>();
-    List<String> artifactNames = new ArrayList<>();
+    // Delegate full pipeline to executor: plan → resolve artifact refs → execute → download/store
 
-    for (var outputSpec : model.outputs()) {
-      var metadata = buildMetadata(model, task, null);
+    var result = executor.run(gestating, task, model,
+        input -> artifactResolver.resolve(input, availableArtifacts));
 
-      // Schedule GESTATING artifact
-      Artifact gestating = TaskExecutionContextHolder.addArtifact(
-          task, outputSpec.getDescription(), outputSpec.getKind(), metadata);
-
-      artifactNames.add(gestating.name());
-      gestatingArtifacts.add(gestating);
+    // Validation: If the executor returns a list of artifacts that doesn't exactly match the count and kinds expected, throw an exception
+    if (result.artifacts().size() != gestating.size()) {
+      throw new IllegalStateException("Executor returned " + result.artifacts().size()
+          + " artifacts, but expected " + gestating.size());
+    }
+    for (int i = 0; i < gestating.size(); i++) {
+      if (result.artifacts().get(i).kind() != gestating.get(i).kind()) {
+        throw new IllegalStateException(
+            "Executor returned artifact of kind " + result.artifacts().get(i).kind()
+                + " at index " + i + ", but expected " + gestating.get(i).kind());
+      }
     }
 
-    try {
-      // Delegate full pipeline to executor: plan → resolve artifact refs → execute → download/store
-      var result = executor.run(gestatingArtifacts, task, model,
-          input -> artifactResolver.resolve(input, availableArtifacts));
+    return result.artifacts().stream().map(finalized -> {
+      // Merge generation_details into existing metadata (preserves executor-provided
+      // fields like voiceId that were set via ExtractedOutput.metadata)
+      var updated = finalized.withMetadata(
+          mergeMetadata(finalized.metadata(), model, task, result.providerInput()));
+      // Update the changelist with the finalized artifact
+      TaskExecutionContextHolder.updateArtifact(updated);
+      log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(),
+          updated.status());
+      return updated;
+    }).toList();
+  }
 
-      // Validation: If the executor returns a list of artifacts that doesn't exactly match the count and kinds expected, throw an exception
-      if (result.artifacts().size() != gestatingArtifacts.size()) {
-        throw new IllegalStateException("Executor returned " + result.artifacts().size()
-            + " artifacts, but expected " + gestatingArtifacts.size());
-      }
-      for (int i = 0; i < gestatingArtifacts.size(); i++) {
-        if (result.artifacts().get(i).kind() != gestatingArtifacts.get(i).kind()) {
-          throw new IllegalStateException(
-              "Executor returned artifact of kind " + result.artifacts().get(i).kind()
-                  + " at index " + i + ", but expected " + gestatingArtifacts.get(i).kind());
-        }
-      }
-
-      List<String> finalizedNames = new ArrayList<>();
-      for (var finalized : result.artifacts()) {
-        // Merge generation_details into existing metadata (preserves executor-provided
-        // fields like voiceId that were set via ExtractedOutput.metadata)
-        var updated = finalized.withMetadata(
-            mergeMetadata(finalized.metadata(), model, task, result.providerInput()));
-        // Update the changelist with the finalized artifact
-        TaskExecutionContextHolder.updateArtifact(updated);
-        finalizedNames.add(updated.name());
-        log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(),
-            updated.status());
-      }
-
-      String successSummary =
-          "Generated artifacts: " + String.join(", ", finalizedNames) + " using "
-              + model.name();
-      return GenerateCreativeResult.success(finalizedNames, successSummary);
-
-    } catch (Exception e) {
-      for (String name : artifactNames) {
-        rollbackArtifact(name);
-      }
-      throw e;
-    }
+  @Override
+  protected GenerateCreativeResult finalizeResult(List<Artifact> results,
+      List<IntentMapping> mappings) {
+    List<String> finalizedNames = results.stream().map(Artifact::name).toList();
+    ModelSearchResult model = currentModel.get();
+    String successSummary =
+        "Generated artifacts: " + String.join(", ", finalizedNames) + " using "
+            + model.name();
+    return GenerateCreativeResult.success(finalizedNames, successSummary);
   }
 
   private ObjectNode buildMetadata(ModelSearchResult model, String task, JsonNode input) {
@@ -173,13 +168,5 @@ public class GenerateCreativeTool {
       return merged;
     }
     return genMeta;
-  }
-
-  private void rollbackArtifact(String artifactName) {
-    try {
-      TaskExecutionContextHolder.rollbackArtifact(artifactName);
-    } catch (Exception rollbackEx) {
-      log.warn("Failed to rollback artifact: {}", rollbackEx.getMessage());
-    }
   }
 }

@@ -1,12 +1,15 @@
 package com.example.hypocaust.agent;
 
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +22,8 @@ public final class TaskExecutionContextHolder {
 
   private static final ThreadLocal<TaskExecutionContext> contextHolder = new ThreadLocal<>();
   private static final ThreadLocal<Integer> decomposerDepth = ThreadLocal.withInitial(() -> -1);
+  private static final ThreadLocal<List<ArtifactIntent>> currentIntents = ThreadLocal.withInitial(
+      ArrayList::new);
   private static final ThreadLocal<Deque<UUID>> todoPath = ThreadLocal.withInitial(ArrayDeque::new);
   private static final ConcurrentHashMap<UUID, TaskExecutionContext> contextsByExecution = new ConcurrentHashMap<>();
 
@@ -52,6 +57,7 @@ public final class TaskExecutionContextHolder {
     }
     contextHolder.remove();
     decomposerDepth.remove();
+    currentIntents.remove();
     todoPath.remove();
   }
 
@@ -72,6 +78,18 @@ public final class TaskExecutionContextHolder {
 
   public static UUID getPredecessorId() {
     return getContext().getPredecessorId();
+  }
+
+  public static List<ArtifactIntent> getIntents() {
+    return currentIntents.get();
+  }
+
+  public static void setIntents(List<ArtifactIntent> intents) {
+    currentIntents.set(intents);
+  }
+
+  public static void clearIntents() {
+    currentIntents.remove();
   }
 
   /**

@@ -1,5 +1,6 @@
 package com.example.hypocaust.tool.creative;
 
+import com.example.hypocaust.tool.ToolResult;
 import java.util.List;
 
 public record GenerateCreativeResult(
@@ -7,11 +8,6 @@ public record GenerateCreativeResult(
     String summary,
     String error
 ) implements ToolResult {
-
-  @Override
-  public boolean success() {
-    return error == null;
-  }
 
   public static GenerateCreativeResult success(List<String> artifactNames, String summary) {
     return new GenerateCreativeResult(artifactNames, summary, null);

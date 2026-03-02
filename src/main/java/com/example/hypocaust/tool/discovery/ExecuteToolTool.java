@@ -1,7 +1,9 @@
 package com.example.hypocaust.tool.discovery;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.tool.ToolError;
 import com.example.hypocaust.tool.registry.ToolRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Component;
 public class ExecuteToolTool {
 
   private final ToolRegistry toolRegistry;
+  private final ObjectMapper objectMapper;
 
   @Tool(name = "execute_tool",
       description = "Execute a discovered tool by name with the given parameters.")
@@ -39,20 +42,21 @@ public class ExecuteToolTool {
     if (planSteps > 1) {
       log.warn("{} [EXECUTE_TOOL] Blocked: plan has {} steps, must use invoke_decomposer",
           TaskExecutionContextHolder.getIndent(), planSteps);
-      return ("{\"error\": \"DELEGATION_REQUIRED\", "
-          + "\"message\": \"Your plan has " + planSteps + " steps. "
-          + "When a task has multiple steps, you MUST delegate each step to a child "
-          + "via invoke_decomposer. Direct execute_tool calls are only allowed for "
-          + "single-step tasks.\"}");
+      return serialize(new ToolError("DELEGATION_REQUIRED",
+          "Your plan has " + planSteps + " steps. "
+              + "When a task has multiple steps, you MUST delegate each step to a child "
+              + "via invoke_decomposer. Direct execute_tool calls are only allowed for "
+              + "single-step tasks.", null));
     }
 
     log.info("{} [EXECUTE_TOOL] Executing: {} with params: {}",
         TaskExecutionContextHolder.getIndent(), toolName, parametersJson);
+
     var callbackOpt = toolRegistry.getCallback(toolName);
     if (callbackOpt.isEmpty()) {
       log.warn("{} [EXECUTE_TOOL] Tool not found: {}", TaskExecutionContextHolder.getIndent(),
           toolName);
-      return "{\"error\": \"Tool not found: " + toolName + "\"}";
+      return serialize(new ToolError("TOOL_NOT_FOUND", "Tool not found: " + toolName, toolName));
     }
 
     var callback = callbackOpt.get();
@@ -67,8 +71,19 @@ public class ExecuteToolTool {
       }
       log.error("{} [EXECUTE_TOOL] Failed: {}: {}", TaskExecutionContextHolder.getIndent(),
           toolName, message);
-      return "{\"error\": \"" + message.replace("\"", "'") + "\", \"toolName\": \""
-          + toolName + "\"}";
+      return serialize(new ToolError("EXECUTION_FAILED", message, toolName));
+    } finally {
+      // Cleanup
+    }
+  }
+
+  private String serialize(Object value) {
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (Exception e) {
+      log.error("{} [EXECUTE_TOOL] Serialization failed", TaskExecutionContextHolder.getIndent(),
+          e);
+      return "{\"error\": \"SERIALIZATION_ERROR\", \"message\": \"" + e.getMessage() + "\"}";
     }
   }
 }

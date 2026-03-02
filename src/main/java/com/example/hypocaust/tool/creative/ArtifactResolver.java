@@ -47,7 +47,6 @@ public class ArtifactResolver {
     }
 
     Map<String, Artifact> byName = artifacts.stream()
-        .filter(a -> a.name() != null)
         .collect(Collectors.toMap(Artifact::name, Function.identity(), (a, b) -> a));
 
     return walkAndResolve(input, byName);

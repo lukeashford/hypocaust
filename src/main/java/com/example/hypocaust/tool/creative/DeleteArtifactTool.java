@@ -1,9 +1,16 @@
 package com.example.hypocaust.tool.creative;
 
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactAction;
+import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.OutputSpec;
+import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.stereotype.Component;
 
 /**
  * Tool for soft-deleting artifacts from a project. Marks the artifact for removal via the
@@ -13,7 +20,10 @@ import org.springframework.ai.tool.annotation.ToolParam;
     name = "delete_artifact",
     description = "Remove an artifact from the project by name")
 @Slf4j
-public class DeleteArtifactTool {
+@Component
+public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
+
+  private String target;
 
   public DeleteResult delete(
       @ToolParam(description = "The name of the artifact to delete") String artifactName
@@ -21,16 +31,30 @@ public class DeleteArtifactTool {
     if (artifactName == null || artifactName.isBlank()) {
       return DeleteResult.error("Artifact name is required");
     }
+    this.target = artifactName.trim();
+    return orchestrate("Delete " + target, null);
+  }
 
-    log.info("Deleting artifact: {}", artifactName);
+  @Override
+  protected List<IntentMapping> deriveMappings(String task, List<OutputSpec> outputs) {
+    // Programmatically state the intent without calling an LLM
+    return List.of(new IntentMapping(
+        ArtifactIntent.builder()
+            .action(ArtifactAction.DELETE)
+            .targetName(target)
+            .description("Delete artifact " + target)
+            .build(),
+        null));
+  }
 
-    try {
-      TaskExecutionContextHolder.deleteArtifact(artifactName.trim());
-      log.info("Marked artifact {} for deletion", artifactName);
-      return DeleteResult.success(artifactName, "Artifact marked for deletion");
-    } catch (Exception e) {
-      log.error("Failed to delete artifact {}: {}", artifactName, e.getMessage());
-      return DeleteResult.error(e.getMessage());
-    }
+  @Override
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
+      List<IntentMapping> mappings) {
+    return List.of(); // Parent already marked it for deletion
+  }
+
+  @Override
+  protected DeleteResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings) {
+    return DeleteResult.success(target, "Artifact marked for deletion");
   }
 }

@@ -1,7 +1,9 @@
 package com.example.hypocaust.prompt.fragments;
 
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.prompt.PromptFragment;
+import java.util.List;
 
 /**
  * Central registry for all prompt fragments used across the system.
@@ -265,5 +267,50 @@ public final class PromptFragments {
     ).formatted(kindsJson);
 
     return new PromptFragment("wording-model-requirement", body);
+  }
+
+  public static PromptFragment artifactIntentsAndMapping(List<OutputSpec> outputs) {
+    String outputsJson = outputs == null ? "[]" : serialize(outputs);
+    String kindsJson = ArtifactKind.toJsonArray();
+    String body = """
+        Analyze the task and map user intents to the provided output specifications.
+        
+        Available ArtifactKinds:
+        %s
+        
+        Available Output Specifications:
+        %s
+        
+        Respond ONLY with a JSON array of IntentMappings:
+        [
+          {
+            "intent": {
+              "action": "ADD|EDIT|DELETE",
+              "kind": "...",
+              "targetName": "artifact_name_without_@",
+              "description": "..."
+            },
+            "outputIndex": 0 // Index in the output specs list, or null for DELETE
+          }
+        ]
+        """.formatted(kindsJson, outputsJson);
+    return new PromptFragment("artifact-intents-mapping", body);
+  }
+
+  private static String serialize(List<OutputSpec> outputs) {
+    StringBuilder sb = new StringBuilder("[\n");
+    for (int i = 0; i < outputs.size(); i++) {
+      OutputSpec os = outputs.get(i);
+      sb.append("  { \"index\": ").append(i)
+          .append(", \"kind\": \"").append(os.getKind())
+          .append("\", \"description\": \"").append(os.getDescription())
+          .append("\" }");
+      if (i < outputs.size() - 1) {
+        sb.append(",");
+      }
+      sb.append("\n");
+    }
+    sb.append("]");
+    return sb.toString();
   }
 }
