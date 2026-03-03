@@ -24,30 +24,12 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
   protected ArtifactIntentService intentService;
 
   /**
-   * The orchestration template. Derives intents via LLM.
+   * The orchestration template. Caller provides pre-built mappings — either LLM-derived via
+   * {@link #deriveMappings(String)}, or programmatic (e.g., DeleteArtifactTool).
    */
-  protected final R orchestrate(String task) {
-    return orchestrate(task, deriveMappings(task), ToolExecutionContext.empty());
-  }
-
-  /**
-   * Orchestration with tool-specific context (e.g., model selection info).
-   */
-  protected final R orchestrate(String task, ToolExecutionContext ctx) {
-    return orchestrate(task, deriveMappings(task), ctx);
-  }
-
-  /**
-   * Orchestration with explicit mappings (for deterministic tools that skip LLM-based intent
-   * derivation, e.g., DeleteArtifactTool).
-   */
-  protected final R orchestrate(String task, List<IntentMapping> explicitMappings) {
-    return orchestrate(task, explicitMappings, ToolExecutionContext.empty());
-  }
-
-  private R orchestrate(String task, List<IntentMapping> mappings, ToolExecutionContext ctx) {
+  protected final R orchestrate(String task, List<IntentMapping> mappings) {
     log.info("[PARENT] Starting orchestration for task: {}", task);
-    log.info("[PARENT] Derived {} mappings", mappings.size());
+    log.info("[PARENT] {} mappings", mappings.size());
 
     // 1. Prepare gestating artifacts
     List<Artifact> gestating = prepareArtifacts(mappings, task);
@@ -56,7 +38,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
     try {
       // 2. Tool-specific execution (pure — no side effects on context)
       log.info("[CHILD] Starting doExecute");
-      List<Artifact> results = doExecute(task, gestating, mappings, ctx);
+      List<Artifact> results = doExecute(task, gestating, mappings);
       log.info("[CHILD] doExecute returned {} artifacts", results.size());
 
       // 3. Validate and commit to context
@@ -67,7 +49,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
 
       // 4. Finalize result
       log.info("[CHILD] Finalizing result");
-      return finalizeResult(results, mappings, ctx);
+      return finalizeResult(results, mappings);
     } catch (Exception e) {
       log.warn("[PARENT] Execution failed, rolling back artifacts: {}", e.getMessage());
       rollbackArtifacts(gestating);
@@ -76,18 +58,18 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
   }
 
   /**
-   * Default implementation uses LLM, but can be overridden by simple tools (Delete/Restore) to be
-   * deterministic.
+   * Derives intent mappings from the task description using the LLM-based intent service. Callers
+   * invoke this explicitly when they need LLM-based derivation before calling
+   * {@link #orchestrate(String, List)}.
    */
   protected List<IntentMapping> deriveMappings(String task) {
     return intentService.deriveMappings(task);
   }
 
   protected abstract List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings, ToolExecutionContext ctx);
+      List<IntentMapping> mappings);
 
-  protected abstract R finalizeResult(List<Artifact> results, List<IntentMapping> mappings,
-      ToolExecutionContext ctx);
+  protected abstract R finalizeResult(List<Artifact> results, List<IntentMapping> mappings);
 
   private void validateFinalized(Artifact artifact) {
     if (artifact.status() == ArtifactStatus.MANIFESTED) {

@@ -21,6 +21,23 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 
+/**
+ * Base executor implementing the full pipeline: plan → resolve artifact refs → execute phases
+ * (each with retry) → extract → download/store → finalize artifacts.
+ *
+ * <p><b>Error message contract for decomposer interpretability:</b>
+ * Every exception message thrown from {@link #run} should be self-classifying:
+ * <ol>
+ *   <li>State what went wrong (the fact)</li>
+ *   <li>State why it went wrong (infrastructure, bad input, or capacity limit)</li>
+ *   <li>Suggest what to try instead (if applicable)</li>
+ * </ol>
+ * <p>Example: "This model produces 1 output(s) per call, but 3 were expected.
+ * Consider generating them individually in separate calls."
+ *
+ * <p>The decomposer LLM classifies errors by understanding the message,
+ * not by keyword matching. No error tags or category enums are needed.
+ */
 @Slf4j
 public abstract class AbstractModelExecutor implements ModelExecutor {
 
@@ -50,6 +67,27 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
    */
   protected abstract ExecutionPlan generatePlan(String task, ModelSearchResult model,
       List<IntentMapping> intents);
+
+  /**
+   * Formats intent mappings into a human-readable context string for inclusion in executor planning
+   * prompts. Media executors should include this in the user prompt passed to the planning LLM.
+   */
+  protected String formatIntentContext(List<IntentMapping> intents) {
+    if (intents == null || intents.isEmpty()) {
+      return "";
+    }
+    var sb = new StringBuilder("Artifact intents for this execution:\n");
+    for (int i = 0; i < intents.size(); i++) {
+      var intent = intents.get(i).intent();
+      sb.append("  [").append(i + 1).append("] ")
+          .append(intent.action()).append(" ").append(intent.kind());
+      if (intent.targetName() != null) {
+        sb.append(" (@").append(intent.targetName()).append(")");
+      }
+      sb.append(": ").append(intent.description()).append("\n");
+    }
+    return sb.toString();
+  }
 
   /**
    * Subclasses implement this to perform the actual provider API call.

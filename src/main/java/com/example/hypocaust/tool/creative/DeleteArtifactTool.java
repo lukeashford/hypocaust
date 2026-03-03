@@ -5,7 +5,6 @@ import com.example.hypocaust.domain.ArtifactAction;
 import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.tool.AbstractArtifactTool;
-import com.example.hypocaust.tool.ToolExecutionContext;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -41,13 +40,12 @@ public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
 
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings, ToolExecutionContext ctx) {
+      List<IntentMapping> mappings) {
     return List.of(); // Parent already marked it for deletion
   }
 
   @Override
-  protected DeleteResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings,
-      ToolExecutionContext ctx) {
+  protected DeleteResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings) {
     String targetName = mappings.getFirst().intent().targetName();
     return DeleteResult.success(targetName, "Artifact marked for deletion");
   }

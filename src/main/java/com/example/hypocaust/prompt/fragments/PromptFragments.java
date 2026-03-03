@@ -285,6 +285,14 @@ public final class PromptFragments {
         Available ArtifactKinds:
         %s
 
+        Rules:
+        - EDIT replaces an existing artifact in-place. There can be at most one EDIT per targetName.
+        - To create multiple variations of an existing artifact, use ADD for each variation.
+          The downstream tool will receive the original via @name reference in the task.
+        - DELETE has no output artifact. Only use it when the user explicitly wants removal.
+        - For ADD, always provide a 'kind'. For EDIT, 'kind' is inherited from the target.
+          For DELETE, 'kind' can be omitted.
+
         Respond ONLY with a JSON array of ArtifactIntents:
         [
           {

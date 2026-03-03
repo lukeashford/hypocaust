@@ -1,5 +1,6 @@
 package com.example.hypocaust.models.anthropic;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
@@ -38,6 +39,14 @@ public class AnthropicModelExecutor extends AbstractModelExecutor {
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
       List<IntentMapping> intents) {
+    for (var mapping : intents) {
+      if (mapping.intent().kind() != ArtifactKind.TEXT) {
+        return ExecutionPlan.error(
+            "Anthropic models support only TEXT output, but received "
+                + mapping.intent().kind() + " intent: " + mapping.intent().description()
+                + ". Choose a different model for " + mapping.intent().kind() + " generation.");
+      }
+    }
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
   }
 

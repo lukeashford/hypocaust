@@ -66,11 +66,11 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
 
     var userPrompt = String.format("""
         Task: %s
-        Model Docs: %s
+        %sModel Docs: %s
 
         Best Practices:
         %s
-        """, task, model.description(), model.bestPractices());
+        """, task, formatIntentContext(intents), model.description(), model.bestPractices());
 
     var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
     try {
