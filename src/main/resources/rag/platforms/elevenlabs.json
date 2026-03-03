@@ -13,7 +13,7 @@
         "description": "the generated speech audio"
       }
     ],
-    "description": "Converts text into natural, expressive speech using the eleven_v3 model. If a voice_id is provided (from a previous voice design artifact), it uses that voice directly. If only a voice description is given, the system automatically designs, saves, and uses a matching voice before generating speech. Best for narration, dialogue, character voices, and any text-to-speech task.",
+    "description": "Converts text into natural, expressive speech. If a voice_id is provided (from a previous voice design artifact), it uses that voice directly. If only a voice description is given, the system automatically designs, saves, and uses a matching voice before generating speech. Best for narration, dialogue, character voices, and any text-to-speech task.",
     "bestPractices": "- If a voice artifact exists, reference it: set voice_id to '@artifact_name.metadata.voiceId'. Do NOT invent voice IDs.\n- If no voice exists, omit voice_id and provide 'voice_description' (e.g., 'warm British baritone, measured pace') plus 'text' (the speech content).\n- Provide 'text' containing the exact words to be spoken.\n- Pronunciation hints (phonetics/spelling) help for names and brands; split long scripts into paragraphs for steadier pacing."
   },
   {

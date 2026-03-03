@@ -30,7 +30,6 @@ public class ElevenLabsClient {
   private static final double DEFAULT_SIMILARITY_BOOST = 0.75;
   private static final double DEFAULT_STYLE = 0.0;
   private static final double DEFAULT_GUIDANCE = 0.5;
-  private static final double DEFAULT_QUALITY = 0.5;
 
   private final ObjectMapper objectMapper;
   private final ContentStorage contentStorage;
@@ -109,15 +108,12 @@ public class ElevenLabsClient {
     // Remove fields that are not part of the voice design API
     body.remove("voice_id");
 
-    if (!body.has("model_id")) {
-      body.put("model_id", DEFAULT_TTV_MODEL);
-    }
+    // Always enforce the correct TTV model — the plan may have injected the TTS model_id
+    body.put("model_id", DEFAULT_TTV_MODEL);
     if (!body.has("guidance")) {
       body.put("guidance", DEFAULT_GUIDANCE);
     }
-    if (!body.has("quality")) {
-      body.put("quality", DEFAULT_QUALITY);
-    }
+    // Do NOT add 'quality' — it is only supported for eleven_multilingual_ttv_v2, not eleven_ttv_v3
     // Auto-generate preview text when no text is provided
     if (!body.has("text") || body.get("text").asText().isBlank()) {
       body.put("auto_generate_text", true);
