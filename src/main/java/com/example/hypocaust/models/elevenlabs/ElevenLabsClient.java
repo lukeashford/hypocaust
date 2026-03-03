@@ -29,7 +29,7 @@ public class ElevenLabsClient {
   private static final double DEFAULT_STABILITY = 0.5;
   private static final double DEFAULT_SIMILARITY_BOOST = 0.75;
   private static final double DEFAULT_STYLE = 0.0;
-  private static final double DEFAULT_GUIDANCE = 0.5;
+  private static final double DEFAULT_GUIDANCE_SCALE = 0.5;
 
   private final ObjectMapper objectMapper;
   private final ContentStorage contentStorage;
@@ -90,12 +90,17 @@ public class ElevenLabsClient {
     }
     body.set("voice_settings", settings);
 
+    log.info("[ElevenLabs] TTS → POST /text-to-speech/{} | model={} | text_len={}",
+        voiceId, body.path("model_id").asText(), body.path("text").asText().length());
+
     byte[] audio = restClient.post()
         .uri("/text-to-speech/{voiceId}", voiceId)
         .contentType(MediaType.APPLICATION_JSON)
         .body(body)
         .retrieve()
         .body(byte[].class);
+
+    log.info("[ElevenLabs] TTS ← {} bytes received for voice_id={}", audio != null ? audio.length : 0, voiceId);
     return storeAudio("tts", audio);
   }
 
@@ -110,14 +115,20 @@ public class ElevenLabsClient {
 
     // Always enforce the correct TTV model — the plan may have injected the TTS model_id
     body.put("model_id", DEFAULT_TTV_MODEL);
-    if (!body.has("guidance")) {
-      body.put("guidance", DEFAULT_GUIDANCE);
+    // guidance_scale: controls how closely the AI follows the description (API field name)
+    if (!body.has("guidance_scale")) {
+      body.put("guidance_scale", DEFAULT_GUIDANCE_SCALE);
     }
-    // Do NOT add 'quality' — it is only supported for eleven_multilingual_ttv_v2, not eleven_ttv_v3
+    // Do NOT add 'quality' — only supported for eleven_multilingual_ttv_v2, not eleven_ttv_v3
     // Auto-generate preview text when no text is provided
     if (!body.has("text") || body.get("text").asText().isBlank()) {
       body.put("auto_generate_text", true);
     }
+
+    log.info("[ElevenLabs] Voice Design → POST /text-to-voice/design | model={} | desc_len={} | text='{}'",
+        body.path("model_id").asText(),
+        body.path("voice_description").asText().length(),
+        body.has("auto_generate_text") ? "(auto)" : body.path("text").asText());
 
     JsonNode response = restClient.post()
         .uri("/text-to-voice/design")
@@ -127,28 +138,40 @@ public class ElevenLabsClient {
         .retrieve()
         .body(JsonNode.class);
 
-    // The API returns {"previews": [{"generated_voice_id": "...", "audio": "base64..."}]}
+    log.debug("[ElevenLabs] Voice Design ← raw response keys: {}",
+        response != null ? response.fieldNames() : "null");
+
+    // API returns {"previews": [{"generated_voice_id": "...", "audio_base_64": "base64..."}]}
     // Store all previews' audio so results include playable URLs
     ObjectNode result = objectMapper.createObjectNode();
     ArrayNode previewsOut = result.putArray("previews");
 
     JsonNode previews = response != null ? response.path("previews") : null;
     if (previews != null && previews.isArray()) {
+      log.info("[ElevenLabs] Voice Design ← {} preview(s) returned", previews.size());
       for (int i = 0; i < previews.size(); i++) {
         JsonNode preview = previews.get(i);
         ObjectNode entry = previewsOut.addObject();
 
-        if (preview.has("generated_voice_id")) {
-          entry.put("generated_voice_id", preview.get("generated_voice_id").asText());
+        String genVoiceId = preview.path("generated_voice_id").asText();
+        log.info("[ElevenLabs] Voice Design preview[{}] generated_voice_id='{}'", i, genVoiceId);
+        if (!genVoiceId.isBlank()) {
+          entry.put("generated_voice_id", genVoiceId);
         }
-        if (preview.has("audio")) {
-          byte[] audioBytes = Base64.getDecoder().decode(preview.get("audio").asText());
+        // audio field is named audio_base_64 in the API response
+        if (preview.has("audio_base_64")) {
+          byte[] audioBytes = Base64.getDecoder().decode(preview.get("audio_base_64").asText());
           String url = contentStorage.put(
               "voice-preview-" + System.currentTimeMillis() + "-" + i + ".mp3",
               audioBytes, MediaType.valueOf("audio/mpeg"));
           entry.put("url", url);
+          log.info("[ElevenLabs] Voice Design preview[{}] audio stored → {}", i, url);
+        } else {
+          log.warn("[ElevenLabs] Voice Design preview[{}] has no audio_base_64 field; available: {}", i, preview.fieldNames());
         }
       }
+    } else {
+      log.warn("[ElevenLabs] Voice Design ← no 'previews' array in response; response={}", response);
     }
 
     return result;
@@ -160,21 +183,25 @@ public class ElevenLabsClient {
    */
   public JsonNode saveVoice(String generatedVoiceId, String voiceName, String voiceDescription) {
     ObjectNode body = objectMapper.createObjectNode();
-    body.put("generated_voice_id", generatedVoiceId);
     body.put("voice_name", voiceName);
     body.put("voice_description", voiceDescription);
+    body.put("generated_voice_id", generatedVoiceId);
 
+    log.info("[ElevenLabs] Save Voice → POST /text-to-voice | generated_voice_id='{}' name='{}'",
+        generatedVoiceId, voiceName);
+
+    // Endpoint is POST /v1/text-to-voice (not /text-to-voice/create)
     JsonNode response = restClient.post()
-        .uri("/text-to-voice/create")
+        .uri("/text-to-voice")
         .contentType(MediaType.APPLICATION_JSON)
         .accept(MediaType.APPLICATION_JSON)
         .body(body)
         .retrieve()
         .body(JsonNode.class);
 
-    log.info("Saved voice '{}' with generated_voice_id '{}' → voice_id '{}'",
-        voiceName, generatedVoiceId,
-        response != null ? response.path("voice_id").asText() : "null");
+    String permanentId = response != null ? response.path("voice_id").asText() : "null";
+    log.info("[ElevenLabs] Save Voice ← generated_voice_id='{}' → permanent voice_id='{}'",
+        generatedVoiceId, permanentId);
 
     return response;
   }

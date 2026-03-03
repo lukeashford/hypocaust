@@ -132,15 +132,18 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         && !input.get("voice_id").asText().isBlank();
 
     if (hasVoiceId) {
-      // Direct TTS — voice_id already resolved from artifact
+      log.info("[ElevenLabs] TTS strategy: direct (voice_id='{}' present)", input.get("voice_id").asText());
       return List.of((orig, prev) -> elevenLabsClient.textToSpeech(orig));
     }
 
-    // Chain: voice design → save first voice → TTS with permanent voice_id
-    log.info("No voice_id in input — chaining voice design → save → TTS");
+    log.info("[ElevenLabs] TTS strategy: chain (no voice_id) → voice design → save → TTS");
     return List.of(
         // Phase 1: Design voices based on description
-        (orig, prev) -> elevenLabsClient.voiceDesign(orig),
+        (orig, prev) -> {
+          log.info("[ElevenLabs] TTS Phase 1/3: voice design | desc='{}'",
+              orig.path("voice_description").asText());
+          return elevenLabsClient.voiceDesign(orig);
+        },
 
         // Phase 2: Save the first preview to get a permanent voice_id
         (orig, prev) -> {
@@ -149,14 +152,24 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
             throw new IllegalStateException("Voice design returned no previews");
           }
           var firstPreview = previews.get(0);
-          String genId = firstPreview.get("generated_voice_id").asText();
+          String genId = firstPreview.path("generated_voice_id").asText();
+          if (genId.isBlank()) {
+            throw new IllegalStateException(
+                "Voice design preview missing generated_voice_id; entry=" + firstPreview);
+          }
           String voiceDesc = orig.path("voice_description").asText("designed voice");
+          log.info("[ElevenLabs] TTS Phase 2/3: save voice | generated_voice_id='{}'", genId);
           return elevenLabsClient.saveVoice(genId, voiceDesc, voiceDesc);
         },
 
         // Phase 3: TTS using the saved permanent voice_id
         (orig, prev) -> {
-          String voiceId = prev.get("voice_id").asText();
+          String voiceId = prev.path("voice_id").asText();
+          if (voiceId.isBlank()) {
+            throw new IllegalStateException("saveVoice returned no voice_id; response=" + prev);
+          }
+          log.info("[ElevenLabs] TTS Phase 3/3: TTS | voice_id='{}' text_len={}",
+              voiceId, orig.path("text").asText().length());
           ObjectNode ttsInput = objectMapper.createObjectNode();
           ttsInput.put("text", orig.get("text").asText());
           ttsInput.put("voice_id", voiceId);
@@ -177,7 +190,11 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   private List<ExecutionPhase> buildVoiceDesignPhases() {
     return List.of(
         // Phase 1: Design voices
-        (orig, prev) -> elevenLabsClient.voiceDesign(orig),
+        (orig, prev) -> {
+          log.info("[ElevenLabs] Voice Design Phase 1/2: design | desc='{}'",
+              orig.path("voice_description").asText());
+          return elevenLabsClient.voiceDesign(orig);
+        },
 
         // Phase 2: Save all previews to get permanent voice_ids
         (orig, prev) -> {
@@ -185,6 +202,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
           if (!previews.isArray() || previews.isEmpty()) {
             throw new IllegalStateException("Voice design returned no previews");
           }
+          log.info("[ElevenLabs] Voice Design Phase 2/2: saving {} preview(s)", previews.size());
           String voiceDesc = orig.path("voice_description").asText("designed voice");
 
           var result = objectMapper.createObjectNode();
@@ -192,12 +210,17 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
           for (int i = 0; i < previews.size(); i++) {
             var preview = previews.get(i);
-            String genId = preview.get("generated_voice_id").asText();
+            String genId = preview.path("generated_voice_id").asText();
+            if (genId.isBlank()) {
+              throw new IllegalStateException(
+                  "Voice design preview[" + i + "] missing generated_voice_id; entry=" + preview);
+            }
+            log.info("[ElevenLabs] Voice Design Phase 2/2: saving preview[{}] generated_voice_id='{}'", i, genId);
             var saved = elevenLabsClient.saveVoice(genId, voiceDesc + " " + (i + 1), voiceDesc);
 
             var entry = savedPreviews.addObject();
-            entry.put("url", preview.get("url").asText());
-            entry.put("voiceId", saved.get("voice_id").asText());
+            entry.put("url", preview.path("url").asText());
+            entry.put("voiceId", saved.path("voice_id").asText());
           }
           return result;
         }
