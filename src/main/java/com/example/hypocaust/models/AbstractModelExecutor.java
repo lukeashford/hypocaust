@@ -3,10 +3,12 @@ package com.example.hypocaust.models;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
+import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,7 +18,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -31,20 +32,24 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   protected final ChatService chatService;
   protected final RetryTemplate retryTemplate;
   protected final StorageService storageService;
+  protected final ArtifactResolver artifactResolver;
 
   protected AbstractModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
-      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService) {
+      ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
+      ArtifactResolver artifactResolver) {
     this.modelRegistry = modelRegistry;
     this.objectMapper = objectMapper;
     this.chatService = chatService;
     this.retryTemplate = retryTemplate;
     this.storageService = storageService;
+    this.artifactResolver = artifactResolver;
   }
 
   /**
    * Subclasses implement this to prepare provider-specific input from the user task.
    */
-  protected abstract ExecutionPlan generatePlan(String task, ModelSearchResult model);
+  protected abstract ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<IntentMapping> intents);
 
   /**
    * Subclasses implement this to perform the actual provider API call.
@@ -79,18 +84,19 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   }
 
   /**
-   * Orchestrates the full pipeline: plan → transform input → execute phases (each with retry) →
-   * extract → download/store → finalize artifacts.
+   * Orchestrates the full pipeline: plan → resolve artifact refs → execute phases (each with
+   * retry) → extract → download/store → finalize artifacts.
    */
   @Override
   public ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
-      UnaryOperator<JsonNode> inputTransformer) {
-    var plan = generatePlan(task, model);
+      List<IntentMapping> intents, List<Artifact> availableArtifacts) {
+    var plan = generatePlan(task, model, intents);
     if (plan.hasError()) {
       throw new RuntimeException("Planning failed: " + plan.errorMessage());
     }
 
-    var finalInput = inputTransformer.apply(plan.providerInput());
+    // Resolve artifact placeholders internally
+    var finalInput = artifactResolver.resolve(plan.providerInput(), availableArtifacts);
 
     // Execute all phases sequentially, each with its own retry
     var phases = buildExecutionPhases(model.owner(), model.modelId(), finalInput);
@@ -110,8 +116,9 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
     if (extractedOutputs.size() != artifacts.size()) {
       throw new IllegalStateException(
-          "Model returned " + extractedOutputs.size() + " outputs, but " + artifacts.size()
-              + " were expected.");
+          "This model produces " + extractedOutputs.size()
+              + " output(s) per call, but " + artifacts.size()
+              + " were expected. Consider generating them individually in separate calls.");
     }
 
     List<Artifact> finalizedArtifacts = new ArrayList<>();

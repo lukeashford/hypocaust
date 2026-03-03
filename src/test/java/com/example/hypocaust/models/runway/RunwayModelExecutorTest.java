@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,8 +24,9 @@ class RunwayModelExecutorTest {
     ModelRegistry modelRegistry = Mockito.mock(ModelRegistry.class);
     ChatService chatService = Mockito.mock(ChatService.class);
     RunwayClient runwayClient = Mockito.mock(RunwayClient.class);
+    ArtifactResolver artifactResolver = Mockito.mock(ArtifactResolver.class);
     executor = new RunwayModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, runwayClient);
+        new RetryTemplate(), null, artifactResolver, runwayClient);
   }
 
   @Test

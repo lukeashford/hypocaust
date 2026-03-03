@@ -10,6 +10,7 @@ import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
 import java.util.List;
@@ -30,8 +31,9 @@ class ReplicateModelExecutorTest {
     ChatService chatService = mock(ChatService.class);
     objectMapper = new ObjectMapper();
     replicateClient = mock(ReplicateClient.class);
+    ArtifactResolver artifactResolver = mock(ArtifactResolver.class);
     executor = new ReplicateModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, replicateClient);
+        new RetryTemplate(), null, artifactResolver, replicateClient);
   }
 
   @Test
@@ -77,7 +79,7 @@ class ReplicateModelExecutorTest {
         "model", owner, modelId, "desc", "best", "tier", "REPLICATE",
         Collections.emptySet(), Collections.emptyList()
     );
-    executor.generatePlan("task", model);
+    executor.generatePlan("task", model, List.of());
 
     verify(replicateClient).getLatestVersion(owner, modelId);
     verify(replicateClient).getSchema(owner, modelId, version);

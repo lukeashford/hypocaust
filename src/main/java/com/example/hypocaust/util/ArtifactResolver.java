@@ -1,4 +1,4 @@
-package com.example.hypocaust.tool.creative;
+package com.example.hypocaust.util;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;

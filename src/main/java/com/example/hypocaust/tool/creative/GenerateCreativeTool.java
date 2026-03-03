@@ -3,13 +3,13 @@ package com.example.hypocaust.tool.creative;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.IntentMapping;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.example.hypocaust.tool.AbstractArtifactTool;
+import com.example.hypocaust.tool.ToolExecutionContext;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,15 +36,12 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
 
   private static final String LOG_PREFIX = "[CREATIVE]";
   private static final int MAX_MODEL_ATTEMPTS = 2;
+  private static final String MODEL_CTX_KEY = "model";
 
   private final ModelEmbeddingRegistry modelRag;
   private final ExecutionRouter executionRouter;
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
-  private final ArtifactResolver artifactResolver;
-
-  private static final ThreadLocal<ModelSearchResult> currentModel = new ThreadLocal<>();
-  private final ArtifactMapper artifactMapper;
 
   @DiscoverableTool(
       name = "generate_creative",
@@ -69,41 +66,47 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
     var failedPlatforms = new java.util.LinkedHashSet<String>();
     for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
       try {
-        currentModel.set(model);
         log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
-        return orchestrate(task, model.outputs());
+        var ctx = ToolExecutionContext.empty().with(MODEL_CTX_KEY, model);
+        return orchestrate(task, ctx);
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
         failedPlatforms.add(model.platform());
-      } finally {
-        currentModel.remove();
       }
     }
 
-    // Build an actionable error: tell the decomposer not to retry this capability
-    String errorMsg =
-        "All models failed. Providers attempted: " + String.join(", ", failedPlatforms)
-            + ". Details: " + String.join("; ", errors) + ". "
-            + "DO NOT retry generation with similar parameters — the underlying service appears unavailable.";
-    return GenerateCreativeResult.error(errorMsg);
+    // Build an actionable error — distinguish capacity vs infrastructure (see Section 7)
+    boolean allCapacityErrors = errors.stream()
+        .allMatch(e -> e.contains("per call") || e.contains("individually"));
+
+    if (allCapacityErrors) {
+      return GenerateCreativeResult.error(
+          "All attempted models produce fewer outputs than requested. "
+              + "Details: " + String.join("; ", errors) + ". "
+              + "Try requesting fewer artifacts per call.");
+    } else {
+      return GenerateCreativeResult.error(
+          "All models failed. Providers attempted: " + String.join(", ", failedPlatforms)
+              + ". Details: " + String.join("; ", errors) + ". "
+              + "DO NOT retry generation with similar parameters — "
+              + "the underlying service appears unavailable.");
+    }
   }
 
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings) {
-    ModelSearchResult model = currentModel.get();
+      List<IntentMapping> mappings, ToolExecutionContext ctx) {
+    ModelSearchResult model = ctx.get(MODEL_CTX_KEY, ModelSearchResult.class);
     var executor = executionRouter.resolve(model.platform());
 
     List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
         .getAllWithChanges();
 
     // Delegate full pipeline to executor: plan → resolve artifact refs → execute → download/store
+    var result = executor.run(gestating, task, model, mappings, availableArtifacts);
 
-    var result = executor.run(gestating, task, model,
-        input -> artifactResolver.resolve(input, availableArtifacts));
-
-    // Validation: If the executor returns a list of artifacts that doesn't exactly match the count and kinds expected, throw an exception
+    // Validation: executor artifact count and kinds must match gestating
     if (result.artifacts().size() != gestating.size()) {
       throw new IllegalStateException("Executor returned " + result.artifacts().size()
           + " artifacts, but expected " + gestating.size());
@@ -121,8 +124,6 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
       // fields like voiceId that were set via ExtractedOutput.metadata)
       var updated = finalized.withMetadata(
           mergeMetadata(finalized.metadata(), model, task, result.providerInput()));
-      // Update the changelist with the finalized artifact
-      TaskExecutionContextHolder.updateArtifact(updated);
       log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(),
           updated.status());
       return updated;
@@ -131,9 +132,9 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
 
   @Override
   protected GenerateCreativeResult finalizeResult(List<Artifact> results,
-      List<IntentMapping> mappings) {
+      List<IntentMapping> mappings, ToolExecutionContext ctx) {
     List<String> finalizedNames = results.stream().map(Artifact::name).toList();
-    ModelSearchResult model = currentModel.get();
+    ModelSearchResult model = ctx.get(MODEL_CTX_KEY, ModelSearchResult.class);
     String successSummary =
         "Generated artifacts: " + String.join(", ", finalizedNames) + " using "
             + model.name();

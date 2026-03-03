@@ -1,5 +1,6 @@
 package com.example.hypocaust.models.runway;
 
+import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -11,6 +12,7 @@ import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -28,8 +30,9 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
 
   public RunwayModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      RunwayClient runwayClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, RunwayClient runwayClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.runwayClient = runwayClient;
   }
 
@@ -39,11 +42,12 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<IntentMapping> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("runway-plan", """
             You are an expert creative director. Prepare a Runway generation plan.
-            
+
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
@@ -51,7 +55,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
                - If a field requires an image/video and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -64,7 +68,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, model.description(), model.bestPractices());

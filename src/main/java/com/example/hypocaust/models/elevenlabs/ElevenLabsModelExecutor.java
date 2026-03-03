@@ -1,5 +1,6 @@
 package com.example.hypocaust.models.elevenlabs;
 
+import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -11,6 +12,7 @@ import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -30,8 +32,9 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
   public ElevenLabsModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      ElevenLabsClient elevenLabsClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, ElevenLabsClient elevenLabsClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.elevenLabsClient = elevenLabsClient;
   }
 
@@ -41,7 +44,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<IntentMapping> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.

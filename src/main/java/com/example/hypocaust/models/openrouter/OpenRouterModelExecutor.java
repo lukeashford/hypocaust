@@ -1,5 +1,6 @@
 package com.example.hypocaust.models.openrouter;
 
+import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -8,6 +9,7 @@ import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -25,8 +27,9 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
 
   public OpenRouterModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      OpenRouterClient openRouterClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, OpenRouterClient openRouterClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.openRouterClient = openRouterClient;
   }
 
@@ -36,7 +39,8 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<IntentMapping> intents) {
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
   }
 

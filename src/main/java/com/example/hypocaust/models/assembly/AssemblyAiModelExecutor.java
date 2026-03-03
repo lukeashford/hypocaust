@@ -1,5 +1,6 @@
 package com.example.hypocaust.models.assembly;
 
+import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -11,6 +12,7 @@ import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -28,8 +30,9 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
 
   public AssemblyAiModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      AssemblyAiClient assemblyAiClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, AssemblyAiClient assemblyAiClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.assemblyAiClient = assemblyAiClient;
   }
 
@@ -39,18 +42,19 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected ExecutionPlan generatePlan(String task, ModelSearchResult model) {
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<IntentMapping> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("assemblyai-plan", """
             You are an expert creative director. Prepare an AssemblyAI processing plan.
-            
+
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
                - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
             2. Validation:
                - If mandatory audio source is missing, provide an 'errorMessage'.
-            
+
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -63,7 +67,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         Model Docs: %s
-        
+
         Best Practices:
         %s
         """, task, model.description(), model.bestPractices());

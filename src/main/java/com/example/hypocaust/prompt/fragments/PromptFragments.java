@@ -1,9 +1,7 @@
 package com.example.hypocaust.prompt.fragments;
 
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.prompt.PromptFragment;
-import java.util.List;
 
 /**
  * Central registry for all prompt fragments used across the system.
@@ -155,18 +153,27 @@ public final class PromptFragments {
     return new PromptFragment(
         "decomposer-self-healing",
         """
-            After any action, evaluate the result. If the tool or child decomposer returned an error:
-            - If the error mentions "All models failed", "service appears unavailable",
-              "DO NOT retry", timeout, or network issues: the capability is broken.
-              Do NOT retry that capability yourself, via another tool call, or via another child.
-              Report the issue in your result and move on to other tasks if any remain.
-            - If a child decomposer failed with an infrastructure/provider error, trust its diagnosis.
-              Do NOT re-attempt the same kind of generation that the child already exhausted.
-            - If the error mentions missing parameters or invalid input: adjust your parameters and retry
-              (max {{maxRetries}} attempts per approach).
-            - If one strategy is exhausted, try a fundamentally different one — but only if the
-              failure was about your approach, not about the underlying service being down.
-            - When giving up, include the error details in your response.""",
+            After any action, evaluate the result. If the tool or child decomposer returned an error,
+            classify it and respond accordingly:
+
+            1. INFRASTRUCTURE / PROVIDER FAILURE — The error describes a technical issue
+               with the underlying service (timeouts, network errors, API failures, service
+               unavailable). The tool has already retried internally.
+               → Do NOT retry this capability. Report the issue and move on.
+
+            2. INPUT / PARAMETER ISSUE — The error describes a problem with YOUR request
+               (missing parameters, invalid format, wrong artifact reference).
+               → Adjust your parameters and retry (max {{maxRetries}} attempts per approach).
+
+            3. CAPACITY / SCOPE MISMATCH — The error indicates your request exceeds what
+               the tool can handle in a single call (too many outputs, unsupported
+               combination), but the capability itself works.
+               → Restructure your approach. Break the task into smaller units and retry
+                 each individually.
+
+            If a child decomposer failed, trust its diagnosis. Do not re-attempt the same
+            generation that the child already exhausted. When giving up, include error
+            details in your response.""",
         30
     );
   }
@@ -269,48 +276,25 @@ public final class PromptFragments {
     return new PromptFragment("wording-model-requirement", body);
   }
 
-  public static PromptFragment artifactIntentsAndMapping(List<OutputSpec> outputs) {
-    String outputsJson = outputs == null ? "[]" : serialize(outputs);
+  public static PromptFragment artifactIntents() {
     String kindsJson = ArtifactKind.toJsonArray();
     String body = """
-        Analyze the task and map user intents to the provided output specifications.
-        
+        What artifact actions does this task require? Analyze the user's intent and return
+        a JSON array of artifact intents.
+
         Available ArtifactKinds:
         %s
-        
-        Available Output Specifications:
-        %s
-        
-        Respond ONLY with a JSON array of IntentMappings:
+
+        Respond ONLY with a JSON array of ArtifactIntents:
         [
           {
-            "intent": {
-              "action": "ADD|EDIT|DELETE",
-              "kind": "...",
-              "targetName": "artifact_name_without_@",
-              "description": "..."
-            },
-            "outputIndex": 0 // Index in the output specs list, or null for DELETE
+            "action": "ADD|EDIT|DELETE",
+            "kind": "IMAGE|AUDIO|VIDEO|TEXT|PDF",
+            "targetName": "artifact_name_without_@",
+            "description": "What this artifact is for"
           }
         ]
-        """.formatted(kindsJson, outputsJson);
-    return new PromptFragment("artifact-intents-mapping", body);
-  }
-
-  private static String serialize(List<OutputSpec> outputs) {
-    StringBuilder sb = new StringBuilder("[\n");
-    for (int i = 0; i < outputs.size(); i++) {
-      OutputSpec os = outputs.get(i);
-      sb.append("  { \"index\": ").append(i)
-          .append(", \"kind\": \"").append(os.getKind())
-          .append("\", \"description\": \"").append(os.getDescription())
-          .append("\" }");
-      if (i < outputs.size() - 1) {
-        sb.append(",");
-      }
-      sb.append("\n");
-    }
-    sb.append("]");
-    return sb.toString();
+        """.formatted(kindsJson);
+    return new PromptFragment("artifact-intents", body);
   }
 }

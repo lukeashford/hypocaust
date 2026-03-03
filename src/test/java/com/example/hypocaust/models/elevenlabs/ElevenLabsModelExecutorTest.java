@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +23,9 @@ class ElevenLabsModelExecutorTest {
     ModelRegistry modelRegistry = Mockito.mock(ModelRegistry.class);
     ChatService chatService = Mockito.mock(ChatService.class);
     ElevenLabsClient elevenLabsClient = Mockito.mock(ElevenLabsClient.class);
+    ArtifactResolver artifactResolver = Mockito.mock(ArtifactResolver.class);
     executor = new ElevenLabsModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, elevenLabsClient);
+        new RetryTemplate(), null, artifactResolver, elevenLabsClient);
   }
 
   @Test

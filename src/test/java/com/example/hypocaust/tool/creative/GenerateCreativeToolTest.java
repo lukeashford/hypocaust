@@ -38,7 +38,6 @@ class GenerateCreativeToolTest {
   private ModelExecutor modelExecutor;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
-  private ArtifactResolver artifactResolver;
   private GenerateCreativeTool tool;
 
   private ArtifactsContext artifactsContext;
@@ -50,9 +49,8 @@ class GenerateCreativeToolTest {
     modelExecutor = mock(ModelExecutor.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
-    artifactResolver = mock(ArtifactResolver.class);
     tool = new GenerateCreativeTool(modelRag, executionRouter,
-        wordingService, objectMapper, artifactResolver);
+        wordingService, objectMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -61,9 +59,6 @@ class GenerateCreativeToolTest {
     TaskExecutionContextHolder.setContext(context);
 
     when(executionRouter.resolve(anyString())).thenReturn(modelExecutor);
-
-    // Default: ArtifactResolver passes through unchanged
-    when(artifactResolver.resolve(any(), anyList())).thenAnswer(inv -> inv.getArgument(0));
   }
 
   @AfterEach
@@ -102,7 +97,8 @@ class GenerateCreativeToolTest {
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+        anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
@@ -153,7 +149,8 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+        anyList()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
     // WHEN
@@ -184,7 +181,8 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+        anyList()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
@@ -215,7 +213,8 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+        anyList()))
         .thenThrow(new IllegalStateException("Model returned no usable output"));
 
     // WHEN
@@ -254,7 +253,8 @@ class GenerateCreativeToolTest {
         .mimeType("text/plain")
         .build();
 
-    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class), any()))
+    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class), anyList(),
+        anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
@@ -303,7 +303,7 @@ class GenerateCreativeToolTest {
 
     // First model: run fails
     when(modelExecutor.run(anyList(), anyString(),
-        argThat(m -> m != null && "FluxDev".equals(m.name())), any()))
+        argThat(m -> m != null && "FluxDev".equals(m.name())), anyList(), anyList()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
     // Second model: run succeeds
@@ -316,7 +316,7 @@ class GenerateCreativeToolTest {
         .build();
 
     when(modelExecutor.run(anyList(), anyString(),
-        argThat(m -> m != null && "SDXL".equals(m.name())), any()))
+        argThat(m -> m != null && "SDXL".equals(m.name())), anyList(), anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
