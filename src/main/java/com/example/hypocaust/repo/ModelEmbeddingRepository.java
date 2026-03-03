@@ -16,13 +16,11 @@ public interface ModelEmbeddingRepository extends JpaRepository<ModelEmbedding, 
 
   @Query("""
            select d from ModelEmbedding d
-           where d.tier = :tier
-           and (select count(i) from d.inputs i where i not in :inputs) = 0
+           where (select count(i) from d.inputs i where i not in :inputs) = 0
            order by cosine_distance(d.embedding, :queryEmbedding)
       """)
-  List<ModelEmbedding> findTopByEmbeddingSimilarityFiltered(
+  List<ModelEmbedding> findTopByInputsAndSimilarity(
       @Param("queryEmbedding") float[] queryEmbedding,
-      @Param("tier") String tier,
       @Param("inputs") Set<ArtifactKind> inputs,
       Pageable pageable);
 }

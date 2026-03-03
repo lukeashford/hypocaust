@@ -276,6 +276,28 @@ public final class PromptFragments {
     return new PromptFragment("wording-model-requirement", body);
   }
 
+  /**
+   * Reranks a shortlist of candidate models for a given task.
+   */
+  public static PromptFragment modelReranking() {
+    return new PromptFragment(
+        "model-reranking",
+        """
+            You are a model selection specialist. Given a creative generation task and a shortlist
+            of candidate AI models, rank them from best to worst fit.
+
+            Consider:
+            - Semantic match: how well the model's capabilities and description match the task
+            - Tier fit: choosing a more expensive or slower model than the task requires is worse
+              than choosing a slightly less capable model at the right tier; only prefer a higher
+              tier when the task genuinely demands it
+            - Special capabilities: unique strengths or specialisations that directly benefit the task
+
+            Return ONLY a JSON array of model names in ranked order (best first):
+            ["Best Model Name", "Second Best", ...]
+            """);
+  }
+
   public static PromptFragment artifactIntents() {
     String kindsJson = ArtifactKind.toJsonArray();
     String body = """
