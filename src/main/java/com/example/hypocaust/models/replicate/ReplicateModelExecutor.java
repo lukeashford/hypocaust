@@ -1,14 +1,11 @@
 package com.example.hypocaust.models.replicate;
 
-import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
-import com.example.hypocaust.prompt.PromptBuilder;
-import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
@@ -16,6 +13,7 @@ import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
@@ -39,9 +37,26 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
     return Platform.REPLICATE;
   }
 
+  private static final String REPLICATE_SYSTEM_PROMPT = """
+      You are planning for a Replicate model.
+
+      INPUT MAPPING:
+      - Construct the 'providerInput' matching the OpenAPI schema provided below.
+      - Optimize prompts for the best artistic results.
+      - Map user requirements to specific schema fields.
+      - If a field requires a URL and the user refers to an artifact, use '@artifact_name'.
+
+      VALIDATION:
+      - Ensure all REQUIRED fields are present.
+      - If mandatory info is missing, provide a precise 'errorMessage'.
+
+      OUTPUT KEY CONVENTIONS for outputMapping:
+      - Most Replicate models produce a single output. Use "output" as the key.
+      """;
+
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<ArtifactIntent> intents) {
+      List<Artifact> artifacts) {
     String schemaContext;
     try {
       var version = replicateClient.getLatestVersion(model.owner(), model.modelId());
@@ -57,49 +72,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
       schemaContext = "Schema: unavailable";
     }
 
-    var systemPrompt = PromptBuilder.create()
-        .with(new PromptFragment("replicate-plan", """
-            You are an expert creative director. Prepare a Replicate generation plan.
-            
-            YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' matching the OpenAPI schema.
-               - Optimize prompts for the best artistic results.
-               - Map user requirements to specific schema fields.
-               - If a field requires a URL and the user refers to an artifact, use '@artifact_name'.
-            2. Validation:
-               - Ensure all REQUIRED fields are present.
-               - If mandatory info is missing, provide a precise 'errorMessage'.
-            
-            OUTPUT: Return ONLY valid JSON:
-            {
-              "providerInput": { ... },
-              "errorMessage": null or "..."
-            }
-            """))
-        .with(PromptFragments.abilityAwareness())
-        .build();
-
-    var userPrompt = String.format("""
-            Task: %s
-            %sModel Docs: %s
-            %s
-            
-            Best Practices:
-            %s
-            """, task, formatIntentContext(intents), model.description(), schemaContext,
-        model.bestPractices());
-
-    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
-    try {
-      var node = objectMapper.readTree(
-          com.example.hypocaust.common.JsonUtils.extractJson(response));
-      return new ExecutionPlan(
-          node.path("providerInput"),
-          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
-      );
-    } catch (Exception e) {
-      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
-    }
+    return generatePlanWithLlm(task, model, artifacts, REPLICATE_SYSTEM_PROMPT, schemaContext);
   }
 
   @Override
@@ -109,24 +82,24 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.isTextual()) {
-      return List.of(ExtractedOutput.ofContent(output.asText()));
+      return Map.of("output", ExtractedOutput.ofContent(output.asText()));
     }
     if (output.isArray() && !output.isEmpty()) {
       String first = output.get(0).asText();
       if (isUrl(first)) {
-        return List.of(ExtractedOutput.ofContent(first));
+        return Map.of("output", ExtractedOutput.ofContent(first));
       } else {
         StringBuilder sb = new StringBuilder();
         output.forEach(node -> sb.append(node.asText()));
-        return List.of(ExtractedOutput.ofContent(sb.toString()));
+        return Map.of("output", ExtractedOutput.ofContent(sb.toString()));
       }
     }
     if (output.has("url")) {
-      return List.of(ExtractedOutput.ofContent(output.get("url").asText()));
+      return Map.of("output", ExtractedOutput.ofContent(output.get("url").asText()));
     }
-    return List.of(ExtractedOutput.ofContent(output.toString()));
+    return Map.of("output", ExtractedOutput.ofContent(output.toString()));
   }
 
   private boolean isUrl(String s) {

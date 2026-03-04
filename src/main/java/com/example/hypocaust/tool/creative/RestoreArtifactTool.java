@@ -73,8 +73,7 @@ public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
   }
 
   @Override
-  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<ArtifactIntent> intents) {
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
     return List.of(); // Parent already restored during prepareArtifacts
   }
 

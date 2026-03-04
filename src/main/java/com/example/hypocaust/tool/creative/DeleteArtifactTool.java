@@ -41,8 +41,7 @@ public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
   }
 
   @Override
-  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<ArtifactIntent> intents) {
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
     return List.of(); // Parent already marked it for deletion
   }
 

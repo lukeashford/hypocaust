@@ -62,8 +62,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
   }
 
   @Override
-  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<ArtifactIntent> intents) {
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
     // Step 1: Find suitable models
     ModelRequirement req = wordingService.generateModelRequirement(task);
     var models = modelRag.search(req);
@@ -82,7 +81,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
         List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext()
             .getArtifacts().getAllWithChanges();
 
-        var result = executor.run(gestating, task, model, intents, availableArtifacts);
+        var result = executor.run(gestating, task, model, availableArtifacts);
 
         // Validate count and kind alignment
         if (result.artifacts().size() != gestating.size()) {

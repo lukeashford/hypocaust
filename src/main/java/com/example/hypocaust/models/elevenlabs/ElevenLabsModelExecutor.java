@@ -1,14 +1,11 @@
 package com.example.hypocaust.models.elevenlabs;
 
-import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
-import com.example.hypocaust.prompt.PromptBuilder;
-import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
@@ -16,8 +13,9 @@ import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -43,70 +41,40 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     return Platform.ELEVENLABS;
   }
 
+  private static final String ELEVENLABS_SYSTEM_PROMPT = """
+      You are planning for an ElevenLabs model.
+
+      PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
+      - If you provide a 'text' field for Voice Design (voice-design), it MUST be at least 100 characters long.
+        If the desired sample text is shorter, either extend it with relevant content or omit
+        the 'text' field entirely to allow the system to auto-generate a suitable sample line.
+      - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
+      - Do NOT reference real people, celebrities, or public figures by name in voice descriptions.
+      - Do NOT reference real artists, actors, or voice actors by name (e.g., "sounds like Morgan Freeman").
+      - Do NOT request voices for sexual, violent, or hateful content.
+      - Instead, describe vocal qualities abstractly: pitch (high/low), tone (warm/sharp/breathy),
+        pace (measured/rapid), texture (smooth/raspy/gravelly), accent, and emotional register
+        (cheerful/somber/authoritative).
+      - For character voices in children's stories: describe the voice as "high-pitched and energetic"
+        or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
+
+      INPUT MAPPING:
+      - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
+      - To reference a voice from an existing artifact, use '@artifact_name.metadata.voiceId'
+        as the voice_id value. Do NOT invent or guess voice IDs.
+      - If no voice_id is available but a voice is described, omit 'voice_id' entirely and
+        include 'voice_description' with the description and 'text' with the speech content.
+        The system will handle voice creation automatically.
+
+      OUTPUT KEY CONVENTIONS for outputMapping:
+      - TTS / sound-generation / dubbing: use "audio" as the output key.
+      - Voice design previews: use "preview_0", "preview_1", etc. as output keys.
+      """;
+
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<ArtifactIntent> intents) {
-    var systemPrompt = PromptBuilder.create()
-        .with(new PromptFragment("elevenlabs-plan", """
-            You are an expert creative director. Prepare an ElevenLabs generation plan.
-            
-            You are planning for model: %s (id: %s)
-            
-            YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object following the model's input
-               spec described in the Model Docs and Best Practices below.
-               - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
-               - To reference a voice from an existing artifact, use '@artifact_name.metadata.voiceId'
-                 as the voice_id value. Do NOT invent or guess voice IDs.
-               - If no voice_id is available but a voice is described, omit 'voice_id' entirely and
-                 include 'voice_description' with the description and 'text' with the speech content.
-                 The system will handle voice creation automatically.
-            2. Validation:
-               - If mandatory info is missing, provide an 'errorMessage'.
-               - Do NOT invent IDs. If you don't have a specific voice_id, omit the field entirely.
-            
-            PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
-            - If you provide a 'text' field for Voice Design (voice-design), it MUST be at least 100 characters long.
-              If the desired sample text is shorter, either extend it with relevant content or omit
-              the 'text' field entirely to allow the system to auto-generate a suitable sample line.
-            - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
-            - Do NOT reference real people, celebrities, or public figures by name in voice descriptions.
-            - Do NOT reference real artists, actors, or voice actors by name (e.g., "sounds like Morgan Freeman").
-            - Do NOT request voices for sexual, violent, or hateful content.
-            - Instead, describe vocal qualities abstractly: pitch (high/low), tone (warm/sharp/breathy),
-              pace (measured/rapid), texture (smooth/raspy/gravelly), accent, and emotional register
-              (cheerful/somber/authoritative).
-            - For character voices in children's stories: describe the voice as "high-pitched and energetic"
-              or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
-            
-            OUTPUT: Return ONLY valid JSON:
-            {
-              "providerInput": { ... },
-              "errorMessage": null or "..."
-            }
-            """.formatted(model.name(), model.modelId())))
-        .with(PromptFragments.abilityAwareness())
-        .build();
-
-    var userPrompt = String.format("""
-        Task: %s
-        %sModel Docs: %s
-        
-        Best Practices:
-        %s
-        """, task, formatIntentContext(intents), model.description(), model.bestPractices());
-
-    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
-    try {
-      var node = objectMapper.readTree(
-          com.example.hypocaust.common.JsonUtils.extractJson(response));
-      return new ExecutionPlan(
-          node.path("providerInput"),
-          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
-      );
-    } catch (Exception e) {
-      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
-    }
+      List<Artifact> artifacts) {
+    return generatePlanWithLlm(task, model, artifacts, ELEVENLABS_SYSTEM_PROMPT, null);
   }
 
   @Override
@@ -269,17 +237,20 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
+    Map<String, ExtractedOutput> results = new LinkedHashMap<>();
+
     // Voice design previews: array of {url, voiceId}
     if (output.has("previews") && output.get("previews").isArray()) {
-      var results = new ArrayList<ExtractedOutput>();
-      for (var preview : output.get("previews")) {
+      var previews = output.get("previews");
+      for (int i = 0; i < previews.size(); i++) {
+        var preview = previews.get(i);
         ObjectNode meta = null;
         if (preview.has("voiceId")) {
           meta = objectMapper.createObjectNode();
           meta.put("voiceId", preview.get("voiceId").asText());
         }
-        results.add(new ExtractedOutput(preview.get("url").asText(), meta));
+        results.put("preview_" + i, new ExtractedOutput(preview.get("url").asText(), meta));
       }
       return results;
     }
@@ -291,21 +262,25 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         meta = objectMapper.createObjectNode();
         meta.put("voiceId", output.get("voiceId").asText());
       }
-      return List.of(new ExtractedOutput(output.get("url").asText(), meta));
+      results.put("audio", new ExtractedOutput(output.get("url").asText(), meta));
+      return results;
     }
 
     // Dubbing: finished with target languages
     if (output.has("status") && "finished".equalsIgnoreCase(output.get("status").asText())) {
       JsonNode targets = output.path("target_languages");
       if (targets.isArray() && !targets.isEmpty()) {
-        return List.of(ExtractedOutput.ofContent(
+        results.put("audio", ExtractedOutput.ofContent(
             targets.get(0).path("dubbed_file_url").asText()));
+        return results;
       }
     }
     if (output.has("dubbing_id")) {
-      return List.of(ExtractedOutput.ofContent(output.get("dubbing_id").asText()));
+      results.put("audio", ExtractedOutput.ofContent(output.get("dubbing_id").asText()));
+      return results;
     }
 
-    return List.of(ExtractedOutput.ofContent(output.toString()));
+    results.put("audio", ExtractedOutput.ofContent(output.toString()));
+    return results;
   }
 }

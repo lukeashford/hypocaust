@@ -140,7 +140,7 @@ class ElevenLabsIntegrationTest {
 
     // WHEN
     ExecutionResult result = executor.run(gestating, GERMAN_BEER_PROMPT, model,
-        Collections.emptyList(), Collections.emptyList());
+        Collections.emptyList());
 
     // THEN
     assertThat(result.artifacts()).hasSize(3);
@@ -185,7 +185,7 @@ class ElevenLabsIntegrationTest {
         + "\n\nText to speak: 'Ein kühles Helles, nach bayerischer Tradition braufrisch serviert. Prost.'";
 
     // WHEN
-    ExecutionResult result = executor.run(gestating, ttsTask, model, Collections.emptyList(),
+    ExecutionResult result = executor.run(gestating, ttsTask, model,
         Collections.emptyList());
 
     // THEN

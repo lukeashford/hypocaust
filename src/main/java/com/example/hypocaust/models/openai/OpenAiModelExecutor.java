@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.openai;
 
-import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
@@ -38,16 +38,24 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<ArtifactIntent> intents) {
-    for (var mapping : intents) {
-      if (mapping.kind() != ArtifactKind.TEXT) {
-        return ExecutionPlan.error(
-            "OpenAI chat models support only TEXT output, but received "
-                + mapping.kind() + " intent: " + mapping.description()
-                + ". Choose a different model for " + mapping.kind() + " generation.");
-      }
+      List<Artifact> artifacts) {
+    if (artifacts.size() != 1) {
+      return ExecutionPlan.error(
+          "OpenAI chat models produce exactly 1 text output per call, but "
+              + artifacts.size() + " artifacts were expected. "
+              + "Consider generating them individually in separate calls.");
     }
-    return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
+    var artifact = artifacts.getFirst();
+    if (artifact.kind() != ArtifactKind.TEXT) {
+      return ExecutionPlan.error(
+          "OpenAI chat models support only TEXT output, but received "
+              + artifact.kind() + " artifact '" + artifact.name() + "': " + artifact.description()
+              + ". Choose a different model for " + artifact.kind() + " generation.");
+    }
+    return new ExecutionPlan(
+        objectMapper.createObjectNode().put("prompt", task),
+        Map.of("text", artifact.name()),
+        null);
   }
 
   @Override
@@ -65,7 +73,7 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
-    return List.of(ExtractedOutput.ofContent(output.path("content").asText()));
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
+    return Map.of("text", ExtractedOutput.ofContent(output.path("content").asText()));
   }
 }

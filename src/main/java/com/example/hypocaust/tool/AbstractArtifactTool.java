@@ -32,7 +32,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
     try {
       // 2. Tool-specific execution (pure — no side effects on context)
       log.info("[CHILD] Starting doExecute");
-      List<Artifact> results = doExecute(task, gestating, intents);
+      List<Artifact> results = doExecute(task, gestating);
       log.info("[CHILD] doExecute returned {} artifacts", results.size());
 
       // 3. Validate and commit to context
@@ -51,8 +51,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
     }
   }
 
-  protected abstract List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<ArtifactIntent> intents);
+  protected abstract List<Artifact> doExecute(String task, List<Artifact> gestating);
 
   protected abstract R finalizeResult(List<Artifact> results, List<ArtifactIntent> intents);
 

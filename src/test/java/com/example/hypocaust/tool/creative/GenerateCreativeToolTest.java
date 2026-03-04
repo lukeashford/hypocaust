@@ -110,7 +110,7 @@ class GenerateCreativeToolTest {
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
@@ -168,7 +168,7 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
@@ -200,7 +200,7 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
@@ -232,7 +232,7 @@ class GenerateCreativeToolTest {
         .status(ArtifactStatus.GESTATING).build();
     when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
-    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
         .thenThrow(new IllegalStateException("Model returned no usable output"));
 
@@ -272,7 +272,7 @@ class GenerateCreativeToolTest {
         .mimeType("text/plain")
         .build();
 
-    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class), anyList(),
+    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class),
         anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
@@ -319,7 +319,7 @@ class GenerateCreativeToolTest {
 
     // First model: run fails
     when(modelExecutor.run(anyList(), anyString(),
-        argThat(m -> m != null && "FluxDev".equals(m.name())), anyList(), anyList()))
+        argThat(m -> m != null && "FluxDev".equals(m.name())), anyList()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
     // Second model: run succeeds with the same gestating artifact
@@ -332,7 +332,7 @@ class GenerateCreativeToolTest {
         .build();
 
     when(modelExecutor.run(anyList(), anyString(),
-        argThat(m -> m != null && "SDXL".equals(m.name())), anyList(), anyList()))
+        argThat(m -> m != null && "SDXL".equals(m.name())), anyList()))
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN

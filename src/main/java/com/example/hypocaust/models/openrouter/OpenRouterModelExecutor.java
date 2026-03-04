@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.openrouter;
 
-import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
@@ -14,6 +14,7 @@ import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -41,16 +42,24 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<ArtifactIntent> intents) {
-    for (var intent : intents) {
-      if (intent.kind() != ArtifactKind.TEXT) {
-        return ExecutionPlan.error(
-            "OpenRouter chat models support only TEXT output, but received "
-                + intent.kind() + " intent: " + intent.description()
-                + ". Choose a different model for " + intent.kind() + " generation.");
-      }
+      List<Artifact> artifacts) {
+    if (artifacts.size() != 1) {
+      return ExecutionPlan.error(
+          "OpenRouter chat models produce exactly 1 text output per call, but "
+              + artifacts.size() + " artifacts were expected. "
+              + "Consider generating them individually in separate calls.");
     }
-    return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);
+    var artifact = artifacts.getFirst();
+    if (artifact.kind() != ArtifactKind.TEXT) {
+      return ExecutionPlan.error(
+          "OpenRouter chat models support only TEXT output, but received "
+              + artifact.kind() + " artifact '" + artifact.name() + "': " + artifact.description()
+              + ". Choose a different model for " + artifact.kind() + " generation.");
+    }
+    return new ExecutionPlan(
+        objectMapper.createObjectNode().put("prompt", task),
+        Map.of("text", artifact.name()),
+        null);
   }
 
   @Override
@@ -60,12 +69,12 @@ public class OpenRouterModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected List<ExtractedOutput> extractOutputs(JsonNode output) {
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("choices") && output.get("choices").isArray()
         && !output.get("choices").isEmpty()) {
-      return List.of(ExtractedOutput.ofContent(
+      return Map.of("text", ExtractedOutput.ofContent(
           output.get("choices").get(0).path("message").path("content").asText()));
     }
-    return List.of(ExtractedOutput.ofContent(output.toString()));
+    return Map.of("text", ExtractedOutput.ofContent(output.toString()));
   }
 }
