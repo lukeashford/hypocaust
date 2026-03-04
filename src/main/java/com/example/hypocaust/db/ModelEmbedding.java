@@ -11,7 +11,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
-import java.util.List;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -53,12 +52,12 @@ public class ModelEmbedding extends AbstractEmbedding {
 
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "model_embedding_outputs", joinColumns = @JoinColumn(name = "model_embedding_id"))
-  private List<OutputSpec> outputs;
+  private Set<OutputSpec> outputs;
 
   @Builder
   public ModelEmbedding(String name, float[] embedding, String hash, String owner,
       String modelId, String description, String bestPractices, String tier, String platform,
-      Set<ArtifactKind> inputs, List<OutputSpec> outputs) {
+      Set<ArtifactKind> inputs, Set<OutputSpec> outputs) {
     super(name, embedding, hash);
     this.owner = owner;
     this.modelId = modelId;
@@ -72,7 +71,7 @@ public class ModelEmbedding extends AbstractEmbedding {
 
   public void update(String newHash, float[] newEmbedding, String owner, String modelId,
       String description, String bestPractices, String tier, String platform,
-      Set<ArtifactKind> inputs, List<OutputSpec> outputs) {
+      Set<ArtifactKind> inputs, Set<OutputSpec> outputs) {
     super.update(newHash, newEmbedding);
     this.owner = owner;
     this.modelId = modelId;

@@ -45,17 +45,25 @@ public class ModelEmbeddingRegistry {
   // Constants
   private static final String EXT_JSON = ".json";
   private static final int DEFAULT_MAX_RESULTS = 5;
-  /** Candidate pool fetched from DB before soft-ranking. */
+  /**
+   * Candidate pool fetched from DB before soft-ranking.
+   */
   private static final int CANDIDATE_POOL_SIZE = 15;
-  /** Pool passed to the LLM reranker after soft-ranking. */
+  /**
+   * Pool passed to the LLM reranker after soft-ranking.
+   */
   private static final int RERANK_POOL_SIZE = 8;
 
   // Tier soft-ranking weights
   private static final Map<String, Integer> TIER_ORDINALS = Map.of(
       "fast", 0, "balanced", 1, "powerful", 2);
-  /** Penalty (in rank positions) per tier step upward (more expensive than needed). */
+  /**
+   * Penalty (in rank positions) per tier step upward (more expensive than needed).
+   */
   private static final double UP_TIER_PENALTY = 3.0;
-  /** Penalty (in rank positions) per tier step downward (cheaper/faster than requested). */
+  /**
+   * Penalty (in rank positions) per tier step downward (cheaper/faster than requested).
+   */
   private static final double DOWN_TIER_PENALTY = 1.0;
 
   private final ModelEmbeddingRepository repository;
@@ -229,7 +237,9 @@ public class ModelEmbeddingRegistry {
    */
   private List<ModelEmbedding> softRankByTier(List<ModelEmbedding> results, String requestedTier) {
     final int reqOrd = TIER_ORDINALS.getOrDefault(requestedTier, 1);
-    record Scored(ModelEmbedding model, double score) {}
+    record Scored(ModelEmbedding model, double score) {
+
+    }
 
     return IntStream.range(0, results.size())
         .mapToObj(i -> {
@@ -237,7 +247,7 @@ public class ModelEmbeddingRegistry {
           final int diff = actOrd - reqOrd;
           final double penalty = diff == 0 ? 0.0
               : diff > 0 ? diff * UP_TIER_PENALTY
-              : Math.abs(diff) * DOWN_TIER_PENALTY;
+                  : Math.abs(diff) * DOWN_TIER_PENALTY;
           return new Scored(results.get(i), i + penalty);
         })
         .sorted(Comparator.comparingDouble(Scored::score))
@@ -281,7 +291,8 @@ public class ModelEmbeddingRegistry {
     try {
       final var json = JsonUtils.extractJson(response);
       final List<String> rankedNames = objectMapper.readValue(json,
-          new TypeReference<List<String>>() {});
+          new TypeReference<>() {
+          });
 
       final var byName = candidates.stream()
           .collect(Collectors.toMap(ModelEmbedding::getName, e -> e));
@@ -343,8 +354,8 @@ public class ModelEmbeddingRegistry {
         .toString();
   }
 
-  private String toStableOutputsString(List<OutputSpec> list) {
-    return list.stream()
+  private String toStableOutputsString(Set<OutputSpec> set) {
+    return set.stream()
         .map(o -> o.getKind().name() + ":" + o.getDescription())
         .sorted()
         .toList()
@@ -383,7 +394,7 @@ public class ModelEmbeddingRegistry {
       String id,
       String tier,
       Set<ArtifactKind> inputs,
-      List<OutputSpec> outputs,
+      Set<OutputSpec> outputs,
       String description,
       String bestPractices
   ) {
@@ -399,7 +410,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
-      List<OutputSpec> outputs
+      Set<OutputSpec> outputs
   ) {
 
   }
@@ -415,7 +426,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
-      List<OutputSpec> outputs
+      Set<OutputSpec> outputs
   ) {
 
   }

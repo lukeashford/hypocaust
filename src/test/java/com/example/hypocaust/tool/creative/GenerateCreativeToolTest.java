@@ -102,7 +102,7 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
             "Use clear prompts", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     Artifact mockGestating = Artifact.builder()
@@ -177,7 +177,7 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(
         List.of(new ModelSearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
             "Keep it short", "balanced", "REPLICATE", Set.of(ArtifactKind.TEXT),
-            List.of(outputSpec))));
+            Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     Artifact mockGestating = Artifact.builder()
@@ -212,7 +212,7 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
             "REPLICATE",
-            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     Artifact mockGestating = Artifact.builder()
@@ -247,7 +247,7 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
             "REPLICATE",
-            Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     Artifact mockGestating = Artifact.builder()
@@ -281,7 +281,7 @@ class GenerateCreativeToolTest {
     var outputSpec = new OutputSpec(kind, "the poem");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
-            "OPENROUTER", Set.of(ArtifactKind.TEXT), List.of(outputSpec))));
+            "OPENROUTER", Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     Artifact mockGestating = Artifact.builder()
@@ -334,10 +334,10 @@ class GenerateCreativeToolTest {
     var outputSpec = new OutputSpec(kind, "the image");
     var model1 = new ModelSearchResult("FluxDev", "black-forest-labs", "flux-dev",
         "desc1", "best1", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), List.of(outputSpec));
+        Set.of(ArtifactKind.TEXT), Set.of(outputSpec));
     var model2 = new ModelSearchResult("SDXL", "stability-ai", "sdxl",
         "desc2", "best2", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), List.of(outputSpec));
+        Set.of(ArtifactKind.TEXT), Set.of(outputSpec));
 
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 

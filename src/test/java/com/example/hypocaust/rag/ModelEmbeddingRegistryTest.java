@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.Chunk;
 import com.example.hypocaust.repo.ModelEmbeddingRepository;
+import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.EmbeddingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -49,11 +50,12 @@ class ModelEmbeddingRegistryTest {
 
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ChatService chatService = mock(ChatService.class);
     HashCalculator hashCalculator = new HashCalculator();
     ObjectMapper objectMapper = new ObjectMapper();
 
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator, objectMapper);
+        chatService, hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     // WHEN
@@ -96,11 +98,12 @@ class ModelEmbeddingRegistryTest {
 
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ChatService chatService = mock(ChatService.class);
     HashCalculator hashCalculator = new HashCalculator();
     ObjectMapper objectMapper = new ObjectMapper();
 
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator, objectMapper);
+        chatService, hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     // WHEN
@@ -123,9 +126,10 @@ class ModelEmbeddingRegistryTest {
     HashCalculator hashCalculator = new HashCalculator();
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ChatService chatService = mock(ChatService.class);
     ObjectMapper objectMapper = new ObjectMapper();
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator, objectMapper);
+        chatService, hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     Path file1 = tempDir.resolve("platform.json");
@@ -170,9 +174,10 @@ class ModelEmbeddingRegistryTest {
     HashCalculator hashCalculator = new HashCalculator();
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
     EmbeddingService embeddingService = mock(EmbeddingService.class);
+    ChatService chatService = mock(ChatService.class);
     ObjectMapper objectMapper = new ObjectMapper();
     ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(repository, embeddingService,
-        hashCalculator, objectMapper);
+        chatService, hashCalculator, objectMapper);
     ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
 
     Path file1 = tempDir.resolve("order1.json");
