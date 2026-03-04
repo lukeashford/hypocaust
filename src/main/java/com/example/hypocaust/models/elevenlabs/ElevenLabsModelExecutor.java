@@ -49,9 +49,9 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.
-
+            
             You are planning for model: %s (id: %s)
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
@@ -64,8 +64,11 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
                - Do NOT invent IDs. If you don't have a specific voice_id, omit the field entirely.
-
+            
             PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
+            - If you provide a 'text' field for Voice Design (voice-design), it MUST be at least 100 characters long.
+              If the desired sample text is shorter, either extend it with relevant content or omit
+              the 'text' field entirely to allow the system to auto-generate a suitable sample line.
             - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
             - Do NOT reference real people, celebrities, or public figures by name in voice descriptions.
             - Do NOT reference real artists, actors, or voice actors by name (e.g., "sounds like Morgan Freeman").
@@ -75,7 +78,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
               (cheerful/somber/authoritative).
             - For character voices in children's stories: describe the voice as "high-pitched and energetic"
               or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -88,7 +91,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         %sModel Docs: %s
-
+        
         Best Practices:
         %s
         """, task, formatIntentContext(intents), model.description(), model.bestPractices());
@@ -124,15 +127,16 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build TTS phases. If voice_id is present, single-phase direct TTS.
-   * If only voice_description is present, chain: design → save → TTS.
+   * Build TTS phases. If voice_id is present, single-phase direct TTS. If only voice_description is
+   * present, chain: design → save → TTS.
    */
   private List<ExecutionPhase> buildTtsPhases(JsonNode input) {
     boolean hasVoiceId = input.has("voice_id")
         && !input.get("voice_id").asText().isBlank();
 
     if (hasVoiceId) {
-      log.info("[ElevenLabs] TTS strategy: direct (voice_id='{}' present)", input.get("voice_id").asText());
+      log.info("[ElevenLabs] TTS strategy: direct (voice_id='{}' present)",
+          input.get("voice_id").asText());
       return List.of((orig, prev) -> elevenLabsClient.textToSpeech(orig));
     }
 
@@ -142,7 +146,15 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         (orig, prev) -> {
           log.info("[ElevenLabs] TTS Phase 1/3: voice design | desc='{}'",
               orig.path("voice_description").asText());
-          return elevenLabsClient.voiceDesign(orig);
+
+          // ElevenLabs requires >= 100 chars for custom design text.
+          // If too short, omit to allow auto-generation.
+          ObjectNode designInput = orig.deepCopy();
+          if (designInput.has("text") && designInput.get("text").asText().length() < 100) {
+            log.info("[ElevenLabs] TTS Phase 1/3: text too short (<100) for design, omitting.");
+            designInput.remove("text");
+          }
+          return elevenLabsClient.voiceDesign(designInput);
         },
 
         // Phase 2: Save the first preview to get a permanent voice_id
@@ -159,7 +171,13 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
           }
           String voiceDesc = orig.path("voice_description").asText("designed voice");
           log.info("[ElevenLabs] TTS Phase 2/3: save voice | generated_voice_id='{}'", genId);
-          return elevenLabsClient.saveVoice(genId, voiceDesc, voiceDesc);
+
+          // ElevenLabs limits voice name to 100 characters.
+          String voiceName = voiceDesc;
+          if (voiceName.length() > 100) {
+            voiceName = voiceName.substring(0, 97) + "...";
+          }
+          return elevenLabsClient.saveVoice(genId, voiceName, voiceDesc);
         },
 
         // Phase 3: TTS using the saved permanent voice_id
@@ -184,8 +202,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build voice design phases: design → save all previews.
-   * Returns previews with permanent voiceIds.
+   * Build voice design phases: design → save all previews. Returns previews with permanent
+   * voiceIds.
    */
   private List<ExecutionPhase> buildVoiceDesignPhases() {
     return List.of(
@@ -215,8 +233,16 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
               throw new IllegalStateException(
                   "Voice design preview[" + i + "] missing generated_voice_id; entry=" + preview);
             }
-            log.info("[ElevenLabs] Voice Design Phase 2/2: saving preview[{}] generated_voice_id='{}'", i, genId);
-            var saved = elevenLabsClient.saveVoice(genId, voiceDesc + " " + (i + 1), voiceDesc);
+            log.info(
+                "[ElevenLabs] Voice Design Phase 2/2: saving preview[{}] generated_voice_id='{}'",
+                i, genId);
+
+            // ElevenLabs limits voice name to 100 characters.
+            String voiceName = voiceDesc + " " + (i + 1);
+            if (voiceName.length() > 100) {
+              voiceName = voiceName.substring(0, 97) + "...";
+            }
+            var saved = elevenLabsClient.saveVoice(genId, voiceName, voiceDesc);
 
             var entry = savedPreviews.addObject();
             entry.put("url", preview.path("url").asText());
