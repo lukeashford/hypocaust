@@ -76,6 +76,20 @@ tasks.withType<Test>().configureEach {
   )
 }
 
+tasks.test {
+  useJUnitPlatform {
+    excludeTags("manual")
+  }
+}
+
+tasks.register<Test>("manualTest") {
+  group = "verification"
+  description = "Runs manual tests marked with @Tag(\"manual\")."
+  useJUnitPlatform {
+    includeTags("manual")
+  }
+}
+
 // Podman development tasks
 tasks.register<Exec>("ensurePodmanMachineRunning") {
   group = "podman-dev"
