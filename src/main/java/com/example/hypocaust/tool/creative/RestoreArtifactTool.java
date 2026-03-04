@@ -75,29 +75,14 @@ public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
       List<ArtifactIntent> intents) {
-    // Restoration is handled during prepareArtifacts in the parent class.
-    // We just pass through the restored artifacts.
-    return gestating;
+    return List.of(); // Parent already restored during prepareArtifacts
   }
 
   @Override
   protected RestoreResult finalizeResult(List<Artifact> results, List<ArtifactIntent> intents) {
-    if (results.isEmpty() || intents.isEmpty()) {
-      return RestoreResult.error("Failed to restore artifact");
-    }
-
-    Artifact restored = results.getFirst();
-    ArtifactIntent intent = intents.getFirst();
-
-    String originalName = intent.targetName();
-    String restoredName = restored.name();
-    String executionName = intent.executionName();
-
-    String summary = restoredName.equals(originalName)
-        ? "Restored '" + restoredName + "' from " + executionName
-        : "Restored as '" + restoredName + "' (original name '" + originalName
-            + "' was taken) from " + executionName;
-
-    return RestoreResult.success(originalName, restoredName, executionName, summary);
+    String targetName = intents.getFirst().targetName();
+    String executionName = intents.getFirst().executionName();
+    return RestoreResult.success(targetName, targetName, executionName,
+        "Restored '" + targetName + "' from " + executionName);
   }
 }

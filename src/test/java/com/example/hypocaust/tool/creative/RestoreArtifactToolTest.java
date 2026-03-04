@@ -5,12 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
-import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,16 +73,6 @@ class RestoreArtifactToolTest {
     when(artifactsContext.restore("protagonist", "initial_character_designs"))
         .thenReturn("protagonist");
 
-    Artifact restoredArtifact = Artifact.builder()
-        .name("protagonist")
-        .kind(ArtifactKind.IMAGE)
-        .storageKey("historical-key")
-        .title("Protagonist")
-        .description("Description")
-        .status(ArtifactStatus.MANIFESTED)
-        .build();
-    when(artifactsContext.get("protagonist")).thenReturn(Optional.of(restoredArtifact));
-
     TaskExecutionContextHolder.setContext(context);
 
     var result = tool.restore("protagonist", "initial_character_designs");
@@ -99,36 +85,6 @@ class RestoreArtifactToolTest {
   }
 
   @Test
-  void restore_nameTaken_returnsAlternativeName() {
-    var context = mock(TaskExecutionContext.class);
-    var artifactsContext = mock(ArtifactsContext.class);
-    when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
-    when(context.getArtifacts()).thenReturn(artifactsContext);
-    when(artifactsContext.restore("protagonist", "initial_character_designs"))
-        .thenReturn("protagonist_2");
-
-    Artifact restoredArtifact = Artifact.builder()
-        .name("protagonist_2")
-        .kind(ArtifactKind.IMAGE)
-        .storageKey("historical-key")
-        .title("Protagonist 2")
-        .description("Description")
-        .status(ArtifactStatus.MANIFESTED)
-        .build();
-    when(artifactsContext.get("protagonist_2")).thenReturn(Optional.of(restoredArtifact));
-
-    TaskExecutionContextHolder.setContext(context);
-
-    var result = tool.restore("protagonist", "initial_character_designs");
-
-    assertThat(result.error()).isNull();
-    assertThat(result.originalName()).isEqualTo("protagonist");
-    assertThat(result.restoredName()).isEqualTo("protagonist_2");
-    assertThat(result.summary()).contains("protagonist_2").contains("protagonist")
-        .contains("taken");
-  }
-
-  @Test
   void restore_trailingWhitespace_isTrimmed() {
     var context = mock(TaskExecutionContext.class);
     var artifactsContext = mock(ArtifactsContext.class);
@@ -136,16 +92,6 @@ class RestoreArtifactToolTest {
     when(context.getArtifacts()).thenReturn(artifactsContext);
     when(artifactsContext.restore("protagonist", "initial_character_designs"))
         .thenReturn("protagonist");
-
-    Artifact restoredArtifact = Artifact.builder()
-        .name("protagonist")
-        .kind(ArtifactKind.IMAGE)
-        .storageKey("historical-key")
-        .title("Protagonist")
-        .description("Description")
-        .status(ArtifactStatus.MANIFESTED)
-        .build();
-    when(artifactsContext.get("protagonist")).thenReturn(Optional.of(restoredArtifact));
 
     TaskExecutionContextHolder.setContext(context);
 

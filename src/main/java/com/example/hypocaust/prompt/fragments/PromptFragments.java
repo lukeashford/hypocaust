@@ -123,44 +123,27 @@ public final class PromptFragments {
 
             ## Artifact naming
 
-            When creating new artifacts, you MUST provide `preferredName`, `preferredTitle`, and \
-            `description` in each ADD intent:
-            - `preferredName`: a short, descriptive snake_case identifier (e.g., "cat_astronaut"). \
-              It will be sanitized and truncated to 30 characters. If it collides with an existing \
-              name, a counter is appended automatically (e.g., "cat_astronaut_2").
-            - `preferredTitle`: a human-readable title (e.g., "Cat Astronaut Illustration"). \
-              If it collides, a counter is appended automatically.
-            - `description`: a concise one-sentence summary of what the artifact contains.
-
             Choose names and titles that are unique relative to the existing artifact list. \
-            The system will deduplicate if needed, but aim for uniqueness yourself.
+            Collisions are resolved automatically by appending a counter \
+            (e.g., "cat_astronaut_2"), but aim for uniqueness yourself.
 
             ## Referencing existing artifacts
 
-            When the task mentions specific named entities, distinctive characteristics, or recurring \
-            resources — such as a character, a particular style, a named voice, or a recognizable visual \
-            element — check the existing artifact list for a match. Pass the artifact name to \
-            downstream tools using the `@name` syntax so they can resolve the relevant details \
-            automatically.
+            When the task mentions named entities, distinctive characteristics, or recurring \
+            resources — check the existing artifact list for a match.
 
-            IMPORTANT: Only you (the decomposer) have access to artifact contents via the project context tool. \
-            The downstream tools you call (e.g., GenerateCreativeTool) do NOT have access to these artifacts. \
-            If a tool needs information from an artifact (like character descriptions from a text artifact) \
-            to perform its task, you MUST query that artifact yourself and then explicitly include all relevant \
-            details directly in the tool's parameters. Do NOT just refer to an artifact by name (e.g., '@my_story') \
-            expecting the tool to know what's in it.
+            Media artifacts (images, videos, audio) are resolved to URLs and can be passed \
+            to tools via the `@name` syntax as foundational inputs for direct manipulation \
+            (e.g., image-to-video, upscaling, style transfer).
 
-            Distinguish between **physical seeds** and **conceptual context**. \
-            Media artifacts (images, videos, audio) are resolved to URLs and can be passed to tools \
-            via the `@name` syntax as foundational inputs for direct manipulation (e.g., image-to-video). \
-            In contrast, text-based artifacts are sources of information; you must **digest and synthesize** \
-            their relevant content directly into your task description, as downstream generative models cannot \
-            'see' or 'read' text references as foundational inputs.
+            Text artifacts are sources of information, not direct inputs. Only you have access \
+            to artifact contents via the project context tool — downstream tools cannot read them. \
+            You MUST query relevant text artifacts yourself and include the extracted details \
+            directly in your task descriptions.
 
-            When a task involves changing, improving, or refining an existing artifact, prioritize tools and workflows that accept that artifact as a **foundational input** (edit/modify) rather than tools that generate a replacement from scratch (new).
-            - Syntax: Explicitly reference existing artifacts using the `@artifact_name` syntax in tool parameters ONLY to identify which artifact is the primary subject of an edit or transformation (e.g., for image-to-video).
-            - Intent: Formulate task descriptions to focus on the specific changes or "deltas" required, rather than re-describing the entire desired output.
-            - Applicability: This applies to all tool types, including generative AI (e.g., image-to-video), deterministic engines (e.g., color grading), and utility tools (e.g., upscaling).
+            When refining an existing artifact, prefer edit/modify workflows over generating \
+            a replacement from scratch. Reference the artifact with `@name` and describe \
+            the specific changes needed, not the entire desired output.
             """,
         20
     );

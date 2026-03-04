@@ -97,13 +97,9 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
       } else if (intent.action() == ArtifactAction.RESTORE) {
         log.info("[PARENT] Intent: RESTORE '{}' from '{}'", intent.targetName(),
             intent.executionName());
-        String restoredName = TaskExecutionContextHolder.restoreArtifact(intent.targetName(),
+        TaskExecutionContextHolder.restoreArtifact(intent.targetName(),
             intent.executionName());
-        Artifact restored = TaskExecutionContextHolder.getContext().getArtifacts()
-            .get(restoredName)
-            .orElseThrow(() -> new IllegalStateException(
-                "Restored artifact not found: " + restoredName));
-        gestating.add(restored);
+        continue;
       } else {
         // ADD
         log.info("[PARENT] Intent: ADD (kind: {}, preferredName: {})", intent.kind(),
