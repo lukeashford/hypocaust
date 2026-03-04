@@ -6,26 +6,21 @@ import com.example.hypocaust.domain.ArtifactAction;
 import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.IntentMapping;
-import com.example.hypocaust.service.ArtifactIntentService;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Base class for tools that handle artifacts (creation, editing, deletion). Encapsulates the
- * intent-based lifecycle: deriving intents -> preparing gestating artifacts -> execution ->
- * validation -> context update -> rollback on failure.
+ * intent-based lifecycle: preparing gestating artifacts -> execution -> validation -> context
+ * update -> rollback on failure.
  */
 @Slf4j
 public abstract class AbstractArtifactTool<R extends ToolResult> {
 
-  @Autowired
-  protected ArtifactIntentService intentService;
-
   /**
-   * The orchestration template. Caller provides pre-built mappings — either LLM-derived via
-   * {@link #deriveMappings(String)}, or programmatic (e.g., DeleteArtifactTool).
+   * The orchestration template. Caller provides pre-built mappings — either from the decomposer
+   * (via tool parameters) or programmatic (e.g., DeleteArtifactTool).
    */
   protected final R orchestrate(String task, List<IntentMapping> mappings) {
     log.info("[PARENT] Starting orchestration for task: {}", task);
@@ -55,15 +50,6 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
       rollbackArtifacts(gestating);
       throw e;
     }
-  }
-
-  /**
-   * Derives intent mappings from the task description using the LLM-based intent service. Callers
-   * invoke this explicitly when they need LLM-based derivation before calling
-   * {@link #orchestrate(String, List)}.
-   */
-  protected List<IntentMapping> deriveMappings(String task) {
-    return intentService.deriveMappings(task);
   }
 
   protected abstract List<Artifact> doExecute(String task, List<Artifact> gestating,

@@ -37,8 +37,6 @@ public class TaskExecutionLifecycleService {
   private final VersionManagementService versionService;
   private final TodoService todoService;
   private final EventService eventService;
-  private final NamingService namingService;
-  private final WordingService wordingService;
 
   /**
    * Initialize a task execution. Transitions to RUNNING synchronously.
@@ -51,7 +49,8 @@ public class TaskExecutionLifecycleService {
             .orElse(null));
 
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
-    String name = namingService.generateExecutionName(task, existingNames);
+    String name = sanitize(task, 50);
+    name = appendCounterIfExists(name, existingNames);
 
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
@@ -99,8 +98,8 @@ public class TaskExecutionLifecycleService {
             e.getMessage());
       }
 
-      // 3. Generate commit message
-      String commitMessage = wordingService.generateCommitMessage(task);
+      // 3. Use task as commit message directly
+      String commitMessage = task;
 
       // 4. Determine status from artifact states
       List<Artifact> allArtifacts = new ArrayList<>(changelist.getAdded());
@@ -159,5 +158,28 @@ public class TaskExecutionLifecycleService {
     taskExecutionRepository.save(taskExecution);
 
     eventService.publish(new TaskExecutionFailedEvent(taskExecutionId, errorMessage));
+  }
+
+  private static String sanitize(String input, int maxLen) {
+    String sanitized = input.toLowerCase()
+        .replaceAll("[^a-z0-9_]", "_")
+        .replaceAll("_+", "_")
+        .replaceAll("^_|_$", "");
+
+    if (sanitized.length() > maxLen) {
+      sanitized = sanitized.substring(0, maxLen);
+      sanitized = sanitized.replaceAll("_+$", "");
+    }
+    return sanitized;
+  }
+
+  private static String appendCounterIfExists(String name, Set<String> taken) {
+    String result = name;
+    int counter = 2;
+    while (taken.contains(result)) {
+      result = name + "_" + counter;
+      counter++;
+    }
+    return result;
   }
 }

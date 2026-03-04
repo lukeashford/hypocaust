@@ -61,14 +61,6 @@ class NamingServiceTest {
     assertThat(naming.description()).isEqualTo("Generated image");
   }
 
-  @Test
-  void generateExecutionName_usesHigherLimit() {
-    stubLlmResponse("this_is_a_long_execution_name_that_is_around_fifty_chars");
-    String name = service.generateExecutionName("source", Set.of());
-    assertThat(name).hasSizeLessThanOrEqualTo(50);
-    assertThat(name).isEqualTo("this_is_a_long_execution_name_that_is_around_fifty");
-  }
-
   private void stubLlmResponse(String responseText) {
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
         .thenReturn(responseText);

@@ -18,7 +18,6 @@ import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
-import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.models.ExecutionResult;
@@ -27,9 +26,7 @@ import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
-import com.example.hypocaust.service.ArtifactIntentService;
 import com.example.hypocaust.service.WordingService;
-import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.List;
@@ -45,12 +42,11 @@ class GenerateCreativeToolTest {
   private WordingService wordingService;
   private ObjectMapper objectMapper;
   private GenerateCreativeTool tool;
-  private ArtifactIntentService intentService;
 
   private ArtifactsContext artifactsContext;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     modelRag = mock(ModelEmbeddingRegistry.class);
     ExecutionRouter executionRouter = mock(ExecutionRouter.class);
     modelExecutor = mock(ModelExecutor.class);
@@ -58,12 +54,6 @@ class GenerateCreativeToolTest {
     objectMapper = new ObjectMapper();
     tool = new GenerateCreativeTool(modelRag, executionRouter,
         wordingService, objectMapper);
-
-    // Inject ArtifactIntentService into the parent's @Autowired field
-    intentService = mock(ArtifactIntentService.class);
-    var field = AbstractArtifactTool.class.getDeclaredField("intentService");
-    field.setAccessible(true);
-    field.set(tool, intentService);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -79,12 +69,12 @@ class GenerateCreativeToolTest {
     TaskExecutionContextHolder.clear();
   }
 
-  private IntentMapping addIntent(ArtifactKind kind, String description) {
-    return new IntentMapping(ArtifactIntent.builder()
+  private ArtifactIntent addIntent(ArtifactKind kind, String description) {
+    return ArtifactIntent.builder()
         .action(ArtifactAction.ADD)
         .kind(kind)
         .description(description)
-        .build());
+        .build();
   }
 
   @Test
@@ -92,9 +82,6 @@ class GenerateCreativeToolTest {
     // GIVEN
     String task = "Make a cute cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "A cute cat image")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
@@ -126,7 +113,7 @@ class GenerateCreativeToolTest {
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "A cute cat image")));
 
     // THEN
     assertThat(result.error()).isNull();
@@ -144,9 +131,6 @@ class GenerateCreativeToolTest {
   void generate_noModelFound_returnsError() {
     String task = "Generate a sunset image";
 
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(ArtifactKind.IMAGE, "A sunset image")));
-
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
@@ -156,7 +140,7 @@ class GenerateCreativeToolTest {
             .name("sunset-1").kind(ArtifactKind.IMAGE).title("Sunset").description("A sunset")
             .status(ArtifactStatus.GESTATING).build());
 
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(ArtifactKind.IMAGE, "A sunset image")));
 
     assertThat(result.error()).contains("No suitable model found");
     assertThat(result.artifactNames()).isNull();
@@ -167,9 +151,6 @@ class GenerateCreativeToolTest {
     // GIVEN — only one model candidate, executor fails → all models exhausted
     String task = "Make a video";
     ArtifactKind kind = ArtifactKind.VIDEO;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "A video")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
@@ -190,7 +171,7 @@ class GenerateCreativeToolTest {
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "A video")));
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -202,9 +183,6 @@ class GenerateCreativeToolTest {
     // GIVEN
     String task = "Make a cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "A cat image")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
@@ -225,7 +203,7 @@ class GenerateCreativeToolTest {
         .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "A cat image")));
 
     // THEN — doExecute throws → orchestrate rolls back gestating artifacts
     assertThat(result.error()).contains("All models failed");
@@ -237,9 +215,6 @@ class GenerateCreativeToolTest {
     // GIVEN — executor throws when output is "null"
     String task = "Make something";
     ArtifactKind kind = ArtifactKind.IMAGE;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "Something")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
@@ -260,7 +235,7 @@ class GenerateCreativeToolTest {
         .thenThrow(new IllegalStateException("Model returned no usable output"));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "Something")));
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -272,9 +247,6 @@ class GenerateCreativeToolTest {
     // GIVEN
     String task = "Write a poem";
     ArtifactKind kind = ArtifactKind.TEXT;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "A poem")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "high", task));
@@ -303,7 +275,7 @@ class GenerateCreativeToolTest {
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "A poem")));
 
     // THEN
     assertThat(result.error()).isNull();
@@ -320,13 +292,8 @@ class GenerateCreativeToolTest {
   @Test
   void generate_fallbackToSecondModel_onFirstModelFailure() {
     // GIVEN — two models returned by RAG, first fails technically, second succeeds.
-    // With the new architecture, intent derivation and gestating artifact creation happen
-    // once. Model fallback happens inside doExecute with the same gestating artifacts.
     String task = "Make a sunset";
     ArtifactKind kind = ArtifactKind.IMAGE;
-
-    when(intentService.deriveMappings(task))
-        .thenReturn(List.of(addIntent(kind, "A sunset image")));
 
     when(wordingService.generateModelRequirement(anyString()))
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
@@ -342,7 +309,6 @@ class GenerateCreativeToolTest {
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    // Only one gestating artifact is created (intent derivation + preparation happen once)
     Artifact mockGestating = Artifact.builder()
         .name("sunset-1").kind(kind).title("Sunset").description("A sunset")
         .status(ArtifactStatus.GESTATING).build();
@@ -368,7 +334,7 @@ class GenerateCreativeToolTest {
         .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task);
+    var result = tool.generate(task, List.of(addIntent(kind, "A sunset image")));
 
     // THEN — succeeded with second model, same gestating artifact reused
     assertThat(result.error()).isNull();

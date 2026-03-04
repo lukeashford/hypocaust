@@ -64,6 +64,17 @@ public class Decomposer {
    * @return the decomposer result with success/failure, summary, and artifact names
    */
   public DecomposerResult execute(String task) {
+    return execute(task, null);
+  }
+
+  /**
+   * Execute a task with optional context brief from a parent decomposer.
+   *
+   * @param task         the self-contained task description
+   * @param contextBrief key facts from the parent decomposer (nullable)
+   * @return the decomposer result with success/failure, summary, and artifact names
+   */
+  public DecomposerResult execute(String task, List<String> contextBrief) {
     var taskExecutionId = TaskExecutionContextHolder.getTaskExecutionId();
     var indent = TaskExecutionContextHolder.getIndent();
     var depth = TaskExecutionContextHolder.getDepth();
@@ -79,14 +90,18 @@ public class Decomposer {
           .with(PromptFragments.abilityAwareness())
           .with(PromptFragments.artifactAwareness())
           .with(PromptFragments.selfHealing())
+          .with(PromptFragments.contextBriefInstructions())
           .param("maxChildren", MAX_CHILDREN)
           .param("maxRetries", MAX_RETRIES)
           .build();
 
+      // Build user message: prepend context brief if provided
+      String userMessage = buildUserMessage(task, contextBrief);
+
       var response = chatService.call(
           MODEL.getModelName(),
           systemPrompt,
-          task,
+          userMessage,
           invokeDecomposerTool,
           setPlanTool,
           searchToolsTool,
@@ -114,6 +129,18 @@ public class Decomposer {
       eventService.publish(new DecomposerFailedEvent(taskExecutionId, task, e.getMessage()));
       return DecomposerResult.failure(e.getMessage());
     }
+  }
+
+  private String buildUserMessage(String task, List<String> contextBrief) {
+    if (contextBrief == null || contextBrief.isEmpty()) {
+      return task;
+    }
+    var sb = new StringBuilder("## Established Context\n");
+    for (String fact : contextBrief) {
+      sb.append("- ").append(fact).append("\n");
+    }
+    sb.append("\n## Task\n").append(task);
+    return sb.toString();
   }
 
   /**

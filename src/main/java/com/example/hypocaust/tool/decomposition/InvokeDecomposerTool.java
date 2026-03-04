@@ -3,6 +3,7 @@ package com.example.hypocaust.tool.decomposition;
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TodoExecutor;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -33,12 +34,16 @@ public class InvokeDecomposerTool {
           + "The child operates in its own isolated context and returns a result.")
   public DecomposerResult invoke(
       @ToolParam(description = "Self-contained task description with all necessary context") String task,
-      @ToolParam(description = "Human-readable progress label for this step") String todoDescription
+      @ToolParam(description = "Human-readable progress label for this step") String todoDescription,
+      @ToolParam(description = "Key facts established so far that this subtask needs. "
+          + "3-5 bullet points of context: character descriptions, style decisions, "
+          + "artifact names to reference, constraints the user stated.",
+          required = false) List<String> contextBrief
   ) {
     try {
       return todoExecutor.execute(
           todoDescription != null ? todoDescription : task,
-          () -> decomposer.execute(task)
+          () -> decomposer.execute(task, contextBrief)
       );
     } catch (Exception e) {
       // TaskExecutor already logged and marked failed.

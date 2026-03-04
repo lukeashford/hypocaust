@@ -1,8 +1,10 @@
 package com.example.hypocaust.tool.decomposition;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.Decomposer;
@@ -45,9 +47,9 @@ class InvokeDecomposerToolTest {
   @Test
   void invoke_successfulDecomposition_returnsSuccess() {
     var expectedResult = DecomposerResult.success("Image generated", List.of("img-001"));
-    when(decomposer.execute(anyString())).thenReturn(expectedResult);
+    when(decomposer.execute(anyString(), any())).thenReturn(expectedResult);
 
-    var result = invokeDecomposerTool.invoke("Generate an image", "Generating image");
+    var result = invokeDecomposerTool.invoke("Generate an image", "Generating image", null);
 
     assertThat(result.success()).isTrue();
     assertThat(result.summary()).isEqualTo("Image generated");
@@ -55,11 +57,24 @@ class InvokeDecomposerToolTest {
   }
 
   @Test
+  void invoke_withContextBrief_passesToDecomposer() {
+    var expectedResult = DecomposerResult.success("Portrait generated", List.of("portrait-1"));
+    var brief = List.of("Biscuit is an orange tabby cat", "Style: watercolor");
+    when(decomposer.execute(anyString(), any())).thenReturn(expectedResult);
+
+    var result = invokeDecomposerTool.invoke("Generate a portrait of Biscuit",
+        "Generating portrait", brief);
+
+    assertThat(result.success()).isTrue();
+    verify(decomposer).execute("Generate a portrait of Biscuit", brief);
+  }
+
+  @Test
   void invoke_failedDecomposition_returnsFailure() {
     var expectedResult = DecomposerResult.failure("No suitable model");
-    when(decomposer.execute(anyString())).thenReturn(expectedResult);
+    when(decomposer.execute(anyString(), any())).thenReturn(expectedResult);
 
-    var result = invokeDecomposerTool.invoke("Generate something", "Trying generation");
+    var result = invokeDecomposerTool.invoke("Generate something", "Trying generation", null);
 
     assertThat(result.success()).isFalse();
     assertThat(result.errorMessage()).isEqualTo("No suitable model");
@@ -67,9 +82,9 @@ class InvokeDecomposerToolTest {
 
   @Test
   void invoke_decomposerThrows_returnsFailure() {
-    when(decomposer.execute(anyString())).thenThrow(new RuntimeException("LLM unavailable"));
+    when(decomposer.execute(anyString(), any())).thenThrow(new RuntimeException("LLM unavailable"));
 
-    var result = invokeDecomposerTool.invoke("Do something", "Attempting task");
+    var result = invokeDecomposerTool.invoke("Do something", "Attempting task", null);
 
     assertThat(result.success()).isFalse();
     assertThat(result.errorMessage()).isEqualTo("LLM unavailable");
@@ -78,12 +93,12 @@ class InvokeDecomposerToolTest {
   @Test
   void invoke_incrementsAndDecrementsDepth() {
     var initialDepth = TaskExecutionContextHolder.getDepth();
-    when(decomposer.execute(anyString())).thenAnswer(inv -> {
+    when(decomposer.execute(anyString(), any())).thenAnswer(inv -> {
       assertThat(TaskExecutionContextHolder.getDepth()).isEqualTo(initialDepth + 1);
       return DecomposerResult.success("done", List.of());
     });
 
-    invokeDecomposerTool.invoke("task", "label");
+    invokeDecomposerTool.invoke("task", "label", null);
 
     assertThat(TaskExecutionContextHolder.getDepth()).isEqualTo(initialDepth);
   }
@@ -91,9 +106,9 @@ class InvokeDecomposerToolTest {
   @Test
   void invoke_decrementsDepthOnException() {
     var initialDepth = TaskExecutionContextHolder.getDepth();
-    when(decomposer.execute(anyString())).thenThrow(new RuntimeException("boom"));
+    when(decomposer.execute(anyString(), any())).thenThrow(new RuntimeException("boom"));
 
-    invokeDecomposerTool.invoke("task", "label");
+    invokeDecomposerTool.invoke("task", "label", null);
 
     assertThat(TaskExecutionContextHolder.getDepth()).isEqualTo(initialDepth);
   }

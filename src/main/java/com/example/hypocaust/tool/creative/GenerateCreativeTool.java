@@ -2,6 +2,7 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
@@ -45,16 +46,20 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
   @DiscoverableTool(
       name = "generate_creative",
       description = "Generate or edit creative content (images, audio, video, text). "
-          + "Describe what you need. If you have preferences (e.g., high quality, fast/cheap, "
-          + "photorealistic, creative), include them in the task. To use existing artifacts "
-          + "as inputs, refer to them using the @ prefix (e.g., 'Make @user_photo a cartoon').")
+          + "Describe what you need and provide the artifact intents (action, kind, description). "
+          + "If you have preferences (e.g., high quality, fast/cheap, photorealistic, creative), "
+          + "include them in the task. To use existing artifacts as inputs, refer to them using "
+          + "the @ prefix (e.g., 'Make @user_photo a cartoon').")
   public GenerateCreativeResult generate(
-      @ToolParam(description = "What to generate or edit, in natural language") String task
+      @ToolParam(description = "What to generate or edit, in natural language") String task,
+      @ToolParam(description = "Artifact intents: what to create, edit, or delete") List<ArtifactIntent> intents
   ) {
     log.info("{} request: {}", LOG_PREFIX, task);
 
     try {
-      List<IntentMapping> mappings = deriveMappings(task);
+      List<IntentMapping> mappings = intents.stream()
+          .map(IntentMapping::new)
+          .toList();
       return orchestrate(task, mappings);
     } catch (Exception e) {
       return GenerateCreativeResult.error(e.getMessage());

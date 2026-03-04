@@ -39,12 +39,6 @@ class TaskExecutionLifecycleServiceTest {
   @MockitoBean
   private EventService eventService;
 
-  @MockitoBean
-  private WordingService wordingService;
-
-  @MockitoBean
-  private NamingService namingService;
-
   @Test
   void startExecution_withPredecessorId_createsCorrectExecution() {
     // Given
@@ -54,9 +48,8 @@ class TaskExecutionLifecycleServiceTest {
     UUID eventId = UUID.randomUUID();
 
     when(eventService.publish(any(TaskExecutionStartedEvent.class))).thenReturn(eventId);
-    when(namingService.generateExecutionName(eq(task), any())).thenReturn("mock-name");
 
-    // When
+    // When — execution name is now deterministic: sanitize("test task", 50) = "test_task"
     TaskInitializationResult result = lifecycleService.startExecution(projectId, task,
         predecessorId);
 
@@ -64,7 +57,7 @@ class TaskExecutionLifecycleServiceTest {
     assertThat(result.projectId()).isEqualTo(projectId);
     assertThat(result.predecessorId()).isEqualTo(predecessorId);
     assertThat(result.firstEventId()).isEqualTo(eventId);
-    assertThat(result.name()).isEqualTo("mock-name");
+    assertThat(result.name()).isEqualTo("test_task");
 
     Optional<TaskExecutionEntity> saved = taskExecutionRepository.findById(
         result.taskExecutionId());
@@ -88,7 +81,6 @@ class TaskExecutionLifecycleServiceTest {
     when(versionService.getMostRecentTaskExecutionId(projectId))
         .thenReturn(Optional.of(resolvedPredecessorId));
     when(eventService.publish(any(TaskExecutionStartedEvent.class))).thenReturn(UUID.randomUUID());
-    when(namingService.generateExecutionName(any(), any())).thenReturn("mock-name");
 
     // When
     TaskInitializationResult result = lifecycleService.startExecution(projectId, task, null);
@@ -127,18 +119,17 @@ class TaskExecutionLifecycleServiceTest {
     when(artifacts.getChangelist()).thenReturn(changelist);
     when(context.getTodos()).thenReturn(todosContext);
     when(todosContext.getList()).thenReturn(todoList);
-    when(wordingService.generateCommitMessage(any())).thenReturn("Completed test task");
     when(versionService.persist(any(), any(), any()))
         .thenReturn(new com.example.hypocaust.domain.TaskExecutionDelta());
 
-    // When
+    // When — commit message is now the task itself
     lifecycleService.commitExecution(executionId, projectId, "test task", context);
 
     // Then
     TaskExecutionEntity updated = taskExecutionRepository.findById(executionId).orElseThrow();
     assertThat(updated.getStatus()).isEqualTo(TaskExecutionStatus.COMPLETED);
     assertThat(updated.getCompletedAt()).isNotNull();
-    assertThat(updated.getCommitMessage()).isNotNull();
+    assertThat(updated.getCommitMessage()).isEqualTo("test task");
 
     verify(versionService).persist(any(), eq(executionId), eq(projectId));
     verify(todoService).materialize(any(), eq(executionId));

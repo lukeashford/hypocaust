@@ -12,8 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for generating unique technical identifiers (snake_case) using an LLM. Handles artifact
- * names and task execution names with collision checks and retries via the unified ChatService.
+ * Service for generating unique artifact identifiers (snake_case) using an LLM. Handles artifact
+ * names with collision checks and retries via the unified ChatService.
  */
 @Service
 @RequiredArgsConstructor
@@ -69,38 +69,6 @@ public class NamingService {
     name = appendCounterIfExists(name, takenNames);
 
     return new ArtifactNaming(title, name, description);
-  }
-
-  /**
-   * Generates a unique task execution name.
-   */
-  public String generateExecutionName(String source, Set<String> taken) {
-    String actualSource = (source == null || source.isBlank()) ? "task" : source;
-
-    String userPrompt = "Source: " + actualSource;
-    if (!taken.isEmpty()) {
-      userPrompt += "\n\nThe following names are already taken, choose a different one: "
-          + String.join(", ", taken);
-    }
-
-    try {
-      String response = chatService.call(MODEL, PromptFragments.taskExecutionName().text(),
-          userPrompt);
-
-      if (response != null && !response.isBlank()) {
-        String name = sanitize(response, 50);
-        if (!taken.contains(name)) {
-          return name;
-        }
-        log.info("LLM generated an existing name: {}", name);
-      }
-    } catch (Exception e) {
-      log.warn("Failed to generate unique execution name via LLM: {}", e.getMessage());
-    }
-
-    // Fallback: sanitize the raw source and append a counter if needed
-    String name = sanitize(actualSource, 50);
-    return appendCounterIfExists(name, taken);
   }
 
   private String sanitize(String input, int maxLen) {

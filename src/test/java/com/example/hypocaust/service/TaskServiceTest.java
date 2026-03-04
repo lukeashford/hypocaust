@@ -39,9 +39,6 @@ class TaskServiceTest {
   private TodoExecutor todoExecutor;
 
   @Mock
-  private WordingService wordingService;
-
-  @Mock
   private ExecutorService runExecutorService;
 
   @Mock
@@ -98,20 +95,15 @@ class TaskServiceTest {
     verify(lifecycleService).startExecution(projectId, taskDescription, predecessorId);
     verify(runExecutorService).submit(runnableCaptor.capture());
 
-    // Verify background task logic (at least that it calls executeTask)
-    // We can't easily verify the call to the private method directly, 
-    // but we can verify what executeTask does if we invoke the captured runnable.
-
     // Preparation for executeTask verification
     TaskExecutionContext mockContext = mock(TaskExecutionContext.class);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId, "test-name"))
         .thenReturn(mockContext);
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
-    when(wordingService.generateTodoWording(taskDescription)).thenReturn("test label");
-    when(todoExecutor.execute(eq("test label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+    // Root label is now deterministic: truncate(task, 80) = "test task"
+    when(todoExecutor.execute(eq("test task"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          Supplier<Object> supplier = invocation.getArgument(
-              1);
+          Supplier<Object> supplier = invocation.getArgument(1);
           return supplier.get();
         });
     when(decomposer.execute(taskDescription)).thenReturn(DecomposerResult.success("done", null));
@@ -147,11 +139,10 @@ class TaskServiceTest {
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId, "fail-name"))
         .thenReturn(mockContext);
-    when(wordingService.generateTodoWording(taskDescription)).thenReturn("fail label");
-    when(todoExecutor.execute(eq("fail label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+    // Root label is deterministic: "fail task" (under 80 chars)
+    when(todoExecutor.execute(eq("fail task"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          Supplier<Object> supplier = invocation.getArgument(
-              1);
+          Supplier<Object> supplier = invocation.getArgument(1);
           return supplier.get();
         });
     when(decomposer.execute(taskDescription)).thenReturn(DecomposerResult.failure("error"));
@@ -172,11 +163,10 @@ class TaskServiceTest {
     when(mockContext.getTaskExecutionId()).thenReturn(taskExecutionId);
     when(contextFactory.create(projectId, taskExecutionId, predecessorId, "boom-name"))
         .thenReturn(mockContext);
-    when(wordingService.generateTodoWording(taskDescription)).thenReturn("boom label");
-    when(todoExecutor.execute(eq("boom label"), org.mockito.ArgumentMatchers.any())).thenAnswer(
+    // Root label is deterministic: "exception task" (under 80 chars)
+    when(todoExecutor.execute(eq("exception task"), org.mockito.ArgumentMatchers.any())).thenAnswer(
         invocation -> {
-          Supplier<Object> supplier = invocation.getArgument(
-              1);
+          Supplier<Object> supplier = invocation.getArgument(1);
           return supplier.get();
         });
     when(decomposer.execute(taskDescription)).thenThrow(new RuntimeException("crash"));

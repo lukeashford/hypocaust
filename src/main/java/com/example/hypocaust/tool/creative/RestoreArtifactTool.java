@@ -1,9 +1,14 @@
 package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.stereotype.Component;
 
 /**
  * Tool for restoring a historical artifact version into the current changelist.
@@ -11,6 +16,11 @@ import org.springframework.ai.tool.annotation.ToolParam;
  * <p>Retrieves the artifact as it existed at a past task execution and adds it back as a new
  * artifact. The original name is reused when free; if taken, a unique alternative is assigned
  * automatically.
+ *
+ * <p>Extends {@link AbstractArtifactTool} for type consistency, but does not go through
+ * {@link #orchestrate} because restore has name-preservation semantics that don't fit the
+ * standard ADD intent flow. The lifecycle (events, changelist) is handled by
+ * {@link com.example.hypocaust.domain.ArtifactsContext#restore}.
  *
  * <p>Reversion pattern — to replace the current version with an older one:
  * <ol>
@@ -27,7 +37,8 @@ import org.springframework.ai.tool.annotation.ToolParam;
         + "that name is free, or under a new unique name when it is already taken. "
         + "To revert an artifact, restore the historical version then delete the current one.")
 @Slf4j
-public class RestoreArtifactTool {
+@Component
+public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
 
   public RestoreResult restore(
       @ToolParam(description = "Name of the artifact to retrieve from history") String artifactName,
@@ -64,5 +75,18 @@ public class RestoreArtifactTool {
           artifactName, executionName, e.getMessage());
       return RestoreResult.error(e.getMessage());
     }
+  }
+
+  @Override
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating,
+      List<IntentMapping> mappings) {
+    // Not used — restore bypasses orchestrate() for name-preservation semantics
+    throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
+  }
+
+  @Override
+  protected RestoreResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings) {
+    // Not used — restore bypasses orchestrate() for name-preservation semantics
+    throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
   }
 }

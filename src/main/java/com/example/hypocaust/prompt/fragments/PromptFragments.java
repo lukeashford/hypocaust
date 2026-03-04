@@ -180,34 +180,6 @@ public final class PromptFragments {
 
   // --- Wording & Naming Fragments ---
 
-  /**
-   * Generates a brief progress label (1-5 words) for a task.
-   */
-  public static PromptFragment todoLabel() {
-    return new PromptFragment(
-        "wording-todo-label",
-        """
-            Generate a brief progress label (max 80 characters) for this task.
-            Focus on the action and key subject (e.g., 'Creating poem about piglet rivalry',
-            'Generating character illustrations for Biscuit and Mittens').
-            IMPORTANT: You are only labeling the task, NOT performing it.
-            Output ONLY the label."""
-    );
-  }
-
-  /**
-   * Generates a brief commit message (1 sentence, max 100 chars) summarizing what was done.
-   */
-  public static PromptFragment commitMessage() {
-    return new PromptFragment(
-        "wording-commit-message",
-        """
-            Generate a brief commit message (1 sentence, max 100 chars) summarizing what was done.
-            Focus on the outcome, not the process. Start with a verb like 'Added', 'Created', 'Updated'.
-            Output ONLY the message."""
-    );
-  }
-
   public static PromptFragment artifactNaming() {
     return new PromptFragment("artifact_naming", """
         You are an expert at naming artifacts for a creative project.
@@ -228,21 +200,6 @@ public final class PromptFragments {
           "description": "..."
         }
         """);
-  }
-
-  /**
-   * Generates a short snake_case name for a task execution (max 50 chars).
-   */
-  public static PromptFragment taskExecutionName() {
-    return new PromptFragment(
-        "wording-task-execution-name",
-        """
-            Generate a short snake_case name for a task execution (max 50 chars).
-            The name should describe the intent of the task.
-            Use only lowercase letters, numbers, and underscores.
-            Reply with ONLY the name, nothing else.
-            Examples: initial_character_designs, hair_color_change, forest_background_added"""
-    );
   }
 
   /**
@@ -298,33 +255,22 @@ public final class PromptFragments {
             """);
   }
 
-  public static PromptFragment artifactIntents() {
-    String kindsJson = ArtifactKind.toJsonArray();
-    String body = """
-        What artifact actions does this task require? Analyze the user's intent and return
-        a JSON array of artifact intents.
-
-        Available ArtifactKinds:
-        %s
-
-        Rules:
-        - EDIT replaces an existing artifact in-place. There can be at most one EDIT per targetName.
-        - To create multiple variations of an existing artifact, use ADD for each variation.
-          The downstream tool will receive the original via @name reference in the task.
-        - DELETE has no output artifact. Only use it when the user explicitly wants removal.
-        - For ADD, always provide a 'kind'. For EDIT, 'kind' is inherited from the target.
-          For DELETE, 'kind' can be omitted.
-
-        Respond ONLY with a JSON array of ArtifactIntents:
-        [
-          {
-            "action": "ADD|EDIT|DELETE",
-            "kind": "IMAGE|AUDIO|VIDEO|TEXT|PDF",
-            "targetName": "artifact_name_without_@",
-            "description": "What this artifact is for"
-          }
-        ]
-        """.formatted(kindsJson);
-    return new PromptFragment("artifact-intents", body);
+  /**
+   * Instructions for the decomposer on how to use contextBrief when delegating to child
+   * decomposers.
+   */
+  public static PromptFragment contextBriefInstructions() {
+    return new PromptFragment(
+        "decomposer-context-brief",
+        """
+            When delegating via `invoke_decomposer`, include a `contextBrief` with 3-5 key facts \
+            the child needs that aren't obvious from the task alone:
+            - Physical descriptions of characters/subjects that have been established
+            - Style, tone, or aesthetic decisions already made
+            - Artifact names to reference via @name syntax
+            - User constraints not captured in the task string
+            Do not repeat the task itself. Do not include your reasoning or plan.""",
+        25
+    );
   }
 }
