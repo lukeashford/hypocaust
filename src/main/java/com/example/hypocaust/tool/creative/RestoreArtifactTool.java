@@ -2,7 +2,7 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import java.util.List;
@@ -18,8 +18,8 @@ import org.springframework.stereotype.Component;
  * automatically.
  *
  * <p>Extends {@link AbstractArtifactTool} for type consistency, but does not go through
- * {@link #orchestrate} because restore has name-preservation semantics that don't fit the
- * standard ADD intent flow. The lifecycle (events, changelist) is handled by
+ * {@link #orchestrate} because restore has name-preservation semantics that don't fit the standard
+ * ADD intent flow. The lifecycle (events, changelist) is handled by
  * {@link com.example.hypocaust.domain.ArtifactsContext#restore}.
  *
  * <p>Reversion pattern — to replace the current version with an older one:
@@ -79,13 +79,13 @@ public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
 
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings) {
+      List<ArtifactIntent> intents) {
     // Not used — restore bypasses orchestrate() for name-preservation semantics
     throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
   }
 
   @Override
-  protected RestoreResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings) {
+  protected RestoreResult finalizeResult(List<Artifact> results, List<ArtifactIntent> intents) {
     // Not used — restore bypasses orchestrate() for name-preservation semantics
     throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
   }

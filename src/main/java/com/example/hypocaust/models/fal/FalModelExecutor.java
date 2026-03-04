@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.fal;
 
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -43,18 +43,18 @@ public class FalModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("fal-plan", """
             You are an expert creative director. Prepare a fal.ai generation plan.
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object matching the fal.ai model's expected input format.
                - Optimize prompts for the best artistic results.
                - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -67,7 +67,7 @@ public class FalModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         %sModel Docs: %s
-
+        
         Best Practices:
         %s
         """, task, formatIntentContext(intents), model.description(), model.bestPractices());

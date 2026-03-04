@@ -35,9 +35,10 @@ public class InvokeDecomposerTool {
   public DecomposerResult invoke(
       @ToolParam(description = "Self-contained task description with all necessary context") String task,
       @ToolParam(description = "Human-readable progress label for this step") String todoDescription,
-      @ToolParam(description = "Key facts established so far that this subtask needs. "
-          + "3-5 bullet points of context: character descriptions, style decisions, "
-          + "artifact names to reference, constraints the user stated.",
+      @ToolParam(description = "3-5 key facts established so far that this subtask needs and "
+          + "aren't obvious from the task alone: physical descriptions, style decisions, "
+          + "artifact names to reference via @name syntax, user constraints. "
+          + "Do NOT repeat the task itself, your reasoning, or your plan.",
           required = false) List<String> contextBrief
   ) {
     try {

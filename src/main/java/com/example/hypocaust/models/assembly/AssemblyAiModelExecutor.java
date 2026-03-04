@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.assembly;
 
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -43,18 +43,18 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("assemblyai-plan", """
             You are an expert creative director. Prepare an AssemblyAI processing plan.
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
                - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
             2. Validation:
                - If mandatory audio source is missing, provide an 'errorMessage'.
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -67,7 +67,7 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         %sModel Docs: %s
-
+        
         Best Practices:
         %s
         """, task, formatIntentContext(intents), model.description(), model.bestPractices());

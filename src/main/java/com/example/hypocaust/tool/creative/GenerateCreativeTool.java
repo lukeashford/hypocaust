@@ -3,7 +3,6 @@ package com.example.hypocaust.tool.creative;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactIntent;
-import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -57,10 +56,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
     log.info("{} request: {}", LOG_PREFIX, task);
 
     try {
-      List<IntentMapping> mappings = intents.stream()
-          .map(IntentMapping::new)
-          .toList();
-      return orchestrate(task, mappings);
+      return orchestrate(task, intents);
     } catch (Exception e) {
       return GenerateCreativeResult.error(e.getMessage());
     }
@@ -68,7 +64,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
 
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings) {
+      List<ArtifactIntent> intents) {
     // Step 1: Find suitable models
     ModelRequirement req = wordingService.generateModelRequirement(task);
     var models = modelRag.search(req);
@@ -87,7 +83,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
         List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext()
             .getArtifacts().getAllWithChanges();
 
-        var result = executor.run(gestating, task, model, mappings, availableArtifacts);
+        var result = executor.run(gestating, task, model, intents, availableArtifacts);
 
         // Validate count and kind alignment
         if (result.artifacts().size() != gestating.size()) {
@@ -136,7 +132,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
 
   @Override
   protected GenerateCreativeResult finalizeResult(List<Artifact> results,
-      List<IntentMapping> mappings) {
+      List<ArtifactIntent> intents) {
     List<String> finalizedNames = results.stream().map(Artifact::name).toList();
     String modelName = results.isEmpty() ? "unknown"
         : results.getFirst().metadata().path("generation_details").path("model_name")

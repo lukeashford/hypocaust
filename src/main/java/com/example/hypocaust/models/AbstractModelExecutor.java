@@ -1,9 +1,9 @@
 package com.example.hypocaust.models;
 
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
@@ -22,8 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 
 /**
- * Base executor implementing the full pipeline: plan → resolve artifact refs → execute phases
- * (each with retry) → extract → download/store → finalize artifacts.
+ * Base executor implementing the full pipeline: plan → resolve artifact refs → execute phases (each
+ * with retry) → extract → download/store → finalize artifacts.
  *
  * <p><b>Error message contract for decomposer interpretability:</b>
  * Every exception message thrown from {@link #run} should be self-classifying:
@@ -66,19 +66,19 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
    * Subclasses implement this to prepare provider-specific input from the user task.
    */
   protected abstract ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents);
+      List<ArtifactIntent> intents);
 
   /**
    * Formats intent mappings into a human-readable context string for inclusion in executor planning
    * prompts. Media executors should include this in the user prompt passed to the planning LLM.
    */
-  protected String formatIntentContext(List<IntentMapping> intents) {
+  protected String formatIntentContext(List<ArtifactIntent> intents) {
     if (intents == null || intents.isEmpty()) {
       return "";
     }
     var sb = new StringBuilder("Artifact intents for this execution:\n");
     for (int i = 0; i < intents.size(); i++) {
-      var intent = intents.get(i).intent();
+      var intent = intents.get(i);
       sb.append("  [").append(i + 1).append("] ")
           .append(intent.action()).append(" ").append(intent.kind());
       if (intent.targetName() != null) {
@@ -122,12 +122,12 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   }
 
   /**
-   * Orchestrates the full pipeline: plan → resolve artifact refs → execute phases (each with
-   * retry) → extract → download/store → finalize artifacts.
+   * Orchestrates the full pipeline: plan → resolve artifact refs → execute phases (each with retry)
+   * → extract → download/store → finalize artifacts.
    */
   @Override
   public ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
-      List<IntentMapping> intents, List<Artifact> availableArtifacts) {
+      List<ArtifactIntent> intents, List<Artifact> availableArtifacts) {
     var plan = generatePlan(task, model, intents);
     if (plan.hasError()) {
       throw new RuntimeException("Planning failed: " + plan.errorMessage());

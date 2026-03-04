@@ -3,7 +3,6 @@ package com.example.hypocaust.tool.creative;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactAction;
 import com.example.hypocaust.domain.ArtifactIntent;
-import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import java.util.List;
@@ -29,24 +28,23 @@ public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
       return DeleteResult.error("Artifact name is required");
     }
     String name = artifactName.trim();
-    var mapping = new IntentMapping(
-        ArtifactIntent.builder()
-            .action(ArtifactAction.DELETE)
-            .targetName(name)
-            .description("Delete artifact " + name)
-            .build());
-    return orchestrate("Delete " + name, List.of(mapping));
+    var intent = ArtifactIntent.builder()
+        .action(ArtifactAction.DELETE)
+        .targetName(name)
+        .description("Delete artifact " + name)
+        .build();
+    return orchestrate("Delete " + name, List.of(intent));
   }
 
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings) {
+      List<ArtifactIntent> intents) {
     return List.of(); // Parent already marked it for deletion
   }
 
   @Override
-  protected DeleteResult finalizeResult(List<Artifact> results, List<IntentMapping> mappings) {
-    String targetName = mappings.getFirst().intent().targetName();
+  protected DeleteResult finalizeResult(List<Artifact> results, List<ArtifactIntent> intents) {
+    String targetName = intents.getFirst().targetName();
     return DeleteResult.success(targetName, "Artifact marked for deletion");
   }
 }

@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.replicate;
 
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -41,7 +41,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     String schemaContext;
     try {
       var version = replicateClient.getLatestVersion(model.owner(), model.modelId());
@@ -60,7 +60,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("replicate-plan", """
             You are an expert creative director. Prepare a Replicate generation plan.
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' matching the OpenAPI schema.
                - Optimize prompts for the best artistic results.
@@ -69,7 +69,7 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
             2. Validation:
                - Ensure all REQUIRED fields are present.
                - If mandatory info is missing, provide a precise 'errorMessage'.
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -80,13 +80,13 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
         .build();
 
     var userPrompt = String.format("""
-        Task: %s
-        %sModel Docs: %s
-        %s
-
-        Best Practices:
-        %s
-        """, task, formatIntentContext(intents), model.description(), schemaContext,
+            Task: %s
+            %sModel Docs: %s
+            %s
+            
+            Best Practices:
+            %s
+            """, task, formatIntentContext(intents), model.description(), schemaContext,
         model.bestPractices());
 
     var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);

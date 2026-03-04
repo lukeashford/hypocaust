@@ -110,7 +110,7 @@ class DecompositionScenarioTest {
 
     var initialDepth = TaskExecutionContextHolder.getDepth();
 
-    var result = invokeDecomposerTool.invoke("Generate a sunset image", "Generating sunset");
+    var result = invokeDecomposerTool.invoke("Generate a sunset image", "Generating sunset", null);
 
     assertThat(result.success()).isTrue();
     assertThat(result.summary()).isEqualTo("Child completed");

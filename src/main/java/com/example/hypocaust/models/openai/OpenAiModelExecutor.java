@@ -1,7 +1,7 @@
 package com.example.hypocaust.models.openai;
 
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.IntentMapping;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -38,13 +38,13 @@ public class OpenAiModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     for (var mapping : intents) {
-      if (mapping.intent().kind() != ArtifactKind.TEXT) {
+      if (mapping.kind() != ArtifactKind.TEXT) {
         return ExecutionPlan.error(
             "OpenAI chat models support only TEXT output, but received "
-                + mapping.intent().kind() + " intent: " + mapping.intent().description()
-                + ". Choose a different model for " + mapping.intent().kind() + " generation.");
+                + mapping.kind() + " intent: " + mapping.description()
+                + ". Choose a different model for " + mapping.kind() + " generation.");
       }
     }
     return new ExecutionPlan(objectMapper.createObjectNode().put("prompt", task), null);

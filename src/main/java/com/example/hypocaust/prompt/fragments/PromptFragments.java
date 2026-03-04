@@ -113,14 +113,14 @@ public final class PromptFragments {
             When the task involves existing artifacts or prior work, query the project context \
             to understand the current state before acting. Consider what has
             been tried before and whether to regenerate or edit.
-
+            
             When the task mentions specific named entities, distinctive characteristics, or recurring \
             resources — such as a character, a particular style, a named voice, or a recognizable visual \
             element — proactively check whether a matching artifact already captures that information \
             using `ask_project_context` before generating anything new. Pass the artifact name to \
             downstream tools using the `@name` syntax so they can resolve the relevant details \
             automatically.
-
+            
             IMPORTANT: Only you (the decomposer) have access to artifact contents via the project context tool. \
             The downstream tools you call (e.g., GenerateCreativeTool) do NOT have access to these artifacts. \
             If a tool needs information from an artifact (like character descriptions from a text artifact) \
@@ -155,22 +155,22 @@ public final class PromptFragments {
         """
             After any action, evaluate the result. If the tool or child decomposer returned an error,
             classify it and respond accordingly:
-
+            
             1. INFRASTRUCTURE / PROVIDER FAILURE — The error describes a technical issue
                with the underlying service (timeouts, network errors, API failures, service
                unavailable). The tool has already retried internally.
                → Do NOT retry this capability. Report the issue and move on.
-
+            
             2. INPUT / PARAMETER ISSUE — The error describes a problem with YOUR request
                (missing parameters, invalid format, wrong artifact reference).
                → Adjust your parameters and retry (max {{maxRetries}} attempts per approach).
-
+            
             3. CAPACITY / SCOPE MISMATCH — The error indicates your request exceeds what
                the tool can handle in a single call (too many outputs, unsupported
                combination), but the capability itself works.
                → Restructure your approach. Break the task into smaller units and retry
                  each individually.
-
+            
             If a child decomposer failed, trust its diagnosis. Do not re-attempt the same
             generation that the child already exhausted. When giving up, include error
             details in your response.""",
@@ -242,35 +242,17 @@ public final class PromptFragments {
         """
             You are a model selection specialist. Given a creative generation task and a shortlist
             of candidate AI models, rank them from best to worst fit.
-
+            
             Consider:
             - Semantic match: how well the model's capabilities and description match the task
             - Tier fit: choosing a more expensive or slower model than the task requires is worse
               than choosing a slightly less capable model at the right tier; only prefer a higher
               tier when the task genuinely demands it
             - Special capabilities: unique strengths or specialisations that directly benefit the task
-
+            
             Return ONLY a JSON array of model names in ranked order (best first):
             ["Best Model Name", "Second Best", ...]
             """);
   }
 
-  /**
-   * Instructions for the decomposer on how to use contextBrief when delegating to child
-   * decomposers.
-   */
-  public static PromptFragment contextBriefInstructions() {
-    return new PromptFragment(
-        "decomposer-context-brief",
-        """
-            When delegating via `invoke_decomposer`, include a `contextBrief` with 3-5 key facts \
-            the child needs that aren't obvious from the task alone:
-            - Physical descriptions of characters/subjects that have been established
-            - Style, tone, or aesthetic decisions already made
-            - Artifact names to reference via @name syntax
-            - User constraints not captured in the task string
-            Do not repeat the task itself. Do not include your reasoning or plan.""",
-        25
-    );
-  }
 }

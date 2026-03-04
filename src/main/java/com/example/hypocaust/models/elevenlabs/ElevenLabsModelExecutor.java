@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.elevenlabs;
 
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -45,7 +45,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("elevenlabs-plan", """
             You are an expert creative director. Prepare an ElevenLabs generation plan.

@@ -1,6 +1,6 @@
 package com.example.hypocaust.models.runway;
 
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
 import com.example.hypocaust.models.ExtractedOutput;
@@ -43,11 +43,11 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
 
   @Override
   protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
-      List<IntentMapping> intents) {
+      List<ArtifactIntent> intents) {
     var systemPrompt = PromptBuilder.create()
         .with(new PromptFragment("runway-plan", """
             You are an expert creative director. Prepare a Runway generation plan.
-
+            
             YOUR RESPONSIBILITIES:
             1. Input Mapping: Construct the 'providerInput' object following the model's input
                spec described in the Model Docs and Best Practices below.
@@ -55,7 +55,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
                - If a field requires an image/video and the user refers to an artifact, use '@artifact_name' as a placeholder.
             2. Validation:
                - If mandatory info is missing, provide an 'errorMessage'.
-
+            
             OUTPUT: Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -68,7 +68,7 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
     var userPrompt = String.format("""
         Task: %s
         %sModel Docs: %s
-
+        
         Best Practices:
         %s
         """, task, formatIntentContext(intents), model.description(), model.bestPractices());

@@ -5,7 +5,6 @@ import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactAction;
 import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.domain.IntentMapping;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -19,21 +18,21 @@ import lombok.extern.slf4j.Slf4j;
 public abstract class AbstractArtifactTool<R extends ToolResult> {
 
   /**
-   * The orchestration template. Caller provides pre-built mappings — either from the decomposer
-   * (via tool parameters) or programmatic (e.g., DeleteArtifactTool).
+   * The orchestration template. Caller provides pre-built intents — either from the decomposer (via
+   * tool parameters) or programmatic (e.g., DeleteArtifactTool).
    */
-  protected final R orchestrate(String task, List<IntentMapping> mappings) {
+  protected final R orchestrate(String task, List<ArtifactIntent> intents) {
     log.info("[PARENT] Starting orchestration for task: {}", task);
-    log.info("[PARENT] {} mappings", mappings.size());
+    log.info("[PARENT] {} intents", intents.size());
 
     // 1. Prepare gestating artifacts
-    List<Artifact> gestating = prepareArtifacts(mappings, task);
+    List<Artifact> gestating = prepareArtifacts(intents, task);
     log.info("[PARENT] Prepared {} gestating artifacts", gestating.size());
 
     try {
       // 2. Tool-specific execution (pure — no side effects on context)
       log.info("[CHILD] Starting doExecute");
-      List<Artifact> results = doExecute(task, gestating, mappings);
+      List<Artifact> results = doExecute(task, gestating, intents);
       log.info("[CHILD] doExecute returned {} artifacts", results.size());
 
       // 3. Validate and commit to context
@@ -44,7 +43,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
 
       // 4. Finalize result
       log.info("[CHILD] Finalizing result");
-      return finalizeResult(results, mappings);
+      return finalizeResult(results, intents);
     } catch (Exception e) {
       log.warn("[PARENT] Execution failed, rolling back artifacts: {}", e.getMessage());
       rollbackArtifacts(gestating);
@@ -53,9 +52,9 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
   }
 
   protected abstract List<Artifact> doExecute(String task, List<Artifact> gestating,
-      List<IntentMapping> mappings);
+      List<ArtifactIntent> intents);
 
-  protected abstract R finalizeResult(List<Artifact> results, List<IntentMapping> mappings);
+  protected abstract R finalizeResult(List<Artifact> results, List<ArtifactIntent> intents);
 
   private void validateFinalized(Artifact artifact) {
     if (artifact.status() == ArtifactStatus.MANIFESTED) {
@@ -67,11 +66,9 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
     // FAILED artifacts are allowed — they carry errorMessage
   }
 
-  private List<Artifact> prepareArtifacts(List<IntentMapping> mappings, String task) {
+  private List<Artifact> prepareArtifacts(List<ArtifactIntent> intents, String task) {
     List<Artifact> gestating = new ArrayList<>();
-    for (var mapping : mappings) {
-      ArtifactIntent intent = mapping.intent();
-
+    for (var intent : intents) {
       if (intent.action() == ArtifactAction.DELETE) {
         log.info("[PARENT] Intent: DELETE '{}'", intent.targetName());
         TaskExecutionContextHolder.deleteArtifact(intent.targetName());

@@ -4,6 +4,7 @@ import com.example.hypocaust.common.JsonUtils;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.utils.NamingUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
@@ -48,7 +49,7 @@ public class NamingService {
     // Default fallbacks in case LLM fails
     String title = task;
     String description = "Generated " + kind.name().toLowerCase();
-    String name = sanitize(task, 30);
+    String name = NamingUtils.sanitize(task, 30);
 
     try {
       String response = chatService.call(MODEL, PromptFragments.artifactNaming().text(),
@@ -64,33 +65,10 @@ public class NamingService {
     }
 
     // Enforce uniqueness
-    title = appendCounterIfExists(title, takenTitles);
-    name = sanitize(name, 30);
-    name = appendCounterIfExists(name, takenNames);
+    title = NamingUtils.appendCounterIfExists(title, takenTitles);
+    name = NamingUtils.sanitize(name, 30);
+    name = NamingUtils.appendCounterIfExists(name, takenNames);
 
     return new ArtifactNaming(title, name, description);
-  }
-
-  private String sanitize(String input, int maxLen) {
-    String sanitized = input.toLowerCase()
-        .replaceAll("[^a-z0-9_]", "_")
-        .replaceAll("_+", "_")
-        .replaceAll("^_|_$", "");
-
-    if (sanitized.length() > maxLen) {
-      sanitized = sanitized.substring(0, maxLen);
-      sanitized = sanitized.replaceAll("_+$", "");
-    }
-    return sanitized;
-  }
-
-  private String appendCounterIfExists(String name, Set<String> taken) {
-    String result = name;
-    int counter = 2;
-    while (taken.contains(result)) {
-      result = name + "_" + counter;
-      counter++;
-    }
-    return result;
   }
 }

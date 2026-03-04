@@ -14,6 +14,7 @@ import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
+import com.example.hypocaust.utils.NamingUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -49,8 +50,8 @@ public class TaskExecutionLifecycleService {
             .orElse(null));
 
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
-    String name = sanitize(task, 50);
-    name = appendCounterIfExists(name, existingNames);
+    String name = NamingUtils.sanitize(task, 50);
+    name = NamingUtils.appendCounterIfExists(name, existingNames);
 
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
@@ -158,28 +159,5 @@ public class TaskExecutionLifecycleService {
     taskExecutionRepository.save(taskExecution);
 
     eventService.publish(new TaskExecutionFailedEvent(taskExecutionId, errorMessage));
-  }
-
-  private static String sanitize(String input, int maxLen) {
-    String sanitized = input.toLowerCase()
-        .replaceAll("[^a-z0-9_]", "_")
-        .replaceAll("_+", "_")
-        .replaceAll("^_|_$", "");
-
-    if (sanitized.length() > maxLen) {
-      sanitized = sanitized.substring(0, maxLen);
-      sanitized = sanitized.replaceAll("_+$", "");
-    }
-    return sanitized;
-  }
-
-  private static String appendCounterIfExists(String name, Set<String> taken) {
-    String result = name;
-    int counter = 2;
-    while (taken.contains(result)) {
-      result = name + "_" + counter;
-      counter++;
-    }
-    return result;
   }
 }

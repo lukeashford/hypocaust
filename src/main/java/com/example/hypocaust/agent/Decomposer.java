@@ -70,7 +70,7 @@ public class Decomposer {
   /**
    * Execute a task with optional context brief from a parent decomposer.
    *
-   * @param task         the self-contained task description
+   * @param task the self-contained task description
    * @param contextBrief key facts from the parent decomposer (nullable)
    * @return the decomposer result with success/failure, summary, and artifact names
    */
@@ -90,7 +90,6 @@ public class Decomposer {
           .with(PromptFragments.abilityAwareness())
           .with(PromptFragments.artifactAwareness())
           .with(PromptFragments.selfHealing())
-          .with(PromptFragments.contextBriefInstructions())
           .param("maxChildren", MAX_CHILDREN)
           .param("maxRetries", MAX_RETRIES)
           .build();

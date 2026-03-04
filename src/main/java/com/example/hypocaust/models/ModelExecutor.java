@@ -1,7 +1,7 @@
 package com.example.hypocaust.models;
 
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.IntentMapping;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import java.util.List;
 
@@ -25,5 +25,5 @@ public interface ModelExecutor {
    * @return the finalized artifact and the provider input used
    */
   ExecutionResult run(List<Artifact> artifacts, String task, ModelSearchResult model,
-      List<IntentMapping> intents, List<Artifact> availableArtifacts);
+      List<ArtifactIntent> intents, List<Artifact> availableArtifacts);
 }
