@@ -5,9 +5,9 @@ import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
-import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
+import com.example.hypocaust.utils.NamingUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;
@@ -32,23 +32,25 @@ public class ArtifactsContext {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final NamingService namingService;
 
   private final Changelist changelist = new Changelist();
 
   /**
-   * Schedule a new artifact for creation.
+   * Schedule a new artifact for creation. The preferred name is sanitized and deduplicated; the
+   * preferred title is deduplicated by appending a counter if necessary.
    */
-  public synchronized Artifact add(String task, String outputDescription, ArtifactKind kind,
-      JsonNode metadata) {
-    NamingService.ArtifactNaming naming = namingService.generateArtifactNaming(
-        task, outputDescription, kind, collectTakenNames(), collectTakenTitles());
+  public synchronized Artifact add(String preferredName, String preferredTitle, String description,
+      ArtifactKind kind, JsonNode metadata) {
+    String name = NamingUtils.sanitize(preferredName, 30);
+    name = NamingUtils.appendCounterIfExists(name, collectTakenNames());
+
+    String title = NamingUtils.appendCounterIfExists(preferredTitle, collectTakenTitles());
 
     Artifact artifact = Artifact.builder()
-        .name(naming.name())
+        .name(name)
         .kind(kind)
-        .title(naming.title())
-        .description(naming.description())
+        .title(title)
+        .description(description)
         .status(ArtifactStatus.GESTATING)
         .metadata(metadata)
         .build();
@@ -132,21 +134,9 @@ public class ArtifactsContext {
         .orElseThrow(() -> new ArtifactNotFoundException(
             "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
 
-    Set<String> takenNames = collectTakenNames();
-    Set<String> takenTitles = collectTakenTitles();
-
-    String name = source.name();
-    String title = source.title();
+    String name = NamingUtils.appendCounterIfExists(source.name(), collectTakenNames());
+    String title = NamingUtils.appendCounterIfExists(source.title(), collectTakenTitles());
     String description = source.description();
-
-    if (takenNames.contains(name) || takenTitles.contains(title)) {
-      NamingService.ArtifactNaming naming = namingService.generateArtifactNaming(
-          "Restore " + source.name(), source.description(), source.kind(), takenNames,
-          takenTitles);
-      name = naming.name();
-      title = naming.title();
-      description = naming.description();
-    }
 
     Artifact restored = Artifact.builder()
         .name(name)

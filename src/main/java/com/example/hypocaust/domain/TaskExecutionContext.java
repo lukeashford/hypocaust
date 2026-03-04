@@ -1,7 +1,6 @@
 package com.example.hypocaust.domain;
 
 import com.example.hypocaust.dto.ArtifactDto;
-import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -38,7 +37,6 @@ public class TaskExecutionContext {
       String name,
       EventService eventService,
       VersionManagementService versionService,
-      NamingService namingService,
       Function<String, String> urlResolver) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
@@ -48,7 +46,7 @@ public class TaskExecutionContext {
 
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
-        eventService, versionService, namingService
+        eventService, versionService
     );
     this.todos = new TodosContext(taskExecutionId, eventService);
   }

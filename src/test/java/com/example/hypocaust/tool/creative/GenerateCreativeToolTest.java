@@ -74,6 +74,8 @@ class GenerateCreativeToolTest {
         .action(ArtifactAction.ADD)
         .kind(kind)
         .description(description)
+        .preferredName("test_artifact")
+        .preferredTitle("Test Artifact")
         .build();
   }
 
@@ -97,7 +99,7 @@ class GenerateCreativeToolTest {
         .description("A very cute cat illustration")
         .status(ArtifactStatus.GESTATING)
         .build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
     var finalizedArtifact = Artifact.builder()
@@ -135,7 +137,7 @@ class GenerateCreativeToolTest {
         .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
 
-    when(artifactsContext.add(eq(task), anyString(), eq(ArtifactKind.IMAGE), any()))
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(ArtifactKind.IMAGE), any()))
         .thenReturn(Artifact.builder()
             .name("sunset-1").kind(ArtifactKind.IMAGE).title("Sunset").description("A sunset")
             .status(ArtifactStatus.GESTATING).build());
@@ -164,7 +166,7 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("video-1").kind(kind).title("Video").description("A video")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
         anyList()))
@@ -196,7 +198,7 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("cat-1").kind(kind).title("Cat").description("A cat")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
         anyList()))
@@ -228,7 +230,7 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("thing-1").kind(kind).title("Thing").description("A thing")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class), anyList(),
         anyList()))
@@ -259,7 +261,7 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("poem-1").kind(kind).title("Poem").description("A poem")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
 
     String poemText = "Roses are red...";
     var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
@@ -312,7 +314,7 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("sunset-1").kind(kind).title("Sunset").description("A sunset")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(eq(task), anyString(), eq(kind), any()))
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any()))
         .thenReturn(mockGestating);
 
     // First model: run fails

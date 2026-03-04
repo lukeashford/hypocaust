@@ -95,11 +95,12 @@ public final class TaskExecutionContextHolder {
   /**
    * Schedule a new artifact for creation.
    *
-   * @return the generated artifact
+   * @return the created artifact (with sanitized/deduplicated name)
    */
-  public static Artifact addArtifact(String task, String outputDescription, ArtifactKind kind,
-      JsonNode metadata) {
-    return getContext().getArtifacts().add(task, outputDescription, kind, metadata);
+  public static Artifact addArtifact(String preferredName, String preferredTitle,
+      String description, ArtifactKind kind, JsonNode metadata) {
+    return getContext().getArtifacts().add(preferredName, preferredTitle, description, kind,
+        metadata);
   }
 
   /**

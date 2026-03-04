@@ -106,8 +106,10 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
         gestating.add(restored);
       } else {
         // ADD
-        log.info("[PARENT] Intent: ADD (kind: {})", intent.kind());
-        Artifact added = TaskExecutionContextHolder.addArtifact(task, intent.description(),
+        log.info("[PARENT] Intent: ADD (kind: {}, preferredName: {})", intent.kind(),
+            intent.preferredName());
+        Artifact added = TaskExecutionContextHolder.addArtifact(
+            intent.preferredName(), intent.preferredTitle(), intent.description(),
             intent.kind(), null);
         gestating.add(added);
       }

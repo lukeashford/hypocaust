@@ -37,11 +37,12 @@ public class ProjectContextTool {
   private final TaskExecutionRepository taskExecutionRepository;
 
   @Tool(name = "ask_project_context",
-      description = "Answer targeted questions about project artifacts, version history, and past "
-          + "task executions. This tool returns concise summaries, not raw content. "
-          + "Ask specific questions like 'What are the names and personalities of the lead "
-          + "characters in artifact X?' or 'Which models were used for artifact Y?'. "
-          + "Avoid asking for full artifact content — ask about the specific details you need.")
+      description = "Answer in-depth questions about artifact contents, generation metadata, "
+          + "version history, and past task executions. You already have the artifact list "
+          + "(names, kinds, titles, descriptions) in the user message — do NOT call this tool "
+          + "just to list artifacts. Use it for deeper queries like 'What are the character "
+          + "descriptions in artifact X?', 'Which models were used for artifact Y?', or "
+          + "'What changed between executions A and B?'. Returns concise summaries, not raw content.")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {

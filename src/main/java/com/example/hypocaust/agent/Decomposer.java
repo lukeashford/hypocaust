@@ -1,6 +1,7 @@
 package com.example.hypocaust.agent;
 
 import com.example.hypocaust.common.JsonUtils;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
@@ -131,14 +132,29 @@ public class Decomposer {
   }
 
   private String buildUserMessage(String task, List<String> contextBrief) {
-    if (contextBrief == null || contextBrief.isEmpty()) {
-      return task;
+    var sb = new StringBuilder();
+
+    // Inject existing artifact list so the decomposer knows what's already there
+    List<Artifact> existingArtifacts = TaskExecutionContextHolder.getContext()
+        .getArtifacts().getAllWithChanges();
+    if (!existingArtifacts.isEmpty()) {
+      sb.append("## Existing Artifacts\n");
+      for (Artifact a : existingArtifacts) {
+        sb.append(String.format("- [%s, %s] %s - %s%n",
+            a.kind(), a.name(), a.title(), a.description()));
+      }
+      sb.append("\n");
     }
-    var sb = new StringBuilder("## Established Context\n");
-    for (String fact : contextBrief) {
-      sb.append("- ").append(fact).append("\n");
+
+    if (contextBrief != null && !contextBrief.isEmpty()) {
+      sb.append("## Established Context\n");
+      for (String fact : contextBrief) {
+        sb.append("- ").append(fact).append("\n");
+      }
+      sb.append("\n");
     }
-    sb.append("\n## Task\n").append(task);
+
+    sb.append("## Task\n").append(task);
     return sb.toString();
   }
 
