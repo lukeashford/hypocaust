@@ -33,7 +33,11 @@ public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
         .targetName(name)
         .description("Delete artifact " + name)
         .build();
-    return orchestrate("Delete " + name, List.of(intent));
+    try {
+      return execute("Delete " + name, List.of(intent));
+    } catch (Exception e) {
+      return DeleteResult.error(e.getMessage());
+    }
   }
 
   @Override

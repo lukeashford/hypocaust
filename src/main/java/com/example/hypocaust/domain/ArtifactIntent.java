@@ -10,7 +10,8 @@ public record ArtifactIntent(
     @JsonProperty("action") ArtifactAction action,
     @JsonProperty("kind") ArtifactKind kind,
     @JsonProperty("targetName") String targetName,
-    @JsonProperty("description") String description
+    @JsonProperty("description") String description,
+    @JsonProperty("executionName") String executionName
 ) {
 
 }

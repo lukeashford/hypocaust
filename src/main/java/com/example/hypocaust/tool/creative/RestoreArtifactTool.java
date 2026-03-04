@@ -1,7 +1,7 @@
 package com.example.hypocaust.tool.creative;
 
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactAction;
 import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
@@ -17,10 +17,8 @@ import org.springframework.stereotype.Component;
  * artifact. The original name is reused when free; if taken, a unique alternative is assigned
  * automatically.
  *
- * <p>Extends {@link AbstractArtifactTool} for type consistency, but does not go through
- * {@link #orchestrate} because restore has name-preservation semantics that don't fit the standard
- * ADD intent flow. The lifecycle (events, changelist) is handled by
- * {@link com.example.hypocaust.domain.ArtifactsContext#restore}.
+ * <p>Extends {@link AbstractArtifactTool} for type consistency, and uses its {@link #execute}
+ * lifecycle via the {@link ArtifactAction#RESTORE} intent.
  *
  * <p>Reversion pattern — to replace the current version with an older one:
  * <ol>
@@ -54,25 +52,22 @@ public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
       return RestoreResult.error("Execution name is required");
     }
 
-    log.info("Restoring artifact '{}' from execution '{}'", artifactName, executionName);
+    String trimmedName = artifactName.trim();
+    String trimmedExecution = executionName.trim();
+
+    log.info("Restoring artifact '{}' from execution '{}'", trimmedName, trimmedExecution);
+
+    ArtifactIntent intent = ArtifactIntent.builder()
+        .action(ArtifactAction.RESTORE)
+        .targetName(trimmedName)
+        .executionName(trimmedExecution)
+        .build();
 
     try {
-      String trimmedName = artifactName.trim();
-      String trimmedExecution = executionName.trim();
-
-      String restoredName = TaskExecutionContextHolder.restoreArtifact(
-          trimmedName, trimmedExecution);
-
-      String summary = restoredName.equals(trimmedName)
-          ? "Restored '" + restoredName + "' from " + trimmedExecution
-          : "Restored as '" + restoredName + "' (original name '" + trimmedName
-              + "' was taken) from " + trimmedExecution;
-
-      return RestoreResult.success(trimmedName, restoredName, trimmedExecution, summary);
-
+      return execute("Restore " + trimmedName, List.of(intent));
     } catch (Exception e) {
       log.error("Failed to restore artifact '{}' from '{}': {}",
-          artifactName, executionName, e.getMessage());
+          trimmedName, trimmedExecution, e.getMessage());
       return RestoreResult.error(e.getMessage());
     }
   }
@@ -80,13 +75,29 @@ public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating,
       List<ArtifactIntent> intents) {
-    // Not used — restore bypasses orchestrate() for name-preservation semantics
-    throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
+    // Restoration is handled during prepareArtifacts in the parent class.
+    // We just pass through the restored artifacts.
+    return gestating;
   }
 
   @Override
   protected RestoreResult finalizeResult(List<Artifact> results, List<ArtifactIntent> intents) {
-    // Not used — restore bypasses orchestrate() for name-preservation semantics
-    throw new UnsupportedOperationException("RestoreArtifactTool does not use orchestrate()");
+    if (results.isEmpty() || intents.isEmpty()) {
+      return RestoreResult.error("Failed to restore artifact");
+    }
+
+    Artifact restored = results.getFirst();
+    ArtifactIntent intent = intents.getFirst();
+
+    String originalName = intent.targetName();
+    String restoredName = restored.name();
+    String executionName = intent.executionName();
+
+    String summary = restoredName.equals(originalName)
+        ? "Restored '" + restoredName + "' from " + executionName
+        : "Restored as '" + restoredName + "' (original name '" + originalName
+            + "' was taken) from " + executionName;
+
+    return RestoreResult.success(originalName, restoredName, executionName, summary);
   }
 }

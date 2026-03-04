@@ -56,7 +56,7 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
     log.info("{} request: {}", LOG_PREFIX, task);
 
     try {
-      return orchestrate(task, intents);
+      return execute(task, intents);
     } catch (Exception e) {
       return GenerateCreativeResult.error(e.getMessage());
     }

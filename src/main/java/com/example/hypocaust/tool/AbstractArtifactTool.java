@@ -21,7 +21,7 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
    * The orchestration template. Caller provides pre-built intents — either from the decomposer (via
    * tool parameters) or programmatic (e.g., DeleteArtifactTool).
    */
-  protected final R orchestrate(String task, List<ArtifactIntent> intents) {
+  protected final R execute(String task, List<ArtifactIntent> intents) {
     log.info("[PARENT] Starting orchestration for task: {}", task);
     log.info("[PARENT] {} intents", intents.size());
 
@@ -94,6 +94,16 @@ public abstract class AbstractArtifactTool<R extends ToolResult> {
 
         TaskExecutionContextHolder.editArtifact(gestatingVersion);
         gestating.add(gestatingVersion);
+      } else if (intent.action() == ArtifactAction.RESTORE) {
+        log.info("[PARENT] Intent: RESTORE '{}' from '{}'", intent.targetName(),
+            intent.executionName());
+        String restoredName = TaskExecutionContextHolder.restoreArtifact(intent.targetName(),
+            intent.executionName());
+        Artifact restored = TaskExecutionContextHolder.getContext().getArtifacts()
+            .get(restoredName)
+            .orElseThrow(() -> new IllegalStateException(
+                "Restored artifact not found: " + restoredName));
+        gestating.add(restored);
       } else {
         // ADD
         log.info("[PARENT] Intent: ADD (kind: {})", intent.kind());
