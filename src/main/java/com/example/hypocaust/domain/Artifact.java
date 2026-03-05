@@ -27,10 +27,6 @@ public record Artifact(
         nullable = true)
     String storageKey,
 
-    @Schema(description = "Transient presigned URL for storageKey.",
-        nullable = true)
-    String url,
-
     @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
         nullable = true, type = "string")
     JsonNode inlineContent,

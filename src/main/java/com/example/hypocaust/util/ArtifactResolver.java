@@ -2,6 +2,7 @@ package com.example.hypocaust.util;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -33,7 +34,10 @@ public class ArtifactResolver {
   // Matches @word_chars(.word_chars)* — longest match first due to greedy quantifier
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("@(\\w+(?:\\.\\w+)*)");
 
+  private static final int PRESIGNED_URL_EXPIRY_SECONDS = 600;
+
   private final ObjectMapper objectMapper;
+  private final StorageService storageService;
 
   /**
    * Resolve all artifact placeholders in the given JSON tree. Returns a new tree with placeholders
@@ -136,7 +140,10 @@ public class ArtifactResolver {
   }
 
   private String resolveUrl(Artifact artifact) {
-    return artifact.url();
+    if (artifact.storageKey() == null || artifact.storageKey().isBlank()) {
+      return null;
+    }
+    return storageService.generatePresignedUrl(artifact.storageKey(), PRESIGNED_URL_EXPIRY_SECONDS);
   }
 
   private String resolveMetadataField(Artifact artifact, String fieldName) {

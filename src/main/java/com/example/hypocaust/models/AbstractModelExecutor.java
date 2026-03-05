@@ -361,7 +361,6 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
           String mimeType = detectMimeType(connection, providerUrl, artifact.kind());
           String storageKey = storageService.store(data, mimeType);
-          String presignedUrl = storageService.generatePresignedUrl(storageKey, 600);
 
           // Update metadata with contentLength
           JsonNode metadata = artifact.metadata();
@@ -377,7 +376,6 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
           return artifact.toBuilder()
               .storageKey(storageKey)
-              .url(presignedUrl)
               .mimeType(mimeType)
               .metadata(metadata)
               .status(ArtifactStatus.MANIFESTED)

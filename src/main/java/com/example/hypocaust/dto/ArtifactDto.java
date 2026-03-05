@@ -1,6 +1,5 @@
 package com.example.hypocaust.dto;
 
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
@@ -31,22 +30,4 @@ public record ArtifactDto(
     String errorMessage
 ) implements ArtifactEventPayload {
 
-  /**
-   * Convert a domain Artifact to a frontend DTO, mapping storageKey to a presigned URL.
-   */
-  public static ArtifactDto from(Artifact artifact) {
-    return new ArtifactDto(
-        artifact.id(),
-        artifact.name(),
-        artifact.kind(),
-        artifact.url(),
-        artifact.inlineContent(),
-        artifact.title(),
-        artifact.description(),
-        artifact.status(),
-        artifact.metadata(),
-        artifact.mimeType(),
-        artifact.errorMessage()
-    );
-  }
 }
