@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
@@ -54,9 +55,12 @@ class DecompositionScenarioTest {
   @BeforeEach
   void setUp() {
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
+    var artifactsContext = org.mockito.Mockito.mock(ArtifactsContext.class);
     var todosContext = new TodosContext(UUID.randomUUID(), eventService);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
     when(context.getTodos()).thenReturn(todosContext);
+    when(context.getArtifacts()).thenReturn(artifactsContext);
+    when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
     TaskExecutionContextHolder.setContext(context);
   }
 

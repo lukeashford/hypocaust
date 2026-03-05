@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
@@ -50,7 +51,10 @@ class SimpleToolCallScenarioTest {
   @BeforeEach
   void setUp() {
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
+    var artifacts = org.mockito.Mockito.mock(ArtifactsContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
+    when(context.getArtifacts()).thenReturn(artifacts);
+    when(artifacts.getAllWithChanges()).thenReturn(List.of());
     TaskExecutionContextHolder.setContext(context);
   }
 
