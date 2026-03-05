@@ -13,6 +13,7 @@ import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,25 +100,69 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Searches the ElevenLabs voice library for a voice matching the given description. Fetches all
-   * available voices (own + premade), then asks Haiku to pick the best match. Returns the matched
-   * voice node (containing {@code voice_id} and {@code preview_url}), or empty if none fits.
+   * Searches the ElevenLabs voice library for a voice matching the given description.
+   *
+   * <ol>
+   *   <li>Asks Haiku to generate 3 short keyword queries from the description.</li>
+   *   <li>Runs each query against {@code /v2/voices?search=…&page_size=3}, collecting up to 9
+   *       unique candidate voices.</li>
+   *   <li>Presents the trimmed candidate list to Haiku to pick the best match, or null if none
+   *       fits.</li>
+   * </ol>
+   *
+   * Returns the matched voice node (containing {@code voice_id} and {@code preview_url}), or
+   * {@link Optional#empty()} if no suitable match was found.
    */
   private Optional<JsonNode> findMatchingVoice(String voiceDescription) {
-    List<JsonNode> voices;
+    // Step 1: Generate 3 keyword search queries from the description
+    String keywordsSystem = """
+        You are helping search a voice library. Generate exactly 3 short keyword queries
+        (2–4 words each) to find voices matching the given description. Queries should target
+        different aspects: vocal qualities, tone, accent, gender, use-case, etc.
+        Return ONLY a JSON array of 3 strings. No explanation.
+        Example: ["warm british baritone", "deep male narrator", "storyteller authoritative"]
+        """;
+    String keywordsResponse;
     try {
-      voices = elevenLabsClient.listAllVoices();
+      keywordsResponse = chatService.call(PROMPT_ENG_MODEL, keywordsSystem,
+          "Voice description: " + voiceDescription);
     } catch (Exception e) {
-      log.warn("[ElevenLabs] Library lookup failed, will generate new voice: {}", e.getMessage());
+      log.warn("[ElevenLabs] Keyword generation failed, skipping library search: {}",
+          e.getMessage());
       return Optional.empty();
     }
 
-    if (voices == null || voices.isEmpty()) {
+    List<String> queries = parseKeywordQueries(keywordsResponse);
+    log.info("[ElevenLabs] Voice library search | desc='{}' | queries={}", voiceDescription,
+        queries);
+
+    // Step 2: Run 3 searches, collect first 3 results each (up to 9 unique candidates)
+    Map<String, JsonNode> candidateMap = new LinkedHashMap<>();
+    for (String query : queries) {
+      try {
+        List<JsonNode> results = elevenLabsClient.searchVoices(query, 3);
+        for (JsonNode voice : results) {
+          String voiceId = voice.path("voice_id").asText();
+          if (!voiceId.isBlank()) {
+            candidateMap.putIfAbsent(voiceId, voice);
+          }
+        }
+      } catch (Exception e) {
+        log.warn("[ElevenLabs] Search failed for query='{}': {}", query, e.getMessage());
+      }
+    }
+
+    log.info("[ElevenLabs] Voice library search → {} unique candidate(s) found",
+        candidateMap.size());
+
+    if (candidateMap.isEmpty()) {
+      log.info("[ElevenLabs] No candidates from library search, will design a new voice");
       return Optional.empty();
     }
 
+    // Step 3: Ask Haiku to pick the best match from the candidate list
     StringBuilder voiceList = new StringBuilder();
-    for (JsonNode voice : voices) {
+    for (JsonNode voice : candidateMap.values()) {
       voiceList.append("- voice_id: ").append(voice.path("voice_id").asText())
           .append(", name: \"").append(voice.path("name").asText()).append("\"")
           .append(", description: \"").append(voice.path("description").asText()).append("\"");
@@ -130,20 +175,20 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
     String system = """
         You are a voice casting assistant. Given a required voice description and a list of
-        available voices, pick the best matching voice_id. Be selective — only pick a voice if
-        it genuinely fits the description. If no voice is a good match, return the word null.
+        candidate voices, pick the best matching voice_id. Be selective — only pick a voice if
+        it genuinely fits the description. If none is a good match, return the word null.
         Respond with ONLY the voice_id string or the word null. No explanation.
         """;
-    String user = "Required voice: " + voiceDescription + "\n\nAvailable voices:\n" + voiceList;
+    String user = "Required voice: " + voiceDescription + "\n\nCandidates:\n" + voiceList;
 
     String response = chatService.call(PROMPT_ENG_MODEL, system, user);
     if (response == null || response.isBlank() || "null".equalsIgnoreCase(response.strip())) {
-      log.info("[ElevenLabs] Library match: no suitable voice found for description");
+      log.info("[ElevenLabs] Library match: Haiku found no suitable voice, will design a new one");
       return Optional.empty();
     }
 
     String matchedId = response.strip();
-    Optional<JsonNode> matched = voices.stream()
+    Optional<JsonNode> matched = candidateMap.values().stream()
         .filter(v -> matchedId.equals(v.path("voice_id").asText()))
         .findFirst();
 
@@ -158,9 +203,47 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build TTS phases. If voice_id is present, single-phase direct TTS. If fresh_voice is set,
-   * skip library search and chain: design → save → TTS. Otherwise, search the voice library first;
-   * if a match is found use it directly, else fall back to the design → save → TTS chain.
+   * Parses the keyword queries returned by Haiku. Expects a JSON array of strings; falls back to
+   * comma-splitting if JSON parsing fails.
+   */
+  private List<String> parseKeywordQueries(String response) {
+    if (response == null || response.isBlank()) {
+      return List.of();
+    }
+    try {
+      JsonNode node = objectMapper.readTree(
+          com.example.hypocaust.common.JsonUtils.extractJson(response));
+      if (node.isArray()) {
+        List<String> queries = new ArrayList<>();
+        for (JsonNode item : node) {
+          String q = item.asText().strip();
+          if (!q.isBlank()) {
+            queries.add(q);
+          }
+        }
+        return queries;
+      }
+    } catch (Exception e) {
+      log.debug("[ElevenLabs] Could not parse keyword JSON, falling back to comma-split: {}",
+          e.getMessage());
+    }
+    // Fallback: comma-split
+    return List.of(response.split(",")).stream()
+        .map(String::strip)
+        .filter(s -> !s.isBlank())
+        .limit(3)
+        .toList();
+  }
+
+  /**
+   * Build TTS phases.
+   *
+   * <ul>
+   *   <li>If {@code voice_id} is present: single-phase direct TTS.</li>
+   *   <li>Otherwise: delegate voice resolution entirely to {@link #buildVoiceDesignPhases}, which
+   *       handles library search and optional voice generation. A final TTS phase is appended that
+   *       uses the {@code voiceId} from the first preview returned by voice design.</li>
+   * </ul>
    */
   private List<ExecutionPhase> buildTtsPhases(JsonNode input) {
     boolean hasVoiceId = input.has("voice_id")
@@ -172,84 +255,35 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       return List.of((orig, prev) -> elevenLabsClient.textToSpeech(orig));
     }
 
-    if (!input.path("fresh_voice").asBoolean(false)) {
-      String description = input.path("voice_description").asText();
-      Optional<JsonNode> match = findMatchingVoice(description);
-      if (match.isPresent()) {
-        String matchedVoiceId = match.get().path("voice_id").asText();
-        log.info("[ElevenLabs] TTS strategy: library match (voice_id='{}')", matchedVoiceId);
-        return List.of((orig, prev) -> {
-          ObjectNode ttsInput = orig.deepCopy();
-          ttsInput.put("voice_id", matchedVoiceId);
-          var result = elevenLabsClient.textToSpeech(ttsInput);
-          if (result.isObject()) {
-            ((ObjectNode) result).put("voiceId", matchedVoiceId);
-          }
-          return result;
-        });
+    // No voice_id: resolve voice via voice design (which searches the library first)
+    log.info("[ElevenLabs] TTS: no voice_id — delegating voice resolution to voice design");
+    List<ExecutionPhase> phases = new ArrayList<>(buildVoiceDesignPhases(input));
+
+    // Append TTS phase that picks up the voiceId from the first voice design preview
+    phases.add((orig, prev) -> {
+      var previews = prev.path("previews");
+      if (!previews.isArray() || previews.isEmpty()) {
+        throw new IllegalStateException(
+            "Voice design produced no previews to use for TTS");
       }
-    }
+      String voiceId = previews.get(0).path("voiceId").asText();
+      if (voiceId.isBlank()) {
+        throw new IllegalStateException(
+            "Voice design preview is missing voiceId; preview=" + previews.get(0));
+      }
+      log.info("[ElevenLabs] TTS: using voice_id='{}' from voice design | text_len={}",
+          voiceId, orig.path("text").asText().length());
+      ObjectNode ttsInput = objectMapper.createObjectNode();
+      ttsInput.put("text", orig.get("text").asText());
+      ttsInput.put("voice_id", voiceId);
+      var ttsResult = elevenLabsClient.textToSpeech(ttsInput);
+      if (ttsResult.isObject()) {
+        ((ObjectNode) ttsResult).put("voiceId", voiceId);
+      }
+      return ttsResult;
+    });
 
-    log.info("[ElevenLabs] TTS strategy: chain ({}) → voice design → save → TTS",
-        input.path("fresh_voice").asBoolean(false) ? "fresh_voice=true" : "no library match");
-    return List.of(
-        // Phase 1: Design voices based on description
-        (orig, prev) -> {
-          log.info("[ElevenLabs] TTS Phase 1/3: voice design | desc='{}'",
-              orig.path("voice_description").asText());
-
-          // ElevenLabs requires >= 100 chars for custom design text.
-          // If too short, omit to allow auto-generation.
-          ObjectNode designInput = orig.deepCopy();
-          if (designInput.has("text") && designInput.get("text").asText().length() < 100) {
-            log.info("[ElevenLabs] TTS Phase 1/3: text too short (<100) for design, omitting.");
-            designInput.remove("text");
-          }
-          return elevenLabsClient.voiceDesign(designInput);
-        },
-
-        // Phase 2: Save the first preview to get a permanent voice_id
-        (orig, prev) -> {
-          var previews = prev.path("previews");
-          if (!previews.isArray() || previews.isEmpty()) {
-            throw new IllegalStateException("Voice design returned no previews");
-          }
-          var firstPreview = previews.get(0);
-          String genId = firstPreview.path("generated_voice_id").asText();
-          if (genId.isBlank()) {
-            throw new IllegalStateException(
-                "Voice design preview missing generated_voice_id; entry=" + firstPreview);
-          }
-          String voiceDesc = orig.path("voice_description").asText("designed voice");
-          log.info("[ElevenLabs] TTS Phase 2/3: save voice | generated_voice_id='{}'", genId);
-
-          // ElevenLabs limits voice name to 100 characters.
-          String voiceName = voiceDesc;
-          if (voiceName.length() > 100) {
-            voiceName = voiceName.substring(0, 97) + "...";
-          }
-          return elevenLabsClient.saveVoice(genId, voiceName, voiceDesc);
-        },
-
-        // Phase 3: TTS using the saved permanent voice_id
-        (orig, prev) -> {
-          String voiceId = prev.path("voice_id").asText();
-          if (voiceId.isBlank()) {
-            throw new IllegalStateException("saveVoice returned no voice_id; response=" + prev);
-          }
-          log.info("[ElevenLabs] TTS Phase 3/3: TTS | voice_id='{}' text_len={}",
-              voiceId, orig.path("text").asText().length());
-          ObjectNode ttsInput = objectMapper.createObjectNode();
-          ttsInput.put("text", orig.get("text").asText());
-          ttsInput.put("voice_id", voiceId);
-          var ttsResult = elevenLabsClient.textToSpeech(ttsInput);
-          // Carry the permanent voiceId forward so extractOutputs can include it in metadata
-          if (ttsResult.isObject()) {
-            ((ObjectNode) ttsResult).put("voiceId", voiceId);
-          }
-          return ttsResult;
-        }
-    );
+    return phases;
   }
 
   /**

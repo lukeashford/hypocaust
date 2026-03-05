@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -17,7 +16,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 @RequiredArgsConstructor
@@ -215,55 +213,45 @@ public class ElevenLabsClient {
   }
 
   /**
-   * Lists all voices from the library (own generated + premade), paginating until exhausted.
-   * Returns a slim representation per voice: {@code voice_id, name, description, labels,
-   * preview_url}.
+   * Searches the voice library by keyword. The {@code search} parameter is matched against voice
+   * names, descriptions, labels, and category. Returns at most {@code pageSize} slim voice nodes
+   * containing {@code voice_id, name, description, labels, preview_url}.
    */
-  public List<JsonNode> listAllVoices() {
-    List<JsonNode> all = new ArrayList<>();
-    String pageToken = null;
+  public List<JsonNode> searchVoices(String query, int pageSize) {
+    log.info("[ElevenLabs] Voice search → query='{}' page_size={}", query, pageSize);
 
-    do {
-      UriComponentsBuilder builder =
-          UriComponentsBuilder.fromHttpUrl("https://api.elevenlabs.io/v2/voices");
-      if (pageToken != null) {
-        builder.queryParam("page_token", pageToken);
-      }
-      URI uri = builder.build().toUri();
+    JsonNode response = restClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .path("/v2/voices")
+            .queryParam("search", query)
+            .queryParam("page_size", pageSize)
+            .build())
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .body(JsonNode.class);
 
-      JsonNode response = restClient.get()
-          .uri(uri)
-          .accept(MediaType.APPLICATION_JSON)
-          .retrieve()
-          .body(JsonNode.class);
+    List<JsonNode> results = new ArrayList<>();
+    if (response == null) {
+      return results;
+    }
 
-      if (response == null) {
-        break;
-      }
-
-      JsonNode voices = response.path("voices");
-      if (voices.isArray()) {
-        for (JsonNode voice : voices) {
-          ObjectNode slim = objectMapper.createObjectNode();
-          slim.put("voice_id", voice.path("voice_id").asText());
-          slim.put("name", voice.path("name").asText());
-          slim.put("description", voice.path("description").asText());
-          if (voice.has("labels")) {
-            slim.set("labels", voice.path("labels"));
-          }
-          slim.put("preview_url", voice.path("preview_url").asText(""));
-          all.add(slim);
+    JsonNode voices = response.path("voices");
+    if (voices.isArray()) {
+      for (JsonNode voice : voices) {
+        ObjectNode slim = objectMapper.createObjectNode();
+        slim.put("voice_id", voice.path("voice_id").asText());
+        slim.put("name", voice.path("name").asText());
+        slim.put("description", voice.path("description").asText());
+        if (voice.has("labels")) {
+          slim.set("labels", voice.path("labels"));
         }
+        slim.put("preview_url", voice.path("preview_url").asText(""));
+        results.add(slim);
       }
+    }
 
-      pageToken = response.path("has_more").asBoolean(false)
-          ? response.path("next_page_token").asText(null)
-          : null;
-
-    } while (pageToken != null && !pageToken.isBlank());
-
-    log.info("[ElevenLabs] Listed {} voice(s) from library", all.size());
-    return all;
+    log.info("[ElevenLabs] Voice search ← query='{}' → {} result(s)", query, results.size());
+    return results;
   }
 
   public JsonNode dubbing(JsonNode input) {

@@ -2,6 +2,7 @@ package com.example.hypocaust.models.elevenlabs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -113,16 +114,24 @@ class ElevenLabsModelExecutorTest {
 
   @Test
   void testBuildExecutionPhases_ttsWithoutVoiceId() {
+    // Keyword generation returns empty → no search candidates → falls through to design
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("[]");
+
     ObjectNode input = objectMapper.createObjectNode();
     input.put("text", "Hello world");
     input.put("voice_description", "warm British baritone");
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
-    assertThat(phases).hasSize(3); // Design → Save → TTS
+    assertThat(phases).hasSize(3); // voice design (2: Design → Save) + TTS = 3
   }
 
   @Test
   void testBuildExecutionPhases_voiceDesign() {
+    // Keyword generation returns empty → no search candidates → falls through to design
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("[]");
+
     ObjectNode input = objectMapper.createObjectNode();
     input.put("voice_description", "warm British baritone");
 
@@ -140,44 +149,38 @@ class ElevenLabsModelExecutorTest {
   }
 
   @Test
-  void testBuildExecutionPhases_ttsLibraryMatch_singlePhase() {
+  void testBuildExecutionPhases_ttsLibraryMatch_voiceDesignPlusTts() {
+    // Library match: voice design returns 1 phase (synthetic preview), TTS appends 1 more = 2
     ObjectNode voiceNode = objectMapper.createObjectNode();
     voiceNode.put("voice_id", "JBFqnCBsd6RMkjVDRZzb");
     voiceNode.put("name", "George");
     voiceNode.put("description", "Warm British storyteller");
     voiceNode.put("preview_url", "https://example.com/george.mp3");
 
-    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(elevenLabsClient.searchVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
+    // First call: keyword generation; second call: voice selection
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("JBFqnCBsd6RMkjVDRZzb");
+        .thenReturn("[\"warm british\", \"storyteller narrator\", \"deep baritone\"]",
+            "JBFqnCBsd6RMkjVDRZzb");
 
     ObjectNode input = objectMapper.createObjectNode();
     input.put("text", "Hello world");
     input.put("voice_description", "Warm British storyteller");
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
-    assertThat(phases).hasSize(1); // Direct TTS via library match
+    assertThat(phases).hasSize(2); // voice design (1: library match) + TTS = 2
   }
 
   @Test
   void testBuildExecutionPhases_ttsWithFreshVoice_alwaysChain() {
-    ObjectNode voiceNode = objectMapper.createObjectNode();
-    voiceNode.put("voice_id", "JBFqnCBsd6RMkjVDRZzb");
-    voiceNode.put("name", "George");
-    voiceNode.put("description", "Warm British storyteller");
-    voiceNode.put("preview_url", "https://example.com/george.mp3");
-
-    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("JBFqnCBsd6RMkjVDRZzb");
-
+    // fresh_voice=true skips library search entirely → voice design 2 phases + TTS = 3
     ObjectNode input = objectMapper.createObjectNode();
     input.put("text", "Hello world");
     input.put("voice_description", "Warm British storyteller");
     input.put("fresh_voice", true);
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
-    assertThat(phases).hasSize(3); // Design → Save → TTS despite library having a match
+    assertThat(phases).hasSize(3); // voice design (2: Design → Save) + TTS despite match
   }
 
   @Test
@@ -188,34 +191,27 @@ class ElevenLabsModelExecutorTest {
     voiceNode.put("description", "Confident warm female voice");
     voiceNode.put("preview_url", "https://example.com/sarah.mp3");
 
-    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(elevenLabsClient.searchVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
+    // First call: keyword generation; second call: voice selection
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("EXAVITQu4vr4xnSDxMaL");
+        .thenReturn("[\"warm female\", \"confident voice\", \"female narrator\"]",
+            "EXAVITQu4vr4xnSDxMaL");
 
     ObjectNode input = objectMapper.createObjectNode();
     input.put("voice_description", "Confident warm female voice");
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
-    assertThat(phases).hasSize(1); // Single phase returning library voice as preview
+    assertThat(phases).hasSize(1); // Single phase: library voice returned as synthetic preview
   }
 
   @Test
   void testBuildExecutionPhases_voiceDesignWithFreshVoice_alwaysChain() {
-    ObjectNode voiceNode = objectMapper.createObjectNode();
-    voiceNode.put("voice_id", "EXAVITQu4vr4xnSDxMaL");
-    voiceNode.put("name", "Sarah");
-    voiceNode.put("description", "Confident warm female voice");
-    voiceNode.put("preview_url", "https://example.com/sarah.mp3");
-
-    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("EXAVITQu4vr4xnSDxMaL");
-
+    // fresh_voice=true skips library search entirely → Design → Save = 2 phases
     ObjectNode input = objectMapper.createObjectNode();
     input.put("voice_description", "Confident warm female voice");
     input.put("fresh_voice", true);
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
-    assertThat(phases).hasSize(2); // Design → Save all, despite library having a match
+    assertThat(phases).hasSize(2); // Design → Save all, skips library search
   }
 }
