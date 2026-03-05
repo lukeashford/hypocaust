@@ -213,18 +213,20 @@ public class ElevenLabsClient {
   }
 
   /**
-   * Searches the voice library by keyword. The {@code search} parameter is matched against voice
-   * names, descriptions, labels, and category. Returns at most {@code pageSize} slim voice nodes
-   * containing {@code voice_id, name, description, labels, preview_url}.
+   * Searches the community voice library by keyword. The {@code search} parameter is matched
+   * against voice names, descriptions, labels, and category. Uses {@code voice_type=community} to
+   * search the public voice library (10k+ voices). Returns at most {@code pageSize} slim voice
+   * nodes containing {@code voice_id, name, description, labels, preview_url}.
    */
   public List<JsonNode> searchVoices(String query, int pageSize) {
     log.info("[ElevenLabs] Voice search → query='{}' page_size={}", query, pageSize);
 
     JsonNode response = restClient.get()
         .uri(uriBuilder -> uriBuilder
-            .path("/v2/voices")
+            .replacePath("/v2/voices")
             .queryParam("search", query)
             .queryParam("page_size", pageSize)
+            .queryParam("voice_type", "community")
             .build())
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
