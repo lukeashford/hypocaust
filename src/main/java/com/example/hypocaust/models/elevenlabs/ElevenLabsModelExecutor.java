@@ -45,7 +45,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       You are planning for an ElevenLabs model.
 
       PLATFORM CONSTRAINTS (ElevenLabs enforced — violations cause API rejections):
-      - If you provide a 'text' field for Voice Design (voice-design), it MUST be at least 100 characters long.
+      - If you provide a 'text' field for Voice Design (eleven_ttv_v3), it MUST be at least 100 characters long.
         If the desired sample text is shorter, either extend it with relevant content or omit
         the 'text' field entirely to allow the system to auto-generate a suitable sample line.
       - Do NOT describe voices as children, child-like, young children, or minors. This will be blocked.
@@ -58,8 +58,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       - For character voices in children's stories: describe the voice as "high-pitched and energetic"
         or "warm and gentle narrator" rather than "a child's voice" or "sounds like a little girl."
 
-      INPUT MAPPING:
-      - If a field requires a URL and the user refers to an artifact, use '@artifact_name' as a placeholder.
+      VOICE ID:
       - To reference a voice from an existing artifact, use '@artifact_name.metadata.voiceId'
         as the voice_id value. Do NOT invent or guess voice IDs.
       - If no voice_id is available but a voice is described, omit 'voice_id' entirely and
@@ -67,8 +66,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         The system will handle voice creation automatically.
 
       OUTPUT KEY CONVENTIONS for outputMapping:
-      - TTS / sound-generation / dubbing: use "audio" as the output key.
-      - Voice design previews: use "preview_0", "preview_1", etc. as output keys.
+      - eleven_v3 / sound-generation / dubbing: use "audio" as the output key.
+      - eleven_ttv_v3 (voice design previews): use "preview_0", "preview_1", etc. as output keys.
       """;
 
   @Override
@@ -81,8 +80,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   protected List<ExecutionPhase> buildExecutionPhases(String owner, String modelId,
       JsonNode input) {
     return switch (modelId) {
-      case "tts" -> buildTtsPhases(input);
-      case "voice-design" -> buildVoiceDesignPhases();
+      case "eleven_v3" -> buildTtsPhases(input);
+      case "eleven_ttv_v3" -> buildVoiceDesignPhases();
       case "sound-generation" -> List.of(
           (orig, prev) -> elevenLabsClient.soundGeneration(orig));
       case "dubbing" -> List.of(
@@ -225,8 +224,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     // Fallback for single-phase execution (used by default buildExecutionPhases)
     return switch (modelId) {
-      case "tts" -> elevenLabsClient.textToSpeech(input);
-      case "voice-design" -> elevenLabsClient.voiceDesign(input);
+      case "eleven_v3" -> elevenLabsClient.textToSpeech(input);
+      case "eleven_ttv_v3" -> elevenLabsClient.voiceDesign(input);
       case "dubbing" -> elevenLabsClient.dubbing(input);
       case "sound-generation" -> elevenLabsClient.soundGeneration(input);
       default -> {

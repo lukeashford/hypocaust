@@ -2,7 +2,7 @@
   {
     "name": "ElevenLabs Text-to-Speech",
     "owner": "elevenlabs",
-    "id": "tts",
+    "id": "eleven_v3",
     "tier": "balanced",
     "inputs": [
       "TEXT"
@@ -19,7 +19,7 @@
   {
     "name": "ElevenLabs Voice Design",
     "owner": "elevenlabs",
-    "id": "voice-design",
+    "id": "eleven_ttv_v3",
     "tier": "balanced",
     "inputs": [
       "TEXT"

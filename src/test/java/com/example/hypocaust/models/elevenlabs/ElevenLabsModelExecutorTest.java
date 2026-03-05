@@ -100,7 +100,7 @@ class ElevenLabsModelExecutorTest {
     input.put("text", "Hello world");
     input.put("voice_id", "JBFqnCBsd6RMkjVDRZzb");
 
-    var phases = executor.buildExecutionPhases("elevenlabs", "tts", input);
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
     assertThat(phases).hasSize(1); // Direct TTS
   }
 
@@ -110,7 +110,7 @@ class ElevenLabsModelExecutorTest {
     input.put("text", "Hello world");
     input.put("voice_description", "warm British baritone");
 
-    var phases = executor.buildExecutionPhases("elevenlabs", "tts", input);
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
     assertThat(phases).hasSize(3); // Design → Save → TTS
   }
 
@@ -119,7 +119,7 @@ class ElevenLabsModelExecutorTest {
     ObjectNode input = objectMapper.createObjectNode();
     input.put("voice_description", "warm British baritone");
 
-    var phases = executor.buildExecutionPhases("elevenlabs", "voice-design", input);
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
     assertThat(phases).hasSize(2); // Design → Save all
   }
 

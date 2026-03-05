@@ -48,8 +48,8 @@ public class ElevenLabsClient {
   }
 
   /**
-   * Text-to-Speech. Requires voice_id in the input.
-   * Returns {@code {"url": "..."}} with the stored audio URL.
+   * Text-to-Speech. Requires voice_id in the input. Returns {@code {"url": "..."}} with the stored
+   * audio URL.
    */
   public JsonNode textToSpeech(JsonNode input) {
     if (!input.has("voice_id") || input.get("voice_id").asText().isBlank()) {
@@ -59,22 +59,20 @@ public class ElevenLabsClient {
               + "from your ElevenLabs voice library.");
     }
 
-    String candidate = input.get("voice_id").asText();
-    if (!candidate.matches("^[A-Za-z0-9]{15,30}$")) {
+    String voiceId = input.get("voice_id").asText();
+    if (!voiceId.matches("^[A-Za-z0-9]{15,30}$")) {
       throw new IllegalArgumentException(
-          "Invalid voice_id '" + candidate + "'. ElevenLabs voice IDs are 20-char "
+          "Invalid voice_id '" + voiceId + "'. ElevenLabs voice IDs are 20-char "
               + "alphanumeric strings. Do not use descriptive text as a voice_id.");
     }
-    String voiceId = candidate;
 
     ObjectNode body = input.deepCopy();
     body.remove("voice_id");
     // Remove fields that are not part of the TTS API
     body.remove("voice_description");
 
-    if (!body.has("model_id")) {
-      body.put("model_id", DEFAULT_TTS_MODEL);
-    }
+    // Always enforce the correct TTS model — ignore whatever the plan may have set
+    body.put("model_id", DEFAULT_TTS_MODEL);
 
     // Build voice_settings with defaults for any unspecified values
     ObjectNode settings = objectMapper.createObjectNode();
@@ -100,7 +98,8 @@ public class ElevenLabsClient {
         .retrieve()
         .body(byte[].class);
 
-    log.info("[ElevenLabs] TTS ← {} bytes received for voice_id={}", audio != null ? audio.length : 0, voiceId);
+    log.info("[ElevenLabs] TTS ← {} bytes received for voice_id={}",
+        audio != null ? audio.length : 0, voiceId);
     return storeAudio("tts", audio);
   }
 
@@ -125,7 +124,8 @@ public class ElevenLabsClient {
       body.put("auto_generate_text", true);
     }
 
-    log.info("[ElevenLabs] Voice Design → POST /text-to-voice/design | model={} | desc_len={} | text='{}'",
+    log.info(
+        "[ElevenLabs] Voice Design → POST /text-to-voice/design | model={} | desc_len={} | text='{}'",
         body.path("model_id").asText(),
         body.path("voice_description").asText().length(),
         body.has("auto_generate_text") ? "(auto)" : body.path("text").asText());
@@ -167,19 +167,21 @@ public class ElevenLabsClient {
           entry.put("url", url);
           log.info("[ElevenLabs] Voice Design preview[{}] audio stored → {}", i, url);
         } else {
-          log.warn("[ElevenLabs] Voice Design preview[{}] has no audio_base_64 field; available: {}", i, preview.fieldNames());
+          log.warn(
+              "[ElevenLabs] Voice Design preview[{}] has no audio_base_64 field; available: {}", i,
+              preview.fieldNames());
         }
       }
     } else {
-      log.warn("[ElevenLabs] Voice Design ← no 'previews' array in response; response={}", response);
+      log.warn("[ElevenLabs] Voice Design ← no 'previews' array in response; response={}",
+          response);
     }
 
     return result;
   }
 
   /**
-   * Save a designed voice permanently.
-   * Returns {@code {"voice_id": "permanent_id"}}.
+   * Save a designed voice permanently. Returns {@code {"voice_id": "permanent_id"}}.
    */
   public JsonNode saveVoice(String generatedVoiceId, String voiceName, String voiceDescription) {
     ObjectNode body = objectMapper.createObjectNode();
@@ -207,8 +209,7 @@ public class ElevenLabsClient {
   }
 
   /**
-   * Search the user's voice library by keyword.
-   * Returns the voices array from the API response.
+   * Search the user's voice library by keyword. Returns the voices array from the API response.
    */
   public JsonNode searchVoices(String query) {
     JsonNode response = restClient.get()

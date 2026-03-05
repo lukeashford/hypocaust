@@ -46,8 +46,6 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
       - Construct the 'providerInput' object following the model's input spec described in the
         Model Docs and Best Practices below.
       - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
-      - If a field requires an image/video and the user refers to an artifact, use
-        '@artifact_name' as a placeholder.
 
       VALIDATION:
       - If mandatory info is missing, provide an 'errorMessage'.

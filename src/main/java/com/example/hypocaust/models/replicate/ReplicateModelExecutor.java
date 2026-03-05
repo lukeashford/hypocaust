@@ -44,7 +44,6 @@ public class ReplicateModelExecutor extends AbstractModelExecutor {
       - Construct the 'providerInput' matching the OpenAPI schema provided below.
       - Optimize prompts for the best artistic results.
       - Map user requirements to specific schema fields.
-      - If a field requires a URL and the user refers to an artifact, use '@artifact_name'.
 
       VALIDATION:
       - Ensure all REQUIRED fields are present.

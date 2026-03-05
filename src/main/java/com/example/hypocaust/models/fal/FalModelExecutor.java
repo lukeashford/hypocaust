@@ -45,8 +45,6 @@ public class FalModelExecutor extends AbstractModelExecutor {
       INPUT MAPPING:
       - Construct the 'providerInput' object matching the fal.ai model's expected input format.
       - Optimize prompts for the best artistic results.
-      - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name'
-        as a placeholder.
 
       VALIDATION:
       - If mandatory info is missing, provide an 'errorMessage'.

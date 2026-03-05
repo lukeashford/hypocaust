@@ -45,7 +45,6 @@ public class AssemblyAiModelExecutor extends AbstractModelExecutor {
       INPUT MAPPING:
       - Construct the 'providerInput' object following the model's input spec described in the
         Model Docs and Best Practices below.
-      - If a field requires an audio URL and the user refers to an artifact, use '@artifact_name'.
 
       VALIDATION:
       - If mandatory audio source is missing, provide an 'errorMessage'.
