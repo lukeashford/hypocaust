@@ -14,6 +14,7 @@ import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.mapper.EventMapper;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
+import com.example.hypocaust.service.ArtifactExternalizer;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,8 +33,9 @@ class EventServiceTest {
     eventLogRepository = mock(EventLogRepository.class);
     eventMapper = mock(EventMapper.class);
     TaskExecutionRepository taskExecutionRepository = mock(TaskExecutionRepository.class);
+    ArtifactExternalizer artifactExternalizer = mock(ArtifactExternalizer.class);
     eventService = new EventService(sseHub, eventLogRepository, eventMapper,
-        taskExecutionRepository);
+        taskExecutionRepository, artifactExternalizer);
   }
 
   @AfterEach
