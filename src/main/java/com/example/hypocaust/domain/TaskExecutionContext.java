@@ -1,6 +1,6 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.service.ArtifactExternalizer;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -21,6 +21,8 @@ public class TaskExecutionContext {
   private final UUID predecessorId;
   private final String name;
 
+  private final ArtifactExternalizer artifactExternalizer;
+
   private final ArtifactsContext artifacts;
   private final TodosContext todos;
 
@@ -33,12 +35,14 @@ public class TaskExecutionContext {
       UUID predecessorId,
       String name,
       EventService eventService,
-      VersionManagementService versionService) {
+      VersionManagementService versionService,
+      ArtifactExternalizer artifactExternalizer) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
     this.predecessorId = predecessorId;
     this.name = name;
 
+    this.artifactExternalizer = artifactExternalizer;
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
         eventService, versionService
@@ -56,7 +60,7 @@ public class TaskExecutionContext {
         taskExecutionId,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges().stream()
-            .map(ArtifactDto::from)
+            .map(artifactExternalizer::externalize)
             .toList(),
         todos.getList().toList(),
         lastEventId

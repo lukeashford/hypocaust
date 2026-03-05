@@ -1,5 +1,6 @@
 package com.example.hypocaust.domain;
 
+import com.example.hypocaust.service.ArtifactExternalizer;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -15,6 +16,7 @@ public class TaskExecutionContextFactory {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
+  private final ArtifactExternalizer artifactExternalizer;
 
   /**
    * Create a new TaskExecutionContext for a task execution.
@@ -27,7 +29,8 @@ public class TaskExecutionContextFactory {
         predecessorId,
         name,
         eventService,
-        versionService
+        versionService,
+        artifactExternalizer
     );
   }
 }
