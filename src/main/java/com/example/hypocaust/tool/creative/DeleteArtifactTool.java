@@ -7,6 +7,7 @@ import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
@@ -14,13 +15,15 @@ import org.springframework.stereotype.Component;
  * Tool for soft-deleting artifacts from a project. Marks the artifact for removal via the
  * changelist -- actual deletion happens at TaskExecution commit time.
  */
-@DiscoverableTool(
-    name = "delete_artifact",
-    description = "Remove an artifact from the project by name")
+
 @Slf4j
 @Component
 public class DeleteArtifactTool extends AbstractArtifactTool<DeleteResult> {
 
+  @DiscoverableTool
+  @Tool(
+      name = "delete_artifact",
+      description = "Remove an artifact from the project by name")
   public DeleteResult delete(
       @ToolParam(description = "The name of the artifact to delete") String artifactName
   ) {

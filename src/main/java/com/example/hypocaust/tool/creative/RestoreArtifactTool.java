@@ -7,6 +7,7 @@ import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
@@ -28,16 +29,17 @@ import org.springframework.stereotype.Component;
  *       frees the name so it can be reclaimed in a follow-up restore if needed.</li>
  * </ol>
  */
-@DiscoverableTool(
-    name = "restore_artifact",
-    description = "Restore a historical artifact version from a past task execution. "
-        + "The restored artifact is added to the current changelist under its original name when "
-        + "that name is free, or under a new unique name when it is already taken. "
-        + "To revert an artifact, restore the historical version then delete the current one.")
 @Slf4j
 @Component
 public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
 
+  @DiscoverableTool
+  @Tool(
+      name = "restore_artifact",
+      description = "Restore a historical artifact version from a past task execution. "
+          + "The restored artifact is added to the current changelist under its original name when "
+          + "that name is free, or under a new unique name when it is already taken. "
+          + "To revert an artifact, restore the historical version then delete the current one.")
   public RestoreResult restore(
       @ToolParam(description = "Name of the artifact to retrieve from history") String artifactName,
       @ToolParam(description =

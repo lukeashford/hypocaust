@@ -33,7 +33,8 @@ class RunwayModelExecutorTest {
   void testExtractOutput_Url() {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("url", "https://example.com/video.mp4");
-    assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/video.mp4");
+    assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+        .containsExactly("https://example.com/video.mp4");
   }
 
   @Test
@@ -42,14 +43,16 @@ class RunwayModelExecutorTest {
     ArrayNode artifacts = node.putArray("artifacts");
     ObjectNode item = artifacts.addObject();
     item.put("url", "https://example.com/artifact.mp4");
-    assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/artifact.mp4");
+    assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+        .containsExactly("https://example.com/artifact.mp4");
   }
 
   @Test
   void testExtractOutput_Id() {
     ObjectNode node = objectMapper.createObjectNode();
     node.put("id", "taskId123");
-    assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("taskId123");
+    assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+        .containsExactly("taskId123");
   }
 
   @Test
@@ -57,6 +60,7 @@ class RunwayModelExecutorTest {
     ObjectNode node = objectMapper.createObjectNode();
     ArrayNode outputArr = node.putArray("output");
     outputArr.add("https://example.com/nested.mp4");
-    assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content).containsExactly("https://example.com/nested.mp4");
+    assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+        .containsExactly("https://example.com/nested.mp4");
   }
 }

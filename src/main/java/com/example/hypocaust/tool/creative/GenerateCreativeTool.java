@@ -18,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +43,8 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
 
-  @DiscoverableTool(
+  @DiscoverableTool
+  @Tool(
       name = "generate_creative",
       description = "Generate or edit creative content (images, audio, video, text). "
           + "Include quality or style preferences in the task (e.g., high quality, photorealistic, fast). "

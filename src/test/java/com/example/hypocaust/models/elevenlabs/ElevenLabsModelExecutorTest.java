@@ -2,7 +2,6 @@ package com.example.hypocaust.models.elevenlabs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.util.ArtifactResolver;
@@ -34,8 +33,8 @@ class ElevenLabsModelExecutorTest {
     node.put("url", "https://example.com/audio.mp3");
     var outputs = executor.extractOutputs(node);
     assertThat(outputs).hasSize(1);
-    assertThat(outputs.get(0).content()).isEqualTo("https://example.com/audio.mp3");
-    assertThat(outputs.get(0).metadata()).isNull();
+    assertThat(outputs.get("audio").content()).isEqualTo("https://example.com/audio.mp3");
+    assertThat(outputs.get("audio").metadata()).isNull();
   }
 
   @Test
@@ -45,9 +44,9 @@ class ElevenLabsModelExecutorTest {
     node.put("voiceId", "JBFqnCBsd6RMkjVDRZzb");
     var outputs = executor.extractOutputs(node);
     assertThat(outputs).hasSize(1);
-    assertThat(outputs.get(0).content()).isEqualTo("https://example.com/audio.mp3");
-    assertThat(outputs.get(0).metadata()).isNotNull();
-    assertThat(outputs.get(0).metadata().get("voiceId").asText())
+    assertThat(outputs.get("audio").content()).isEqualTo("https://example.com/audio.mp3");
+    assertThat(outputs.get("audio").metadata()).isNotNull();
+    assertThat(outputs.get("audio").metadata().get("voiceId").asText())
         .isEqualTo("JBFqnCBsd6RMkjVDRZzb");
   }
 
@@ -67,10 +66,10 @@ class ElevenLabsModelExecutorTest {
 
     var outputs = executor.extractOutputs(node);
     assertThat(outputs).hasSize(3);
-    assertThat(outputs.get(0).content()).isEqualTo("https://example.com/preview1.mp3");
-    assertThat(outputs.get(0).metadata().get("voiceId").asText()).isEqualTo("voice1");
-    assertThat(outputs.get(1).content()).isEqualTo("https://example.com/preview2.mp3");
-    assertThat(outputs.get(2).content()).isEqualTo("https://example.com/preview3.mp3");
+    assertThat(outputs.get("preview_0").content()).isEqualTo("https://example.com/preview1.mp3");
+    assertThat(outputs.get("preview_0").metadata().get("voiceId").asText()).isEqualTo("voice1");
+    assertThat(outputs.get("preview_1").content()).isEqualTo("https://example.com/preview2.mp3");
+    assertThat(outputs.get("preview_2").content()).isEqualTo("https://example.com/preview3.mp3");
   }
 
   @Test
@@ -83,7 +82,7 @@ class ElevenLabsModelExecutorTest {
     target.put("dubbed_file_url", "https://example.com/dubbed.mp3");
     var outputs = executor.extractOutputs(node);
     assertThat(outputs).hasSize(1);
-    assertThat(outputs.get(0).content()).isEqualTo("https://example.com/dubbed.mp3");
+    assertThat(outputs.get("audio").content()).isEqualTo("https://example.com/dubbed.mp3");
   }
 
   @Test
@@ -92,7 +91,7 @@ class ElevenLabsModelExecutorTest {
     node.put("dubbing_id", "d456");
     var outputs = executor.extractOutputs(node);
     assertThat(outputs).hasSize(1);
-    assertThat(outputs.get(0).content()).isEqualTo("d456");
+    assertThat(outputs.get("audio").content()).isEqualTo("d456");
   }
 
   @Test

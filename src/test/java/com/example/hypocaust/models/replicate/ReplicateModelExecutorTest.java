@@ -91,7 +91,7 @@ class ReplicateModelExecutorTest {
     @Test
     void textualNode_returnsText() {
       var node = objectMapper.valueToTree("https://example.com/img.png");
-      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content)
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
           .containsExactly("https://example.com/img.png");
     }
 
@@ -99,7 +99,7 @@ class ReplicateModelExecutorTest {
     void arrayNode_returnsFirstElement() {
       var node = objectMapper.valueToTree(
           List.of("https://example.com/1.png", "https://example.com/2.png"));
-      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content)
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
           .containsExactly("https://example.com/1.png");
     }
 
@@ -107,14 +107,14 @@ class ReplicateModelExecutorTest {
     void objectWithUrlField_returnsUrlValue() throws Exception {
       var node = objectMapper.readTree(
           "{\"url\": \"https://example.com/out.png\", \"other\": 42}");
-      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content)
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
           .containsExactly("https://example.com/out.png");
     }
 
     @Test
     void otherShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutputs(node)).extracting(ExtractedOutput::content)
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
           .containsExactly("{\"data\":123}");
     }
   }
