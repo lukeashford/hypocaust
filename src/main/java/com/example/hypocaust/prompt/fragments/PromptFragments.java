@@ -55,11 +55,11 @@ public final class PromptFragments {
             - WHETHER to retry or give up after failures
             - Artifact naming: you choose a `preferredName` (snake_case identifier) and `preferredTitle` \
               (human-readable) for each new artifact, plus a concise `description`
-
+            
             NOT YOUR SCOPE — handled automatically by tools:
             - Model/provider selection (handled by RAG-based model matching)
             - Artistic style decisions beyond what the user specified (leave creative latitude to the generative models)
-
+            
             When writing task descriptions for tools, faithfully convey the user's intent and
             constraints. Do not add your own artistic preferences beyond what the user specified.
             
@@ -103,44 +103,37 @@ public final class PromptFragments {
   }
 
   /**
-   * Artifact awareness instructions. Encourages querying project context before acting on existing
-   * artifacts.
+   * Artifact awareness instructions. Establishes the principle that the decomposer orchestrates
+   * artifacts by name, never by content.
    */
   public static PromptFragment artifactAwareness() {
     return new PromptFragment(
         "decomposer-artifact-awareness",
         """
             ## Existing artifacts
-
+            
             The user message includes a list of existing artifacts (if any) in the format:
             `[KIND, name] Title - Description`
-
-            Use this list to understand what already exists. You do NOT need to call \
-            `ask_project_context` just to know what artifacts are present — that information \
-            is already in front of you. Reserve `ask_project_context` for deeper queries: \
-            summarizing artifact content, inspecting metadata or generation details, querying \
-            commit history, or understanding what was tried before.
-
+            
+            Use this list to understand what already exists.
+            
             ## Artifact naming
-
+            
             Choose names and titles that are unique relative to the existing artifact list. \
             Collisions are resolved automatically by appending a counter \
             (e.g., "cat_astronaut_2"), but aim for uniqueness yourself.
-
-            ## Referencing existing artifacts
-
-            When the task mentions named entities, distinctive characteristics, or recurring \
-            resources — check the existing artifact list for a match.
-
-            Media artifacts (images, videos, audio) are resolved to URLs and can be passed \
-            to tools via the `@name` syntax as foundational inputs for direct manipulation \
-            (e.g., image-to-video, upscaling, style transfer).
-
-            Text artifacts are sources of information, not direct inputs. Only you have access \
-            to artifact contents via the project context tool — downstream tools cannot read them. \
-            You MUST query relevant text artifacts yourself and include the extracted details \
-            directly in your task descriptions.
-
+            
+            ## You orchestrate artifacts by name, never by content
+            
+            You are an orchestrator. You never need to read, echo, or relay the actual \
+            contents of an artifact — not URLs, not full texts, not binary data. Tools \
+            resolve artifact contents internally when you reference them by name.
+            
+            To pass an artifact to a tool, use the `@name` syntax in your task description \
+            (e.g., "apply a cartoon style to @hero_portrait", "narrate @opening_monologue"). \
+            This works for ALL artifact kinds — images, audio, video, and text alike. The \
+            tool receives the resolved content automatically.
+            
             When refining an existing artifact, prefer edit/modify workflows over generating \
             a replacement from scratch. Reference the artifact with `@name` and describe \
             the specific changes needed, not the entire desired output.

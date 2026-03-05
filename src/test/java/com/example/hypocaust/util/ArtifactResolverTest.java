@@ -10,6 +10,7 @@ import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.service.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,20 @@ class ArtifactResolverTest {
 
     var result = resolver.resolve(input, List.of(artifact));
     assertThat(result.get("context").asText()).isEqualTo("A tale of adventure");
+  }
+
+  @Test
+  void resolve_textArtifactWithInlineContent_replacesWithContent() throws Exception {
+    var input = objectMapper.readTree("{\"text\": \"@my_poem\"}");
+    var artifact = Artifact.builder()
+        .name("my_poem").kind(ArtifactKind.TEXT).title("My Poem")
+        .description("A short poem about autumn")
+        .inlineContent(new TextNode("Leaves fall gently down\nCrisp air carries them away\nAutumn whispers soft"))
+        .status(ArtifactStatus.MANIFESTED).build();
+
+    var result = resolver.resolve(input, List.of(artifact));
+    assertThat(result.get("text").asText())
+        .isEqualTo("Leaves fall gently down\nCrisp air carries them away\nAutumn whispers soft");
   }
 
   @Test

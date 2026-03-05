@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 /**
  * Resolves artifact placeholder references in provider input JSON. Supports:
  * <ul>
- *   <li>{@code @artifact_name} — presigned URL (media) or description (TEXT)</li>
+ *   <li>{@code @artifact_name} — presigned URL (media) or inline content (TEXT, falls back to description)</li>
  *   <li>{@code @artifact_name.url} — presigned URL explicitly</li>
  *   <li>{@code @artifact_name.metadata.fieldName} — metadata field value</li>
  * </ul>
@@ -134,6 +134,13 @@ public class ArtifactResolver {
 
   private String resolveDefault(Artifact artifact) {
     if (artifact.kind() == ArtifactKind.TEXT) {
+      // Resolve to inline content when available (e.g., poem text for TTS),
+      // fall back to description for gestating or empty text artifacts
+      if (artifact.inlineContent() != null && !artifact.inlineContent().isNull()) {
+        return artifact.inlineContent().isTextual()
+            ? artifact.inlineContent().asText()
+            : artifact.inlineContent().toString();
+      }
       return artifact.description();
     }
     return resolveUrl(artifact);

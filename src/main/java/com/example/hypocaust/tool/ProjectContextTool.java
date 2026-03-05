@@ -38,13 +38,14 @@ public class ProjectContextTool {
 
   @Tool(name = "ask_project_context",
       description = "Answer in-depth questions about artifact contents, generation metadata, "
-          + "version history, and past task executions. This tool deliberately does not return "
-          + "full artifact contents, so you don't spoil your context window and can focus on the "
-          + "big picture. Ask it for concept, style, tone, or if crucially necessary, specific "
-          + "sections of text, but never for the full contents. This is good for you."
+          + "version history, and past task executions. "
           + "Use this for deeper queries like 'What are the character descriptions in artifact "
           + "X?', 'Which models were used for artifact Y?', or 'What changed between executions A "
-          + "and B?'")
+          + "and B?'. "
+          + "This tool deliberately does not return full artifact contents, so you don't spoil "
+          + "your context window and can focus on the big picture. Ask it for concept, style, "
+          + "tone, or if crucially necessary, specific sections of text, but never for the full "
+          + "contents. This is good for you. ")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {

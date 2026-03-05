@@ -51,8 +51,9 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
       name = "generate_creative",
       description = "Generate or edit creative content (images, audio, video, text). "
           + "Include quality or style preferences in the task (e.g., high quality, photorealistic, fast). "
-          + "Reference existing artifacts as inputs with the @ prefix "
-          + "(e.g., 'Make @user_photo a cartoon').")
+          + "Reference existing artifacts as inputs with the @name syntax — this works for all "
+          + "artifact kinds including text (e.g., 'Make @user_photo a cartoon', "
+          + "'Generate a spoken reading of @my_script'). Artifact contents are resolved internally.")
   public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
       @ToolParam(description = "Artifact intents: what to create, edit, or delete") List<ArtifactIntent> intents
