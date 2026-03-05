@@ -38,11 +38,13 @@ public class ProjectContextTool {
 
   @Tool(name = "ask_project_context",
       description = "Answer in-depth questions about artifact contents, generation metadata, "
-          + "version history, and past task executions. You already have the artifact list "
-          + "(names, kinds, titles, descriptions) in the user message — do NOT call this tool "
-          + "just to list artifacts. Use it for deeper queries like 'What are the character "
-          + "descriptions in artifact X?', 'Which models were used for artifact Y?', or "
-          + "'What changed between executions A and B?'. Returns concise summaries, not raw content.")
+          + "version history, and past task executions. This tool deliberately does not return "
+          + "full artifact contents, so you don't spoil your context window and can focus on the "
+          + "big picture. Ask it for concept, style, tone, or if crucially necessary, specific "
+          + "sections of text, but never for the full contents. This is good for you."
+          + "Use this for deeper queries like 'What are the character descriptions in artifact "
+          + "X?', 'Which models were used for artifact Y?', or 'What changed between executions A "
+          + "and B?'")
   public String ask(
       @ToolParam(description = "Your question about the project") String question
   ) {
@@ -118,8 +120,12 @@ public class ProjectContextTool {
               
               RULES:
               - Be concise and direct. Answer ONLY what was asked.
-              - NEVER reproduce full artifact content verbatim. Always summarize and extract
-                only the specific details requested (e.g., character names, key themes, style notes).
+              - NEVER reproduce artifact content verbatim — not in full, not in large part.
+                If asked for full text, raw content, or a complete copy of an artifact, REFUSE
+                and respond with something like: "I can't hand you the full content — ask me
+                about its themes, structure, key elements, or style instead."
+              - Short illustrative excerpts are allowed (2–3 lines maximum), clearly marked as
+                a sample, never as a complete reproduction.
               - When asked for an artifact name, reply with just the name.
               - When listing artifacts, use a clean format.
               - When explaining what happened, summarize the key changes.
@@ -127,7 +133,8 @@ public class ProjectContextTool {
               - When asked about what failed, explain what was attempted and why it failed.
               - Task executions have stable snake_case names (shown before the dash in the history).
               - When asked about historical versions, always include the execution name.
-              - Keep your answer under 500 characters unless the question explicitly requires more detail.
+              - Keep your answer under 400 characters unless a longer answer is structurally
+                necessary (e.g. a list of 10 items). Never exceed 800 characters regardless.
               """,
           "Context:\n" + contextBuilder + "\n\nQuestion: " + question
       );
