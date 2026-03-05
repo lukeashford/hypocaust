@@ -4,7 +4,6 @@ import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
-import java.util.function.Function;
 import lombok.Getter;
 
 /**
@@ -25,8 +24,6 @@ public class TaskExecutionContext {
   private final ArtifactsContext artifacts;
   private final TodosContext todos;
 
-  private final Function<String, String> urlResolver;
-
   @Getter
   private volatile UUID lastEventId;
 
@@ -36,13 +33,11 @@ public class TaskExecutionContext {
       UUID predecessorId,
       String name,
       EventService eventService,
-      VersionManagementService versionService,
-      Function<String, String> urlResolver) {
+      VersionManagementService versionService) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
     this.predecessorId = predecessorId;
     this.name = name;
-    this.urlResolver = urlResolver;
 
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
@@ -61,7 +56,7 @@ public class TaskExecutionContext {
         taskExecutionId,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges().stream()
-            .map(a -> ArtifactDto.from(a, urlResolver))
+            .map(ArtifactDto::from)
             .toList(),
         todos.getList().toList(),
         lastEventId

@@ -1,13 +1,12 @@
 package com.example.hypocaust.service.events;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.dto.ArtifactDto;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.mapper.EventMapper;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.List;
@@ -30,7 +29,6 @@ public class EventService {
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
   private final TaskExecutionRepository taskExecutionRepository;
-  private final ArtifactMapper artifactMapper;
 
   @Transactional
   public UUID publish(Event<?> event, boolean doPersist) {
@@ -133,12 +131,12 @@ public class EventService {
   private Event<?> externalizeArtifactEvent(Event<?> event) {
     if (event instanceof ArtifactAddedEvent addedEvent
         && addedEvent.getPayload() instanceof Artifact artifact) {
-      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
+      ArtifactDto dto = ArtifactDto.from(artifact);
       return new ArtifactAddedEvent(addedEvent.getTaskExecutionId(), dto);
     }
     if (event instanceof ArtifactUpdatedEvent updatedEvent
         && updatedEvent.getPayload() instanceof Artifact artifact) {
-      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
+      ArtifactDto dto = ArtifactDto.from(artifact);
       return new ArtifactUpdatedEvent(updatedEvent.getTaskExecutionId(), dto);
     }
     return event;

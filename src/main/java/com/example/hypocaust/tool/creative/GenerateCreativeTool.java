@@ -99,8 +99,8 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
         }
 
         return result.artifacts().stream().map(finalized -> {
-          var updated = finalized.withMetadata(
-              mergeMetadata(finalized.metadata(), model, task, result.providerInput()));
+          Artifact updated = finalized.toBuilder().metadata(
+              mergeMetadata(finalized.metadata(), model, task, result.providerInput())).build();
           log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(), updated.status());
           return updated;
         }).toList();

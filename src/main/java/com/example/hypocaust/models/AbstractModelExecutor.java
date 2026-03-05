@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -93,16 +92,16 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
   /**
    * Shared LLM-based planning for executors that need prompt engineering to construct provider
    * input. Builds a common system prompt (artifact expectations, output mapping format, error
-   * contract) and appends the provider-specific system prompt. The LLM response is parsed into
-   * an {@link ExecutionPlan} with the output mapping.
+   * contract) and appends the provider-specific system prompt. The LLM response is parsed into an
+   * {@link ExecutionPlan} with the output mapping.
    *
    * @param task the user task description
    * @param model the consolidated model context from RAG
    * @param artifacts the GESTATING artifacts to fulfil
    * @param providerSystemPrompt provider-specific planning instructions (appended to the common
-   *     system prompt)
+   * system prompt)
    * @param additionalUserContext optional extra context for the user prompt (e.g., a fetched API
-   *     schema); may be null
+   * schema); may be null
    */
   protected ExecutionPlan generatePlanWithLlm(String task, ModelSearchResult model,
       List<Artifact> artifacts, String providerSystemPrompt, String additionalUserContext) {
@@ -112,34 +111,34 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
             You are an expert creative director. Prepare a generation plan that maps a user's
             task to a provider API call and connects the provider's outputs to the expected
             artifacts.
-
+            
             ## Expected artifacts
-
+            
             You are given a list of artifacts that MUST be fulfilled by this generation.
             Each artifact has a name, kind, and description.
-
+            
             ## Your responsibilities
-
+            
             1. **providerInput** — Construct the JSON object to send to the provider API,
                following the model docs and best practices below.
                - If a field requires a URL and the user refers to an artifact, use
                  '@artifact_name' as a placeholder. The system resolves these automatically.
                - To reference metadata from an existing artifact, use
                  '@artifact_name.metadata.fieldName' (e.g., '@voice_sample.metadata.voiceId').
-
+            
             2. **outputMapping** — Map each expected provider output to exactly one artifact
                name. The keys are stable identifiers you choose for each distinct output the
                provider will produce (e.g., "image", "audio", "preview_0", "preview_1").
                The values are artifact names from the list below. Every artifact name MUST
                appear exactly once as a value. You may include extra output keys that do not
                map to any artifact — they will be silently ignored.
-
+            
             3. **errorMessage** — If you cannot fulfil the request (missing input, incompatible
                model, unsupported kind), set this to a clear message explaining what is wrong
                and what to try instead. Set to null otherwise.
-
+            
             ## Output format
-
+            
             Return ONLY valid JSON:
             {
               "providerInput": { ... },
@@ -311,7 +310,7 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
         if (existingMeta.isObject()) {
           ((ObjectNode) existingMeta).setAll((ObjectNode) extracted.metadata());
         }
-        finalized = finalized.withMetadata(existingMeta);
+        finalized = finalized.toBuilder().metadata(existingMeta).build();
       }
 
       finalizedArtifacts.add(finalized);
@@ -330,10 +329,11 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
    */
   protected Artifact finalizeArtifact(Artifact artifact, String extractedOutput) {
     if (artifact.kind() == ArtifactKind.TEXT) {
-      return artifact
-          .withInlineContent(new TextNode(extractedOutput))
-          .withStatus(ArtifactStatus.MANIFESTED)
-          .withMimeType("text/plain");
+      return artifact.toBuilder()
+          .inlineContent(new TextNode(extractedOutput))
+          .status(ArtifactStatus.MANIFESTED)
+          .mimeType("text/plain")
+          .build();
     }
 
     // For non-text: download from URL and store
@@ -361,6 +361,7 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
           String mimeType = detectMimeType(connection, providerUrl, artifact.kind());
           String storageKey = storageService.store(data, mimeType);
+          String presignedUrl = storageService.generatePresignedUrl(storageKey, 600);
 
           // Update metadata with contentLength
           JsonNode metadata = artifact.metadata();
@@ -374,11 +375,13 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
           log.info("Stored artifact {} (kind: {}, MIME: {}, key: {})",
               artifact.name(), artifact.kind(), mimeType, storageKey);
 
-          return artifact
-              .withStorageKey(storageKey)
-              .withMimeType(mimeType)
-              .withMetadata(metadata)
-              .withStatus(ArtifactStatus.MANIFESTED);
+          return artifact.toBuilder()
+              .storageKey(storageKey)
+              .url(presignedUrl)
+              .mimeType(mimeType)
+              .metadata(metadata)
+              .status(ArtifactStatus.MANIFESTED)
+              .build();
         }
       } catch (Exception e) {
         log.warn("Download attempt {} failed for artifact {}: {}", attempt + 1, artifact.name(),
@@ -396,9 +399,10 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
 
     String errorMsg = "Failed to download and store after " + maxAttempts + " attempts";
     log.error("{}: artifact {}, url {}", errorMsg, artifact.name(), providerUrl);
-    return artifact
-        .withStatus(ArtifactStatus.FAILED)
-        .withErrorMessage(errorMsg);
+    return artifact.toBuilder()
+        .status(ArtifactStatus.FAILED)
+        .errorMessage(errorMsg)
+        .build();
   }
 
   private String detectMimeType(URLConnection connection, String url, ArtifactKind kind) {

@@ -2,7 +2,6 @@ package com.example.hypocaust.util;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -34,7 +33,6 @@ public class ArtifactResolver {
   // Matches @word_chars(.word_chars)* — longest match first due to greedy quantifier
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("@(\\w+(?:\\.\\w+)*)");
 
-  private final ArtifactMapper artifactMapper;
   private final ObjectMapper objectMapper;
 
   /**
@@ -138,11 +136,7 @@ public class ArtifactResolver {
   }
 
   private String resolveUrl(Artifact artifact) {
-    if (artifact.storageKey() == null || artifact.storageKey().isBlank()) {
-      log.warn("Artifact '{}' has no storage key for URL resolution", artifact.name());
-      return null;
-    }
-    return artifactMapper.toPresignedUrl(artifact.storageKey());
+    return artifact.url();
   }
 
   private String resolveMetadataField(Artifact artifact, String fieldName) {

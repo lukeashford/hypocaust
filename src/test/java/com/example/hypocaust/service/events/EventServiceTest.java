@@ -33,7 +33,7 @@ class EventServiceTest {
     eventMapper = mock(EventMapper.class);
     TaskExecutionRepository taskExecutionRepository = mock(TaskExecutionRepository.class);
     eventService = new EventService(sseHub, eventLogRepository, eventMapper,
-        taskExecutionRepository, null);
+        taskExecutionRepository);
   }
 
   @AfterEach

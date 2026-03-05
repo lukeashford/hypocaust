@@ -1,14 +1,10 @@
 package com.example.hypocaust.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.mapper.ArtifactMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,13 +13,11 @@ import org.junit.jupiter.api.Test;
 class ArtifactResolverTest {
 
   private ArtifactResolver resolver;
-  private ArtifactMapper artifactMapper;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   void setUp() {
-    artifactMapper = mock(ArtifactMapper.class);
-    resolver = new ArtifactResolver(artifactMapper, objectMapper);
+    resolver = new ArtifactResolver(objectMapper);
   }
 
   @Test
@@ -32,10 +26,9 @@ class ArtifactResolverTest {
     var artifact = Artifact.builder()
         .name("hero_photo").kind(ArtifactKind.IMAGE).title("Hero Photo")
         .description("A hero photo").status(ArtifactStatus.MANIFESTED)
-        .storageKey("blobs/ab/cd/photo.png").build();
-
-    when(artifactMapper.toPresignedUrl("blobs/ab/cd/photo.png"))
-        .thenReturn("https://cdn.example.com/presigned/photo.png");
+        .storageKey("blobs/ab/cd/photo.png")
+        .url("https://cdn.example.com/presigned/photo.png")
+        .build();
 
     var result = resolver.resolve(input, List.of(artifact));
     assertThat(result.get("image").asText())
@@ -59,10 +52,9 @@ class ArtifactResolverTest {
     var artifact = Artifact.builder()
         .name("audio_clip").kind(ArtifactKind.AUDIO).title("Clip")
         .description("An audio clip").status(ArtifactStatus.MANIFESTED)
-        .storageKey("blobs/ef/gh/clip.mp3").build();
-
-    when(artifactMapper.toPresignedUrl("blobs/ef/gh/clip.mp3"))
-        .thenReturn("https://cdn.example.com/clip.mp3");
+        .storageKey("blobs/ef/gh/clip.mp3")
+        .url("https://cdn.example.com/clip.mp3")
+        .build();
 
     var result = resolver.resolve(input, List.of(artifact));
     assertThat(result.get("source").asText())
@@ -159,14 +151,15 @@ class ArtifactResolverTest {
     var a1 = Artifact.builder()
         .name("photo1").kind(ArtifactKind.IMAGE).title("P1")
         .description("D1").status(ArtifactStatus.MANIFESTED)
-        .storageKey("blobs/1.png").build();
+        .storageKey("blobs/1.png")
+        .url("https://cdn/1.png")
+        .build();
     var a2 = Artifact.builder()
         .name("photo2").kind(ArtifactKind.IMAGE).title("P2")
         .description("D2").status(ArtifactStatus.MANIFESTED)
-        .storageKey("blobs/2.png").build();
-
-    when(artifactMapper.toPresignedUrl("blobs/1.png")).thenReturn("https://cdn/1.png");
-    when(artifactMapper.toPresignedUrl("blobs/2.png")).thenReturn("https://cdn/2.png");
+        .storageKey("blobs/2.png")
+        .url("https://cdn/2.png")
+        .build();
 
     var result = resolver.resolve(input, List.of(a1, a2));
     assertThat(result.get("sources").get(0).asText()).isEqualTo("https://cdn/1.png");

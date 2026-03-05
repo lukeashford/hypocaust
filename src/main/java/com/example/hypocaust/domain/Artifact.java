@@ -7,7 +7,7 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 
-@Builder
+@Builder(toBuilder = true)
 @Schema(description = "A generated artifact (image, document, structured data, etc.)")
 public record Artifact(
     @Schema(description = "ID of the artifact version (null if not yet persisted)",
@@ -26,6 +26,10 @@ public record Artifact(
         + "Mapped to a presigned URL at API boundaries.",
         nullable = true)
     String storageKey,
+
+    @Schema(description = "Transient presigned URL for storageKey.",
+        nullable = true)
+    String url,
 
     @Schema(description = "Inline content (for TEXT kind). Display directly as text.",
         nullable = true, type = "string")
@@ -51,33 +55,4 @@ public record Artifact(
     String errorMessage
 ) implements ArtifactEventPayload {
 
-  public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withStorageKey(String storageKey) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withMimeType(String mimeType) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withMetadata(JsonNode metadata) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withInlineContent(JsonNode inlineContent) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withErrorMessage(String errorMessage) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
 }

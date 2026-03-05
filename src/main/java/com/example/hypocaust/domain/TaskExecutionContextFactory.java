@@ -1,6 +1,5 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
@@ -16,7 +15,6 @@ public class TaskExecutionContextFactory {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final ArtifactMapper artifactMapper;
 
   /**
    * Create a new TaskExecutionContext for a task execution.
@@ -29,8 +27,7 @@ public class TaskExecutionContextFactory {
         predecessorId,
         name,
         eventService,
-        versionService,
-        artifactMapper::toPresignedUrl
+        versionService
     );
   }
 }
