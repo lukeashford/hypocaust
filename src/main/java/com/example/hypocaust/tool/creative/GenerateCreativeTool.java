@@ -3,6 +3,7 @@ package com.example.hypocaust.tool.creative;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -16,6 +17,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -66,7 +69,10 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
   @Override
   protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
     // Step 1: Find suitable models
-    ModelRequirement req = wordingService.generateModelRequirement(task);
+    Set<ArtifactKind> requiredOutputKinds = gestating.stream()
+        .map(Artifact::kind)
+        .collect(Collectors.toSet());
+    ModelRequirement req = wordingService.generateModelRequirement(task, requiredOutputKinds);
     var models = modelRag.search(req);
     if (models.isEmpty()) {
       throw new IllegalStateException("No suitable model found for: " + req);

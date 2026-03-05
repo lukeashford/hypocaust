@@ -206,7 +206,10 @@ public class ModelEmbeddingRegistry {
 
       // Step 1: fetch larger candidate pool — tier is a soft signal, not a hard filter
       final var dbResults = repository.findTopByInputsAndSimilarity(
-          queryEmbedding, req.inputs(), PageRequest.of(0, CANDIDATE_POOL_SIZE));
+          queryEmbedding,
+          req.inputs(),
+          req.outputs() != null ? req.outputs() : Set.of(),
+          PageRequest.of(0, CANDIDATE_POOL_SIZE));
       if (dbResults.isEmpty()) {
         return List.of();
       }

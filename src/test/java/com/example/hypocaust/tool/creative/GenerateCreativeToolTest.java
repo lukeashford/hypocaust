@@ -85,8 +85,9 @@ class GenerateCreativeToolTest {
     String task = "Make a cute cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
@@ -99,7 +100,8 @@ class GenerateCreativeToolTest {
         .description("A very cute cat illustration")
         .status(ArtifactStatus.GESTATING)
         .build();
-    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
     var finalizedArtifact = Artifact.builder()
@@ -133,8 +135,9 @@ class GenerateCreativeToolTest {
   void generate_noModelFound_returnsError() {
     String task = "Generate a sunset image";
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
 
     when(artifactsContext.add(anyString(), anyString(), anyString(), eq(ArtifactKind.IMAGE), any()))
@@ -154,8 +157,9 @@ class GenerateCreativeToolTest {
     String task = "Make a video";
     ArtifactKind kind = ArtifactKind.VIDEO;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     var outputSpec = new OutputSpec(kind, "the video");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(
         List.of(new ModelSearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
@@ -166,7 +170,8 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("video-1").kind(kind).title("Video").description("A video")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
@@ -186,8 +191,9 @@ class GenerateCreativeToolTest {
     String task = "Make a cat";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
@@ -198,7 +204,8 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("cat-1").kind(kind).title("Cat").description("A cat")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
@@ -218,8 +225,9 @@ class GenerateCreativeToolTest {
     String task = "Make something";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     var outputSpec = new OutputSpec(kind, "the thing");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
@@ -230,7 +238,8 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("thing-1").kind(kind).title("Thing").description("A thing")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
         anyList()))
@@ -250,8 +259,9 @@ class GenerateCreativeToolTest {
     String task = "Write a poem";
     ArtifactKind kind = ArtifactKind.TEXT;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "high", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("high")
+            .searchString(task).build());
     var outputSpec = new OutputSpec(kind, "the poem");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
         new ModelSearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
@@ -261,7 +271,8 @@ class GenerateCreativeToolTest {
     Artifact mockGestating = Artifact.builder()
         .name("poem-1").kind(kind).title("Poem").description("A poem")
         .status(ArtifactStatus.GESTATING).build();
-    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(mockGestating);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     String poemText = "Roses are red...";
     var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
@@ -297,8 +308,9 @@ class GenerateCreativeToolTest {
     String task = "Make a sunset";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
-    when(wordingService.generateModelRequirement(anyString()))
-        .thenReturn(new ModelRequirement(Set.of(), "balanced", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
 
     var outputSpec = new OutputSpec(kind, "the image");
     var model1 = new ModelSearchResult("FluxDev", "black-forest-labs", "flux-dev",
