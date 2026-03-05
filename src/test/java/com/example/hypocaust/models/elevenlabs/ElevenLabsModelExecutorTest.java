@@ -1,12 +1,17 @@
 package com.example.hypocaust.models.elevenlabs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
+import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -15,13 +20,15 @@ import org.springframework.retry.support.RetryTemplate;
 class ElevenLabsModelExecutorTest {
 
   private ElevenLabsModelExecutor executor;
+  private ElevenLabsClient elevenLabsClient;
+  private ChatService chatService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   void setUp() {
     ModelRegistry modelRegistry = Mockito.mock(ModelRegistry.class);
-    ChatService chatService = Mockito.mock(ChatService.class);
-    ElevenLabsClient elevenLabsClient = Mockito.mock(ElevenLabsClient.class);
+    chatService = Mockito.mock(ChatService.class);
+    elevenLabsClient = Mockito.mock(ElevenLabsClient.class);
     ArtifactResolver artifactResolver = Mockito.mock(ArtifactResolver.class);
     executor = new ElevenLabsModelExecutor(modelRegistry, objectMapper, chatService,
         new RetryTemplate(), null, artifactResolver, elevenLabsClient);
@@ -130,5 +137,85 @@ class ElevenLabsModelExecutorTest {
 
     var phases = executor.buildExecutionPhases("elevenlabs", "sound-generation", input);
     assertThat(phases).hasSize(1);
+  }
+
+  @Test
+  void testBuildExecutionPhases_ttsLibraryMatch_singlePhase() {
+    ObjectNode voiceNode = objectMapper.createObjectNode();
+    voiceNode.put("voice_id", "JBFqnCBsd6RMkjVDRZzb");
+    voiceNode.put("name", "George");
+    voiceNode.put("description", "Warm British storyteller");
+    voiceNode.put("preview_url", "https://example.com/george.mp3");
+
+    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("JBFqnCBsd6RMkjVDRZzb");
+
+    ObjectNode input = objectMapper.createObjectNode();
+    input.put("text", "Hello world");
+    input.put("voice_description", "Warm British storyteller");
+
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
+    assertThat(phases).hasSize(1); // Direct TTS via library match
+  }
+
+  @Test
+  void testBuildExecutionPhases_ttsWithFreshVoice_alwaysChain() {
+    ObjectNode voiceNode = objectMapper.createObjectNode();
+    voiceNode.put("voice_id", "JBFqnCBsd6RMkjVDRZzb");
+    voiceNode.put("name", "George");
+    voiceNode.put("description", "Warm British storyteller");
+    voiceNode.put("preview_url", "https://example.com/george.mp3");
+
+    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("JBFqnCBsd6RMkjVDRZzb");
+
+    ObjectNode input = objectMapper.createObjectNode();
+    input.put("text", "Hello world");
+    input.put("voice_description", "Warm British storyteller");
+    input.put("fresh_voice", true);
+
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
+    assertThat(phases).hasSize(3); // Design → Save → TTS despite library having a match
+  }
+
+  @Test
+  void testBuildExecutionPhases_voiceDesignLibraryMatch_singlePhase() {
+    ObjectNode voiceNode = objectMapper.createObjectNode();
+    voiceNode.put("voice_id", "EXAVITQu4vr4xnSDxMaL");
+    voiceNode.put("name", "Sarah");
+    voiceNode.put("description", "Confident warm female voice");
+    voiceNode.put("preview_url", "https://example.com/sarah.mp3");
+
+    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("EXAVITQu4vr4xnSDxMaL");
+
+    ObjectNode input = objectMapper.createObjectNode();
+    input.put("voice_description", "Confident warm female voice");
+
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
+    assertThat(phases).hasSize(1); // Single phase returning library voice as preview
+  }
+
+  @Test
+  void testBuildExecutionPhases_voiceDesignWithFreshVoice_alwaysChain() {
+    ObjectNode voiceNode = objectMapper.createObjectNode();
+    voiceNode.put("voice_id", "EXAVITQu4vr4xnSDxMaL");
+    voiceNode.put("name", "Sarah");
+    voiceNode.put("description", "Confident warm female voice");
+    voiceNode.put("preview_url", "https://example.com/sarah.mp3");
+
+    when(elevenLabsClient.listAllVoices()).thenReturn(List.of(voiceNode));
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+        .thenReturn("EXAVITQu4vr4xnSDxMaL");
+
+    ObjectNode input = objectMapper.createObjectNode();
+    input.put("voice_description", "Confident warm female voice");
+    input.put("fresh_voice", true);
+
+    var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
+    assertThat(phases).hasSize(2); // Design → Save all, despite library having a match
   }
 }

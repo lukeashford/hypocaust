@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -63,7 +64,11 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         as the voice_id value. Do NOT invent or guess voice IDs.
       - If no voice_id is available but a voice is described, omit 'voice_id' entirely and
         include 'voice_description' with the description and 'text' with the speech content.
-        The system will handle voice creation automatically.
+        The system will automatically search the voice library for a matching voice before
+        falling back to generating a fresh one.
+      - Set 'fresh_voice' to true ONLY when the task explicitly asks to generate or create a
+        new voice (e.g., "generate a fresh voice", "create a new voice for this character").
+        Omit 'fresh_voice' or set it to false in all other cases.
 
       OUTPUT KEY CONVENTIONS for outputMapping:
       - eleven_v3 / sound-generation / dubbing: use "audio" as the output key.
@@ -81,7 +86,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       JsonNode input) {
     return switch (modelId) {
       case "eleven_v3" -> buildTtsPhases(input);
-      case "eleven_ttv_v3" -> buildVoiceDesignPhases();
+      case "eleven_ttv_v3" -> buildVoiceDesignPhases(input);
       case "sound-generation" -> List.of(
           (orig, prev) -> elevenLabsClient.soundGeneration(orig));
       case "dubbing" -> List.of(
@@ -94,8 +99,68 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build TTS phases. If voice_id is present, single-phase direct TTS. If only voice_description is
-   * present, chain: design → save → TTS.
+   * Searches the ElevenLabs voice library for a voice matching the given description. Fetches all
+   * available voices (own + premade), then asks Haiku to pick the best match. Returns the matched
+   * voice node (containing {@code voice_id} and {@code preview_url}), or empty if none fits.
+   */
+  private Optional<JsonNode> findMatchingVoice(String voiceDescription) {
+    List<JsonNode> voices;
+    try {
+      voices = elevenLabsClient.listAllVoices();
+    } catch (Exception e) {
+      log.warn("[ElevenLabs] Library lookup failed, will generate new voice: {}", e.getMessage());
+      return Optional.empty();
+    }
+
+    if (voices == null || voices.isEmpty()) {
+      return Optional.empty();
+    }
+
+    StringBuilder voiceList = new StringBuilder();
+    for (JsonNode voice : voices) {
+      voiceList.append("- voice_id: ").append(voice.path("voice_id").asText())
+          .append(", name: \"").append(voice.path("name").asText()).append("\"")
+          .append(", description: \"").append(voice.path("description").asText()).append("\"");
+      JsonNode labels = voice.path("labels");
+      if (!labels.isMissingNode() && labels.isObject() && labels.size() > 0) {
+        voiceList.append(", labels: ").append(labels);
+      }
+      voiceList.append("\n");
+    }
+
+    String system = """
+        You are a voice casting assistant. Given a required voice description and a list of
+        available voices, pick the best matching voice_id. Be selective — only pick a voice if
+        it genuinely fits the description. If no voice is a good match, return the word null.
+        Respond with ONLY the voice_id string or the word null. No explanation.
+        """;
+    String user = "Required voice: " + voiceDescription + "\n\nAvailable voices:\n" + voiceList;
+
+    String response = chatService.call(PROMPT_ENG_MODEL, system, user);
+    if (response == null || response.isBlank() || "null".equalsIgnoreCase(response.strip())) {
+      log.info("[ElevenLabs] Library match: no suitable voice found for description");
+      return Optional.empty();
+    }
+
+    String matchedId = response.strip();
+    Optional<JsonNode> matched = voices.stream()
+        .filter(v -> matchedId.equals(v.path("voice_id").asText()))
+        .findFirst();
+
+    if (matched.isPresent()) {
+      log.info("[ElevenLabs] Library match: voice_id='{}' name='{}'",
+          matchedId, matched.get().path("name").asText());
+    } else {
+      log.warn("[ElevenLabs] Library match: Haiku returned unknown voice_id='{}', ignoring",
+          matchedId);
+    }
+    return matched;
+  }
+
+  /**
+   * Build TTS phases. If voice_id is present, single-phase direct TTS. If fresh_voice is set,
+   * skip library search and chain: design → save → TTS. Otherwise, search the voice library first;
+   * if a match is found use it directly, else fall back to the design → save → TTS chain.
    */
   private List<ExecutionPhase> buildTtsPhases(JsonNode input) {
     boolean hasVoiceId = input.has("voice_id")
@@ -107,7 +172,26 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       return List.of((orig, prev) -> elevenLabsClient.textToSpeech(orig));
     }
 
-    log.info("[ElevenLabs] TTS strategy: chain (no voice_id) → voice design → save → TTS");
+    if (!input.path("fresh_voice").asBoolean(false)) {
+      String description = input.path("voice_description").asText();
+      Optional<JsonNode> match = findMatchingVoice(description);
+      if (match.isPresent()) {
+        String matchedVoiceId = match.get().path("voice_id").asText();
+        log.info("[ElevenLabs] TTS strategy: library match (voice_id='{}')", matchedVoiceId);
+        return List.of((orig, prev) -> {
+          ObjectNode ttsInput = orig.deepCopy();
+          ttsInput.put("voice_id", matchedVoiceId);
+          var result = elevenLabsClient.textToSpeech(ttsInput);
+          if (result.isObject()) {
+            ((ObjectNode) result).put("voiceId", matchedVoiceId);
+          }
+          return result;
+        });
+      }
+    }
+
+    log.info("[ElevenLabs] TTS strategy: chain ({}) → voice design → save → TTS",
+        input.path("fresh_voice").asBoolean(false) ? "fresh_voice=true" : "no library match");
     return List.of(
         // Phase 1: Design voices based on description
         (orig, prev) -> {
@@ -169,10 +253,33 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build voice design phases: design → save all previews. Returns previews with permanent
-   * voiceIds.
+   * Build voice design phases. If fresh_voice is set, generate a new voice (design → save all
+   * previews). Otherwise, search the voice library first; if a match is found return it as a
+   * single preview, else fall back to generating a new voice.
    */
-  private List<ExecutionPhase> buildVoiceDesignPhases() {
+  private List<ExecutionPhase> buildVoiceDesignPhases(JsonNode input) {
+    if (!input.path("fresh_voice").asBoolean(false)) {
+      String description = input.path("voice_description").asText();
+      Optional<JsonNode> match = findMatchingVoice(description);
+      if (match.isPresent()) {
+        JsonNode matchedVoice = match.get();
+        String matchedVoiceId = matchedVoice.path("voice_id").asText();
+        String previewUrl = matchedVoice.path("preview_url").asText();
+        log.info("[ElevenLabs] Voice Design strategy: library match (voice_id='{}')",
+            matchedVoiceId);
+        return List.of((orig, prev) -> {
+          ObjectNode result = objectMapper.createObjectNode();
+          var previews = result.putArray("previews");
+          var entry = previews.addObject();
+          entry.put("url", previewUrl);
+          entry.put("voiceId", matchedVoiceId);
+          return result;
+        });
+      }
+    }
+
+    log.info("[ElevenLabs] Voice Design strategy: generate new voice ({})",
+        input.path("fresh_voice").asBoolean(false) ? "fresh_voice=true" : "no library match");
     return List.of(
         // Phase 1: Design voices
         (orig, prev) -> {
