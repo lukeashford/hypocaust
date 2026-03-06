@@ -46,6 +46,14 @@ public class ArtifactService {
   }
 
   /**
+   * Persist a user-uploaded artifact to the database. No task execution is associated.
+   */
+  @Transactional
+  public Artifact persistUpload(Artifact artifact, UUID projectId) {
+    return persist(artifact, projectId, null);
+  }
+
+  /**
    * Persist an artifact to the database. The artifact should already be finalized (MANIFESTED,
    * FAILED, or CANCELLED).
    */
