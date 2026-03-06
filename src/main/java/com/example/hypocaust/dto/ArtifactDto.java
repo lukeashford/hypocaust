@@ -1,13 +1,11 @@
 package com.example.hypocaust.dto;
 
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.event.ArtifactEvent.ArtifactEventPayload;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
-import java.util.function.Function;
 
 /**
  * Frontend-facing representation of an Artifact. The internal storageKey is replaced with a
@@ -32,25 +30,4 @@ public record ArtifactDto(
     String errorMessage
 ) implements ArtifactEventPayload {
 
-  /**
-   * Convert a domain Artifact to a frontend DTO, mapping storageKey to a presigned URL.
-   */
-  public static ArtifactDto from(Artifact artifact, Function<String, String> urlResolver) {
-    String url = artifact.storageKey() != null
-        ? urlResolver.apply(artifact.storageKey())
-        : null;
-    return new ArtifactDto(
-        artifact.id(),
-        artifact.name(),
-        artifact.kind(),
-        url,
-        artifact.inlineContent(),
-        artifact.title(),
-        artifact.description(),
-        artifact.status(),
-        artifact.metadata(),
-        artifact.mimeType(),
-        artifact.errorMessage()
-    );
-  }
 }

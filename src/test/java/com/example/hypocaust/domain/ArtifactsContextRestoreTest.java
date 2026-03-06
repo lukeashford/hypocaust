@@ -3,8 +3,6 @@ package com.example.hypocaust.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -12,10 +10,9 @@ import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
-import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
-import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,31 +27,18 @@ class ArtifactsContextRestoreTest {
 
   private EventService eventService;
   private VersionManagementService versionService;
-  private NamingService namingService;
   private ArtifactsContext context;
 
   @BeforeEach
   void setUp() {
     eventService = mock(EventService.class);
     versionService = mock(VersionManagementService.class);
-    namingService = mock(NamingService.class);
-    when(namingService.generateArtifactName(anyString(), anyCollection(), anyString()))
-        .thenAnswer(invocation -> {
-          Collection<String> existing = invocation.getArgument(1);
-          String preferred = invocation.getArgument(2);
-          if (preferred != null && !existing.contains(preferred)) {
-            return preferred;
-          }
-          return preferred != null ? preferred + "_new" : "generated_name";
-        });
-    when(namingService.generateArtifactName(anyString(), anyCollection()))
-        .thenAnswer(invocation -> "generated_name");
 
     when(versionService.computeArtifactSnapshotAt(PREDECESSOR_ID)).thenReturn(Map.of());
 
     context = new ArtifactsContext(
         PROJECT_ID, TASK_EXECUTION_ID, PREDECESSOR_ID,
-        eventService, versionService, namingService
+        eventService, versionService
     );
   }
 
@@ -92,7 +76,7 @@ class ArtifactsContextRestoreTest {
   }
 
   @Test
-  void restore_nameTaken_delegatesToNameGenerator() {
+  void restore_nameTaken_appendsCounter() {
     Artifact source = Artifact.builder()
         .name("protagonist")
         .kind(ArtifactKind.IMAGE)
@@ -106,17 +90,12 @@ class ArtifactsContextRestoreTest {
         "protagonist", "initial_character_designs", PROJECT_ID))
         .thenReturn(Optional.of(source));
 
-    when(versionService.computeArtifactSnapshotAt(PREDECESSOR_ID))
-        .thenReturn(Map.of("protagonist", UUID.randomUUID()));
-    when(namingService.generateArtifactName(
-        eq("A portrait of the protagonist"), anyCollection(), eq("protagonist")))
-        .thenReturn("protagonist_2");
+    when(versionService.getAllArtifactsWithChanges(eq(PREDECESSOR_ID), any()))
+        .thenReturn(List.of(source));
 
     String finalName = context.restore("protagonist", "initial_character_designs");
 
     assertThat(finalName).isEqualTo("protagonist_2");
-    verify(namingService).generateArtifactName(
-        eq("A portrait of the protagonist"), anyCollection(), eq("protagonist"));
   }
 
   @Test

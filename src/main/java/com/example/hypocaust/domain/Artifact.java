@@ -7,7 +7,7 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 
-@Builder
+@Builder(toBuilder = true)
 @Schema(description = "A generated artifact (image, document, structured data, etc.)")
 public record Artifact(
     @Schema(description = "ID of the artifact version (null if not yet persisted)",
@@ -51,46 +51,4 @@ public record Artifact(
     String errorMessage
 ) implements ArtifactEventPayload {
 
-  public static Artifact fromDraft(String name, ArtifactDraft draft) {
-    return Artifact.builder()
-        .id(null)
-        .name(name)
-        .kind(draft.kind())
-        .inlineContent(draft.inlineContent())
-        .title(draft.title())
-        .description(draft.description())
-        .status(draft.status())
-        .metadata(draft.metadata())
-        .build();
-  }
-
-  public Artifact withStatus(ArtifactStatus status) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withStorageKey(String storageKey) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withMimeType(String mimeType) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withMetadata(JsonNode metadata) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withInlineContent(JsonNode inlineContent) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
-
-  public Artifact withErrorMessage(String errorMessage) {
-    return new Artifact(id, name, kind, storageKey, inlineContent, title, description, status,
-        metadata, mimeType, errorMessage);
-  }
 }

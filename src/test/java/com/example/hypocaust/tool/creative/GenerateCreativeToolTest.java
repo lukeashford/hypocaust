@@ -2,25 +2,29 @@ package com.example.hypocaust.tool.creative;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactAction;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.domain.ArtifactsContext;
+import com.example.hypocaust.domain.OutputSpec;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.models.ModelExecutor;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
-import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class GenerateCreativeToolTest {
@@ -38,7 +41,6 @@ class GenerateCreativeToolTest {
   private ModelExecutor modelExecutor;
   private WordingService wordingService;
   private ObjectMapper objectMapper;
-  private ArtifactMapper artifactMapper;
   private GenerateCreativeTool tool;
 
   private ArtifactsContext artifactsContext;
@@ -50,9 +52,8 @@ class GenerateCreativeToolTest {
     modelExecutor = mock(ModelExecutor.class);
     wordingService = mock(WordingService.class);
     objectMapper = new ObjectMapper();
-    artifactMapper = mock(ArtifactMapper.class);
     tool = new GenerateCreativeTool(modelRag, executionRouter,
-        wordingService, objectMapper, artifactMapper);
+        wordingService, objectMapper);
 
     TaskExecutionContext context = mock(TaskExecutionContext.class);
     when(context.getTaskExecutionId()).thenReturn(java.util.UUID.randomUUID());
@@ -68,6 +69,16 @@ class GenerateCreativeToolTest {
     TaskExecutionContextHolder.clear();
   }
 
+  private ArtifactIntent addIntent(ArtifactKind kind, String description) {
+    return ArtifactIntent.builder()
+        .action(ArtifactAction.ADD)
+        .kind(kind)
+        .description(description)
+        .preferredName("test_artifact")
+        .preferredTitle("Test Artifact")
+        .build();
+  }
+
   @Test
   void generate_success() {
     // GIVEN
@@ -75,17 +86,22 @@ class GenerateCreativeToolTest {
     ArtifactKind kind = ArtifactKind.IMAGE;
 
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
+    var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "A high-quality image model",
             "Use clear prompts", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cute Cat");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn(
-        "A very cute cat illustration");
-    when(artifactsContext.add(any())).thenReturn("cute-cat-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("cute-cat-1").kind(kind).title("Cute Cat")
+        .description("A very cute cat illustration")
+        .status(ArtifactStatus.GESTATING)
+        .build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     var providerInput = objectMapper.createObjectNode().put("prompt", "a cute cat");
     var finalizedArtifact = Artifact.builder()
@@ -96,17 +112,17 @@ class GenerateCreativeToolTest {
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
+        anyList()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "A cute cat image")));
 
     // THEN
     assertThat(result.error()).isNull();
-    assertThat(result.artifactName()).isEqualTo("cute-cat-1");
-    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.artifactNames()).containsExactly("cute-cat-1");
+    assertThat(result.summary()).contains("Generated artifacts: cute-cat-1 using SDXL");
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.name().equals("cute-cat-1") &&
@@ -117,41 +133,52 @@ class GenerateCreativeToolTest {
 
   @Test
   void generate_noModelFound_returnsError() {
+    String task = "Generate a sunset image";
+
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), ArtifactKind.IMAGE, "balanced",
-            "Generate a sunset image"));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of());
 
-    var result = tool.generate("Generate a sunset image", ArtifactKind.IMAGE);
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(ArtifactKind.IMAGE), any()))
+        .thenReturn(Artifact.builder()
+            .name("sunset-1").kind(ArtifactKind.IMAGE).title("Sunset").description("A sunset")
+            .status(ArtifactStatus.GESTATING).build());
+
+    var result = tool.generate(task, List.of(addIntent(ArtifactKind.IMAGE, "A sunset image")));
 
     assertThat(result.error()).contains("No suitable model found");
-    assertThat(result.artifactName()).isNull();
+    assertThat(result.artifactNames()).isNull();
   }
 
   @Test
   void generate_planReturnsErrorMessage_fallsThrough() {
-    // GIVEN — only one model candidate, plan fails → all models exhausted
+    // GIVEN — only one model candidate, executor fails → all models exhausted
     String task = "Make a video";
     ArtifactKind kind = ArtifactKind.VIDEO;
 
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
+    var outputSpec = new OutputSpec(kind, "the video");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(
-        List.of(new SearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
+        List.of(new ModelSearchResult("AnimateDiff", "lucataco", "animate-diff", "A video model",
             "Keep it short", "balanced", "REPLICATE", Set.of(ArtifactKind.TEXT),
-            Set.of(ArtifactKind.VIDEO))));
+            Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Video");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A video");
-    when(artifactsContext.add(any())).thenReturn("video-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("video-1").kind(kind).title("Video").description("A video")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
+        anyList()))
         .thenThrow(new RuntimeException("Planning failed: Missing video length"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "A video")));
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -165,24 +192,29 @@ class GenerateCreativeToolTest {
     ArtifactKind kind = ArtifactKind.IMAGE;
 
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
+    var outputSpec = new OutputSpec(kind, "the image");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
+            "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Cat");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A cat");
-    when(artifactsContext.add(any())).thenReturn("cat-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("cat-1").kind(kind).title("Cat").description("A cat")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
+        anyList()))
         .thenThrow(new RuntimeException("Provider API timeout"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "A cat image")));
 
-    // THEN
+    // THEN — doExecute throws → orchestrate rolls back gestating artifacts
     assertThat(result.error()).contains("All models failed");
     verify(artifactsContext).rollbackPending("cat-1");
   }
@@ -194,22 +226,27 @@ class GenerateCreativeToolTest {
     ArtifactKind kind = ArtifactKind.IMAGE;
 
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
+    var outputSpec = new OutputSpec(kind, "the thing");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced", "REPLICATE",
-            Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE))));
+        new ModelSearchResult("SDXL", "stability-ai", "sdxl", "desc", "best", "balanced",
+            "REPLICATE",
+            Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Thing");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A thing");
-    when(artifactsContext.add(any())).thenReturn("thing-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("thing-1").kind(kind).title("Thing").description("A thing")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(), any(ModelSearchResult.class),
+        anyList()))
         .thenThrow(new IllegalStateException("Model returned no usable output"));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "Something")));
 
     // THEN
     assertThat(result.error()).contains("All models failed");
@@ -222,16 +259,20 @@ class GenerateCreativeToolTest {
     String task = "Write a poem";
     ArtifactKind kind = ArtifactKind.TEXT;
 
-    when(wordingService.generateModelRequirement(anyString(), eq(kind)))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "high", task));
+    when(wordingService.generateModelRequirement(anyString(), any()))
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("high")
+            .searchString(task).build());
+    var outputSpec = new OutputSpec(kind, "the poem");
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(
-        new SearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
-            "OPENROUTER", Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.TEXT))));
+        new ModelSearchResult("Claude Opus", "anthropic", "claude-3-opus", "desc", "best", "high",
+            "OPENROUTER", Set.of(ArtifactKind.TEXT), Set.of(outputSpec))));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Poem");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A poem");
-    when(artifactsContext.add(any())).thenReturn("poem-1");
+    Artifact mockGestating = Artifact.builder()
+        .name("poem-1").kind(kind).title("Poem").description("A poem")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any())).thenReturn(
+        mockGestating);
 
     String poemText = "Roses are red...";
     var providerInput = objectMapper.createObjectNode().put("prompt", "poem");
@@ -242,16 +283,16 @@ class GenerateCreativeToolTest {
         .mimeType("text/plain")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), eq(task), anyString(), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), eq(task), any(ModelSearchResult.class),
+        anyList()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "A poem")));
 
     // THEN
     assertThat(result.error()).isNull();
-    assertThat(result.artifactName()).isEqualTo("poem-1");
+    assertThat(result.artifactNames()).containsExactly("poem-1");
 
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.kind() == ArtifactKind.TEXT &&
@@ -263,86 +304,60 @@ class GenerateCreativeToolTest {
 
   @Test
   void generate_fallbackToSecondModel_onFirstModelFailure() {
-    // GIVEN — two models returned by RAG, first fails technically, second succeeds
+    // GIVEN — two models returned by RAG, first fails technically, second succeeds.
     String task = "Make a sunset";
     ArtifactKind kind = ArtifactKind.IMAGE;
 
     when(wordingService.generateModelRequirement(anyString(), any()))
-        .thenReturn(new ModelRequirement(Set.of(), kind, "balanced", task));
+        .thenReturn(ModelRequirement.builder().inputs(Set.of()).outputs(Set.of()).tier("balanced")
+            .searchString(task).build());
 
-    var model1 = new SearchResult("FluxDev", "black-forest-labs", "flux-dev",
+    var outputSpec = new OutputSpec(kind, "the image");
+    var model1 = new ModelSearchResult("FluxDev", "black-forest-labs", "flux-dev",
         "desc1", "best1", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
-    var model2 = new SearchResult("SDXL", "stability-ai", "sdxl",
+        Set.of(ArtifactKind.TEXT), Set.of(outputSpec));
+    var model2 = new ModelSearchResult("SDXL", "stability-ai", "sdxl",
         "desc2", "best2", "balanced", "REPLICATE",
-        Set.of(ArtifactKind.TEXT), Set.of(ArtifactKind.IMAGE));
+        Set.of(ArtifactKind.TEXT), Set.of(outputSpec));
 
     when(modelRag.search(any(ModelRequirement.class))).thenReturn(List.of(model1, model2));
 
     when(artifactsContext.getAllWithChanges()).thenReturn(List.of());
-    when(wordingService.generateArtifactTitle(anyString())).thenReturn("Sunset");
-    when(wordingService.generateArtifactDescription(anyString())).thenReturn("A sunset");
-    when(artifactsContext.add(any())).thenReturn("sunset-1", "sunset-2");
+    Artifact mockGestating = Artifact.builder()
+        .name("sunset-1").kind(kind).title("Sunset").description("A sunset")
+        .status(ArtifactStatus.GESTATING).build();
+    when(artifactsContext.add(anyString(), anyString(), anyString(), eq(kind), any()))
+        .thenReturn(mockGestating);
 
     // First model: run fails
-    when(modelExecutor.run(any(Artifact.class), anyString(), eq("FluxDev"), anyString(),
-        anyString(), anyString(), anyString(), any()))
+    when(modelExecutor.run(anyList(), anyString(),
+        argThat(m -> m != null && "FluxDev".equals(m.name())), anyList()))
         .thenThrow(new RuntimeException("Model unavailable"));
 
-    // Second model: run succeeds
+    // Second model: run succeeds with the same gestating artifact
     var providerInput = objectMapper.createObjectNode().put("prompt", "sunset sdxl");
     var finalizedArtifact = Artifact.builder()
-        .name("sunset-2").kind(kind).title("Sunset").description("A sunset")
+        .name("sunset-1").kind(kind).title("Sunset").description("A sunset")
         .status(ArtifactStatus.MANIFESTED)
         .storageKey("blobs/ab/cd/sunset.png")
         .mimeType("image/png")
         .build();
 
-    when(modelExecutor.run(any(Artifact.class), anyString(), eq("SDXL"), anyString(), anyString(),
-        anyString(), anyString(), any()))
-        .thenReturn(new ExecutionResult(finalizedArtifact, providerInput));
+    when(modelExecutor.run(anyList(), anyString(),
+        argThat(m -> m != null && "SDXL".equals(m.name())), anyList()))
+        .thenReturn(new ExecutionResult(List.of(finalizedArtifact), providerInput));
 
     // WHEN
-    var result = tool.generate(task, kind);
+    var result = tool.generate(task, List.of(addIntent(kind, "A sunset image")));
 
-    // THEN — succeeded with second model
+    // THEN — succeeded with second model, same gestating artifact reused
     assertThat(result.error()).isNull();
-    assertThat(result.summary()).contains("Generated IMAGE using SDXL");
+    assertThat(result.summary()).contains("Generated artifacts: sunset-1 using SDXL");
 
-    // First artifact should have been rolled back
-    verify(artifactsContext).rollbackPending("sunset-1");
-    // Second artifact should have been updated
+    // No rollback — doExecute succeeded, orchestrate doesn't roll back
+    verify(artifactsContext, never()).rollbackPending(anyString());
+    // The gestating artifact is updated with finalized content
     verify(artifactsContext).updatePending(argThat(artifact ->
         artifact.storageKey().equals("blobs/ab/cd/sunset.png")));
-  }
-
-  @Nested
-  class SubstituteArtifacts {
-
-    @Test
-    void replacesPlaceholderWithPresignedUrl() throws Exception {
-      var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = Artifact.builder()
-          .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
-          .status(ArtifactStatus.MANIFESTED).storageKey("blobs/ab/cd/photo.png").build();
-
-      when(artifactMapper.toPresignedUrl("blobs/ab/cd/photo.png"))
-          .thenReturn("https://cdn.example.com/presigned/photo.png");
-
-      var result = tool.substituteArtifacts(input, List.of(artifact));
-      assertThat(result.get("image").asText()).isEqualTo(
-          "https://cdn.example.com/presigned/photo.png");
-    }
-
-    @Test
-    void nullStorageKey_leavesPlaceholderAsIs() throws Exception {
-      var input = objectMapper.readTree("{\"image\": \"@photo\"}");
-      var artifact = Artifact.builder()
-          .name("photo").kind(ArtifactKind.IMAGE).title("T").description("D")
-          .status(ArtifactStatus.GESTATING).build();
-
-      var result = tool.substituteArtifacts(input, List.of(artifact));
-      assertThat(result.get("image").asText()).isEqualTo("@photo");
-    }
   }
 }

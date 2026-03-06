@@ -14,6 +14,7 @@ import com.example.hypocaust.domain.event.TaskExecutionStartedEvent;
 import com.example.hypocaust.dto.TaskInitializationResult;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import com.example.hypocaust.service.events.EventService;
+import com.example.hypocaust.utils.NamingUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -37,8 +38,6 @@ public class TaskExecutionLifecycleService {
   private final VersionManagementService versionService;
   private final TodoService todoService;
   private final EventService eventService;
-  private final NamingService namingService;
-  private final WordingService wordingService;
 
   /**
    * Initialize a task execution. Transitions to RUNNING synchronously.
@@ -51,7 +50,8 @@ public class TaskExecutionLifecycleService {
             .orElse(null));
 
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
-    String name = namingService.generateExecutionName(task, existingNames);
+    String name = NamingUtils.sanitize(task, 50);
+    name = NamingUtils.appendCounterIfExists(name, existingNames, 50);
 
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)
@@ -78,7 +78,7 @@ public class TaskExecutionLifecycleService {
    * publishes completion event.
    */
   @Transactional
-  public void commitExecution(UUID taskExecutionId, UUID projectId, String task,
+  public void commitExecution(UUID taskExecutionId, UUID projectId, String commitMessage,
       TaskExecutionContext context) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
         .orElseThrow(
@@ -98,9 +98,6 @@ public class TaskExecutionLifecycleService {
         log.warn("Failed to materialize todos for execution {}: {}", taskExecutionId,
             e.getMessage());
       }
-
-      // 3. Generate commit message
-      String commitMessage = wordingService.generateCommitMessage(task);
 
       // 4. Determine status from artifact states
       List<Artifact> allArtifacts = new ArrayList<>(changelist.getAdded());

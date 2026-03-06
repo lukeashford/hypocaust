@@ -3,6 +3,7 @@ package com.example.hypocaust.tool.registry;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.definition.ToolDefinition;
 
 /**
  * Registry for discoverable tools. Provides semantic search and lookup by name.
@@ -13,9 +14,9 @@ public interface ToolRegistry {
    * Semantic search for tools matching a task description.
    *
    * @param taskDescription natural language description of the task
-   * @return top matching tool descriptors ordered by similarity
+   * @return top matching tool definitions ordered by similarity
    */
-  List<ToolDescriptor> searchByTask(String taskDescription);
+  List<ToolDefinition> searchByTask(String taskDescription);
 
   /**
    * Get a tool callback by exact name.

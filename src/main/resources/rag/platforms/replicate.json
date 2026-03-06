@@ -1,0 +1,695 @@
+[
+  {
+    "name": "FLUX.2 [pro]",
+    "owner": "black-forest-labs",
+    "id": "flux-2-pro",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.2 [pro] is a premium IMAGE generation model emphasizing extreme photorealism, precise\ntypography/signage, and high-end aesthetic coherence. It excels at commercial outputs (ads,\nproduct shots, fashion/editorial looks, and brand-grade imagery). Best for high-stakes visual\ncontent where detail and brand consistency are paramount.",
+    "bestPractices": "- Write prompts like a production brief: subject + wardrobe/materials + lighting setup + lens +\n  background + mood.\n- If available, use higher inference steps for crisp textures; keep guidance moderate to avoid\n  \u201covercooked\u201d contrast.\n- For consistent series, fix seed and vary only a small prompt segment (e.g., \u201ccolorway\u201d, \u201ctime of\n  day\u201d)."
+  },
+  {
+    "name": "FLUX.2 [flex]",
+    "owner": "black-forest-labs",
+    "id": "flux-2-flex",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.2 [flex] is a versatile IMAGE generation model designed for multi-reference workflows. It can\ntake multiple input images and guidance signals to improve identity, style, and composition\nconsistency. Ideal for iterative creative pipelines (lookdev, character sheets, product variants).\nBest for tasks requiring character or style consistency across different generations.",
+    "bestPractices": "- Provide clean, well-lit reference images with minimal clutter; keep references semantically\n  aligned with the prompt.\n- Prefer tighter prompts when strong references are used; let references drive style/identity while\n  prompt defines scene intent.\n- If exposed, tune \u201creference strength\u201d / \u201cimage influence\u201d to avoid copying vs drifting."
+  },
+  {
+    "name": "FLUX.1 Canny [pro]",
+    "owner": "black-forest-labs",
+    "id": "flux-canny-pro",
+    "tier": "powerful",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 Canny [pro] is an IMAGE generation model that uses Canny edge guidance to retain strong\nstructure (poses, silhouettes, layout). It follows the edges of an input image while producing\nhigh-quality textures and lighting. Best for design-to-render, sketch-to-image, and cases where\nstrict layout retention is necessary.",
+    "bestPractices": "- Use a high-contrast edge/control image; simplify noisy edges for better semantic fidelity.\n- Balance control strength so the model respects layout without creating \u201cedge artifacts.\u201d\n- If available, increase steps for cleaner surfaces; keep prompts specific about materials and\n  lighting to fill structure."
+  },
+  {
+    "name": "FLUX.1 Depth [pro]",
+    "owner": "black-forest-labs",
+    "id": "flux-depth-pro",
+    "tier": "powerful",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 Depth [pro] is an IMAGE generation model guided by depth/geometry information. It preserves\nperspective and 3D layout from an input image. Ideal for architecture, interior renders, product\nstaging, and camera-consistent scene variations. Best for maintaining 3D spatial relationships.",
+    "bestPractices": "- Feed clean depth maps (or depth-extracted inputs) with correct scale; avoid broken depth\n  discontinuities.\n- Use prompts that match the geometry (e.g., \u201cwide-angle interior\u201d, \u201ctop-down product shot\u201d) to\n  reduce conflicts.\n- If exposed, tune depth/control strength to prevent flattening or excessive rigidity."
+  },
+  {
+    "name": "FLUX.1 Fill [pro]",
+    "owner": "black-forest-labs",
+    "id": "flux-fill-pro",
+    "tier": "powerful",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 Fill [pro] is an IMAGE inpainting and outpainting model specialized for seamless content\nfill,\nobject removal, and background extension. It maintains lighting continuity, texture coherence, and\nproduces minimal seams. Best for generative retouching, cleaning up images, or expanding layouts.",
+    "bestPractices": "- Provide precise masks with slight feathering; avoid jagged edges for cleaner blends.\n- Describe what should appear in the masked region AND what must remain unchanged (\u201ckeep same\n  lighting, match grain\u201d).\n- If available, raise steps for complex fills; reduce \u201cdenoise/strength\u201d for subtle repairs."
+  },
+  {
+    "name": "Stable Diffusion XL (SDXL)",
+    "owner": "stability-ai",
+    "id": "sdxl",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "SDXL is a widely-used IMAGE generation model prized for its versatility and broad style coverage. It\nis a reliable baseline for 1024px-class outputs, excellent for general-purpose generation,\nstylization, and controllable workflows with strong community support. Best for general creative\ntasks and broad stylistic exploration.",
+    "bestPractices": "- Use clear prompt structure (subject \u2192 descriptors \u2192 style \u2192 camera/lighting); add negatives for\n  common artifacts.\n- Increase steps for detail; tune guidance to balance realism vs adherence; fix seed for series\n  consistency.\n- Use higher resolution + upscaling passes for print-like results (generate \u2192 upscale \u2192 optional\n  inpaint)."
+  },
+  {
+    "name": "Stable Diffusion 3",
+    "owner": "stability-ai",
+    "id": "stable-diffusion-3",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Stable Diffusion 3 is an IMAGE generation model focused on improved prompt understanding and robust\ntext rendering. It has higher semantic alignment than earlier generations, making it excellent for\ncomplex scene briefs, product descriptions, and concept art with precise constraints. Best for\ncases where text must appear in the image or complex spatial layouts are required.",
+    "bestPractices": "- Write \u201cspec-like\u201d prompts (materials, layout, brand/typography constraints) to exploit stronger\n  language understanding.\n- If exposed, raise steps for fine detail; adjust negative prompt to suppress unwanted\n  styles/artifacts.\n- Keep aspect ratio intentional; generate multiple candidates per prompt for composition selection."
+  },
+  {
+    "name": "Stable Diffusion 3.5 Large",
+    "owner": "stability-ai",
+    "id": "stable-diffusion-3.5-large",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Stable Diffusion 3.5 Large is a high-capacity IMAGE generator targeting top-tier detail, realism,\nand nuanced aesthetics. It is highly effective for hero imagery, key visuals, editorial looks, and\nhigh-density scenes. Best for professional visual production requiring the highest possible\nquality and adherence to complex lighting/camera cues.",
+    "bestPractices": "- Use longer prompts with explicit lighting/camera cues; add negatives for anatomy/hand artifacts\n  when relevant.\n- Prefer higher inference steps for texture fidelity; keep guidance moderate for natural\n  skin/lighting.\n- Consider multi-stage workflows: generate base \u2192 inpaint details \u2192 upscale."
+  },
+  {
+    "name": "Stable Diffusion 3.5 Medium",
+    "owner": "stability-ai",
+    "id": "stable-diffusion-3.5-medium",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Stable Diffusion 3.5 Medium is an IMAGE generation model balancing quality and cost/latency. It\noffers strong alignment and attractive outputs with lower compute requirements. Ideal for bulk\ngeneration, iteration loops, and mid-latency creative systems. Best for rapid visual\nexploration and prototyping.",
+    "bestPractices": "- Use concise but specific prompts; iterate seeds quickly for composition exploration.\n- If exposed, increase steps for complex scenes; tune guidance to avoid over-stylization.\n- For brand consistency, keep a stable \u201cstyle block\u201d in the prompt across runs."
+  },
+  {
+    "name": "Bria Remove Background",
+    "owner": "bria",
+    "id": "remove-background",
+    "tier": "fast",
+    "inputs": [
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Bria Remove Background is an IMAGE specialized endpoint for background removal and segmentation.\nIt produces clean alpha mattes and cutouts for product shots, portraits, and compositing.\nExtremely fast and reliable for production design pipelines. Best for isolated subject\nextraction and e-commerce workflows.",
+    "bestPractices": "- Use high-resolution inputs with clear subject separation; avoid heavy motion blur for best edges.\n- Toggle `preserve_alpha` / `preserve_partial_alpha` (if present) depending on whether you want soft\n  edges (hair, smoke) preserved.\n- Enable `content_moderation` if you need safety filtering in automated workflows."
+  },
+  {
+    "name": "Stable Video Diffusion (SVD / SVD-XT)",
+    "owner": "christophy",
+    "id": "stable-video-diffusion",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Stable Video Diffusion is a VIDEO generation model that animates a single input frame into a\nshort motion clip. It allows for control via motion buckets and FPS. Ideal for animating\nconcept frames, product stills, and storyboards into quick previs. Best for adding subtle,\nrealistic motion to static images.",
+    "bestPractices": "- Use a sharp input image with a clear subject; avoid tiny faces/subjects to reduce temporal wobble.\n- Tune `motion_bucket_id` to control motion intensity; set `frames_per_second` for intended playback\n  feel.\n- Choose `video_length` (e.g., 14 vs 25 frames) based on quality vs duration; adjust `cond_aug` if\n  motion looks too rigid or too noisy."
+  },
+  {
+    "name": "LTX-Video",
+    "owner": "lightricks",
+    "id": "ltx-video",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "LTX-Video is a high-quality VIDEO generation model supporting both text-to-video and\nimage-to-video. It is aimed at cinematic clips with strong prompt-following and controllability.\nBest for creating cinematic video clips, social content, and stylized shots with coherent motion.",
+    "bestPractices": "- Use long descriptive prompts (the model explicitly benefits from detailed prompts); keep a strong\n  negative prompt for artifact suppression.\n- Control adherence with `cfg` and realism/detail with `steps`; pick `length` and `target_size`\n  based on latency budgets.\n- If using an input `image`, tune `image_noise_scale` to balance \u201cstick to the frame\u201d vs \u201ccreative\n  motion drift\u201d."
+  },
+  {
+    "name": "Mochi 1",
+    "owner": "genmoai",
+    "id": "mochi-1",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Mochi 1 is a VIDEO generation model oriented toward smooth, coherent motion and cinematic scene\ncontinuity. It is particularly effective for generating motion that follows complex camera movements\nand maintaining stylistic aesthetics. Best for generating short, stylized cinematic sequences from\ntext descriptions.",
+    "bestPractices": "- Describe camera movement explicitly (tracking shot, handheld, dolly zoom) to guide temporal\n  dynamics.\n- If exposed, increase inference steps for stability; constrain prompt scope to reduce scene\n  \u201cteleporting.\u201d\n- Generate multiple seeds and pick the best motion; then re-run with tighter constraints for\n  refinement."
+  },
+  {
+    "name": "Mochi 1 LoRA",
+    "owner": "genmoai",
+    "id": "mochi-1-lora",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Mochi 1 LoRA is a VIDEO generation model that supports LoRA-conditioned aesthetics. It allows for\nhighly controllable style, character, or brand looks across multiple video clips. Best for\nmaintaining consistent visual styles across episodic content or campaigns.",
+    "bestPractices": "- Keep the LoRA \u201ctrigger/style tokens\u201d consistent across runs; don\u2019t over-stack multiple LoRAs\n  unless needed.\n- If available, tune LoRA weight/strength to avoid overbaking; lock seed for continuity.\n- Use shorter prompts when LoRA is strong; let the LoRA drive the look."
+  },
+  {
+    "name": "CogVideoX Text-to-Video",
+    "owner": "thudm",
+    "id": "cogvideox-t2v",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "CogVideoX T2V is a VIDEO generation model designed for prompt-driven motion synthesis. It produces\ncinematic, stylized, or illustrative clips directly from text. Best for rapid video concepting\nand generating visual beats from descriptive text.",
+    "bestPractices": "- Prompt like a shot list: subject, action, setting, camera move, lighting, style, duration.\n- If the endpoint exposes steps/guidance/frames, increase steps for stability and reduce guidance if\n  motion becomes \u201cstiff.\u201d\n- Use strong negatives for flicker, watermark, deformities, and motion artifacts."
+  },
+  {
+    "name": "CogVideoX Image-to-Video",
+    "owner": "thudm",
+    "id": "cogvideox-i2v",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "CogVideoX I2V is a VIDEO generation model that animates a source image while following text\nguidance. It supports controllable motion without losing the core composition of the input image.\nBest for bringing still concept art or product frames to life with specific motion instructions.",
+    "bestPractices": "- Start from a clean, high-resolution image with a single focal subject to reduce temporal \u201cidentity\n  drift.\u201d\n- Describe motion that matches the image (e.g., \u201csubtle parallax\u201d, \u201cslow pan\u201d) to avoid surreal\n  warps.\n- If exposed, tune image influence/strength to preserve layout; increase steps for smoother frames."
+  },
+  {
+    "name": "Frame Interpolation (Google Research)",
+    "owner": "google-research",
+    "id": "frame-interpolation",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Google Research Frame Interpolation is a model that synthesizes intermediate frames between two\nimages. It is commonly used in VIDEO pipelines for slow-motion or FPS upconversion. Best for\ncreating smooth transitions between keyframes or improving the fluidity of generated video.",
+    "bestPractices": "- Use consecutive frames with consistent exposure and minimal motion blur for best optical flow\n  continuity.\n- If the endpoint exposes an \u201cinterpolation factor / recursive steps\u201d knob, increase gradually\u2014too\n  high can hallucinate geometry.\n- Pre-stabilize shaky footage for fewer tearing artifacts on edges."
+  },
+  {
+    "name": "FILM Frame Interpolation (Large Motion)",
+    "owner": "zsxkib",
+    "id": "film-frame-interpolation-for-large-motion",
+    "tier": "balanced",
+    "inputs": [
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FILM is a frame interpolation model optimized for handling large motion and complex occlusions.\nIt produces smoother slow-motion and higher-FPS outputs with fewer artifacts than standard\napproaches. Best for VFX, sports, or action shots where subjects move significantly between frames.",
+    "bestPractices": "- Feed high-quality sequential frames; avoid heavy compression and rolling shutter artifacts.\n- Use conservative interpolation multipliers first; validate occlusion-heavy regions (hands, fast\n  edges).\n- If available, enable any \u201clarge motion\u201d settings; denoise beforehand to reduce shimmering."
+  },
+  {
+    "name": "SAM 2 Video",
+    "owner": "meta",
+    "id": "sam-2-video",
+    "tier": "powerful",
+    "inputs": [
+      "VIDEO"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "SAM 2 Video is a state-of-the-art VIDEO object segmentation and tracking model. It allows for robust\ntracking and masking of objects across multiple frames. Best for rotoscoping, background\nreplacement preparation, and motion-aware cutouts in editing or VFX workflows.",
+    "bestPractices": "- Provide a strong initial mask/prompt on a keyframe; quality of the first frame heavily impacts\n  tracking stability.\n- For fast motion/occlusions, re-seed additional keyframes to prevent drift; keep shot stabilization\n  in mind.\n- Export masks at full resolution when possible to preserve edges for compositing."
+  },
+  {
+    "name": "Llama 3.2 Vision 90B (Ollama)",
+    "owner": "lucataco",
+    "id": "ollama-llama3.2-vision-90b",
+    "tier": "powerful",
+    "inputs": [
+      "IMAGE",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Llama 3.2 Vision 90B is a massive multimodal model for IMAGE understanding and analysis. It excels\nat captioning, visual QA, and structured data extraction from images. Best for tasks requiring\ndeep reasoning about visual content or interpreting complex layouts and text within images.",
+    "bestPractices": "- Ask for structured outputs explicitly (\u201cReturn JSON with keys: \u2026\u201d); constrain format to reduce\n  verbosity.\n- Use lower temperature for extraction/analysis; raise for creative captioning and ideation.\n- Provide clear images (high-res, readable text) for OCR-like tasks; crop to ROI to improve\n  accuracy."
+  },
+  {
+    "name": "Whisper (Speech-to-Text)",
+    "owner": "openai",
+    "id": "whisper",
+    "tier": "fast",
+    "inputs": [
+      "AUDIO"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Whisper is a robust AUDIO speech recognition and transcription model. it provides high-quality\nASR with multilingual support and excellent noise tolerance. Best for generating subtitles,\ntranscripts, and indexing audio content.",
+    "bestPractices": "- Use the largest available model for best accuracy; provide language hints when you know them to\n  reduce mis-detection.\n- If the endpoint supports it, request timestamps/segments for subtitle alignment; use VAD/trim\n  silence for cleaner results.\n- For difficult audio, preprocess with noise reduction and normalize loudness."
+  },
+  {
+    "name": "XTTS v2 (Text-to-Speech)",
+    "owner": "lucataco",
+    "id": "xtts-v2",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT",
+      "AUDIO"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "XTTS v2 is a multilingual AUDIO synthesis model that supports voice cloning. It can generate\nexpressive speech from text using a short reference audio clip. Best for narration, character\nvoice-overs, and localized audio content.",
+    "bestPractices": "- Use a clean 10\u201330s reference clip (single speaker, minimal noise/music) for stable cloning.\n- Keep text punctuation intentional; short sentences improve prosody control; specify emotion/style\n  in prompt fields if available.\n- Tune speaking rate and temperature-like randomness cautiously to avoid slurring or instability."
+  },
+  {
+    "name": "MusicGen",
+    "owner": "meta",
+    "id": "musicgen",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "MusicGen is a high-quality AUDIO generation model for text-to-music. It produces instrumental or\nstylized musical clips across diverse genres and tempos. Best for rapid musical scoring, mood\nexploration, and generating temp tracks for creative projects.",
+    "bestPractices": "- Prompt with genre + instruments + tempo/BPM + mood + era (\u201c90s boom bap, dusty drums, 92 BPM, jazz\n  samples\u201d).\n- Generate multiple seeds and pick the strongest motif; then re-run with tighter constraints to\n  refine.\n- If available, increase duration carefully\u2014longer clips can drift; loop-friendly prompts help."
+  },
+  {
+    "name": "Stable Audio 2.5",
+    "owner": "stability-ai",
+    "id": "stable-audio-2.5",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "Stable Audio 2.5 is an AUDIO generation model aimed at high-fidelity music and sound effect\nsynthesis. It features strong prompt-to-sound alignment and clean timbres. Best for creative\nsound design, high-quality music beds, and realistic SFX ideation.",
+    "bestPractices": "- Prompt with sonic descriptors (texture, space, mic perspective) not just semantics (\u201cclose-mic\n  foley\u201d, \u201cwide reverb tail\u201d).\n- If exposed, increase steps for cleaner harmonics; keep CFG/guidance moderate to avoid harsh\n  artifacts.\n- Generate multiple short candidates; stitch/arrange externally for longer compositions."
+  },
+  {
+    "name": "Stable Audio Open 1.0",
+    "owner": "stackadoc",
+    "id": "stable-audio-open-1.0",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "Stable Audio Open 1.0 is an open-weight AUDIO generation model for controllable sound synthesis.\nIt is suitable for research and experimentation in sound design. Best for research-oriented\naudio projects and self-hostable creative workflows.",
+    "bestPractices": "- Keep prompts grounded in audio terms (instrumentation, room, dynamics, mic distance).\n- If available, tune steps and guidance for quality vs creativity; avoid overly long single\n  generations to reduce drift.\n- Post-process (EQ, limiting, denoise) for production polish."
+  },
+  {
+    "name": "RVC v2 (Voice Conversion)",
+    "owner": "pseudoram",
+    "id": "rvc-v2",
+    "tier": "balanced",
+    "inputs": [
+      "AUDIO"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "RVC v2 is an AUDIO voice conversion model that transforms a source vocal into a target voice timbre.\nIt allows for expressive character voice prototyping and vocal effects. Best for character\nvoice-over transfer and creative vocal stylization.",
+    "bestPractices": "- Use dry, clean vocals (no reverb, minimal noise); align pitch and timing before conversion for\n  better results.\n- If the endpoint offers pitch shift or formant controls, tune gently to avoid \u201cchipmunk\u201d artifacts.\n- Prefer shorter segments and batch; manually review for consonant degradation and fix with\n  re-takes."
+  },
+  {
+    "name": "Riffusion",
+    "owner": "riffusion",
+    "id": "riffusion",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "Riffusion is an AUDIO generation model that uses spectrogram diffusion to create musical loops\nand riffs. It is excellent for quick musical sketches and background textures. Best for rapid\nloop generation and \"idea spark\" musical ideation.",
+    "bestPractices": "- Prompt with tight musical constraints (key, BPM, genre, instrument) to get more usable loops.\n- Generate many candidates and curate; use external DAW tools for arrangement, mixing, and\n  mastering.\n- Keep durations short for loopability; add \u201cseamless loop\u201d language in prompts when appropriate."
+  },
+  {
+    "name": "Zeta Editing (Audio)",
+    "owner": "lucataco",
+    "id": "zeta-editing",
+    "tier": "balanced",
+    "inputs": [
+      "AUDIO",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "Zeta Editing is a diffusion-based AUDIO editing model that transforms an input clip toward a\ntarget prompt while preserving its original structure. Best for remixing, style shifts, and\niterative audio direction where the core layout must remain consistent.",
+    "bestPractices": "- Control edit intensity with `t_start` (lower = closer to original, higher = stronger edit);\n  iterate in small increments.\n- Increase `steps` for higher quality (especially for complex edits); tune `cfg_scale_src` vs\n  `cfg_scale_tar` to balance preservation vs transformation.\n- Provide a good `source_prompt` describing the input audio to reduce semantic ambiguity and\n  artifacting."
+  },
+  {
+    "name": "Llama 3.1 405B Instruct",
+    "owner": "meta",
+    "id": "meta-llama-3.1-405b-instruct",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Llama 3.1 405B Instruct is a frontier-scale TEXT generation model optimized for high-quality\ninstruction following and complex reasoning. It excels at long-form drafting, deep summarization,\nand multi-step planning. Best for high-stakes agent logic, complex drafting, and deep analysis.",
+    "bestPractices": "- Provide a strong `system_prompt` and explicit output schema; request citations or step labels if\n  needed by downstream tools.\n- Keep `temperature` moderate (\u22480.4\u20130.8) for balanced creativity and reliability; adjust `top_p` for\n  diversity.\n- Use `stop_sequences` and prompt templates consistently for stable formatting across runs."
+  },
+  {
+    "name": "DeepSeek R1",
+    "owner": "deepseek-ai",
+    "id": "deepseek-r1",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "DeepSeek R1 is a powerful TEXT generation model specifically optimized for chain-of-thought\nreasoning and logical analysis. It excels at complex planning, code reasoning, and multi-step\nproblem solving. Best for tasks requiring deep deliberation and robust tool orchestration.",
+    "bestPractices": "- Keep `temperature` low for deterministic reasoning and consistent tool plans; increase only for\n  ideation.\n- Allocate sufficient `max_tokens` for long plans and structured output.\n- Use explicit formatting constraints (JSON schema, step headings) to prevent verbose, unstructured\n  answers."
+  },
+  {
+    "name": "Gemma 3 27B IT",
+    "owner": "google-deepmind",
+    "id": "gemma-3-27b-it",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Gemma 3 27B IT is a large multimodal instruct model from Google. It excels at JSON-friendly\ngeneration, multilingual tasks, and reasoning across text and images. Best for high-capacity\nassistant tasks, visual interpretation, and long-context reasoning where quality is prioritized.",
+    "bestPractices": "- Use explicit schema prompts for structured extraction; keep `temperature` low for deterministic\n  JSON.\n- If using images, crop to the relevant region and ask targeted questions for better visual\n  reasoning.\n- Set `max_new_tokens` to match expected output length; add stop strings for parser safety."
+  },
+  {
+    "name": "Gemma 3 12B IT",
+    "owner": "google-deepmind",
+    "id": "gemma-3-12b-it",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Gemma 3 12B IT is a mid-sized multimodal model balancing reasoning capability and efficiency. It\nis effective for visual QA, general assistant tasks, and structured data generation. Best for\nscalable agent applications requiring both text and visual context processing.",
+    "bestPractices": "- Use the `image` input for visual QA/interpretation; request structured outputs explicitly.\n- Tune `max_new_tokens` for long answers; keep `temperature` modest for stable formatting.\n- Use `top_p` / `top_k` for controlled diversity in creative tasks."
+  },
+  {
+    "name": "Gemma 3 4B IT",
+    "owner": "google-deepmind",
+    "id": "gemma-3-4b-it",
+    "tier": "fast",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Gemma 3 4B IT is a small, fast multimodal model optimized for low-latency tasks. It provides\ncost-effective JSON-friendly generation and lightweight visual interpretation. Best for high-QPS\nassistants, simple extraction, and short-form creative outputs.",
+    "bestPractices": "- Keep prompts short and directive; provide explicit output format requirements to reduce chatter.\n- Use lower `temperature` for extraction/JSON; raise slightly for creative copy.\n- Cap `max_new_tokens` to reduce rambling; rely on iterative calls for complex tasks."
+  },
+  {
+    "name": "Gemma2 27B IT",
+    "owner": "google-deepmind",
+    "id": "gemma2-27b-it",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Gemma2 27B IT is a strong general-purpose instruct model excelling at summarization, creative\nwriting, and logical reasoning with a great quality-to-latency ratio. Best for long-form writing,\nRAG synthesis, and complex planning where a balanced performance is needed.",
+    "bestPractices": "- Use clear task framing and constraints; include examples for stable formatting.\n- Keep `temperature` low for factual synthesis and extraction; increase for brainstorming.\n- Set token limits high enough for multi-part answers; use stop sequences for parsing."
+  },
+  {
+    "name": "Gemma2 9B IT",
+    "owner": "google-deepmind",
+    "id": "gemma2-9b-it",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Gemma2 9B IT is an efficient text generation model optimized for summarization, everyday\nreasoning, and instruction following. Best for cost-effective agent tasks, rapid summarization,\nand creative copy generation.",
+    "bestPractices": "- Use explicit schemas and low `temperature` for extraction; keep prompts concise for speed.\n- Use `top_p` for controlled variability in creative copy.\n- Prefer iterative refinement (multiple short calls) over one massive generation for consistency."
+  },
+  {
+    "name": "Phi-3 Mini 4K Instruct",
+    "owner": "microsoft",
+    "id": "phi-3-mini-4k-instruct",
+    "tier": "fast",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Phi-3 Mini 4K Instruct is a lightweight, high-performance model optimized for fast responses\nand strong reasoning relative to its size. Best for low-latency assistant tasks, simple code\nsnippets, and short-form planning where speed is critical.",
+    "bestPractices": "- Keep tasks narrow per call; use explicit output formatting instructions to reduce verbosity.\n- Use low `temperature` for reasoning and code; raise slightly for creative text.\n- Manage context carefully (4K window); summarize and compress prior state in agent loops."
+  },
+  {
+    "name": "Phi-3 Mini 128K Instruct",
+    "owner": "microsoft",
+    "id": "phi-3-mini-128k-instruct",
+    "tier": "fast",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Phi-3 Mini 128K Instruct provides long-context retention in a fast, efficient package. It is ideal\nfor large document analysis and extended conversations. Best for RAG-heavy synthesis and\nsummarizing long threads while maintaining low latency.",
+    "bestPractices": "- Use the long context intentionally: include outlines, constraints, and retrieved chunks; ask for\n  structured summaries.\n- Keep `temperature` low for consistent synthesis; increase for ideation over large briefs.\n- Control output length with token caps and sectioned prompts (headings, bullet constraints)."
+  },
+  {
+    "name": "Phi-3 Medium 4K Instruct",
+    "owner": "microsoft",
+    "id": "phi-3-medium-4k-instruct",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Phi-3 Medium 4K Instruct (14B) offers robust reasoning and instruction following for mid-range\ntasks. It provides a significant step up in quality from the Mini variant while remaining\nefficient. Best for assistant tasks, coding assistance, and more complex planning.",
+    "bestPractices": "- Use a consistent `system_prompt` for agent personality and safety; request JSON for tool calls.\n- Tune `temperature` for task type (low for code/plans, higher for creative writing).\n- Keep prompts well-scoped to fit 4K; externalize memory into RAG summaries."
+  },
+  {
+    "name": "Ollama Llama 3.3 70B",
+    "owner": "lucataco",
+    "id": "ollama-llama3.3-70b",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Ollama Llama 3.3 70B is a large-scale assistant model optimized for dialogue, multilingual\ngeneration, and strong general reasoning. Best for self-contained agent backends requiring\nfrontier-level performance and large context handling.",
+    "bestPractices": "- Use low `temperature` for planning and extraction; raise for creative writing and alternative\n  suggestions.\n- Set `max_tokens` high enough for full answers; enforce schemas for tool calls.\n- Keep prompts structured (system \u2192 task \u2192 constraints \u2192 output format) for consistent behavior."
+  },
+  {
+    "name": "Ollama Qwen2.5 72B",
+    "owner": "lucataco",
+    "id": "ollama-qwen2.5-72b",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Ollama Qwen2.5 72B is a high-performance text model excelling in instruction following and\nmultilingual utility. Best for complex agent logic, internationalized content generation, and\nstructured data extraction tasks.",
+    "bestPractices": "- Use explicit schemas and low `temperature` for extraction; use `top_p` for controlled diversity.\n- Allocate `max_tokens` for long-form outputs; add stop sequences for safe parsing.\n- For agent use, keep tool-call outputs strictly JSON and separate from natural language."
+  }
+]

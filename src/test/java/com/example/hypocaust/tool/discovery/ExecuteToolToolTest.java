@@ -8,6 +8,7 @@ import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TodosContext;
 import com.example.hypocaust.tool.registry.ToolRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -18,12 +19,14 @@ import org.springframework.ai.tool.ToolCallback;
 class ExecuteToolToolTest {
 
   private ToolRegistry toolRegistry;
+  private ObjectMapper objectMapper;
   private ExecuteToolTool executeToolTool;
 
   @BeforeEach
   void setUp() {
     toolRegistry = mock(ToolRegistry.class);
-    executeToolTool = new ExecuteToolTool(toolRegistry);
+    objectMapper = new ObjectMapper();
+    executeToolTool = new ExecuteToolTool(toolRegistry, objectMapper);
 
     var context = mock(TaskExecutionContext.class);
     var todosContext = mock(TodosContext.class);
@@ -66,5 +69,16 @@ class ExecuteToolToolTest {
     var result = executeToolTool.execute("failing_tool", "{}");
 
     assertThat(result).contains("error").contains("Connection refused");
+  }
+
+  @Test
+  void execute_planHasMultipleSteps_returnsDelegationRequired() {
+    var todosContext = TaskExecutionContextHolder.getContext().getTodos();
+    when(todosContext.getChildCount(null)).thenReturn(2);
+
+    var result = executeToolTool.execute("my_tool", "{}");
+
+    assertThat(result).contains("DELEGATION_REQUIRED")
+        .contains("Your plan has 2 steps");
   }
 }

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.domain.ArtifactsContext;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.event.Event;
 import com.example.hypocaust.models.ModelRegistry;
@@ -52,7 +53,10 @@ class DecomposerIntegrationTest {
     when(modelRegistry.get(any(String.class))).thenReturn(chatModel);
 
     var context = org.mockito.Mockito.mock(TaskExecutionContext.class);
+    var artifacts = org.mockito.Mockito.mock(ArtifactsContext.class);
     when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
+    when(context.getArtifacts()).thenReturn(artifacts);
+    when(artifacts.getAllWithChanges()).thenReturn(List.of());
     TaskExecutionContextHolder.setContext(context);
   }
 

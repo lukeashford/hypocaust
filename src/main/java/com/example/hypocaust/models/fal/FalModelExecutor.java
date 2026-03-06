@@ -1,17 +1,19 @@
 package com.example.hypocaust.models.fal;
 
-import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
-import com.example.hypocaust.prompt.PromptBuilder;
-import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -26,8 +28,9 @@ public class FalModelExecutor extends AbstractModelExecutor {
 
   public FalModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      FalClient falClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, FalClient falClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.falClient = falClient;
   }
 
@@ -36,49 +39,27 @@ public class FalModelExecutor extends AbstractModelExecutor {
     return Platform.FAL;
   }
 
+  private static final String FAL_SYSTEM_PROMPT = """
+      You are planning for a fal.ai model.
+
+      INPUT MAPPING:
+      - Construct the 'providerInput' object matching the fal.ai model's expected input format.
+      - Optimize prompts for the best artistic results.
+
+      VALIDATION:
+      - If mandatory info is missing, provide an 'errorMessage'.
+
+      OUTPUT KEY CONVENTIONS for outputMapping:
+      - For image models: use "image" as the output key.
+      - For video models: use "video" as the output key.
+      - For audio models: use "audio" as the output key.
+      - If unsure, use "output".
+      """;
+
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
-    var systemPrompt = PromptBuilder.create()
-        .with(new PromptFragment("fal-plan", """
-            You are an expert creative director. Prepare a fal.ai generation plan.
-
-            YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object matching the fal.ai model's expected input format.
-               - Optimize prompts for the best artistic results.
-               - If a field requires a URL/image and the user refers to an artifact, use '@artifact_name' as a placeholder.
-            2. Validation:
-               - If mandatory info is missing, provide an 'errorMessage'.
-
-            OUTPUT: Return ONLY valid JSON:
-            {
-              "providerInput": { ... },
-              "errorMessage": null or "..."
-            }
-            """))
-        .with(PromptFragments.abilityAwareness())
-        .build();
-
-    var userPrompt = String.format("""
-        Task: %s
-        Kind: %s
-        Model Docs: %s
-
-        Best Practices:
-        %s
-        """, task, kind, description, bestPractices);
-
-    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
-    try {
-      var node = objectMapper.readTree(
-          com.example.hypocaust.common.JsonUtils.extractJson(response));
-      return new ExecutionPlan(
-          node.path("providerInput"),
-          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
-      );
-    } catch (Exception e) {
-      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
-    }
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<Artifact> artifacts) {
+    return generatePlanWithLlm(task, model, artifacts, FAL_SYSTEM_PROMPT, null);
   }
 
   @Override
@@ -88,20 +69,23 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("images") && output.get("images").isArray()
         && !output.get("images").isEmpty()) {
-      return output.get("images").get(0).path("url").asText();
+      return Map.of("image",
+          ExtractedOutput.ofContent(output.get("images").get(0).path("url").asText()));
     }
     if (output.has("video") && output.get("video").has("url")) {
-      return output.get("video").path("url").asText();
+      return Map.of("video",
+          ExtractedOutput.ofContent(output.get("video").path("url").asText()));
     }
     if (output.has("audio") && output.get("audio").has("url")) {
-      return output.get("audio").path("url").asText();
+      return Map.of("audio",
+          ExtractedOutput.ofContent(output.get("audio").path("url").asText()));
     }
     if (output.has("url")) {
-      return output.get("url").asText();
+      return Map.of("output", ExtractedOutput.ofContent(output.get("url").asText()));
     }
-    return output.toString();
+    return Map.of("output", ExtractedOutput.ofContent(output.toString()));
   }
 }

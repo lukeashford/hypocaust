@@ -16,7 +16,7 @@ public class RetryMatcher {
     }
     if (e instanceof HttpServerErrorException serverError) {
       int code = serverError.getStatusCode().value();
-      return code == 502 || code == 503 || code == 504;
+      return code == 500 || code == 502 || code == 503 || code == 504;
     }
     if (e instanceof HttpClientErrorException clientError) {
       return clientError.getStatusCode().value() == 429;

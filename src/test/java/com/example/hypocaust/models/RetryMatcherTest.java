@@ -37,9 +37,9 @@ class RetryMatcherTest {
     }
 
     @Test
-    void httpServerError500_isNotTransient() {
+    void httpServerError500_isTransient() {
       assertThat(retryMatcher.isTransient(
-          new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))).isFalse();
+          new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))).isTrue();
     }
 
     @Test

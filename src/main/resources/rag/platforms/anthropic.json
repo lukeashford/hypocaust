@@ -1,0 +1,53 @@
+[
+  {
+    "name": "Claude 4.6 Opus",
+    "owner": "anthropic",
+    "id": "claude-opus-4-6",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Claude 4.6 Opus is Anthropic's most powerful frontier model. It sets new standards in complex\nreasoning, creative content generation, and coding. It maintains high reliability and nuanced\nunderstanding of complex instructions. Best for the most difficult intellectual tasks and\nmission-critical reasoning.",
+    "bestPractices": "- Use clear and direct instructions.\n- Provide examples for complex tasks.\n- Benefit from detailed context and structured input."
+  },
+  {
+    "name": "Claude 4.6 Sonnet",
+    "owner": "anthropic",
+    "id": "claude-sonnet-4-6",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Claude 4.6 Sonnet provides a perfect balance between intelligence and speed. It is significantly\nfaster than Opus while maintaining high performance on the vast majority of tasks. Best for\nscalable AI applications and interactive tasks requiring rapid responses.",
+    "bestPractices": "- Effective for high-volume tasks that still require high intelligence.\n- Works well with system prompts and persona setting."
+  },
+  {
+    "name": "Claude 4.5 Haiku",
+    "owner": "anthropic",
+    "id": "claude-haiku-4-5",
+    "tier": "cheap",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Claude 4.5 Haiku is Anthropic's fastest and most cost-effective model. It is designed for\nnear-instantaneous responses and excels at simple reasoning, data extraction, and\nhigh-volume processing. Best for quick responses and budget-conscious applications.",
+    "bestPractices": "- Ideal for simple, repetitive tasks.\n- Use concise prompts to maximize its speed advantage."
+  }
+]

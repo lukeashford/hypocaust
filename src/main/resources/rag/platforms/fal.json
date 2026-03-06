@@ -1,0 +1,158 @@
+[
+  {
+    "name": "FLUX.1 [schnell] (fal)",
+    "owner": "fal-ai",
+    "id": "flux/schnell",
+    "tier": "fast",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 [schnell] on fal.ai is an ultra-fast IMAGE generation model with sub-second inference.\nIt is highly optimized for low-latency workflows such as real-time previews, storyboards, and\nthumbnails. Best for rapid iteration and creative tools requiring immediate visual feedback.",
+    "bestPractices": "- Keep prompts simple and concrete (subject + setting + lighting + lens); iterate quickly using\n  the fast inference time.\n- Use `image_size` to control output dimensions; prefer standard aspect ratios (1024x1024,\n  1024x768).\n- Set `num_inference_steps` to 4 for speed or 8 for quality; `seed` for reproducibility."
+  },
+  {
+    "name": "FLUX.1 [pro] v1.1 Ultra",
+    "owner": "fal-ai",
+    "id": "flux-pro/v1.1-ultra",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 [pro] v1.1 Ultra on fal.ai is a premium IMAGE generation model that produces\nultra-high-resolution\nimages (up to 2048px). It features exceptional photorealism, fine detail, and strong prompt\nadherence.\nBest for commercial imagery, high-end hero shots, and brand-grade visual content requiring maximum\nfidelity.",
+    "bestPractices": "- Write detailed prompts like a creative brief: subject + wardrobe/materials + lighting + lens +\n  background + mood.\n- Use `image_size` for desired resolution; higher resolutions benefit from slightly more steps.\n- For consistent series, fix `seed` and vary only small prompt segments (e.g., colorway, time of\n  day)."
+  },
+  {
+    "name": "Kling 1.6 Video",
+    "owner": "fal-ai",
+    "id": "kling-video/v1.6/standard/text-to-video",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Kling 1.6 on fal.ai is a high-quality VIDEO generation model capable of producing cinematic,\ncoherent clips. It features strong motion quality, temporal consistency, and high visual fidelity.\nBest for high-end creative video production, social media content, and complex cinematic concept\nvisualizations from text.",
+    "bestPractices": "- Describe the scene with clear action, camera movement, and mood. Include temporal cues\n  (\"slow pan\", \"camera zooms in\") for better motion control.\n- Keep descriptions focused on a single scene or action; complex multi-scene prompts reduce quality.\n- Use `duration` parameter to control clip length (typically 5-10 seconds)."
+  },
+  {
+    "name": "Minimax Video-01 (Hailuo)",
+    "owner": "fal-ai",
+    "id": "minimax/video-01",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Minimax Video-01 (Hailuo) on fal.ai is a high-performance VIDEO generation model known for excellent\ncinematic motion and temporal consistency. It supports both text-to-video and image-to-video\nworkflows.\nBest for generating high-quality video with complex motion beats and cinematic aesthetics.",
+    "bestPractices": "- Describe motion explicitly with camera and subject behavior; the model responds well to\n  cinematographic vocabulary (\"slow dolly in\", \"subject turns to camera\", \"handheld follow\").\n- Use image-to-video mode with a strong keyframe for character and composition consistency across\n  a series of shots.\n- Keep clip prompts to a single action beat; chain multiple clips in post for complex sequences."
+  },
+  {
+    "name": "Luma Dream Machine (Ray 2)",
+    "owner": "fal-ai",
+    "id": "luma-dream-machine/ray-2-720p",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Luma Ray 2 on fal.ai is a VIDEO generation model optimized for photorealistic motion and strong\nphysics simulation. It excels at natural environments and coherent object interactions. Best for\ncontent where physical plausibility and realistic movement are more important than stylized looks.",
+    "bestPractices": "- Prompt with physically grounded descriptions: \"ocean waves crash against rocky shore, spray\n  catches golden light, wide establishing shot, 24fps cinematic.\"\n- Use the image-to-video endpoint to animate product shots or location stills with controlled,\n  subtle motion.\n- Generate at 720p for speed during iteration; render final selects at full resolution."
+  },
+  {
+    "name": "FLUX.1 [dev] (fal)",
+    "owner": "fal-ai",
+    "id": "flux/dev",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 [dev] on fal.ai is a high-quality IMAGE generation model optimized for fidelity, detail,\nand complex compositions. It is served with fast cold starts on fal infrastructure. Best for\nprofessional creative workflows requiring high nuance, detailed materials, and complex scene\nlayouts.",
+    "bestPractices": "- Use longer prompts with structured detail (materials, era, mood, camera/lens, color palette)\n  to leverage its nuance over schnell.\n- Set `num_inference_steps` to 20\u201328 for quality; use `guidance_scale` 3\u20134 for balanced\n  adherence vs naturalism.\n- Control aspect ratio deliberately via `image_size`; generate multiple seeds for composition\n  selection."
+  },
+  {
+    "name": "FLUX.1 LoRA (fal)",
+    "owner": "fal-ai",
+    "id": "flux/dev/lora",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "FLUX.1 LoRA on fal.ai supports custom LoRA weights on top of the FLUX dev model. It enables\nconsistent character appearances and specific art styles across a series of generations. Best for\nmaintaining visual continuity and specific brand aesthetics across multiple visual assets.",
+    "bestPractices": "- Keep LoRA weight between 0.6\u20130.9 to balance style adherence vs prompt flexibility; avoid\n  stacking more than 2 LoRAs simultaneously.\n- Trigger words from the LoRA training must appear in the prompt; test with and without to\n  understand influence range.\n- Lock seed and LoRA weight for a consistent \"look bible\" across a series of shots; vary only\n  lighting and scene elements."
+  },
+  {
+    "name": "Real-ESRGAN Upscaler (fal)",
+    "owner": "fal-ai",
+    "id": "esrgan",
+    "tier": "fast",
+    "inputs": [
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "IMAGE",
+        "description": "the generated image"
+      }
+    ],
+    "description": "Real-ESRGAN on fal.ai is an IMAGE super-resolution model that increases resolution while reducing\nartifacts. It features very fast cold starts. Best for enhancing generated frames, improving\nlow-res references, and preparing visual materials for higher-quality deliverables.",
+    "bestPractices": "- Upscale in 2\u00d7 stages rather than a single large jump to avoid ringing or plastic textures.\n- Enable face enhancement for portrait/character work; disable for stylized or non-photorealistic\n  content to avoid warping.\n- Denoise source material before upscaling if it contains heavy compression or film grain."
+  },
+  {
+    "name": "MusicGen Melody (fal)",
+    "owner": "fal-ai",
+    "id": "musicgen/melody",
+    "tier": "balanced",
+    "inputs": [
+      "AUDIO",
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "AUDIO",
+        "description": "the generated audio"
+      }
+    ],
+    "description": "MusicGen Melody on fal.ai is an AUDIO generation model that takes a reference audio clip as melodic\nconditioning. It generates new music inspired by the reference's harmonic and rhythmic structure\nwhile following text style prompts. Best for \"sound-alike\" workflows, temp music replacement, and\nthematic scoring iteration.",
+    "bestPractices": "- Provide a clean 10\u201330 second reference clip (isolated melody or full mix); the model extracts\n  melodic contour, so a hummed reference works as well as a full production.\n- Style prompt should describe the target sound, NOT the reference: \"orchestral strings, epic\n  trailer, 120 BPM\" tells the model where to take the melody.\n- Tune `melody_conditioning` strength to control how strictly it follows the reference vs\n  improvises; lower values produce more creative departures."
+  }
+]

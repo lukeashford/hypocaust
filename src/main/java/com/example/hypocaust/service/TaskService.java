@@ -30,7 +30,6 @@ public class TaskService {
   private final TaskExecutionContextFactory contextFactory;
   private final TaskExecutionLifecycleService lifecycleService;
   private final TodoExecutor todoExecutor;
-  private final WordingService wordingService;
 
   public TaskResponseDto submitTask(CreateTaskRequestDto request) {
     final var task = request.task();
@@ -79,8 +78,8 @@ public class TaskService {
     // Task is already in RUNNING status and the started event was published
     // synchronously during lifecycleService.startExecution()
     try {
-      // Generate a concise label for the root todo and execute within the todo lifecycle
-      String rootLabel = wordingService.generateTodoWording(task);
+      // Deterministic label: truncate task at 80 chars
+      String rootLabel = task.length() <= 80 ? task : task.substring(0, 77) + "...";
       var result = todoExecutor.execute(rootLabel, () -> decomposer.execute(task));
 
       if (result.success()) {

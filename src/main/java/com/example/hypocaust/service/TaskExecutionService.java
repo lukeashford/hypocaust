@@ -4,9 +4,7 @@ import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.db.TaskExecutionEntity;
 import com.example.hypocaust.domain.ProjectSnapshot;
 import com.example.hypocaust.domain.TaskExecutionContext;
-import com.example.hypocaust.dto.ArtifactDto;
 import com.example.hypocaust.exception.NotFoundException;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.repo.TaskExecutionRepository;
 import java.util.UUID;
 import lombok.NonNull;
@@ -21,7 +19,7 @@ public class TaskExecutionService {
   private final TaskExecutionRepository taskExecutionRepository;
   private final VersionManagementService versionManagementService;
   private final TodoService todoService;
-  private final ArtifactMapper artifactMapper;
+  private final ArtifactExternalizer artifactExternalizer;
 
   public ProjectSnapshot getState() {
     return getState(TaskExecutionContextHolder.getContext().getTaskExecutionId());
@@ -54,7 +52,7 @@ public class TaskExecutionService {
         taskExecutionId,
         entity.getStatus(),
         versionManagementService.getAllMaterializedArtifactsAt(taskExecutionId).stream()
-            .map(a -> ArtifactDto.from(a, artifactMapper::toPresignedUrl))
+            .map(artifactExternalizer::externalize)
             .toList(),
         todoService.getTodosForTaskExecution(taskExecutionId),
         null // Finished tasks don't emit new events

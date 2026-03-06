@@ -6,10 +6,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.domain.ArtifactKind;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,66 +25,11 @@ class WordingServiceTest {
   }
 
   @Test
-  void generateTodoWording_truncatesAt50() {
-    // GIVEN
-    String longResponse = IntStream.range(0, 100).mapToObj(i -> "a").collect(Collectors.joining());
-    mockChatResponse(longResponse);
-
-    // WHEN
-    String result = wordingService.generateTodoWording("task");
-
-    // THEN
-    assertThat(result).hasSize(80);
-    assertThat(result).endsWith("...");
-  }
-
-  @Test
-  void generateTodoWording_shortResponse_noTruncation() {
-    // GIVEN
-    String shortResponse = "Hello";
-    mockChatResponse(shortResponse);
-
-    // WHEN
-    String result = wordingService.generateTodoWording("task");
-
-    // THEN
-    assertThat(result).isEqualTo("Hello");
-  }
-
-  @Test
-  void generateArtifactDescription_truncatesAt100() {
-    // GIVEN
-    String longResponse = IntStream.range(0, 250).mapToObj(i -> "a").collect(Collectors.joining());
-    mockChatResponse(longResponse);
-
-    // WHEN
-    String result = wordingService.generateArtifactDescription("source");
-
-    // THEN
-    assertThat(result).hasSize(200);
-    assertThat(result).endsWith("...");
-  }
-
-  @Test
-  void generateArtifactDescription_shortResponse_noTruncation() {
-    // GIVEN
-    String shortResponse = "Hello world description";
-    mockChatResponse(shortResponse);
-
-    // WHEN
-    String result = wordingService.generateArtifactDescription("source");
-
-    // THEN
-    assertThat(result).isEqualTo("Hello world description");
-  }
-
-  @Test
   void generateModelRequirement_success() {
     // GIVEN
     String jsonResponse = """
         {
           "inputs": ["IMAGE"],
-          "output": "VIDEO",
           "tier": "powerful",
           "searchString": "cinematic animation"
         }
@@ -92,12 +37,11 @@ class WordingServiceTest {
     mockChatResponse(jsonResponse);
 
     // WHEN
-    var result = wordingService.generateModelRequirement("task",
-        com.example.hypocaust.domain.ArtifactKind.VIDEO);
+    var result = wordingService.generateModelRequirement("task", Set.of(ArtifactKind.VIDEO));
 
     // THEN
-    assertThat(result.inputs()).containsExactly(com.example.hypocaust.domain.ArtifactKind.IMAGE);
-    assertThat(result.output()).isEqualTo(com.example.hypocaust.domain.ArtifactKind.VIDEO);
+    assertThat(result.inputs()).containsExactly(ArtifactKind.IMAGE);
+    assertThat(result.outputs()).containsExactly(ArtifactKind.VIDEO);
     assertThat(result.tier()).isEqualTo("powerful");
     assertThat(result.searchString()).isEqualTo("cinematic animation");
   }

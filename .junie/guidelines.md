@@ -7,3 +7,6 @@
   explicit constructors.
 * This is a green-field project. Design ahead, instead of worrying about legacy compat. Consolidate
   migrations into V1.
+* **Note**: there is a bug in the interface with IntelliJ causing test suites to run very slowly and
+  sequentially when using the IDE's built-in test runner. For faster execution of all tests, use
+  `./gradlew test` instead.

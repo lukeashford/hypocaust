@@ -1,17 +1,19 @@
 package com.example.hypocaust.models.runway;
 
-import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.models.AbstractModelExecutor;
 import com.example.hypocaust.models.ExecutionPlan;
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
-import com.example.hypocaust.prompt.PromptBuilder;
-import com.example.hypocaust.prompt.PromptFragment;
-import com.example.hypocaust.prompt.fragments.PromptFragments;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.support.RetryTemplate;
@@ -26,8 +28,9 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
 
   public RunwayModelExecutor(ModelRegistry modelRegistry, ObjectMapper objectMapper,
       ChatService chatService, RetryTemplate retryTemplate, StorageService storageService,
-      RunwayClient runwayClient) {
-    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService);
+      ArtifactResolver artifactResolver, RunwayClient runwayClient) {
+    super(modelRegistry, objectMapper, chatService, retryTemplate, storageService,
+        artifactResolver);
     this.runwayClient = runwayClient;
   }
 
@@ -36,50 +39,25 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
     return Platform.RUNWAY;
   }
 
+  private static final String RUNWAY_SYSTEM_PROMPT = """
+      You are planning for a Runway cinematic video generation model.
+
+      INPUT MAPPING:
+      - Construct the 'providerInput' object following the model's input spec described in the
+        Model Docs and Best Practices below.
+      - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
+
+      VALIDATION:
+      - If mandatory info is missing, provide an 'errorMessage'.
+
+      OUTPUT KEY CONVENTIONS for outputMapping:
+      - Use "video" as the output key for video generation results.
+      """;
+
   @Override
-  protected ExecutionPlan generatePlan(String task, ArtifactKind kind, String modelName,
-      String owner, String modelId, String description, String bestPractices) {
-    var systemPrompt = PromptBuilder.create()
-        .with(new PromptFragment("runway-plan", """
-            You are an expert creative director. Prepare a Runway generation plan.
-
-            YOUR RESPONSIBILITIES:
-            1. Input Mapping: Construct the 'providerInput' object following the model's input
-               spec described in the Model Docs and Best Practices below.
-               - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
-               - If a field requires an image/video and the user refers to an artifact, use '@artifact_name' as a placeholder.
-            2. Validation:
-               - If mandatory info is missing, provide an 'errorMessage'.
-
-            OUTPUT: Return ONLY valid JSON:
-            {
-              "providerInput": { ... },
-              "errorMessage": null or "..."
-            }
-            """))
-        .with(PromptFragments.abilityAwareness())
-        .build();
-
-    var userPrompt = String.format("""
-        Task: %s
-        Kind: %s
-        Model Docs: %s
-
-        Best Practices:
-        %s
-        """, task, kind, description, bestPractices);
-
-    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt);
-    try {
-      var node = objectMapper.readTree(
-          com.example.hypocaust.common.JsonUtils.extractJson(response));
-      return new ExecutionPlan(
-          node.path("providerInput"),
-          node.path("errorMessage").isTextual() ? node.path("errorMessage").asText() : null
-      );
-    } catch (Exception e) {
-      return ExecutionPlan.error("Plan generation failed: " + e.getMessage());
-    }
+  protected ExecutionPlan generatePlan(String task, ModelSearchResult model,
+      List<Artifact> artifacts) {
+    return generatePlanWithLlm(task, model, artifacts, RUNWAY_SYSTEM_PROMPT, null);
   }
 
   @Override
@@ -96,24 +74,24 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   }
 
   @Override
-  protected String extractOutput(JsonNode output) {
+  protected Map<String, ExtractedOutput> extractOutputs(JsonNode output) {
     if (output.has("url")) {
-      return output.get("url").asText();
+      return Map.of("video", ExtractedOutput.ofContent(output.get("url").asText()));
     }
     if (output.has("artifacts") && output.get("artifacts").isArray()
         && !output.get("artifacts").isEmpty()) {
       JsonNode first = output.get("artifacts").get(0);
       if (first.has("url")) {
-        return first.get("url").asText();
+        return Map.of("video", ExtractedOutput.ofContent(first.get("url").asText()));
       }
     }
     if (output.has("id")) {
-      return output.get("id").asText();
+      return Map.of("video", ExtractedOutput.ofContent(output.get("id").asText()));
     }
     if (output.has("output") && output.get("output").isArray()
         && !output.get("output").isEmpty()) {
-      return output.get("output").get(0).asText();
+      return Map.of("video", ExtractedOutput.ofContent(output.get("output").get(0).asText()));
     }
-    return output.toString();
+    return Map.of("video", ExtractedOutput.ofContent(output.toString()));
   }
 }

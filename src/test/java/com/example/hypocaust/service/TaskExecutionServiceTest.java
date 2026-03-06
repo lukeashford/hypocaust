@@ -31,6 +31,9 @@ class TaskExecutionServiceTest {
   @Mock
   private TodoService todoService;
 
+  @Mock
+  private ArtifactExternalizer artifactExternalizer;
+
   @InjectMocks
   private TaskExecutionService taskExecutionService;
 

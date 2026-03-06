@@ -1,5 +1,7 @@
 package com.example.hypocaust.tool.creative;
 
+import com.example.hypocaust.tool.ToolResult;
+
 public record RestoreResult(
     String originalName,
     String restoredName,
@@ -7,11 +9,6 @@ public record RestoreResult(
     String summary,
     String error
 ) implements ToolResult {
-
-  @Override
-  public boolean success() {
-    return error == null;
-  }
 
   public static RestoreResult success(
       String originalName, String restoredName, String executionName, String summary) {

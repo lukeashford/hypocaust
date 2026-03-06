@@ -1,11 +1,9 @@
 package com.example.hypocaust.domain;
 
-import com.example.hypocaust.dto.ArtifactDto;
-import com.example.hypocaust.service.NamingService;
+import com.example.hypocaust.service.ArtifactExternalizer;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
 import java.util.UUID;
-import java.util.function.Function;
 import lombok.Getter;
 
 /**
@@ -23,10 +21,10 @@ public class TaskExecutionContext {
   private final UUID predecessorId;
   private final String name;
 
+  private final ArtifactExternalizer artifactExternalizer;
+
   private final ArtifactsContext artifacts;
   private final TodosContext todos;
-
-  private final Function<String, String> urlResolver;
 
   @Getter
   private volatile UUID lastEventId;
@@ -38,17 +36,16 @@ public class TaskExecutionContext {
       String name,
       EventService eventService,
       VersionManagementService versionService,
-      NamingService namingService,
-      Function<String, String> urlResolver) {
+      ArtifactExternalizer artifactExternalizer) {
     this.projectId = projectId;
     this.taskExecutionId = taskExecutionId;
     this.predecessorId = predecessorId;
     this.name = name;
-    this.urlResolver = urlResolver;
 
+    this.artifactExternalizer = artifactExternalizer;
     this.artifacts = new ArtifactsContext(
         projectId, taskExecutionId, predecessorId,
-        eventService, versionService, namingService
+        eventService, versionService
     );
     this.todos = new TodosContext(taskExecutionId, eventService);
   }
@@ -63,7 +60,7 @@ public class TaskExecutionContext {
         taskExecutionId,
         TaskExecutionStatus.RUNNING,
         artifacts.getAllWithChanges().stream()
-            .map(a -> ArtifactDto.from(a, urlResolver))
+            .map(artifactExternalizer::externalize)
             .toList(),
         todos.getList().toList(),
         lastEventId

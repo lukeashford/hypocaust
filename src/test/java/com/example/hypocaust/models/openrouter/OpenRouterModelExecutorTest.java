@@ -7,9 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -28,8 +30,9 @@ class OpenRouterModelExecutorTest {
     ChatService chatService = mock(ChatService.class);
     objectMapper = new ObjectMapper();
     openRouterClient = mock(OpenRouterClient.class);
+    ArtifactResolver artifactResolver = mock(ArtifactResolver.class);
     executor = new OpenRouterModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, openRouterClient);
+        new RetryTemplate(), null, artifactResolver, openRouterClient);
   }
 
   @Test
@@ -58,13 +61,15 @@ class OpenRouterModelExecutorTest {
       var node = objectMapper.readTree("""
           {"choices": [{"message": {"role": "assistant", "content": "Once upon a time..."}}]}
           """);
-      assertThat(executor.extractOutput(node)).isEqualTo("Once upon a time...");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("Once upon a time...");
     }
 
     @Test
     void unknownShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutput(node)).isEqualTo("{\"data\":123}");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("{\"data\":123}");
     }
   }
 }

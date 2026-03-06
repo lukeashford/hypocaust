@@ -1,9 +1,15 @@
 package com.example.hypocaust.tool.creative;
 
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
+import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactAction;
+import com.example.hypocaust.domain.ArtifactIntent;
+import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.stereotype.Component;
 
 /**
  * Tool for restoring a historical artifact version into the current changelist.
@@ -11,6 +17,9 @@ import org.springframework.ai.tool.annotation.ToolParam;
  * <p>Retrieves the artifact as it existed at a past task execution and adds it back as a new
  * artifact. The original name is reused when free; if taken, a unique alternative is assigned
  * automatically.
+ *
+ * <p>Extends {@link AbstractArtifactTool} for type consistency, and uses its {@link #execute}
+ * lifecycle via the {@link ArtifactAction#RESTORE} intent.
  *
  * <p>Reversion pattern — to replace the current version with an older one:
  * <ol>
@@ -20,15 +29,17 @@ import org.springframework.ai.tool.annotation.ToolParam;
  *       frees the name so it can be reclaimed in a follow-up restore if needed.</li>
  * </ol>
  */
-@DiscoverableTool(
-    name = "restore_artifact",
-    description = "Restore a historical artifact version from a past task execution. "
-        + "The restored artifact is added to the current changelist under its original name when "
-        + "that name is free, or under a new unique name when it is already taken. "
-        + "To revert an artifact, restore the historical version then delete the current one.")
 @Slf4j
-public class RestoreArtifactTool {
+@Component
+public class RestoreArtifactTool extends AbstractArtifactTool<RestoreResult> {
 
+  @DiscoverableTool
+  @Tool(
+      name = "restore_artifact",
+      description = "Restore a historical artifact version from a past task execution. "
+          + "The restored artifact is added to the current changelist under its original name when "
+          + "that name is free, or under a new unique name when it is already taken. "
+          + "To revert an artifact, restore the historical version then delete the current one.")
   public RestoreResult restore(
       @ToolParam(description = "Name of the artifact to retrieve from history") String artifactName,
       @ToolParam(description =
@@ -43,26 +54,36 @@ public class RestoreArtifactTool {
       return RestoreResult.error("Execution name is required");
     }
 
-    log.info("Restoring artifact '{}' from execution '{}'", artifactName, executionName);
+    String trimmedName = artifactName.trim();
+    String trimmedExecution = executionName.trim();
+
+    log.info("Restoring artifact '{}' from execution '{}'", trimmedName, trimmedExecution);
+
+    ArtifactIntent intent = ArtifactIntent.builder()
+        .action(ArtifactAction.RESTORE)
+        .targetName(trimmedName)
+        .executionName(trimmedExecution)
+        .build();
 
     try {
-      String trimmedName = artifactName.trim();
-      String trimmedExecution = executionName.trim();
-
-      String restoredName = TaskExecutionContextHolder.restoreArtifact(
-          trimmedName, trimmedExecution);
-
-      String summary = restoredName.equals(trimmedName)
-          ? "Restored '" + restoredName + "' from " + trimmedExecution
-          : "Restored as '" + restoredName + "' (original name '" + trimmedName
-              + "' was taken) from " + trimmedExecution;
-
-      return RestoreResult.success(trimmedName, restoredName, trimmedExecution, summary);
-
+      return execute("Restore " + trimmedName, List.of(intent));
     } catch (Exception e) {
       log.error("Failed to restore artifact '{}' from '{}': {}",
-          artifactName, executionName, e.getMessage());
+          trimmedName, trimmedExecution, e.getMessage());
       return RestoreResult.error(e.getMessage());
     }
+  }
+
+  @Override
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
+    return List.of(); // Parent already restored during prepareArtifacts
+  }
+
+  @Override
+  protected RestoreResult finalizeResult(List<Artifact> results, List<ArtifactIntent> intents) {
+    String targetName = intents.getFirst().targetName();
+    String executionName = intents.getFirst().executionName();
+    return RestoreResult.success(targetName, targetName, executionName,
+        "Restored '" + targetName + "' from " + executionName);
   }
 }

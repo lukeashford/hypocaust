@@ -5,14 +5,15 @@ import com.example.hypocaust.domain.event.ArtifactRemovedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.exception.ArtifactNotFoundException;
 import com.example.hypocaust.exception.ArtifactTypeMismatchException;
-import com.example.hypocaust.service.NamingService;
 import com.example.hypocaust.service.VersionManagementService;
 import com.example.hypocaust.service.events.EventService;
-import java.util.HashSet;
+import com.example.hypocaust.utils.NamingUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,21 +32,33 @@ public class ArtifactsContext {
 
   private final EventService eventService;
   private final VersionManagementService versionService;
-  private final NamingService namingService;
 
   private final Changelist changelist = new Changelist();
 
   /**
-   * Schedule a new artifact for creation.
+   * Schedule a new artifact for creation. The preferred name is sanitized and deduplicated; the
+   * preferred title is deduplicated by appending a counter if necessary.
    */
-  public synchronized String add(ArtifactDraft draft) {
-    String name = generateUniqueName(draft.description());
-    Artifact artifact = Artifact.fromDraft(name, draft);
-    changelist.addArtifact(artifact);
+  public synchronized Artifact add(String preferredName, String preferredTitle, String description,
+      ArtifactKind kind, JsonNode metadata) {
+    String name = NamingUtils.sanitize(preferredName, 30);
+    name = NamingUtils.appendCounterIfExists(name, collectTakenNames());
 
+    String title = NamingUtils.appendCounterIfExists(preferredTitle, collectTakenTitles());
+
+    Artifact artifact = Artifact.builder()
+        .name(name)
+        .kind(kind)
+        .title(title)
+        .description(description)
+        .status(ArtifactStatus.GESTATING)
+        .metadata(metadata)
+        .build();
+
+    changelist.addArtifact(artifact);
     eventService.publish(new ArtifactAddedEvent(taskExecutionId, artifact));
 
-    return name;
+    return artifact;
   }
 
   /**
@@ -121,14 +134,15 @@ public class ArtifactsContext {
         .orElseThrow(() -> new ArtifactNotFoundException(
             "Artifact '" + artifactName + "' not found at execution '" + executionName + "'"));
 
-    String finalName = namingService.generateArtifactName(source.description(),
-        collectTakenNames(), artifactName);
+    String name = NamingUtils.appendCounterIfExists(source.name(), collectTakenNames());
+    String title = NamingUtils.appendCounterIfExists(source.title(), collectTakenTitles());
+    String description = source.description();
 
     Artifact restored = Artifact.builder()
-        .name(finalName)
+        .name(name)
         .kind(source.kind())
-        .title(source.title())
-        .description(source.description())
+        .title(title)
+        .description(description)
         .storageKey(source.storageKey())
         .inlineContent(source.inlineContent())
         .metadata(source.metadata())
@@ -140,22 +154,23 @@ public class ArtifactsContext {
     eventService.publish(new ArtifactAddedEvent(taskExecutionId, restored));
 
     log.info("Restored artifact '{}' from execution '{}' as '{}'",
-        artifactName, executionName, finalName);
+        artifactName, executionName, name);
 
-    return finalName;
+    return name;
+  }
+
+  private synchronized Set<String> collectTakenTitles() {
+    return versionService.getAllArtifactsWithChanges(predecessorId, changelist)
+        .stream()
+        .map(Artifact::title)
+        .collect(Collectors.toSet());
   }
 
   private synchronized Set<String> collectTakenNames() {
-    Set<String> taken = new HashSet<>(
-        versionService.computeArtifactSnapshotAt(predecessorId).keySet());
-    taken.addAll(changelist.getAddedNames());
-    taken.addAll(changelist.getEditedNames());
-    changelist.getDeletedNames().forEach(taken::remove);
-    return taken;
-  }
-
-  private synchronized String generateUniqueName(String description) {
-    return namingService.generateArtifactName(description, collectTakenNames());
+    return versionService.getAllArtifactsWithChanges(predecessorId, changelist)
+        .stream()
+        .map(Artifact::name)
+        .collect(Collectors.toSet());
   }
 
   public synchronized Optional<Artifact> get(String name) {
@@ -164,9 +179,5 @@ public class ArtifactsContext {
 
   public synchronized List<Artifact> getAllWithChanges() {
     return versionService.getAllArtifactsWithChanges(predecessorId, changelist);
-  }
-
-  public synchronized boolean exists(String name) {
-    return versionService.exists(name, predecessorId, changelist);
   }
 }

@@ -1,13 +1,13 @@
 package com.example.hypocaust.tool.discovery;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
-import com.example.hypocaust.tool.registry.ToolDescriptor;
 import com.example.hypocaust.tool.registry.ToolRegistry;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,8 +23,9 @@ public class SearchToolsTool {
 
   @Tool(name = "search_tools",
       description = "Find available tools that can accomplish a given task. "
-          + "Returns tool names, descriptions, and parameter schemas.")
-  public List<ToolDescriptor> search(
+          + "Returns tool names, descriptions, and parameter schemas. "
+          + "To call a tool found here, you MUST use execute_tool with the tool name and JSON parameters.")
+  public List<ToolDefinition> search(
       @ToolParam(description = "Description of what you need to accomplish") String taskDescription
   ) {
     log.info("{} [SEARCH_TOOLS] Task: {}", TaskExecutionContextHolder.getIndent(), taskDescription);

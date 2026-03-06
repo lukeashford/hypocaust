@@ -1,0 +1,53 @@
+[
+  {
+    "name": "GPT-5",
+    "owner": "openai",
+    "id": "gpt-5",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "GPT-5 is OpenAI's most advanced frontier model. It features exceptional reasoning, creative\nwriting capabilities, and deep world knowledge. It is highly steerable and maintains consistency\nacross very long conversations. Best for complex reasoning, nuanced storytelling, and\nhigh-stakes intellectual tasks.",
+    "bestPractices": "- Use clear and detailed instructions.\n- Provide examples (few-shot prompting) for specific formatting or style requirements.\n- Use system prompts to establish a persona or specific constraints."
+  },
+  {
+    "name": "GPT-4o",
+    "owner": "openai",
+    "id": "gpt-4o",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "GPT-4o (\"omni\") is a versatile, high-performance model designed for speed and efficiency without\nsacrificing intelligence. It excels at a wide range of tasks including coding, translation, and\ngeneral-purpose assistant duties. Best for real-time applications and tasks requiring a good\nbalance of intelligence and latency.",
+    "bestPractices": "- Direct and concise prompts often yield the best results for standard tasks.\n- For complex tasks, break the prompt into logical steps."
+  },
+  {
+    "name": "GPT-4o mini",
+    "owner": "openai",
+    "id": "gpt-4o-mini",
+    "tier": "cheap",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "GPT-4o mini is a highly cost-efficient, small-scale model designed for high-volume, low-latency\ntasks. Despite its size, it remains highly capable for basic reasoning, summarization, and\nsimple text generation. Best for simple classifications, basic extraction, and high-frequency\nautomated tasks.",
+    "bestPractices": "- Keep prompts focused and avoid overly complex instructions.\n- Ideal for tasks where cost is a primary concern."
+  }
+]

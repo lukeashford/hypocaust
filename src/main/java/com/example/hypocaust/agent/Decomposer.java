@@ -1,6 +1,7 @@
 package com.example.hypocaust.agent;
 
 import com.example.hypocaust.common.JsonUtils;
+import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.DecomposerFailedEvent;
 import com.example.hypocaust.domain.event.DecomposerFinishedEvent;
 import com.example.hypocaust.domain.event.DecomposerStartedEvent;
@@ -64,6 +65,17 @@ public class Decomposer {
    * @return the decomposer result with success/failure, summary, and artifact names
    */
   public DecomposerResult execute(String task) {
+    return execute(task, null);
+  }
+
+  /**
+   * Execute a task with optional context brief from a parent decomposer.
+   *
+   * @param task the self-contained task description
+   * @param contextBrief key facts from the parent decomposer (nullable)
+   * @return the decomposer result with success/failure, summary, and artifact names
+   */
+  public DecomposerResult execute(String task, List<String> contextBrief) {
     var taskExecutionId = TaskExecutionContextHolder.getTaskExecutionId();
     var indent = TaskExecutionContextHolder.getIndent();
     var depth = TaskExecutionContextHolder.getDepth();
@@ -83,10 +95,13 @@ public class Decomposer {
           .param("maxRetries", MAX_RETRIES)
           .build();
 
+      // Build user message: prepend context brief if provided
+      String userMessage = buildUserMessage(task, contextBrief);
+
       var response = chatService.call(
           MODEL.getModelName(),
           systemPrompt,
-          task,
+          userMessage,
           invokeDecomposerTool,
           setPlanTool,
           searchToolsTool,
@@ -114,6 +129,33 @@ public class Decomposer {
       eventService.publish(new DecomposerFailedEvent(taskExecutionId, task, e.getMessage()));
       return DecomposerResult.failure(e.getMessage());
     }
+  }
+
+  private String buildUserMessage(String task, List<String> contextBrief) {
+    var sb = new StringBuilder();
+
+    // Inject existing artifact list so the decomposer knows what's already there
+    List<Artifact> existingArtifacts = TaskExecutionContextHolder.getContext()
+        .getArtifacts().getAllWithChanges();
+    if (!existingArtifacts.isEmpty()) {
+      sb.append("## Existing Artifacts\n");
+      for (Artifact a : existingArtifacts) {
+        sb.append(String.format("- [%s, %s] %s - %s%n",
+            a.kind(), a.name(), a.title(), a.description()));
+      }
+      sb.append("\n");
+    }
+
+    if (contextBrief != null && !contextBrief.isEmpty()) {
+      sb.append("## Established Context\n");
+      for (String fact : contextBrief) {
+        sb.append("- ").append(fact).append("\n");
+      }
+      sb.append("\n");
+    }
+
+    sb.append("## Task\n").append(task);
+    return sb.toString();
   }
 
   /**

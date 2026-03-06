@@ -1,0 +1,53 @@
+[
+  {
+    "name": "Llama 4 Maverick",
+    "owner": "meta-llama",
+    "id": "llama-4-maverick",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Llama 4 Maverick is a high-performance TEXT generation model from Meta, excelling at creative\nwriting,\npoetry, long-form storytelling, brainstorming, and nuanced language tasks. It is a frontier-scale\nmodel with strong instruction following, a large context window, and excellent multilingual support.\nBest for complex creative tasks where high-quality prose and style are required.",
+    "bestPractices": "- Use detailed system prompts to set tone, style, and constraints for the best creative output.\n- For long-form content, break generation into sections with clear structural guidance.\n- Temperature 0.7-0.9 for creative tasks; 0.2-0.4 for factual/structured output."
+  },
+  {
+    "name": "DeepSeek V3.1",
+    "owner": "deepseek",
+    "id": "deepseek-chat-v3-0324",
+    "tier": "balanced",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "DeepSeek V3.1 is a balanced TEXT generation model optimized for deep reasoning, code generation, and\nanalytical writing. Strong performance on structured tasks, technical content, and step-by-step\nlogical explanations with competitive cost efficiency. Best for logic-heavy tasks, coding\nassistance, and structured analytical output.",
+    "bestPractices": "- Leverage its reasoning strength with chain-of-thought prompting for complex analytical tasks.\n- For code generation, provide clear specifications and example inputs/outputs.\n- Works well with system prompts that define output format expectations."
+  },
+  {
+    "name": "Qwen3 235B",
+    "owner": "qwen",
+    "id": "qwen3-235b",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "TEXT",
+        "description": "the generated text"
+      }
+    ],
+    "description": "Qwen3 235B is a large-scale TEXT generation model with exceptional capability in creative writing,\ntranslation, summarization, and complex reasoning tasks. Its large parameter count enables nuanced\nunderstanding and generation across diverse domains and languages. Best for high-volume\nsummarization,\nnuanced translation, and tasks requiring a deep knowledge base.",
+    "bestPractices": "- Ideal for tasks requiring deep reasoning or multi-step analysis; use structured prompts.\n- For creative tasks, provide style references and tone guidance in the system prompt.\n- Supports very long context; useful for document analysis and summarization workflows."
+  }
+]

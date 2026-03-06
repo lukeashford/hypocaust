@@ -41,11 +41,22 @@ public class JsonUtils {
       }
     }
 
-    // 3. Try to find bare JSON object by finding first { and last }
+    // 3. Try to find bare JSON — pick whichever structural character appears first
+    var arrayStart = response.indexOf('[');
     var braceStart = response.indexOf('{');
-    var braceEnd = response.lastIndexOf('}');
-    if (braceStart >= 0 && braceEnd > braceStart) {
-      return response.substring(braceStart, braceEnd + 1);
+
+    if (arrayStart >= 0 && (braceStart < 0 || arrayStart < braceStart)) {
+      var arrayEnd = response.lastIndexOf(']');
+      if (arrayEnd > arrayStart) {
+        return response.substring(arrayStart, arrayEnd + 1);
+      }
+    }
+
+    if (braceStart >= 0) {
+      var braceEnd = response.lastIndexOf('}');
+      if (braceEnd > braceStart) {
+        return response.substring(braceStart, braceEnd + 1);
+      }
     }
 
     return response.trim();

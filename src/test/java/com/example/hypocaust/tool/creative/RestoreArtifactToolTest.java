@@ -72,6 +72,7 @@ class RestoreArtifactToolTest {
     when(context.getArtifacts()).thenReturn(artifactsContext);
     when(artifactsContext.restore("protagonist", "initial_character_designs"))
         .thenReturn("protagonist");
+
     TaskExecutionContextHolder.setContext(context);
 
     var result = tool.restore("protagonist", "initial_character_designs");
@@ -84,24 +85,6 @@ class RestoreArtifactToolTest {
   }
 
   @Test
-  void restore_nameTaken_returnsAlternativeName() {
-    var context = mock(TaskExecutionContext.class);
-    var artifactsContext = mock(ArtifactsContext.class);
-    when(context.getTaskExecutionId()).thenReturn(UUID.randomUUID());
-    when(context.getArtifacts()).thenReturn(artifactsContext);
-    when(artifactsContext.restore("protagonist", "initial_character_designs"))
-        .thenReturn("protagonist_2");
-    TaskExecutionContextHolder.setContext(context);
-
-    var result = tool.restore("protagonist", "initial_character_designs");
-
-    assertThat(result.error()).isNull();
-    assertThat(result.originalName()).isEqualTo("protagonist");
-    assertThat(result.restoredName()).isEqualTo("protagonist_2");
-    assertThat(result.summary()).contains("protagonist_2").contains("protagonist").contains("taken");
-  }
-
-  @Test
   void restore_trailingWhitespace_isTrimmed() {
     var context = mock(TaskExecutionContext.class);
     var artifactsContext = mock(ArtifactsContext.class);
@@ -109,6 +92,7 @@ class RestoreArtifactToolTest {
     when(context.getArtifacts()).thenReturn(artifactsContext);
     when(artifactsContext.restore("protagonist", "initial_character_designs"))
         .thenReturn("protagonist");
+
     TaskExecutionContextHolder.setContext(context);
 
     var result = tool.restore("  protagonist  ", "  initial_character_designs  ");

@@ -1,15 +1,14 @@
 package com.example.hypocaust.service.events;
 
+import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.event.ArtifactAddedEvent;
 import com.example.hypocaust.domain.event.ArtifactUpdatedEvent;
 import com.example.hypocaust.domain.event.Event;
-import com.example.hypocaust.dto.ArtifactDto;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.mapper.EventMapper;
-import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.repo.EventLogRepository;
 import com.example.hypocaust.repo.TaskExecutionRepository;
+import com.example.hypocaust.service.ArtifactExternalizer;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,7 +29,7 @@ public class EventService {
   private final EventLogRepository eventLogRepository;
   private final EventMapper eventMapper;
   private final TaskExecutionRepository taskExecutionRepository;
-  private final ArtifactMapper artifactMapper;
+  private final ArtifactExternalizer artifactExternalizer;
 
   @Transactional
   public UUID publish(Event<?> event, boolean doPersist) {
@@ -128,18 +127,18 @@ public class EventService {
 
   /**
    * Convert artifact event payloads from internal Artifact (storageKey) to ArtifactDto (presigned
-   * URL) for frontend consumption.
+   * URL) for frontend consumption. A fresh presigned URL is generated on every call.
    */
   private Event<?> externalizeArtifactEvent(Event<?> event) {
     if (event instanceof ArtifactAddedEvent addedEvent
         && addedEvent.getPayload() instanceof Artifact artifact) {
-      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
-      return new ArtifactAddedEvent(addedEvent.getTaskExecutionId(), dto);
+      return new ArtifactAddedEvent(addedEvent.getTaskExecutionId(),
+          artifactExternalizer.externalize(artifact));
     }
     if (event instanceof ArtifactUpdatedEvent updatedEvent
         && updatedEvent.getPayload() instanceof Artifact artifact) {
-      ArtifactDto dto = ArtifactDto.from(artifact, artifactMapper::toPresignedUrl);
-      return new ArtifactUpdatedEvent(updatedEvent.getTaskExecutionId(), dto);
+      return new ArtifactUpdatedEvent(updatedEvent.getTaskExecutionId(),
+          artifactExternalizer.externalize(artifact));
     }
     return event;
   }

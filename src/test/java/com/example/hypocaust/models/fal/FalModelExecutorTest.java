@@ -7,9 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -28,8 +30,9 @@ class FalModelExecutorTest {
     ChatService chatService = mock(ChatService.class);
     objectMapper = new ObjectMapper();
     falClient = mock(FalClient.class);
+    ArtifactResolver artifactResolver = mock(ArtifactResolver.class);
     executor = new FalModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, falClient);
+        new RetryTemplate(), null, artifactResolver, falClient);
   }
 
   @Test
@@ -56,33 +59,38 @@ class FalModelExecutorTest {
     void imagesArray_returnsFirstImageUrl() throws Exception {
       var node = objectMapper.readTree(
           "{\"images\": [{\"url\": \"https://fal.ai/img.png\", \"width\": 1024}]}");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://fal.ai/img.png");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://fal.ai/img.png");
     }
 
     @Test
     void videoObject_returnsVideoUrl() throws Exception {
       var node = objectMapper.readTree(
           "{\"video\": {\"url\": \"https://fal.ai/video.mp4\"}}");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://fal.ai/video.mp4");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://fal.ai/video.mp4");
     }
 
     @Test
     void audioObject_returnsAudioUrl() throws Exception {
       var node = objectMapper.readTree(
           "{\"audio\": {\"url\": \"https://fal.ai/audio.wav\"}}");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://fal.ai/audio.wav");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://fal.ai/audio.wav");
     }
 
     @Test
     void topLevelUrl_returnsUrl() throws Exception {
       var node = objectMapper.readTree("{\"url\": \"https://fal.ai/result.png\"}");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://fal.ai/result.png");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://fal.ai/result.png");
     }
 
     @Test
     void unknownShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutput(node)).isEqualTo("{\"data\":123}");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("{\"data\":123}");
     }
   }
 }

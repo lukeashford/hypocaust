@@ -2,24 +2,26 @@ package com.example.hypocaust.tool.creative;
 
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
-import com.example.hypocaust.domain.ArtifactDraft;
+import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
-import com.example.hypocaust.rag.ModelEmbeddingRegistry.SearchResult;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.rag.ModelRequirement;
 import com.example.hypocaust.service.WordingService;
+import com.example.hypocaust.tool.AbstractArtifactTool;
 import com.example.hypocaust.tool.registry.DiscoverableTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.function.UnaryOperator;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +36,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 @Component
-public class GenerateCreativeTool {
+public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeResult> {
 
   private static final String LOG_PREFIX = "[CREATIVE]";
   private static final int MAX_MODEL_ATTEMPTS = 2;
@@ -43,33 +45,73 @@ public class GenerateCreativeTool {
   private final ExecutionRouter executionRouter;
   private final WordingService wordingService;
   private final ObjectMapper objectMapper;
-  private final ArtifactMapper artifactMapper;
 
-  @DiscoverableTool(
+  @DiscoverableTool
+  @Tool(
       name = "generate_creative",
       description = "Generate or edit creative content (images, audio, video, text). "
-          + "Describe what you need. If you have preferences (e.g., high quality, fast/cheap, "
-          + "photorealistic, creative), include them in the task. To use existing artifacts "
-          + "as inputs, refer to them using the @ prefix (e.g., 'Make @user_photo a cartoon').")
+          + "Include quality or style preferences in the task (e.g., high quality, photorealistic, fast). "
+          + "Reference existing artifacts as inputs with the @name syntax — this works for all "
+          + "artifact kinds including text (e.g., 'Make @user_photo a cartoon', "
+          + "'Generate a spoken reading of @my_script'). Artifact contents are resolved internally.")
   public GenerateCreativeResult generate(
       @ToolParam(description = "What to generate or edit, in natural language") String task,
-      @ToolParam(description = "Kind of artifact") ArtifactKind artifactKind
+      @ToolParam(description = "Artifact intents: what to create, edit, or delete") List<ArtifactIntent> intents
   ) {
-    log.info("{} request: {} (kind: {})", LOG_PREFIX, task, artifactKind);
+    log.info("{} request: {}", LOG_PREFIX, task);
 
+    try {
+      return execute(task, intents);
+    } catch (Exception e) {
+      return GenerateCreativeResult.error(e.getMessage());
+    }
+  }
+
+  @Override
+  protected List<Artifact> doExecute(String task, List<Artifact> gestating) {
     // Step 1: Find suitable models
-    ModelRequirement req = wordingService.generateModelRequirement(task, artifactKind);
+    Set<ArtifactKind> requiredOutputKinds = gestating.stream()
+        .map(Artifact::kind)
+        .collect(Collectors.toSet());
+    ModelRequirement req = wordingService.generateModelRequirement(task, requiredOutputKinds);
     var models = modelRag.search(req);
     if (models.isEmpty()) {
-      return GenerateCreativeResult.error("No suitable model found for: " + req);
+      throw new IllegalStateException("No suitable model found for: " + req);
     }
 
     // Step 2: Try models in ranked order, fall back on failure
     var errors = new ArrayList<String>();
-    var failedPlatforms = new java.util.LinkedHashSet<String>();
+    var failedPlatforms = new LinkedHashSet<String>();
     for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
       try {
-        return executeWithModel(task, artifactKind, model);
+        log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
+
+        var executor = executionRouter.resolve(model.platform());
+        List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext()
+            .getArtifacts().getAllWithChanges();
+
+        var result = executor.run(gestating, task, model, availableArtifacts);
+
+        // Validate count and kind alignment
+        if (result.artifacts().size() != gestating.size()) {
+          throw new IllegalStateException("Executor returned " + result.artifacts().size()
+              + " artifacts, but expected " + gestating.size());
+        }
+        for (int i = 0; i < gestating.size(); i++) {
+          if (result.artifacts().get(i).kind() != gestating.get(i).kind()) {
+            throw new IllegalStateException(
+                "Executor returned artifact of kind " + result.artifacts().get(i).kind()
+                    + " at index " + i + ", but expected " + gestating.get(i).kind());
+          }
+        }
+
+        return result.artifacts().stream().map(finalized -> {
+          Artifact updated = finalized.toBuilder().metadata(
+              mergeMetadata(finalized.metadata(), model, task, result.providerInput())).build();
+          log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(), updated.status());
+          return updated;
+        }).toList();
+
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
@@ -77,63 +119,37 @@ public class GenerateCreativeTool {
       }
     }
 
-    // Build an actionable error: tell the decomposer not to retry this capability
-    var errorMsg = new StringBuilder("All models failed for " + artifactKind + " generation. ");
-    errorMsg.append("Providers attempted: ").append(String.join(", ", failedPlatforms)).append(". ");
-    errorMsg.append("Details: ").append(String.join("; ", errors)).append(". ");
-    errorMsg.append("DO NOT retry ").append(artifactKind)
-        .append(" generation with similar parameters — the underlying service appears unavailable.");
-    return GenerateCreativeResult.error(errorMsg.toString());
-  }
+    // All models failed — throw with classifiable message
+    boolean allCapacityErrors = errors.stream()
+        .allMatch(e -> e.contains("per call") || e.contains("individually"));
 
-  private GenerateCreativeResult executeWithModel(
-      String task, ArtifactKind artifactKind, SearchResult model) {
-
-    log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
-    var executor = executionRouter.resolve(model.platform());
-
-    String title = wordingService.generateArtifactTitle(task);
-    String description = wordingService.generateArtifactDescription(task);
-    List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext().getArtifacts()
-        .getAllWithChanges();
-
-    // Schedule GESTATING artifact
-    var artifactName = TaskExecutionContextHolder.addArtifact(ArtifactDraft.builder()
-        .kind(artifactKind).title(title).description(description)
-        .status(ArtifactStatus.GESTATING).build());
-
-    try {
-      // Build the GESTATING artifact to pass to the executor
-      var gestatingArtifact = Artifact.builder()
-          .name(artifactName).kind(artifactKind).title(title).description(description)
-          .status(ArtifactStatus.GESTATING)
-          .metadata(buildMetadata(model, task, null))
-          .build();
-
-      // Delegate full pipeline to executor: plan → substitute → execute → download/store
-      UnaryOperator<JsonNode> substitutor = input -> substituteArtifacts(input, availableArtifacts);
-      var result = executor.run(gestatingArtifact, task, model.name(),
-          model.owner(), model.modelId(), model.description(), model.bestPractices(), substitutor);
-
-      // Update metadata with providerInput
-      var finalizedArtifact = result.artifact()
-          .withMetadata(buildMetadata(model, task, result.providerInput()));
-
-      // Update the changelist with the finalized artifact
-      TaskExecutionContextHolder.getContext().getArtifacts().updatePending(finalizedArtifact);
-      log.info("{} Complete: {} (status: {})", LOG_PREFIX, artifactName,
-          finalizedArtifact.status());
-
-      return GenerateCreativeResult.success(artifactName,
-          "Generated " + artifactKind + " using " + model.name());
-
-    } catch (Exception e) {
-      rollbackArtifact(artifactName);
-      throw e;
+    if (allCapacityErrors) {
+      throw new IllegalStateException(
+          "All attempted models produce fewer outputs than requested. "
+              + "Details: " + String.join("; ", errors) + ". "
+              + "Try requesting fewer artifacts per call.");
+    } else {
+      throw new IllegalStateException(
+          "All models failed. Providers attempted: " + String.join(", ", failedPlatforms)
+              + ". Details: " + String.join("; ", errors) + ". "
+              + "DO NOT retry generation with similar parameters — "
+              + "the underlying service appears unavailable.");
     }
   }
 
-  private ObjectNode buildMetadata(SearchResult model, String task, JsonNode input) {
+  @Override
+  protected GenerateCreativeResult finalizeResult(List<Artifact> results,
+      List<ArtifactIntent> intents) {
+    List<String> finalizedNames = results.stream().map(Artifact::name).toList();
+    String modelName = results.isEmpty() ? "unknown"
+        : results.getFirst().metadata().path("generation_details").path("model_name")
+            .asText("unknown");
+    String successSummary =
+        "Generated artifacts: " + String.join(", ", finalizedNames) + " using " + modelName;
+    return GenerateCreativeResult.success(finalizedNames, successSummary);
+  }
+
+  private ObjectNode buildMetadata(ModelSearchResult model, String task, JsonNode input) {
     ObjectNode metadata = objectMapper.createObjectNode();
     ObjectNode genDetails = metadata.putObject("generation_details");
     genDetails.put("provider", model.platform());
@@ -147,35 +163,19 @@ public class GenerateCreativeTool {
     return metadata;
   }
 
-  private void rollbackArtifact(String artifactName) {
-    try {
-      TaskExecutionContextHolder.getContext().getArtifacts().rollbackPending(artifactName);
-    } catch (Exception rollbackEx) {
-      log.warn("Failed to rollback artifact: {}", rollbackEx.getMessage());
+  /**
+   * Merge generation_details into existing artifact metadata without overwriting executor-provided
+   * fields (e.g., voiceId set by ElevenLabs executor via ExtractedOutput).
+   */
+  private ObjectNode mergeMetadata(JsonNode existingMetadata, ModelSearchResult model, String task,
+      JsonNode input) {
+    ObjectNode genMeta = buildMetadata(model, task, input);
+    if (existingMetadata != null && existingMetadata.isObject()) {
+      // Start with existing metadata (preserves voiceId, etc.), then add generation_details
+      ObjectNode merged = existingMetadata.deepCopy();
+      merged.setAll(genMeta);
+      return merged;
     }
-  }
-
-  JsonNode substituteArtifacts(JsonNode node, List<Artifact> artifacts) {
-    try {
-      String jsonString = node.toString();
-      for (Artifact artifact : artifacts) {
-        String placeholder = "@" + artifact.name();
-        String content;
-        if (artifact.kind() == ArtifactKind.TEXT) {
-          content = artifact.description();
-        } else if (artifact.storageKey() != null) {
-          content = artifactMapper.toPresignedUrl(artifact.storageKey());
-        } else {
-          continue;
-        }
-        if (content != null) {
-          jsonString = jsonString.replace(placeholder, content);
-        }
-      }
-      return objectMapper.readTree(jsonString);
-    } catch (Exception e) {
-      log.error("Failed to substitute artifact placeholders", e);
-      return node;
-    }
+    return genMeta;
   }
 }

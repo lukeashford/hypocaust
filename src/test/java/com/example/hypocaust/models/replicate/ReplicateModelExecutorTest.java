@@ -5,10 +5,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.hypocaust.models.ExtractedOutput;
 import com.example.hypocaust.models.ModelRegistry;
 import com.example.hypocaust.models.Platform;
+import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
 import com.example.hypocaust.service.ChatService;
+import com.example.hypocaust.util.ArtifactResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -27,8 +31,9 @@ class ReplicateModelExecutorTest {
     ChatService chatService = mock(ChatService.class);
     objectMapper = new ObjectMapper();
     replicateClient = mock(ReplicateClient.class);
+    ArtifactResolver artifactResolver = mock(ArtifactResolver.class);
     executor = new ReplicateModelExecutor(modelRegistry, objectMapper, chatService,
-        new RetryTemplate(), null, replicateClient);
+        new RetryTemplate(), null, artifactResolver, replicateClient);
   }
 
   @Test
@@ -70,8 +75,11 @@ class ReplicateModelExecutorTest {
 
     // This test is hard to fully verify without mocking ChatService response,
     // but at least it shouldn't crash and we can verify it calls the expected collaborator.
-    executor.generatePlan("task", com.example.hypocaust.domain.ArtifactKind.IMAGE, "model", owner,
-        modelId, "desc", "best");
+    var model = new ModelSearchResult(
+        "model", owner, modelId, "desc", "best", "tier", "REPLICATE",
+        Collections.emptySet(), Collections.emptySet()
+    );
+    executor.generatePlan("task", model, List.of());
 
     verify(replicateClient).getLatestVersion(owner, modelId);
     verify(replicateClient).getSchema(owner, modelId, version);
@@ -83,27 +91,31 @@ class ReplicateModelExecutorTest {
     @Test
     void textualNode_returnsText() {
       var node = objectMapper.valueToTree("https://example.com/img.png");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/img.png");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://example.com/img.png");
     }
 
     @Test
     void arrayNode_returnsFirstElement() {
       var node = objectMapper.valueToTree(
           List.of("https://example.com/1.png", "https://example.com/2.png"));
-      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/1.png");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://example.com/1.png");
     }
 
     @Test
     void objectWithUrlField_returnsUrlValue() throws Exception {
       var node = objectMapper.readTree(
           "{\"url\": \"https://example.com/out.png\", \"other\": 42}");
-      assertThat(executor.extractOutput(node)).isEqualTo("https://example.com/out.png");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("https://example.com/out.png");
     }
 
     @Test
     void otherShape_fallsBackToToString() throws Exception {
       var node = objectMapper.readTree("{\"data\": 123}");
-      assertThat(executor.extractOutput(node)).isEqualTo("{\"data\":123}");
+      assertThat(executor.extractOutputs(node).values()).extracting(ExtractedOutput::content)
+          .containsExactly("{\"data\":123}");
     }
   }
 }

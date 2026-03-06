@@ -4,28 +4,22 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.core.annotation.AliasFor;
-import org.springframework.stereotype.Component;
 
 /**
- * Marks a Spring bean or method as a discoverable tool.
+ * Marks a method as eligible for semantic discovery via {@link SemanticSearchToolRegistry}.
  *
- * <p>When used on a class (TYPE), the class becomes a Spring bean and the registry
- * will attempt to find a primary tool method if none are explicitly marked.
+ * <p>Must be used alongside {@link org.springframework.ai.tool.annotation.Tool} — that
+ * annotation owns the tool name, description, and schema. This one is purely a registry membership
+ * marker.
  *
- * <p>When used on a method (METHOD), it acts as a replacement for @Tool while
- * marking the method for semantic discovery.
+ * <pre>{@code
+ * @DiscoverableTool
+ * @Tool(name = "my_tool", description = "Does something useful")
+ * public String run(@ToolParam(description = "input") String input) { ... }
+ * }</pre>
  */
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@Component
-@Tool
 public @interface DiscoverableTool {
 
-  @AliasFor(annotation = Tool.class, attribute = "name")
-  String name() default "";
-
-  @AliasFor(annotation = Tool.class, attribute = "description")
-  String description() default "";
 }
