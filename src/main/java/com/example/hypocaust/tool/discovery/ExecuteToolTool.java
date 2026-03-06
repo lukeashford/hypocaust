@@ -31,7 +31,8 @@ public class ExecuteToolTool {
   private final ObjectMapper objectMapper;
 
   @Tool(name = "execute_tool",
-      description = "Execute a discovered tool by name with the given parameters.")
+      description = "Execute a tool discovered via search_tools by name with JSON parameters. "
+          + "This is the ONLY way to call dynamically discovered tools.")
   public String execute(
       @ToolParam(description = "The name of the tool to execute") String toolName,
       @ToolParam(description = "JSON object with the tool's parameters") String parametersJson
@@ -72,8 +73,6 @@ public class ExecuteToolTool {
       log.error("{} [EXECUTE_TOOL] Failed: {}: {}", TaskExecutionContextHolder.getIndent(),
           toolName, message);
       return serialize(new ToolError("EXECUTION_FAILED", message, toolName));
-    } finally {
-      // Cleanup
     }
   }
 

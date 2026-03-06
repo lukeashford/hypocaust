@@ -46,7 +46,7 @@ public final class PromptFragments {
             
             CRITICAL: Do NOT perform creative tasks (writing, drawing, coding, etc.) yourself.
             Your role is to DECIDE which tool to use or how to break down the task.
-            If the task requires generating or editing content, you MUST use a tool (like generate_creative) or delegate to sub-tasks.
+            If the task requires generating or editing content, you MUST use a tool or delegate to sub-tasks.
             Never include the full content of an artifact in your summary.
             
             YOUR SCOPE — what you control:

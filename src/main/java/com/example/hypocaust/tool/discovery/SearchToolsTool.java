@@ -23,7 +23,8 @@ public class SearchToolsTool {
 
   @Tool(name = "search_tools",
       description = "Find available tools that can accomplish a given task. "
-          + "Returns tool names, descriptions, and parameter schemas.")
+          + "Returns tool names, descriptions, and parameter schemas. "
+          + "To call a tool found here, you MUST use execute_tool with the tool name and JSON parameters.")
   public List<ToolDefinition> search(
       @ToolParam(description = "Description of what you need to accomplish") String taskDescription
   ) {
