@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 @Slf4j
@@ -30,37 +31,52 @@ public class FalClient {
   public JsonNode submit(String modelPath, JsonNode input) {
     log.info("Submitting fal.ai job for model: {}", modelPath);
 
-    var response = restClient.post()
-        .uri(uriBuilder -> uriBuilder.path("/" + modelPath).build())
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(input)
-        .retrieve()
-        .body(JsonNode.class);
+    JsonNode response;
+    try {
+      response = restClient.post()
+          .uri(uriBuilder -> uriBuilder.path("/" + modelPath).build())
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(input)
+          .retrieve()
+          .body(JsonNode.class);
+    } catch (RestClientResponseException e) {
+      throw new FalException(
+          e.getStatusCode().value() + " " + e.getStatusText()
+              + ": " + e.getResponseBodyAsString());
+    }
 
     if (response == null) {
       throw new FalException("No response from fal.ai API");
     }
 
-    // If status is present, it's a queued response — poll for completion
+    // Queued response — poll for completion
     if (response.has("request_id")) {
       var requestId = response.path("request_id").asText();
-      return awaitResult(modelPath, requestId);
+      var responseUrl = response.path("response_url").asText(null);
+      return awaitResult(modelPath, requestId, responseUrl);
     }
 
     // Synchronous result
     return response;
   }
 
-  private JsonNode awaitResult(String modelPath, String requestId) {
+  private JsonNode awaitResult(String modelPath, String requestId, String responseUrl) {
     long startTime = System.currentTimeMillis();
 
     while (System.currentTimeMillis() - startTime < MAX_WAIT_MS) {
-      var response = restClient.get()
-          .uri(uriBuilder -> uriBuilder
-              .path("/" + modelPath + "/requests/" + requestId + "/status")
-              .build())
-          .retrieve()
-          .body(JsonNode.class);
+      JsonNode response;
+      try {
+        response = restClient.get()
+            .uri(uriBuilder -> uriBuilder
+                .path("/" + modelPath + "/requests/" + requestId + "/status")
+                .build())
+            .retrieve()
+            .body(JsonNode.class);
+      } catch (RestClientResponseException e) {
+        throw new FalException(
+            "Status poll failed: " + e.getStatusCode().value() + " " + e.getStatusText()
+                + ": " + e.getResponseBodyAsString());
+      }
 
       if (response != null) {
         var status = response.path("status").asText();
@@ -69,13 +85,20 @@ public class FalClient {
           case "COMPLETED" -> {
             log.info("fal.ai job completed after {}ms",
                 System.currentTimeMillis() - startTime);
-            // Fetch the result
-            return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                    .path("/" + modelPath + "/requests/" + requestId)
-                    .build())
-                .retrieve()
-                .body(JsonNode.class);
+            // Prefer the response_url provided by the queue if available
+            var resultUri = (responseUrl != null && !responseUrl.isBlank())
+                ? responseUrl
+                : "/" + modelPath + "/requests/" + requestId;
+            try {
+              return restClient.get()
+                  .uri(resultUri)
+                  .retrieve()
+                  .body(JsonNode.class);
+            } catch (RestClientResponseException e) {
+              throw new FalException(
+                  "Result fetch failed: " + e.getStatusCode().value() + " " + e.getStatusText()
+                      + ": " + e.getResponseBodyAsString());
+            }
           }
           case "FAILED" -> throw new FalException(
               "fal.ai job failed: " + response.path("error").asText("unknown error"));
