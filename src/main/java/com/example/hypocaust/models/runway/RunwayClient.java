@@ -32,6 +32,7 @@ public class RunwayClient {
     this.restClient = RestClient.builder()
         .baseUrl(BASE_URL)
         .defaultHeader("Authorization", "Bearer " + apiKey)
+        .defaultHeader("X-Runway-Version", "2024-11-06")
         .build();
   }
 

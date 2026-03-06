@@ -63,13 +63,20 @@ public class FalClient {
   private JsonNode awaitResult(String modelPath, String requestId, String responseUrl) {
     long startTime = System.currentTimeMillis();
 
+    // The status URL must use the base model ID without any subpath.
+    // The response_url from the queue response already has the correct base path
+    // (e.g. https://queue.fal.run/fal-ai/minimax/video-01/requests/{id}), so
+    // appending /status to it is always correct. Fall back to reconstructing
+    // from modelPath only when no response_url was provided.
+    String statusUri = (responseUrl != null && !responseUrl.isBlank())
+        ? responseUrl + "/status"
+        : "/" + modelPath + "/requests/" + requestId + "/status";
+
     while (System.currentTimeMillis() - startTime < MAX_WAIT_MS) {
       JsonNode response;
       try {
         response = restClient.get()
-            .uri(uriBuilder -> uriBuilder
-                .path("/" + modelPath + "/requests/" + requestId + "/status")
-                .build())
+            .uri(statusUri)
             .retrieve()
             .body(JsonNode.class);
       } catch (RestClientResponseException e) {
