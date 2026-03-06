@@ -78,7 +78,7 @@ public class TaskExecutionLifecycleService {
    * publishes completion event.
    */
   @Transactional
-  public void commitExecution(UUID taskExecutionId, UUID projectId, String task,
+  public void commitExecution(UUID taskExecutionId, UUID projectId, String commitMessage,
       TaskExecutionContext context) {
     TaskExecutionEntity taskExecution = taskExecutionRepository.findById(taskExecutionId)
         .orElseThrow(
@@ -98,9 +98,6 @@ public class TaskExecutionLifecycleService {
         log.warn("Failed to materialize todos for execution {}: {}", taskExecutionId,
             e.getMessage());
       }
-
-      // 3. Use task as commit message directly
-      String commitMessage = task;
 
       // 4. Determine status from artifact states
       List<Artifact> allArtifacts = new ArrayList<>(changelist.getAdded());
