@@ -18,7 +18,7 @@ import org.springframework.web.client.RestClient;
 @Slf4j
 public class RunwayClient {
 
-  private static final String BASE_URL = "https://api.runwayml.com/v1";
+  private static final String BASE_URL = "https://api.dev.runwayml.com/v1";
 
   private final ObjectMapper objectMapper;
 
