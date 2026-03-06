@@ -213,20 +213,60 @@ public class ElevenLabsClient {
   }
 
   /**
-   * Searches the community voice library by keyword. The {@code search} parameter is matched
-   * against voice names, descriptions, labels, and category. Uses {@code voice_type=community} to
-   * search the public voice library (10k+ voices). Returns at most {@code pageSize} slim voice
-   * nodes containing {@code voice_id, name, description, labels, preview_url}.
+   * Searches the shared voice library (community voices) with structured filters. Uses
+   * {@code GET /v1/shared-voices}. Returns slim voice nodes containing
+   * {@code voice_id, public_owner_id, name, description, labels, preview_url, source=shared}.
    */
-  public List<JsonNode> searchVoices(String query, int pageSize) {
-    log.info("[ElevenLabs] Voice search → query='{}' page_size={}", query, pageSize);
+  public List<JsonNode> searchSharedVoices(JsonNode filters) {
+    log.info("[ElevenLabs] Shared voice search → filters={}", filters);
+
+    JsonNode response = restClient.get()
+        .uri(uriBuilder -> {
+          var builder = uriBuilder.replacePath("/v1/shared-voices")
+              .queryParam("page_size", filters.path("page_size").asInt(3))
+              .queryParam("include_custom_rates", false);
+          addOptionalParam(builder, filters, "gender");
+          addOptionalParam(builder, filters, "age");
+          addOptionalParam(builder, filters, "accent");
+          addOptionalParam(builder, filters, "language");
+          addOptionalParam(builder, filters, "search");
+          return builder.build();
+        })
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .body(JsonNode.class);
+
+    List<JsonNode> results = new ArrayList<>();
+    if (response == null) {
+      return results;
+    }
+
+    JsonNode voices = response.path("voices");
+    if (voices.isArray()) {
+      for (JsonNode voice : voices) {
+        ObjectNode slim = toSlimVoice(voice);
+        slim.put("source", "shared");
+        slim.put("public_owner_id", voice.path("public_owner_id").asText(""));
+        results.add(slim);
+      }
+    }
+
+    log.info("[ElevenLabs] Shared voice search ← {} result(s)", results.size());
+    return results;
+  }
+
+  /**
+   * Searches own voices (personal, workspace, default) by keyword. Uses
+   * {@code GET /v2/voices?search=…}. Returns slim voice nodes with {@code source=own}.
+   */
+  public List<JsonNode> searchOwnVoices(String query, int pageSize) {
+    log.info("[ElevenLabs] Own voice search → query='{}' page_size={}", query, pageSize);
 
     JsonNode response = restClient.get()
         .uri(uriBuilder -> uriBuilder
             .replacePath("/v2/voices")
             .queryParam("search", query)
             .queryParam("page_size", pageSize)
-            .queryParam("voice_type", "community")
             .build())
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
@@ -240,20 +280,58 @@ public class ElevenLabsClient {
     JsonNode voices = response.path("voices");
     if (voices.isArray()) {
       for (JsonNode voice : voices) {
-        ObjectNode slim = objectMapper.createObjectNode();
-        slim.put("voice_id", voice.path("voice_id").asText());
-        slim.put("name", voice.path("name").asText());
-        slim.put("description", voice.path("description").asText());
-        if (voice.has("labels")) {
-          slim.set("labels", voice.path("labels"));
-        }
-        slim.put("preview_url", voice.path("preview_url").asText(""));
+        ObjectNode slim = toSlimVoice(voice);
+        slim.put("source", "own");
         results.add(slim);
       }
     }
 
-    log.info("[ElevenLabs] Voice search ← query='{}' → {} result(s)", query, results.size());
+    log.info("[ElevenLabs] Own voice search ← query='{}' → {} result(s)", query, results.size());
     return results;
+  }
+
+  /**
+   * Adds a shared voice from the community library to the user's own voice collection.
+   * Returns the response containing the new {@code voice_id} usable for TTS.
+   */
+  public JsonNode addSharedVoice(String publicOwnerId, String voiceId, String newName) {
+    ObjectNode body = objectMapper.createObjectNode();
+    body.put("new_name", newName);
+
+    log.info("[ElevenLabs] Add shared voice → POST /voices/add/{}/{} name='{}'",
+        publicOwnerId, voiceId, newName);
+
+    JsonNode response = restClient.post()
+        .uri("/voices/add/{publicOwnerId}/{voiceId}", publicOwnerId, voiceId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .body(body)
+        .retrieve()
+        .body(JsonNode.class);
+
+    String addedId = response != null ? response.path("voice_id").asText() : "null";
+    log.info("[ElevenLabs] Add shared voice ← voice_id='{}'", addedId);
+    return response;
+  }
+
+  private ObjectNode toSlimVoice(JsonNode voice) {
+    ObjectNode slim = objectMapper.createObjectNode();
+    slim.put("voice_id", voice.path("voice_id").asText());
+    slim.put("name", voice.path("name").asText());
+    slim.put("description", voice.path("description").asText());
+    if (voice.has("labels")) {
+      slim.set("labels", voice.path("labels"));
+    }
+    slim.put("preview_url", voice.path("preview_url").asText(""));
+    return slim;
+  }
+
+  private void addOptionalParam(
+      org.springframework.web.util.UriBuilder builder, JsonNode filters, String name) {
+    String value = filters.path(name).asText("");
+    if (!value.isBlank()) {
+      builder.queryParam(name, value);
+    }
   }
 
   public JsonNode dubbing(JsonNode input) {

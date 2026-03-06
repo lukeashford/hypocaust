@@ -73,7 +73,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
       OUTPUT KEY CONVENTIONS for outputMapping:
       - eleven_v3 / sound-generation / dubbing: use "audio" as the output key.
-      - eleven_ttv_v3 (voice design previews): use "preview_0", "preview_1", etc. as output keys.
+      - eleven_ttv_v3 (voice design): use "preview_0" as the output key (single preview).
       """;
 
   @Override
@@ -100,67 +100,100 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Searches the ElevenLabs voice library for a voice matching the given description.
+   * Searches both own voices and the shared voice library for a voice matching the description.
    *
    * <ol>
-   *   <li>Asks Haiku to generate 3 short keyword queries from the description.</li>
-   *   <li>Runs each query against {@code /v2/voices?search=…&page_size=3}, collecting up to 9
-   *       unique candidate voices.</li>
-   *   <li>Presents the trimmed candidate list to Haiku to pick the best match, or null if none
-   *       fits.</li>
+   *   <li>Asks Haiku to generate 3 structured search queries (with filters: gender, age, accent,
+   *       language, search) in a single call.</li>
+   *   <li>Runs each query against both own voices ({@code /v2/voices}) and the shared library
+   *       ({@code /v1/shared-voices}), collecting unique candidates.</li>
+   *   <li>Presents all candidates to Haiku to pick the best match, regardless of source.</li>
+   *   <li>If the chosen voice is from the shared library, adds it to the account first.</li>
    * </ol>
-   *
-   * Returns the matched voice node (containing {@code voice_id} and {@code preview_url}), or
-   * {@link Optional#empty()} if no suitable match was found.
    */
   private Optional<JsonNode> findMatchingVoice(String voiceDescription) {
-    // Step 1: Generate 3 keyword search queries from the description
-    String keywordsSystem = """
-        You are helping search a voice library. Generate exactly 3 short keyword queries
-        (2–4 words each) to find voices matching the given description. Queries should target
-        different aspects: vocal qualities, tone, accent, gender, use-case, etc.
-        Return ONLY a JSON array of 3 strings. No explanation.
-        Example: ["warm british baritone", "deep male narrator", "storyteller authoritative"]
+    // Step 1: Generate 3 structured search queries in a single Haiku call
+    String queriesSystem = """
+        You are helping search a voice library. Generate exactly 3 different search queries
+        as JSON objects to find voices matching the given voice description.
+
+        Each query object can have these fields (all optional strings):
+        - "gender": e.g. "male", "female"
+        - "age": e.g. "young", "middle_aged", "old"
+        - "accent": e.g. "british", "american", "australian"
+        - "language": ISO code e.g. "en", "de", "fr", "es"
+        - "search": free-text search keywords (2-4 words)
+
+        IMPORTANT RULES:
+        - Always fill ALL five fields for each query. If the voice description doesn't specify
+          a field, choose a plausible random value that fits the overall character. For example,
+          for "deep German bass", gender should be "male" and language "de", but age could be
+          anything suitable — just pick one.
+        - Vary the queries to increase diversity of results. Use different combinations of
+          accent, age, and search terms across the 3 queries.
+        - The "search" field should contain descriptive keywords about vocal quality, tone, or
+          use-case — NOT just repeat the other filter values.
+
+        Return ONLY a JSON array of 3 objects. No explanation.
+        Example for "warm British bass narrator":
+        [
+          {"gender":"male","age":"middle_aged","accent":"british","language":"en","search":"warm deep narrator"},
+          {"gender":"male","age":"old","accent":"british","language":"en","search":"bass storytelling voice"},
+          {"gender":"male","age":"middle_aged","accent":"british","language":"en","search":"rich authoritative baritone"}
+        ]
         """;
-    String keywordsResponse;
+    String queriesResponse;
     try {
-      keywordsResponse = chatService.call(PROMPT_ENG_MODEL, keywordsSystem,
+      queriesResponse = chatService.call(PROMPT_ENG_MODEL, queriesSystem,
           "Voice description: " + voiceDescription);
     } catch (Exception e) {
-      log.warn("[ElevenLabs] Keyword generation failed, skipping library search: {}",
+      log.warn("[ElevenLabs] Query generation failed, skipping library search: {}",
           e.getMessage());
       return Optional.empty();
     }
 
-    List<String> queries = parseKeywordQueries(keywordsResponse);
-    log.info("[ElevenLabs] Voice library search | desc='{}' | queries={}", voiceDescription,
-        queries);
+    List<JsonNode> queries = parseSearchQueries(queriesResponse);
+    log.info("[ElevenLabs] Voice search | desc='{}' | {} queries generated",
+        voiceDescription, queries.size());
 
-    // Step 2: Run 3 searches, collect first 3 results each (up to 9 unique candidates)
+    // Step 2: Run each query against both own voices and shared library
     Map<String, JsonNode> candidateMap = new LinkedHashMap<>();
-    for (String query : queries) {
+    for (int i = 0; i < queries.size(); i++) {
+      JsonNode query = queries.get(i);
+      log.info("[ElevenLabs] Voice search query[{}]: {}", i, query);
+
+      // Search shared library with structured filters
       try {
-        List<JsonNode> results = elevenLabsClient.searchVoices(query, 3);
-        for (JsonNode voice : results) {
-          String voiceId = voice.path("voice_id").asText();
-          if (!voiceId.isBlank()) {
-            candidateMap.putIfAbsent(voiceId, voice);
-          }
+        List<JsonNode> shared = elevenLabsClient.searchSharedVoices(query);
+        for (JsonNode voice : shared) {
+          candidateMap.putIfAbsent(voice.path("voice_id").asText(), voice);
         }
       } catch (Exception e) {
-        log.warn("[ElevenLabs] Search failed for query='{}': {}", query, e.getMessage());
+        log.warn("[ElevenLabs] Shared voice search failed for query[{}]: {}", i, e.getMessage());
+      }
+
+      // Search own voices with the "search" text
+      String searchText = query.path("search").asText("");
+      if (!searchText.isBlank()) {
+        try {
+          List<JsonNode> own = elevenLabsClient.searchOwnVoices(searchText, 3);
+          for (JsonNode voice : own) {
+            candidateMap.putIfAbsent(voice.path("voice_id").asText(), voice);
+          }
+        } catch (Exception e) {
+          log.warn("[ElevenLabs] Own voice search failed for query[{}]: {}", i, e.getMessage());
+        }
       }
     }
 
-    log.info("[ElevenLabs] Voice library search → {} unique candidate(s) found",
-        candidateMap.size());
+    log.info("[ElevenLabs] Voice search → {} unique candidate(s) found", candidateMap.size());
 
     if (candidateMap.isEmpty()) {
-      log.info("[ElevenLabs] No candidates from library search, will design a new voice");
+      log.info("[ElevenLabs] No candidates from voice search, will design a new voice");
       return Optional.empty();
     }
 
-    // Step 3: Ask Haiku to pick the best match from the candidate list
+    // Step 3: Ask Haiku to pick the best match from all candidates
     StringBuilder voiceList = new StringBuilder();
     for (JsonNode voice : candidateMap.values()) {
       voiceList.append("- voice_id: ").append(voice.path("voice_id").asText())
@@ -170,20 +203,22 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       if (!labels.isMissingNode() && labels.isObject() && labels.size() > 0) {
         voiceList.append(", labels: ").append(labels);
       }
-      voiceList.append("\n");
+      voiceList.append(" [").append(voice.path("source").asText("unknown")).append("]\n");
     }
 
-    String system = """
+    String selectionSystem = """
         You are a voice casting assistant. Given a required voice description and a list of
         candidate voices, pick the best matching voice_id. Be selective — only pick a voice if
-        it genuinely fits the description. If none is a good match, return the word null.
+        it genuinely fits the description. Do not prefer any source (own vs shared) — just pick
+        the best fit regardless. If none is a good match, return the word null.
         Respond with ONLY the voice_id string or the word null. No explanation.
         """;
-    String user = "Required voice: " + voiceDescription + "\n\nCandidates:\n" + voiceList;
+    String selectionUser =
+        "Required voice: " + voiceDescription + "\n\nCandidates:\n" + voiceList;
 
-    String response = chatService.call(PROMPT_ENG_MODEL, system, user);
+    String response = chatService.call(PROMPT_ENG_MODEL, selectionSystem, selectionUser);
     if (response == null || response.isBlank() || "null".equalsIgnoreCase(response.strip())) {
-      log.info("[ElevenLabs] Library match: Haiku found no suitable voice, will design a new one");
+      log.info("[ElevenLabs] Voice match: Haiku found no suitable voice, will design a new one");
       return Optional.empty();
     }
 
@@ -192,21 +227,49 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
         .filter(v -> matchedId.equals(v.path("voice_id").asText()))
         .findFirst();
 
-    if (matched.isPresent()) {
-      log.info("[ElevenLabs] Library match: voice_id='{}' name='{}'",
-          matchedId, matched.get().path("name").asText());
-    } else {
-      log.warn("[ElevenLabs] Library match: Haiku returned unknown voice_id='{}', ignoring",
+    if (matched.isEmpty()) {
+      log.warn("[ElevenLabs] Voice match: Haiku returned unknown voice_id='{}', ignoring",
           matchedId);
+      return Optional.empty();
     }
+
+    JsonNode matchedVoice = matched.get();
+    log.info("[ElevenLabs] Voice match: voice_id='{}' name='{}' source='{}'",
+        matchedId, matchedVoice.path("name").asText(), matchedVoice.path("source").asText());
+
+    // Step 4: If from shared library, add it to our account first
+    if ("shared".equals(matchedVoice.path("source").asText())) {
+      String publicOwnerId = matchedVoice.path("public_owner_id").asText("");
+      if (publicOwnerId.isBlank()) {
+        log.warn("[ElevenLabs] Shared voice '{}' has no public_owner_id, cannot add to account",
+            matchedId);
+        return Optional.empty();
+      }
+      try {
+        String voiceName = matchedVoice.path("name").asText("Shared Voice");
+        JsonNode added = elevenLabsClient.addSharedVoice(publicOwnerId, matchedId, voiceName);
+        String addedVoiceId = added.path("voice_id").asText();
+        if (!addedVoiceId.isBlank()) {
+          log.info("[ElevenLabs] Shared voice added to account: '{}' → '{}'",
+              matchedId, addedVoiceId);
+          // Update the voice_id to the newly added one (may differ from shared ID)
+          ((ObjectNode) matchedVoice).put("voice_id", addedVoiceId);
+        }
+      } catch (Exception e) {
+        log.warn("[ElevenLabs] Failed to add shared voice '{}' to account: {}",
+            matchedId, e.getMessage());
+        return Optional.empty();
+      }
+    }
+
     return matched;
   }
 
   /**
-   * Parses the keyword queries returned by Haiku. Expects a JSON array of strings; falls back to
-   * comma-splitting if JSON parsing fails.
+   * Parses the structured search queries returned by Haiku. Expects a JSON array of objects with
+   * filter fields (gender, age, accent, language, search).
    */
-  private List<String> parseKeywordQueries(String response) {
+  private List<JsonNode> parseSearchQueries(String response) {
     if (response == null || response.isBlank()) {
       return List.of();
     }
@@ -214,25 +277,18 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
       JsonNode node = objectMapper.readTree(
           com.example.hypocaust.common.JsonUtils.extractJson(response));
       if (node.isArray()) {
-        List<String> queries = new ArrayList<>();
+        List<JsonNode> queries = new ArrayList<>();
         for (JsonNode item : node) {
-          String q = item.asText().strip();
-          if (!q.isBlank()) {
-            queries.add(q);
+          if (item.isObject()) {
+            queries.add(item);
           }
         }
-        return queries;
+        return queries.isEmpty() ? List.of() : queries;
       }
     } catch (Exception e) {
-      log.debug("[ElevenLabs] Could not parse keyword JSON, falling back to comma-split: {}",
-          e.getMessage());
+      log.warn("[ElevenLabs] Could not parse search query JSON: {}", e.getMessage());
     }
-    // Fallback: comma-split
-    return List.of(response.split(",")).stream()
-        .map(String::strip)
-        .filter(s -> !s.isBlank())
-        .limit(3)
-        .toList();
+    return List.of();
   }
 
   /**
@@ -240,9 +296,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
    *
    * <ul>
    *   <li>If {@code voice_id} is present: single-phase direct TTS.</li>
-   *   <li>Otherwise: delegate voice resolution entirely to {@link #buildVoiceDesignPhases}, which
-   *       handles library search and optional voice generation. A final TTS phase is appended that
-   *       uses the {@code voiceId} from the first preview returned by voice design.</li>
+   *   <li>Otherwise: delegate to {@link #buildVoiceDesignPhases} (always 1 phase) + TTS = 2
+   *       phases total.</li>
    * </ul>
    */
   private List<ExecutionPhase> buildTtsPhases(JsonNode input) {
@@ -287,9 +342,9 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
   }
 
   /**
-   * Build voice design phases. If fresh_voice is set, generate a new voice (design → save all
-   * previews). Otherwise, search the voice library first; if a match is found return it as a
-   * single preview, else fall back to generating a new voice.
+   * Build voice design phases. If fresh_voice is set, generate a new voice directly. Otherwise,
+   * search both own voices and the shared library first; if a match is found return it as a single
+   * preview, else fall back to generating a new voice. Always a single phase.
    */
   private List<ExecutionPhase> buildVoiceDesignPhases(JsonNode input) {
     if (!input.path("fresh_voice").asBoolean(false)) {
@@ -314,51 +369,40 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
 
     log.info("[ElevenLabs] Voice Design strategy: generate new voice ({})",
         input.path("fresh_voice").asBoolean(false) ? "fresh_voice=true" : "no library match");
-    return List.of(
-        // Phase 1: Design voices
-        (orig, prev) -> {
-          log.info("[ElevenLabs] Voice Design Phase 1/2: design | desc='{}'",
-              orig.path("voice_description").asText());
-          return elevenLabsClient.voiceDesign(orig);
-        },
 
-        // Phase 2: Save all previews to get permanent voice_ids
-        (orig, prev) -> {
-          var previews = prev.path("previews");
-          if (!previews.isArray() || previews.isEmpty()) {
-            throw new IllegalStateException("Voice design returned no previews");
-          }
-          log.info("[ElevenLabs] Voice Design Phase 2/2: saving {} preview(s)", previews.size());
-          String voiceDesc = orig.path("voice_description").asText("designed voice");
+    // Single phase: design + save the first preview
+    return List.of((orig, prev) -> {
+      log.info("[ElevenLabs] Voice Design: design + save first preview | desc='{}'",
+          orig.path("voice_description").asText());
+      JsonNode designResult = elevenLabsClient.voiceDesign(orig);
 
-          var result = objectMapper.createObjectNode();
-          var savedPreviews = result.putArray("previews");
+      var previews = designResult.path("previews");
+      if (!previews.isArray() || previews.isEmpty()) {
+        throw new IllegalStateException("Voice design returned no previews");
+      }
 
-          for (int i = 0; i < previews.size(); i++) {
-            var preview = previews.get(i);
-            String genId = preview.path("generated_voice_id").asText();
-            if (genId.isBlank()) {
-              throw new IllegalStateException(
-                  "Voice design preview[" + i + "] missing generated_voice_id; entry=" + preview);
-            }
-            log.info(
-                "[ElevenLabs] Voice Design Phase 2/2: saving preview[{}] generated_voice_id='{}'",
-                i, genId);
+      // Save only the first preview — the other 2 are discarded
+      var firstPreview = previews.get(0);
+      String genId = firstPreview.path("generated_voice_id").asText();
+      if (genId.isBlank()) {
+        throw new IllegalStateException(
+            "Voice design preview[0] missing generated_voice_id; entry=" + firstPreview);
+      }
 
-            // ElevenLabs limits voice name to 100 characters.
-            String voiceName = voiceDesc + " " + (i + 1);
-            if (voiceName.length() > 100) {
-              voiceName = voiceName.substring(0, 97) + "...";
-            }
-            var saved = elevenLabsClient.saveVoice(genId, voiceName, voiceDesc);
+      String voiceDesc = orig.path("voice_description").asText("designed voice");
+      String voiceName = voiceDesc.length() > 100 ? voiceDesc.substring(0, 97) + "..." : voiceDesc;
+      var saved = elevenLabsClient.saveVoice(genId, voiceName, voiceDesc);
 
-            var entry = savedPreviews.addObject();
-            entry.put("url", preview.path("url").asText());
-            entry.put("voiceId", saved.path("voice_id").asText());
-          }
-          return result;
-        }
-    );
+      log.info("[ElevenLabs] Voice Design: saved first preview generated_voice_id='{}' → voice_id='{}'",
+          genId, saved.path("voice_id").asText());
+
+      var result = objectMapper.createObjectNode();
+      var savedPreviews = result.putArray("previews");
+      var entry = savedPreviews.addObject();
+      entry.put("url", firstPreview.path("url").asText());
+      entry.put("voiceId", saved.path("voice_id").asText());
+      return result;
+    });
   }
 
   @Override

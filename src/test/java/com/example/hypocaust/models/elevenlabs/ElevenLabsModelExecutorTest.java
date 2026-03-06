@@ -59,25 +59,17 @@ class ElevenLabsModelExecutorTest {
   }
 
   @Test
-  void testExtractOutput_VoiceDesignPreviews() {
+  void testExtractOutput_VoiceDesignPreview() {
     ObjectNode node = objectMapper.createObjectNode();
     var previews = node.putArray("previews");
     var p1 = previews.addObject();
     p1.put("url", "https://example.com/preview1.mp3");
     p1.put("voiceId", "voice1");
-    var p2 = previews.addObject();
-    p2.put("url", "https://example.com/preview2.mp3");
-    p2.put("voiceId", "voice2");
-    var p3 = previews.addObject();
-    p3.put("url", "https://example.com/preview3.mp3");
-    p3.put("voiceId", "voice3");
 
     var outputs = executor.extractOutputs(node);
-    assertThat(outputs).hasSize(3);
+    assertThat(outputs).hasSize(1);
     assertThat(outputs.get("preview_0").content()).isEqualTo("https://example.com/preview1.mp3");
     assertThat(outputs.get("preview_0").metadata().get("voiceId").asText()).isEqualTo("voice1");
-    assertThat(outputs.get("preview_1").content()).isEqualTo("https://example.com/preview2.mp3");
-    assertThat(outputs.get("preview_2").content()).isEqualTo("https://example.com/preview3.mp3");
   }
 
   @Test
@@ -114,7 +106,7 @@ class ElevenLabsModelExecutorTest {
 
   @Test
   void testBuildExecutionPhases_ttsWithoutVoiceId() {
-    // Keyword generation returns empty → no search candidates → falls through to design
+    // Query generation returns empty → no search candidates → falls through to design
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
         .thenReturn("[]");
 
@@ -123,12 +115,12 @@ class ElevenLabsModelExecutorTest {
     input.put("voice_description", "warm British baritone");
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
-    assertThat(phases).hasSize(3); // voice design (2: Design → Save) + TTS = 3
+    assertThat(phases).hasSize(2); // voice design (1 phase) + TTS = 2
   }
 
   @Test
   void testBuildExecutionPhases_voiceDesign() {
-    // Keyword generation returns empty → no search candidates → falls through to design
+    // Query generation returns empty → no search candidates → falls through to design
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
         .thenReturn("[]");
 
@@ -136,7 +128,7 @@ class ElevenLabsModelExecutorTest {
     input.put("voice_description", "warm British baritone");
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
-    assertThat(phases).hasSize(2); // Design → Save all
+    assertThat(phases).hasSize(1); // Single phase: design + save first preview
   }
 
   @Test
@@ -156,11 +148,17 @@ class ElevenLabsModelExecutorTest {
     voiceNode.put("name", "George");
     voiceNode.put("description", "Warm British storyteller");
     voiceNode.put("preview_url", "https://example.com/george.mp3");
+    voiceNode.put("source", "own");
 
-    when(elevenLabsClient.searchVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
-    // First call: keyword generation; second call: voice selection
+    when(elevenLabsClient.searchOwnVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
+    when(elevenLabsClient.searchSharedVoices(any())).thenReturn(List.of());
+    // First call: query generation; second call: voice selection
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("[\"warm british\", \"storyteller narrator\", \"deep baritone\"]",
+        .thenReturn("""
+            [{"gender":"male","age":"middle_aged","accent":"british","language":"en","search":"warm storyteller"},
+             {"gender":"male","age":"old","accent":"british","language":"en","search":"deep narrator"},
+             {"gender":"male","age":"middle_aged","accent":"british","language":"en","search":"baritone voice"}]
+            """,
             "JBFqnCBsd6RMkjVDRZzb");
 
     ObjectNode input = objectMapper.createObjectNode();
@@ -173,14 +171,14 @@ class ElevenLabsModelExecutorTest {
 
   @Test
   void testBuildExecutionPhases_ttsWithFreshVoice_alwaysChain() {
-    // fresh_voice=true skips library search entirely → voice design 2 phases + TTS = 3
+    // fresh_voice=true skips library search entirely → voice design 1 phase + TTS = 2
     ObjectNode input = objectMapper.createObjectNode();
     input.put("text", "Hello world");
     input.put("voice_description", "Warm British storyteller");
     input.put("fresh_voice", true);
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_v3", input);
-    assertThat(phases).hasSize(3); // voice design (2: Design → Save) + TTS despite match
+    assertThat(phases).hasSize(2); // voice design (1 phase) + TTS = 2
   }
 
   @Test
@@ -190,11 +188,17 @@ class ElevenLabsModelExecutorTest {
     voiceNode.put("name", "Sarah");
     voiceNode.put("description", "Confident warm female voice");
     voiceNode.put("preview_url", "https://example.com/sarah.mp3");
+    voiceNode.put("source", "own");
 
-    when(elevenLabsClient.searchVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
-    // First call: keyword generation; second call: voice selection
+    when(elevenLabsClient.searchOwnVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
+    when(elevenLabsClient.searchSharedVoices(any())).thenReturn(List.of());
+    // First call: query generation; second call: voice selection
     when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
-        .thenReturn("[\"warm female\", \"confident voice\", \"female narrator\"]",
+        .thenReturn("""
+            [{"gender":"female","age":"young","accent":"american","language":"en","search":"warm confident"},
+             {"gender":"female","age":"middle_aged","accent":"american","language":"en","search":"narrator voice"},
+             {"gender":"female","age":"young","accent":"american","language":"en","search":"female storyteller"}]
+            """,
             "EXAVITQu4vr4xnSDxMaL");
 
     ObjectNode input = objectMapper.createObjectNode();
@@ -206,12 +210,12 @@ class ElevenLabsModelExecutorTest {
 
   @Test
   void testBuildExecutionPhases_voiceDesignWithFreshVoice_alwaysChain() {
-    // fresh_voice=true skips library search entirely → Design → Save = 2 phases
+    // fresh_voice=true skips library search entirely → Design + Save = 1 phase
     ObjectNode input = objectMapper.createObjectNode();
     input.put("voice_description", "Confident warm female voice");
     input.put("fresh_voice", true);
 
     var phases = executor.buildExecutionPhases("elevenlabs", "eleven_ttv_v3", input);
-    assertThat(phases).hasSize(2); // Design → Save all, skips library search
+    assertThat(phases).hasSize(1); // Single phase: design + save first preview
   }
 }
