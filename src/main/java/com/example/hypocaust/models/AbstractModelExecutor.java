@@ -155,6 +155,10 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
     userPrompt.append(formatArtifactContext(artifacts)).append("\n");
     userPrompt.append("Model: ").append(model.name())
         .append(" (id: ").append(model.modelId()).append(")\n");
+    if (model.optionalInputs() != null && !model.optionalInputs().isEmpty()) {
+      userPrompt.append("Model Optional Inputs: ").append(model.optionalInputs())
+          .append(" — include in providerInput if matching input artifacts are available.\n");
+    }
     userPrompt.append("Model Docs: ").append(model.description()).append("\n\n");
     userPrompt.append("Best Practices:\n").append(model.bestPractices()).append("\n");
     if (additionalUserContext != null && !additionalUserContext.isBlank()) {

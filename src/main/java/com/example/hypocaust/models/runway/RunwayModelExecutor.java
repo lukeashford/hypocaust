@@ -63,8 +63,14 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   @Override
   protected JsonNode doExecute(String owner, String modelId, JsonNode input) {
     return switch (modelId) {
-      case "gen4-turbo" -> runwayClient.generateVideo(modelId, input);
-      case "gen4-turbo-i2v" -> runwayClient.generateVideoFromImage(modelId, input);
+      case "gen4.5" -> {
+        // Route to image-to-video endpoint when an image is provided, text-to-video otherwise
+        if (input.has("promptImage")) {
+          yield runwayClient.generateVideoFromImage(modelId, input);
+        } else {
+          yield runwayClient.generateVideo(modelId, input);
+        }
+      }
       case "upscale-v1" -> runwayClient.upscale(input);
       default -> {
         log.warn("Unknown Runway model ID: {}, attempting generic video generation", modelId);

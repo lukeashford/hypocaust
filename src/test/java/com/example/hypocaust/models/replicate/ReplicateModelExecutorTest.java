@@ -77,7 +77,7 @@ class ReplicateModelExecutorTest {
     // but at least it shouldn't crash and we can verify it calls the expected collaborator.
     var model = new ModelSearchResult(
         "model", owner, modelId, "desc", "best", "tier", "REPLICATE",
-        Collections.emptySet(), Collections.emptySet()
+        Collections.emptySet(), null, Collections.emptySet()
     );
     executor.generatePlan("task", model, List.of());
 

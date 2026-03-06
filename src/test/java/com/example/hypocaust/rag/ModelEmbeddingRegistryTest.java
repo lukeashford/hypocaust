@@ -170,6 +170,101 @@ class ModelEmbeddingRegistryTest {
   }
 
   @Test
+  void parseFile_parsesOptionalInputs() throws Exception {
+    // GIVEN
+    Path file = tempDir.resolve("runway.json");
+    Files.writeString(file, """
+        [
+          {
+            "name": "Runway Gen-4.5",
+            "owner": "runwayml",
+            "id": "gen4.5",
+            "tier": "powerful",
+            "inputs": ["TEXT"],
+            "optionalInputs": ["IMAGE"],
+            "outputs": [{"kind": "VIDEO", "description": "the video"}],
+            "description": "Runway video model",
+            "bestPractices": "some tips"
+          }
+        ]
+        """);
+
+    ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(
+        mock(ModelEmbeddingRepository.class), mock(EmbeddingService.class),
+        mock(ChatService.class), new HashCalculator(), new ObjectMapper());
+    ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
+
+    // WHEN
+    List<Chunk> chunks = registry.parseFile(file);
+
+    // THEN
+    assertThat(chunks).hasSize(1);
+    Chunk chunk = chunks.getFirst();
+    assertThat(chunk.optionalInputs()).containsExactly(com.example.hypocaust.domain.ArtifactKind.IMAGE);
+    assertThat(chunk.embeddingText()).contains("optionalInputs:");
+  }
+
+  @Test
+  void parseFile_absentOptionalInputs_yieldsEmptySet() throws Exception {
+    // GIVEN — no optionalInputs field in JSON
+    Path file = tempDir.resolve("fal.json");
+    Files.writeString(file, """
+        [
+          {
+            "name": "FLUX Schnell",
+            "owner": "fal-ai",
+            "id": "flux/schnell",
+            "tier": "fast",
+            "inputs": ["TEXT"],
+            "outputs": [{"kind": "IMAGE", "description": "the image"}],
+            "description": "Fast image model"
+          }
+        ]
+        """);
+
+    ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(
+        mock(ModelEmbeddingRepository.class), mock(EmbeddingService.class),
+        mock(ChatService.class), new HashCalculator(), new ObjectMapper());
+    ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
+
+    // WHEN
+    List<Chunk> chunks = registry.parseFile(file);
+
+    // THEN
+    assertThat(chunks).hasSize(1);
+    assertThat(chunks.getFirst().optionalInputs()).isEmpty();
+    assertThat(chunks.getFirst().embeddingText()).doesNotContain("optionalInputs:");
+  }
+
+  @Test
+  void hash_shouldDifferWhenOptionalInputsChange() throws Exception {
+    // GIVEN — same model with and without optionalInputs
+    ModelEmbeddingRegistry registry = new ModelEmbeddingRegistry(
+        mock(ModelEmbeddingRepository.class), mock(EmbeddingService.class),
+        mock(ChatService.class), new HashCalculator(), new ObjectMapper());
+    ReflectionTestUtils.setField(registry, "platformsDir", tempDir.toString());
+
+    Path withOptional = tempDir.resolve("with.json");
+    Files.writeString(withOptional, """
+        [{"name":"M","id":"id","inputs":["TEXT"],"optionalInputs":["IMAGE"],
+          "outputs":[{"kind":"VIDEO","description":"v"}],"description":"d"}]
+        """);
+
+    Path withoutOptional = tempDir.resolve("without.json");
+    Files.writeString(withoutOptional, """
+        [{"name":"M","id":"id","inputs":["TEXT"],
+          "outputs":[{"kind":"VIDEO","description":"v"}],"description":"d"}]
+        """);
+
+    String hashWith = registry.parseFile(withOptional).getFirst().hash();
+    String hashWithout = registry.parseFile(withoutOptional).getFirst().hash();
+
+    assertThat(hashWith)
+        .as("Hash should differ when optionalInputs are added")
+        .isNotEqualTo(hashWithout);
+  }
+
+  @Test
   void hash_shouldBeStableRegardlessOfArtifactOrder() throws Exception {
     HashCalculator hashCalculator = new HashCalculator();
     ModelEmbeddingRepository repository = mock(ModelEmbeddingRepository.class);
