@@ -4,6 +4,7 @@ import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactIntent;
 import com.example.hypocaust.domain.ArtifactKind;
+import com.example.hypocaust.models.ExecutionResult;
 import com.example.hypocaust.models.ExecutionRouter;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry;
 import com.example.hypocaust.rag.ModelEmbeddingRegistry.ModelSearchResult;
@@ -23,7 +24,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * Unified creative generation tool. The decomposer describes what it needs and this tool handles
@@ -39,7 +44,7 @@ import org.springframework.stereotype.Component;
 public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeResult> {
 
   private static final String LOG_PREFIX = "[CREATIVE]";
-  private static final int MAX_MODEL_ATTEMPTS = 2;
+  private static final int MAX_MODEL_ATTEMPTS = 3;
 
   private final ModelEmbeddingRegistry modelRag;
   private final ExecutionRouter executionRouter;
@@ -74,15 +79,30 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
         .map(Artifact::kind)
         .collect(Collectors.toSet());
     ModelRequirement req = wordingService.generateModelRequirement(task, requiredOutputKinds);
-    var models = modelRag.search(req);
+    List<ModelSearchResult> models = modelRag.search(req);
+
     if (models.isEmpty()) {
       throw new IllegalStateException("No suitable model found for: " + req);
     }
 
     // Step 2: Try models in ranked order, fall back on failure
-    var errors = new ArrayList<String>();
-    var failedPlatforms = new LinkedHashSet<String>();
-    for (var model : models.stream().limit(MAX_MODEL_ATTEMPTS).toList()) {
+    List<String> errors = new ArrayList<>();
+    Set<String> failedPlatforms = new LinkedHashSet<>();
+    int attempts = 0;
+
+    for (ModelSearchResult model : models) {
+      if (attempts >= MAX_MODEL_ATTEMPTS) {
+        break;
+      }
+
+      // Skip if the platform has already failed with a platform-level error
+      if (failedPlatforms.contains(model.platform())) {
+        log.info("{} Skipping {} (platform {} is marked as failed)", LOG_PREFIX, model.name(),
+            model.platform());
+        continue;
+      }
+
+      attempts++;
       try {
         log.info("{} Trying {} (platform: {})", LOG_PREFIX, model.name(), model.platform());
 
@@ -90,46 +110,89 @@ public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeR
         List<Artifact> availableArtifacts = TaskExecutionContextHolder.getContext()
             .getArtifacts().getAllWithChanges();
 
-        var result = executor.run(gestating, task, model, availableArtifacts);
-
-        // Validate count and kind alignment
-        if (result.artifacts().size() != gestating.size()) {
-          throw new IllegalStateException("Executor returned " + result.artifacts().size()
-              + " artifacts, but expected " + gestating.size());
-        }
-        for (int i = 0; i < gestating.size(); i++) {
-          if (result.artifacts().get(i).kind() != gestating.get(i).kind()) {
-            throw new IllegalStateException(
-                "Executor returned artifact of kind " + result.artifacts().get(i).kind()
-                    + " at index " + i + ", but expected " + gestating.get(i).kind());
-          }
-        }
-
-        return result.artifacts().stream().map(finalized -> {
-          Artifact updated = finalized.toBuilder().metadata(
-              mergeMetadata(finalized.metadata(), model, task, result.providerInput())).build();
-          log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(), updated.status());
-          return updated;
-        }).toList();
+        ExecutionResult result = executor.run(gestating, task, model, availableArtifacts);
+        return processExecutionResult(result, gestating, model, task);
 
       } catch (Exception e) {
         log.warn("{} {} failed: {}", LOG_PREFIX, model.name(), e.getMessage());
         errors.add(model.name() + ": " + e.getMessage());
-        failedPlatforms.add(model.platform());
+
+        if (isPlatformFailure(e)) {
+          log.warn("{} Marking platform {} as failed due to platform error", LOG_PREFIX,
+              model.platform());
+          failedPlatforms.add(model.platform());
+        }
       }
     }
 
-    // All models failed — throw with classifiable message
+    throw handleAllModelsFailed(errors, failedPlatforms);
+  }
+
+  /**
+   * Distinguishes between platform-level failures and model-level failures.
+   */
+  private boolean isPlatformFailure(Exception e) {
+    Throwable current = e;
+    while (current != null) {
+      switch (current) {
+        case HttpStatusCodeException hsce -> {
+          return isPlatformStatusCode(hsce.getStatusCode());
+        }
+        case RestClientResponseException rcre -> {
+          return isPlatformStatusCode(rcre.getStatusCode());
+        }
+        case ResourceAccessException ignored -> {
+          return true; // Connection timeouts, DNS issues, etc.
+        }
+        default -> {
+        }
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  private boolean isPlatformStatusCode(HttpStatusCode status) {
+    int code = status.value();
+    // 401/403: Auth issues; 404/405: Routing/API changes; 429: Rate limits; 502/503/504: Infrastructure
+    return code == 401 || code == 403 || code == 404 || code == 405 || code == 429
+        || code == 502 || code == 503 || code == 504;
+  }
+
+  private List<Artifact> processExecutionResult(ExecutionResult result, List<Artifact> gestating,
+      ModelSearchResult model, String task) {
+    // Validate count and kind alignment
+    if (result.artifacts().size() != gestating.size()) {
+      throw new IllegalStateException("Executor returned " + result.artifacts().size()
+          + " artifacts, but expected " + gestating.size());
+    }
+    for (int i = 0; i < gestating.size(); i++) {
+      if (result.artifacts().get(i).kind() != gestating.get(i).kind()) {
+        throw new IllegalStateException(
+            "Executor returned artifact of kind " + result.artifacts().get(i).kind()
+                + " at index " + i + ", but expected " + gestating.get(i).kind());
+      }
+    }
+
+    return result.artifacts().stream().map(finalized -> {
+      Artifact updated = finalized.toBuilder().metadata(
+          mergeMetadata(finalized.metadata(), model, task, result.providerInput())).build();
+      log.info("{} Complete: {} (status: {})", LOG_PREFIX, updated.name(), updated.status());
+      return updated;
+    }).toList();
+  }
+
+  private RuntimeException handleAllModelsFailed(List<String> errors, Set<String> failedPlatforms) {
     boolean allCapacityErrors = errors.stream()
         .allMatch(e -> e.contains("per call") || e.contains("individually"));
 
     if (allCapacityErrors) {
-      throw new IllegalStateException(
+      return new IllegalStateException(
           "All attempted models produce fewer outputs than requested. "
               + "Details: " + String.join("; ", errors) + ". "
               + "Try requesting fewer artifacts per call.");
     } else {
-      throw new IllegalStateException(
+      return new IllegalStateException(
           "All models failed. Providers attempted: " + String.join(", ", failedPlatforms)
               + ". Details: " + String.join("; ", errors) + ". "
               + "DO NOT retry generation with similar parameters — "

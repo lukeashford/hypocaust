@@ -44,7 +44,7 @@ public class ModelEmbeddingRegistry {
 
   // Constants
   private static final String EXT_JSON = ".json";
-  private static final int DEFAULT_MAX_RESULTS = 5;
+  private static final int DEFAULT_MAX_RESULTS = 10;
   /**
    * Candidate pool fetched from DB before soft-ranking.
    */
@@ -52,7 +52,7 @@ public class ModelEmbeddingRegistry {
   /**
    * Pool passed to the LLM reranker after soft-ranking.
    */
-  private static final int RERANK_POOL_SIZE = 8;
+  private static final int RERANK_POOL_SIZE = 12;
 
   // Tier soft-ranking weights
   private static final Map<String, Integer> TIER_ORDINALS = Map.of(
