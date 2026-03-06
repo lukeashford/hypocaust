@@ -31,13 +31,26 @@ class NamingUtilsTest {
   @Test
   void appendCounterIfExists_appendsCorrectCounter() {
     Set<String> taken = Set.of("cat_art", "cat_art_2");
-    assertThat(NamingUtils.appendCounterIfExists("cat_art", taken)).isEqualTo("cat_art_3");
-    assertThat(NamingUtils.appendCounterIfExists("new_art", taken)).isEqualTo("new_art");
+    assertThat(NamingUtils.appendCounterIfExists("cat_art", taken, 50)).isEqualTo("cat_art_3");
+    assertThat(NamingUtils.appendCounterIfExists("new_art", taken, 50)).isEqualTo("new_art");
   }
 
   @Test
   void appendCounterIfExists_worksWithMultipleCollisions() {
     Set<String> taken = Set.of("art", "art_2", "art_3", "art_4");
-    assertThat(NamingUtils.appendCounterIfExists("art", taken)).isEqualTo("art_5");
+    assertThat(NamingUtils.appendCounterIfExists("art", taken, 50)).isEqualTo("art_5");
+  }
+
+  @Test
+  void appendCounterIfExists_respectsMaxLength() {
+    Set<String> taken = Set.of("abcdefghij");
+    // Should truncate "abcdefghij" to "abcdefgh_2" to stay within 10 chars
+    assertThat(NamingUtils.appendCounterIfExists("abcdefghij", taken, 10)).isEqualTo("abcdefgh_2");
+
+    Set<String> taken2 = Set.of("abcdefghij", "abcdefgh_2");
+    assertThat(NamingUtils.appendCounterIfExists("abcdefghij", taken2, 10)).isEqualTo("abcdefgh_3");
+
+    Set<String> taken3 = Set.of("a", "a_2");
+    assertThat(NamingUtils.appendCounterIfExists("a", taken3, 3)).isEqualTo("a_3");
   }
 }

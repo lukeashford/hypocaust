@@ -161,4 +161,31 @@ class TaskExecutionLifecycleServiceTest {
     verify(eventService).publish(
         any(com.example.hypocaust.domain.event.TaskExecutionFailedEvent.class));
   }
+
+  @Test
+  void startExecution_withLongTaskNameAndExistingTask_shouldNotExceed50Chars() {
+    // Given
+    UUID projectId = UUID.randomUUID();
+    String longTask = "This is a very long task name that will definitely be more than fifty characters long";
+
+    when(eventService.publish(any())).thenReturn(UUID.randomUUID());
+
+    // First execution
+    var result1 = lifecycleService.startExecution(projectId, longTask, null);
+    assertThat(result1.name().length()).isLessThanOrEqualTo(50);
+
+    // Second execution with same task (should trigger appendCounterIfExists)
+    var result2 = lifecycleService.startExecution(projectId, longTask, null);
+    String name2 = result2.name();
+
+    // Then
+    assertThat(name2.length()).as("Name '%s' should not exceed 50 characters", name2)
+        .isLessThanOrEqualTo(50);
+    assertThat(name2).isNotEqualTo(result1.name());
+
+    Optional<TaskExecutionEntity> saved = taskExecutionRepository.findById(
+        result2.taskExecutionId());
+    assertThat(saved).isPresent();
+    assertThat(saved.get().getName()).isEqualTo(name2);
+  }
 }

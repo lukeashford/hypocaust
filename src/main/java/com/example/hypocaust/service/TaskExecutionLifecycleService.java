@@ -51,7 +51,7 @@ public class TaskExecutionLifecycleService {
 
     Set<String> existingNames = taskExecutionRepository.findAllNamesByProjectId(projectId);
     String name = NamingUtils.sanitize(task, 50);
-    name = NamingUtils.appendCounterIfExists(name, existingNames);
+    name = NamingUtils.appendCounterIfExists(name, existingNames, 50);
 
     final var taskExecution = TaskExecutionEntity.builder()
         .projectId(projectId)

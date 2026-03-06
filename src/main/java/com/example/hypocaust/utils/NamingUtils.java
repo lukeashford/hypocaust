@@ -31,10 +31,20 @@ public class NamingUtils {
    * Appends a counter to a name if it already exists in the provided set.
    */
   public static String appendCounterIfExists(String name, Set<String> taken) {
+    return appendCounterIfExists(name, taken, Integer.MAX_VALUE);
+  }
+
+  /**
+   * Appends a counter to a name if it already exists in the provided set, ensuring the final result
+   * does not exceed maxLen.
+   */
+  public static String appendCounterIfExists(String name, Set<String> taken, int maxLen) {
     String result = name;
     int counter = 2;
     while (taken.contains(result)) {
-      result = name + "_" + counter;
+      String suffix = "_" + counter;
+      int baseLen = Math.min(name.length(), maxLen - suffix.length());
+      result = name.substring(0, baseLen) + suffix;
       counter++;
     }
     return result;
