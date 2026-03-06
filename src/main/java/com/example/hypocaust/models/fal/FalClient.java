@@ -13,7 +13,7 @@ public class FalClient {
 
   private static final String BASE_URL = "https://queue.fal.run";
   private static final long POLL_INTERVAL_MS = 2000;
-  private static final long MAX_WAIT_MS = 300_000; // 5 minutes
+  private static final long MAX_WAIT_MS = 1_800_000; // 30 minutes
 
   private final RestClient restClient;
 

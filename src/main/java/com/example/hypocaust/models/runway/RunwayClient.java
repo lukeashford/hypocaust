@@ -77,7 +77,7 @@ public class RunwayClient {
 
   private ObjectNode pollTask(String id) {
     int attempts = 0;
-    while (attempts++ < 60) { // ~60s max
+    while (attempts++ < 1800) { // ~30 minutes max
       ObjectNode status = restClient.get()
           .uri("/tasks/{id}", id)
           .accept(MediaType.APPLICATION_JSON)
