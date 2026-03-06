@@ -24,7 +24,6 @@ public class FalClient {
     this.restClient = RestClient.builder()
         .baseUrl(BASE_URL)
         .defaultHeader("Authorization", "Key " + apiKey)
-        .defaultHeader("Content-Type", "application/json")
         .build();
   }
 

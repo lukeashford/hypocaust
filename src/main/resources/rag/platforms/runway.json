@@ -2,7 +2,7 @@
   {
     "name": "Runway Gen-4 Text-to-Video",
     "owner": "runwayml",
-    "id": "gen4-turbo",
+    "id": "gen4.5",
     "tier": "powerful",
     "inputs": [
       "TEXT",
@@ -20,7 +20,7 @@
   {
     "name": "Runway Gen-4 Image-to-Video",
     "owner": "runwayml",
-    "id": "gen4-turbo-i2v",
+    "id": "gen4.5",
     "tier": "powerful",
     "inputs": [
       "IMAGE",
