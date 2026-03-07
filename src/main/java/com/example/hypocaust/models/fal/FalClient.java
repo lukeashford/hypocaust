@@ -101,6 +101,14 @@ public class FalClient {
                   .retrieve()
                   .body(JsonNode.class);
             } catch (RestClientResponseException e) {
+              // fal.ai's CDN occasionally returns HTTP 400 with a Content-Length /
+              // Transfer-Encoding conflict (h11 protocol error). As a fallback, return
+              // the output embedded in the COMPLETED status response, if present.
+              if (response.has("output")) {
+                log.warn("fal.ai result fetch failed ({}), using output from status response",
+                    e.getStatusCode().value());
+                return response.path("output");
+              }
               throw new FalException(
                   "Result fetch failed: " + e.getStatusCode().value() + " " + e.getStatusText()
                       + ": " + e.getResponseBodyAsString());

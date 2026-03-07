@@ -42,13 +42,26 @@ public class RunwayModelExecutor extends AbstractModelExecutor {
   private static final String RUNWAY_SYSTEM_PROMPT = """
       You are planning for a Runway cinematic video generation model.
 
-      INPUT MAPPING:
-      - Construct the 'providerInput' object following the model's input spec described in the
-        Model Docs and Best Practices below.
-      - Optimize prompts for cinematic quality (lens, camera move, lighting, mood).
+      API INPUT SPEC — use EXACTLY these field names:
+      - "promptText"  (string, REQUIRED) — the cinematic description of the scene and motion
+      - "ratio"       (string, REQUIRED) — one of: "1280:720" | "720:1280" | "1104:832" |
+                      "960:960" | "832:1104" | "1584:672". Choose based on the desired aspect
+                      ratio: use "1280:720" for landscape/widescreen, "720:1280" for portrait.
+      - "promptImage" (string URL, optional) — source image URL for image-to-video mode;
+                      use '@artifact_name' if an image artifact is available.
+      - "duration"    (integer, optional) — clip length in seconds; 5 or 10.
+
+      Do NOT invent field names such as "prompt", "text", "image", etc. Only the names above
+      are accepted by the Runway API.
+
+      PROMPT STYLE:
+      - Write promptText as a cinematographer's shot note: subject + camera move + lens +
+        lighting + mood (e.g. "slow push-in toward weathered cliff face, anamorphic lens,
+        golden-hour side light, atmospheric haze, contemplative").
 
       VALIDATION:
-      - If mandatory info is missing, provide an 'errorMessage'.
+      - Both promptText and ratio are mandatory. If you cannot determine a ratio, default to
+        "1280:720". Set errorMessage if any other required info is missing.
 
       OUTPUT KEY CONVENTIONS for outputMapping:
       - Use "video" as the output key for video generation results.
