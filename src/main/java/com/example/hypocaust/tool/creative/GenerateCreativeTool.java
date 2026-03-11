@@ -44,7 +44,7 @@ import org.springframework.web.client.RestClientResponseException;
 public class GenerateCreativeTool extends AbstractArtifactTool<GenerateCreativeResult> {
 
   private static final String LOG_PREFIX = "[CREATIVE]";
-  private static final int MAX_MODEL_ATTEMPTS = 3;
+  private static final int MAX_MODEL_ATTEMPTS = 5;
 
   private final ModelEmbeddingRegistry modelRag;
   private final ExecutionRouter executionRouter;
