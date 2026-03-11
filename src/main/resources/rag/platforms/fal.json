@@ -34,7 +34,7 @@
     "bestPractices": "- Write detailed prompts like a creative brief: subject + wardrobe/materials + lighting + lens +\n  background + mood.\n- Use `image_size` for desired resolution; higher resolutions benefit from slightly more steps.\n- For consistent series, fix `seed` and vary only small prompt segments (e.g., colorway, time of\n  day)."
   },
   {
-    "name": "Kling 1.6 Video",
+    "name": "Kling 1.6 Text-to-Video",
     "owner": "fal-ai",
     "id": "kling-video/v1.6/standard/text-to-video",
     "tier": "powerful",
@@ -47,13 +47,13 @@
         "description": "the generated video"
       }
     ],
-    "description": "Kling 1.6 on fal.ai is a high-quality VIDEO generation model capable of producing cinematic,\ncoherent clips. It features strong motion quality, temporal consistency, and high visual fidelity.\nBest for high-end creative video production, social media content, and complex cinematic concept\nvisualizations from text.",
-    "bestPractices": "- Describe the scene with clear action, camera movement, and mood. Include temporal cues\n  (\"slow pan\", \"camera zooms in\") for better motion control.\n- Keep descriptions focused on a single scene or action; complex multi-scene prompts reduce quality.\n- Use `duration` parameter to control clip length (typically 5-10 seconds)."
+    "description": "Kling 1.6 Text-to-Video on fal.ai generates cinematic video clips from text prompts only. It\nfeatures strong motion quality, temporal consistency, and high visual fidelity. Use this when\nyou have no source image and want to create a video purely from a text description.",
+    "bestPractices": "- Describe the scene with clear action, camera movement, and mood. Include temporal cues\n  (\"slow pan\", \"camera zooms in\") for better motion control.\n- Input: 'prompt' (required text description). Optional: 'duration' (\"5\" or \"10\"), 'aspect_ratio'.\n- Keep descriptions focused on a single scene or action; complex multi-scene prompts reduce quality.\n- Use `duration` parameter to control clip length (typically 5-10 seconds)."
   },
   {
-    "name": "Minimax Video-01 (Hailuo)",
+    "name": "Kling 1.6 Image-to-Video",
     "owner": "fal-ai",
-    "id": "minimax/video-01",
+    "id": "kling-video/v1.6/standard/image-to-video",
     "tier": "powerful",
     "inputs": [
       "TEXT",
@@ -65,8 +65,43 @@
         "description": "the generated video"
       }
     ],
-    "description": "Minimax Video-01 (Hailuo) on fal.ai is a high-performance VIDEO generation model known for excellent\ncinematic motion and temporal consistency. It supports both text-to-video and image-to-video\nworkflows.\nBest for generating high-quality video with complex motion beats and cinematic aesthetics.",
-    "bestPractices": "- Describe motion explicitly with camera and subject behavior; the model responds well to\n  cinematographic vocabulary (\"slow dolly in\", \"subject turns to camera\", \"handheld follow\").\n- Use image-to-video mode with a strong keyframe for character and composition consistency across\n  a series of shots.\n- Keep clip prompts to a single action beat; chain multiple clips in post for complex sequences."
+    "description": "Kling 1.6 Image-to-Video on fal.ai animates a source image into a short cinematic clip. It\npreserves the composition and subjects of the input frame while adding motion guided by the text\nprompt. Best for bringing concept art, stills, or keyframes to life with controlled, high-quality\nmotion.",
+    "bestPractices": "- Input: 'image_url' (URL of the source image, required) and 'prompt' (motion description, required).\n- Optional: 'duration' (\"5\" or \"10\"), 'aspect_ratio', 'negative_prompt', 'cfg_scale' (default 0.5).\n- Describe motion that matches the image; avoid describing content already visible in the image.\n- Use slow, subtle motion descriptions for cinematic results (\"gentle push-in\", \"slow drift\")."
+  },
+  {
+    "name": "Minimax Video-01 Text-to-Video (Hailuo)",
+    "owner": "fal-ai",
+    "id": "minimax/video-01",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Minimax Video-01 Text-to-Video (Hailuo) on fal.ai generates high-quality video from text prompts\nonly, with no source image. It produces excellent cinematic motion and temporal consistency.\nBest for generating video scenes entirely from text when no reference image is available.",
+    "bestPractices": "- Input: 'prompt' (required text description of the scene and motion).\n- Camera movement instructions can be added in square brackets, e.g. '[Pan left]', '[Zoom in]'.\n  Supported: Truck left/right, Pan left/right, Push in/Pull out, Pedestal up/down, Tilt up/down,\n  Zoom in/out, Shake, Tracking shot, Static shot. Max 3 combined movements per prompt.\n- Keep clip prompts to a single action beat; chain multiple clips in post for complex sequences."
+  },
+  {
+    "name": "Minimax Video-01 Image-to-Video (Hailuo)",
+    "owner": "fal-ai",
+    "id": "minimax/video-01/image-to-video",
+    "tier": "powerful",
+    "inputs": [
+      "TEXT",
+      "IMAGE"
+    ],
+    "outputs": [
+      {
+        "kind": "VIDEO",
+        "description": "the generated video"
+      }
+    ],
+    "description": "Minimax Video-01 Image-to-Video (Hailuo) on fal.ai animates a source image into a 6-second\n720p video clip. It supports text-guided motion and produces excellent cinematic consistency.\nBest for animating concept frames, character shots, or product stills with specific motion.",
+    "bestPractices": "- Input: 'image_url' (URL of the source image, required) and 'prompt' (motion description).\n- Camera movement instructions can be added in square brackets in the prompt, e.g. '[Pan left]',\n  '[Zoom in]'. Supported: Truck left/right, Pan left/right, Push in/Pull out, Pedestal up/down,\n  Tilt up/down, Zoom in/out, Shake, Tracking shot, Static shot. Max 3 combined movements.\n- Use image-to-video mode with a strong keyframe for character and composition consistency.\n- Keep clip prompts to a single action beat; chain multiple clips in post for complex sequences."
   },
   {
     "name": "Luma Dream Machine (Ray 2)",

@@ -44,7 +44,7 @@ public class ModelEmbeddingRegistry {
 
   // Constants
   private static final String EXT_JSON = ".json";
-  private static final int DEFAULT_MAX_RESULTS = 5;
+  private static final int DEFAULT_MAX_RESULTS = 10;
   /**
    * Candidate pool fetched from DB before soft-ranking.
    */
@@ -52,7 +52,7 @@ public class ModelEmbeddingRegistry {
   /**
    * Pool passed to the LLM reranker after soft-ranking.
    */
-  private static final int RERANK_POOL_SIZE = 8;
+  private static final int RERANK_POOL_SIZE = 12;
 
   // Tier soft-ranking weights
   private static final Map<String, Integer> TIER_ORDINALS = Map.of(
@@ -137,6 +137,7 @@ public class ModelEmbeddingRegistry {
                   .tier(ch.tier)
                   .platform(ch.platform)
                   .inputs(ch.inputs)
+                  .optionalInputs(ch.optionalInputs)
                   .outputs(ch.outputs)
                   .build();
             } else {
@@ -149,6 +150,7 @@ public class ModelEmbeddingRegistry {
                   || !Objects.equals(existing.getTier(), ch.tier)
                   || !Objects.equals(existing.getPlatform(), ch.platform)
                   || !Objects.equals(existing.getInputs(), ch.inputs)
+                  || !Objects.equals(existing.getOptionalInputs(), ch.optionalInputs)
                   || !Objects.equals(existing.getOutputs(), ch.outputs);
 
               if (requiresReembed || metadataChanged) {
@@ -158,7 +160,7 @@ public class ModelEmbeddingRegistry {
                     : null;
                 existing.update(ch.hash, newEmbedding, ch.owner, ch.modelId,
                     ch.description, ch.bestPractices, ch.tier, ch.platform,
-                    ch.inputs, ch.outputs);
+                    ch.inputs, ch.optionalInputs, ch.outputs);
                 return existing;
               }
             }
@@ -321,7 +323,7 @@ public class ModelEmbeddingRegistry {
         r.getName(), r.getOwner(), r.getModelId(),
         r.getDescription(), r.getBestPractices(),
         r.getTier(), r.getPlatform(),
-        r.getInputs(), r.getOutputs());
+        r.getInputs(), r.getOptionalInputs(), r.getOutputs());
   }
 
   // Parser
@@ -375,17 +377,22 @@ public class ModelEmbeddingRegistry {
           "Model " + m.name() + " must have at least one input and output defined.");
     }
 
+    Set<ArtifactKind> optInputs = m.optionalInputs() != null ? m.optionalInputs() : Set.of();
+
     String stableInputs = toStableInputsString(m.inputs());
     String stableOutputs = toStableOutputsString(m.outputs());
 
     String embeddingText =
         m.name() + " " + m.description() + " tier: " + m.tier() + " inputs: " + stableInputs
             + " outputs: " + stableOutputs;
+    if (!optInputs.isEmpty()) {
+      embeddingText += " optionalInputs: " + toStableInputsString(optInputs);
+    }
 
     String hash = hashCalculator.calculateSha256Hash(embeddingText);
 
     return new Chunk(m.name(), embeddingText, hash, m.owner(), m.id(), m.description(),
-        m.bestPractices(), m.tier(), platform, m.inputs(), m.outputs());
+        m.bestPractices(), m.tier(), platform, m.inputs(), optInputs, m.outputs());
   }
 
   // Data holders
@@ -397,6 +404,7 @@ public class ModelEmbeddingRegistry {
       String id,
       String tier,
       Set<ArtifactKind> inputs,
+      Set<ArtifactKind> optionalInputs,
       Set<OutputSpec> outputs,
       String description,
       String bestPractices
@@ -413,6 +421,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
+      Set<ArtifactKind> optionalInputs,
       Set<OutputSpec> outputs
   ) {
 
@@ -429,6 +438,7 @@ public class ModelEmbeddingRegistry {
       String tier,
       String platform,
       Set<ArtifactKind> inputs,
+      Set<ArtifactKind> optionalInputs,
       Set<OutputSpec> outputs
   ) {
 

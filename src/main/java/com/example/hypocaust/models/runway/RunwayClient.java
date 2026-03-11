@@ -18,7 +18,7 @@ import org.springframework.web.client.RestClient;
 @Slf4j
 public class RunwayClient {
 
-  private static final String BASE_URL = "https://api.runwayml.com/v1";
+  private static final String BASE_URL = "https://api.dev.runwayml.com/v1";
 
   private final ObjectMapper objectMapper;
 
@@ -32,6 +32,7 @@ public class RunwayClient {
     this.restClient = RestClient.builder()
         .baseUrl(BASE_URL)
         .defaultHeader("Authorization", "Bearer " + apiKey)
+        .defaultHeader("X-Runway-Version", "2024-11-06")
         .build();
   }
 
@@ -77,7 +78,7 @@ public class RunwayClient {
 
   private ObjectNode pollTask(String id) {
     int attempts = 0;
-    while (attempts++ < 60) { // ~60s max
+    while (attempts++ < 1800) { // ~30 minutes max
       ObjectNode status = restClient.get()
           .uri("/tasks/{id}", id)
           .accept(MediaType.APPLICATION_JSON)

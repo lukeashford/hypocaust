@@ -40,13 +40,26 @@ public class FalModelExecutor extends AbstractModelExecutor {
   }
 
   private static final String FAL_SYSTEM_PROMPT = """
-      You are planning for a fal.ai model.
+      You are planning for a fal.ai model via the fal.ai Queue REST API.
 
       INPUT MAPPING:
-      - Construct the 'providerInput' object matching the fal.ai model's expected input format.
+      - Construct the 'providerInput' object matching the fal.ai model's expected input schema.
+      - The object is sent as the raw JSON body — do NOT wrap it in an "input" key.
       - Optimize prompts for the best artistic results.
 
+      FAL.AI STANDARD FIELD NAMES:
+      - Text prompt: "prompt" (string, required for all generation models)
+      - Source image: "image_url" (string URL — used by image-to-video and image-to-image models)
+      - Source audio: "audio_url" (string URL — used by audio processing models)
+      - Source video: "video_url" (string URL — used by video processing models)
+      - Negative prompt: "negative_prompt" (string, optional)
+      - Duration: "duration" (string, e.g. "5" or "10", for video models)
+      - Aspect ratio: "aspect_ratio" (string, e.g. "16:9", for video models)
+      - When an artifact reference resolves to a URL, place it in the appropriate field above.
+
       VALIDATION:
+      - If a model requires an image input (image-to-video/image-to-image) but no image artifact
+        is available, set 'errorMessage' explaining this.
       - If mandatory info is missing, provide an 'errorMessage'.
 
       OUTPUT KEY CONVENTIONS for outputMapping:

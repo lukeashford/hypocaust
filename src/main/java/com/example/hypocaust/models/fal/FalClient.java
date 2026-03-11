@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 @Slf4j
@@ -13,7 +14,7 @@ public class FalClient {
 
   private static final String BASE_URL = "https://queue.fal.run";
   private static final long POLL_INTERVAL_MS = 2000;
-  private static final long MAX_WAIT_MS = 300_000; // 5 minutes
+  private static final long MAX_WAIT_MS = 1_800_000; // 30 minutes
 
   private final RestClient restClient;
 
@@ -23,44 +24,65 @@ public class FalClient {
     this.restClient = RestClient.builder()
         .baseUrl(BASE_URL)
         .defaultHeader("Authorization", "Key " + apiKey)
-        .defaultHeader("Content-Type", "application/json")
         .build();
   }
 
   public JsonNode submit(String modelPath, JsonNode input) {
     log.info("Submitting fal.ai job for model: {}", modelPath);
 
-    var response = restClient.post()
-        .uri(uriBuilder -> uriBuilder.path("/" + modelPath).build())
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(input)
-        .retrieve()
-        .body(JsonNode.class);
+    JsonNode response;
+    try {
+      response = restClient.post()
+          .uri(uriBuilder -> uriBuilder.path("/" + modelPath).build())
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(input)
+          .retrieve()
+          .body(JsonNode.class);
+    } catch (RestClientResponseException e) {
+      throw new FalException(
+          e.getStatusCode().value() + " " + e.getStatusText()
+              + ": " + e.getResponseBodyAsString());
+    }
 
     if (response == null) {
       throw new FalException("No response from fal.ai API");
     }
 
-    // If status is present, it's a queued response — poll for completion
+    // Queued response — poll for completion
     if (response.has("request_id")) {
       var requestId = response.path("request_id").asText();
-      return awaitResult(modelPath, requestId);
+      var responseUrl = response.path("response_url").asText(null);
+      return awaitResult(modelPath, requestId, responseUrl);
     }
 
     // Synchronous result
     return response;
   }
 
-  private JsonNode awaitResult(String modelPath, String requestId) {
+  private JsonNode awaitResult(String modelPath, String requestId, String responseUrl) {
     long startTime = System.currentTimeMillis();
 
+    // The status URL must use the base model ID without any subpath.
+    // The response_url from the queue response already has the correct base path
+    // (e.g. https://queue.fal.run/fal-ai/minimax/video-01/requests/{id}), so
+    // appending /status to it is always correct. Fall back to reconstructing
+    // from modelPath only when no response_url was provided.
+    String statusUri = (responseUrl != null && !responseUrl.isBlank())
+        ? responseUrl + "/status"
+        : "/" + modelPath + "/requests/" + requestId + "/status";
+
     while (System.currentTimeMillis() - startTime < MAX_WAIT_MS) {
-      var response = restClient.get()
-          .uri(uriBuilder -> uriBuilder
-              .path("/" + modelPath + "/requests/" + requestId + "/status")
-              .build())
-          .retrieve()
-          .body(JsonNode.class);
+      JsonNode response;
+      try {
+        response = restClient.get()
+            .uri(statusUri)
+            .retrieve()
+            .body(JsonNode.class);
+      } catch (RestClientResponseException e) {
+        throw new FalException(
+            "Status poll failed: " + e.getStatusCode().value() + " " + e.getStatusText()
+                + ": " + e.getResponseBodyAsString());
+      }
 
       if (response != null) {
         var status = response.path("status").asText();
@@ -69,13 +91,28 @@ public class FalClient {
           case "COMPLETED" -> {
             log.info("fal.ai job completed after {}ms",
                 System.currentTimeMillis() - startTime);
-            // Fetch the result
-            return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                    .path("/" + modelPath + "/requests/" + requestId)
-                    .build())
-                .retrieve()
-                .body(JsonNode.class);
+            // Prefer the response_url provided by the queue if available
+            var resultUri = (responseUrl != null && !responseUrl.isBlank())
+                ? responseUrl
+                : "/" + modelPath + "/requests/" + requestId;
+            try {
+              return restClient.get()
+                  .uri(resultUri)
+                  .retrieve()
+                  .body(JsonNode.class);
+            } catch (RestClientResponseException e) {
+              // fal.ai's CDN occasionally returns HTTP 400 with a Content-Length /
+              // Transfer-Encoding conflict (h11 protocol error). As a fallback, return
+              // the output embedded in the COMPLETED status response, if present.
+              if (response.has("output")) {
+                log.warn("fal.ai result fetch failed ({}), using output from status response",
+                    e.getStatusCode().value());
+                return response.path("output");
+              }
+              throw new FalException(
+                  "Result fetch failed: " + e.getStatusCode().value() + " " + e.getStatusText()
+                      + ": " + e.getResponseBodyAsString());
+            }
           }
           case "FAILED" -> throw new FalException(
               "fal.ai job failed: " + response.path("error").asText("unknown error"));
