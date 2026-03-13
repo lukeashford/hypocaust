@@ -1,258 +1,692 @@
-# Artifact & History Exploration
+# User Upload Analysis
 
-Replace the monolithic `ProjectContextTool` (Haiku Q&A over a data dump) with two primitive,
-composable tools that give Opus direct access to project knowledge — the same pattern coding
-agents use: structured lookup + semantic search, no interpretation layer in between.
+Uploaded artifacts arrive with no semantic understanding — we need to analyze them so the decomposer
+can work with them the same way it works with generated artifacts (name, title, description,
+indexable content).
 
 ## Design Principles
 
-- Opus does the reasoning. Tools return **verbatim data**, not summaries.
-- Most tasks need nothing beyond the artifact list already in the user message (Tier 0, free).
-- Some tasks need a metadata lookup — `inspect_artifact` covers that with zero LLM cost.
-- Deep content search (`search_project`) uses the embedding infrastructure already in place.
-  It only runs when Opus explicitly decides it needs to look inside an artifact or the history.
-- Large fields are indexed **eagerly at manifest time** — one embedding call per chunk, done
-  once, always ready.
-
-## Example Task Walkthrough
-
-> "That audio where the protagonist talks about joining the army: I really liked last week's
-> version, but I think the text isn't exactly what's in the script. Fix that."
-
-1. Opus sees the artifact list. No audio has "army" in its description. It calls
-   `search_project("protagonist joining the army")`.
-2. The tool returns the matching chunk from `recruitment_speech_audio` metadata field
-   `providerInput.text` (verbatim) and also from `movie_script` field `inlineContent` (the
-   matching scene text, verbatim).
-3. Opus now knows the artifact name. It calls `inspect_artifact("recruitment_speech_audio")`
-   to get the voice_id, model, and provider without needing to guess.
-4. To find last week's version: Opus calls `search_project("recruitment_speech_audio",
-   scope: "history")`. The tool returns the relevant task executions formatted with dates,
-   execution names, and what changed.
-5. Opus has everything: voice_id, the correct script text from the RAG result, and the
-   execution name for the historical version if a restore is needed. It decomposes the fix.
+- **Analyze on upload, not on task.** Analysis starts the moment the file hits the server. The user
+  is typing their task during this time, so analysis is "free" latency-wise.
+- **Independent per artifact.** Each upload gets its own async analysis. Deleting an artifact
+  cancels or orphans its analysis — no cross-artifact coordination.
+- **Never block forever.** Every analysis path has a hard timeout and a fallback. If everything
+  fails, the artifact still manifests with `"unknown_upload"` / `"Unknown Upload"` /
+  `"User-uploaded file (analysis failed)"`. The task must never hang.
+- **Infrastructure models are hardcoded.** Analysis uses `AnthropicChatModelSpec.CLAUDE_HAIKU_4_5`
+  directly via `ChatService.call(ModelSpecEnum, ...)`. These models never appear in the
+  `SemanticSearchModelRegistry` and cannot be selected by the generation pipeline.
 
 ---
 
-## Phase 1 — Eager Chunk Indexing at Manifest Time
+## Status Model
 
-### 1.1 DB Migration: `V3__artifact_chunks.sql`
-
-```sql
-CREATE TABLE artifact_chunk
-(
-    id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    artifact_id uuid        NOT NULL REFERENCES artifact (id) ON DELETE CASCADE,
-    project_id  uuid        NOT NULL,
-    field_path  text        NOT NULL, -- e.g. "inlineContent", "metadata.providerInput.text"
-    chunk_index int         NOT NULL,
-    char_offset int         NOT NULL,
-    text        text        NOT NULL,
-    embedding   vector(1536) NOT NULL,
-    UNIQUE (artifact_id, field_path, chunk_index)
-);
-
-CREATE INDEX idx_artifact_chunk_vector
-    ON artifact_chunk USING ivfflat (embedding vector_cosine_ops);
-CREATE INDEX idx_artifact_chunk_project ON artifact_chunk (project_id);
-CREATE INDEX idx_artifact_chunk_artifact ON artifact_chunk (artifact_id);
-```
-
-### 1.2 `ArtifactChunkEntity`
-
-JPA entity mapping `artifact_chunk`. Mirrors the `AbstractEmbedding` pattern:
-- `@Column vector(1536)` + `@JdbcTypeCode(SqlTypes.VECTOR)` + `@Array(length = 1536)` for the
-  embedding.
-- `artifactId`, `projectId`, `fieldPath`, `chunkIndex`, `charOffset`, `text` as plain columns.
-- Does not extend `AbstractEmbedding` (which has a `name` unique constraint that doesn't fit
-  here). Implement the vector column directly, same as the parent class does.
-
-### 1.3 `ArtifactChunkRepository`
-
-Spring Data JPA repository with two JPQL queries using the existing `cosine_distance` function:
+Add `UPLOADED` to `ArtifactStatus`:
 
 ```java
-// Cross-artifact: all chunks for a project, ordered by cosine distance
-@Query("select c from ArtifactChunkEntity c where c.projectId = :projectId " +
-       "order by cosine_distance(c.embedding, :query)")
-List<ArtifactChunkEntity> findByProjectSimilarity(
-    @Param("projectId") UUID projectId,
-    @Param("query") float[] query,
-    Pageable pageable);
-
-// Within-artifact: all chunks for one artifact, ordered by cosine distance
-@Query("select c from ArtifactChunkEntity c where c.artifactId = :artifactId " +
-       "order by cosine_distance(c.embedding, :query)")
-List<ArtifactChunkEntity> findByArtifactSimilarity(
-    @Param("artifactId") UUID artifactId,
-    @Param("query") float[] query,
-    Pageable pageable);
+GESTATING,    // AI-generated, still in progress
+UPLOADED,     // User-uploaded, stored but not yet analyzed (name/title/description pending)
+MANIFESTED,   // Fully ready
+FAILED,
+CANCELLED
 ```
 
-### 1.4 `ArtifactChunker`
+**Why a status, not a separate table:** The artifact already exists in the `artifact` table the
+moment the upload completes. A separate "pending analysis" table would require joining on every
+query, and we'd need to keep them in sync. A status is a single column check — `WHERE status =
+'UPLOADED'` — and it composes naturally with the existing version management queries. The artifact
+row is the single source of truth.
 
-Pure utility class (no Spring). Extracts indexable text chunks from an artifact.
+**Lifecycle:**
+```
+POST /projects/{projectId}/artifacts
+  → store file → persist as UPLOADED (placeholder name/title/description)
+  → kick off async analysis (returns Future)
+  → return 201 with ArtifactDto (status: UPLOADED)
 
-**Indexable fields** — walks the artifact generically, not a hardcoded list:
-- `inlineContent` (if present) — `inlineContent.asText()`
-- Every leaf-string in the `metadata` JSON tree — traversed recursively, field path tracked
-  (e.g. `metadata.providerInput.text`, `metadata.generation_details.prompt`, or any future field)
+Analysis completes:
+  → UPDATE artifact SET name=..., title=..., description=..., status='MANIFESTED'
+  → trigger ArtifactIndexingService.indexManifested() for text-based content
 
-Any text value exceeding `CHUNK_THRESHOLD = 500` chars is chunked and indexed.
-Fields under the threshold are fully returned by `inspect_artifact` and don't need indexing.
+Analysis fails (all retries exhausted or timeout):
+  → UPDATE artifact SET name='unknown_upload_<uuid-prefix>', title='Unknown Upload',
+    description='User-uploaded file (analysis failed)', status='MANIFESTED'
+  → log warning
 
-**Chunking strategy**:
-- Split on double-newline (`\n\n`) to respect paragraph/scene boundaries.
-- If a paragraph exceeds `CHUNK_MAX = 1000` chars, split further on single newlines.
-- If still too large, hard-split at `CHUNK_MAX` on the nearest space.
-- Track `charOffset` for each chunk (start position in the original string).
-- Return `List<Chunk>` where `Chunk` is a local record: `(fieldPath, chunkIndex, charOffset, text)`.
+DELETE /projects/{projectId}/artifacts/{artifactId}:
+  → cancel Future if still running (best-effort)
+  → delete artifact row (CASCADE cleans up chunks)
+```
 
-### 1.5 `ArtifactIndexingService`
+---
+
+## Phase 1 — ArtifactAnalysisService
+
+### 1.1 Core Service
 
 ```java
 @Service
-public class ArtifactIndexingService {
+@RequiredArgsConstructor
+@Slf4j
+public class ArtifactAnalysisService {
 
-    public void indexManifested(Artifact artifact, UUID projectId) {
-        List<ArtifactChunker.Chunk> chunks = artifactChunker.extract(artifact);
-        if (chunks.isEmpty()) return;
+  private static final Duration ANALYSIS_TIMEOUT = Duration.ofMinutes(3);
 
-        List<String> texts = chunks.stream().map(ArtifactChunker.Chunk::text).toList();
-        List<float[]> embeddings = embeddingService.generateEmbeddings(texts);
+  private final ArtifactRepository artifactRepository;
+  private final ArtifactMapper artifactMapper;
+  private final ArtifactIndexingService artifactIndexingService;
+  private final TextAnalyzer textAnalyzer;
+  private final ImageAnalyzer imageAnalyzer;
+  private final AudioAnalyzer audioAnalyzer;
+  private final VideoAnalyzer videoAnalyzer;
+  private final PdfAnalyzer pdfAnalyzer;
 
-        // Build and save entities (replaces any existing chunks for this artifactId)
-        artifactChunkRepository.deleteByArtifactId(artifact.id());
-        List<ArtifactChunkEntity> entities = IntStream.range(0, chunks.size())
-            .mapToObj(i -> buildEntity(chunks.get(i), embeddings.get(i), artifact.id(), projectId))
-            .toList();
-        artifactChunkRepository.saveAll(entities);
+  // Track running analyses for cancellation
+  private final ConcurrentHashMap<UUID, Future<?>> runningAnalyses = new ConcurrentHashMap<>();
+
+  public void analyzeAsync(UUID artifactId, UUID projectId) {
+    Future<?> future = Thread.startVirtualThread(() -> analyze(artifactId, projectId));
+    runningAnalyses.put(artifactId, future);
+  }
+
+  public void cancelAnalysis(UUID artifactId) {
+    Future<?> future = runningAnalyses.remove(artifactId);
+    if (future != null && !future.isDone()) {
+      future.cancel(true);
     }
+  }
+
+  private void analyze(UUID artifactId, UUID projectId) {
+    try {
+      ArtifactEntity entity = artifactRepository.findById(artifactId).orElse(null);
+      if (entity == null || entity.getStatus() != ArtifactStatus.UPLOADED) {
+        runningAnalyses.remove(artifactId);
+        return; // deleted or already analyzed
+      }
+
+      AnalysisResult result = analyzeWithTimeout(entity);
+      applyResult(entity, result, projectId);
+
+    } catch (Exception e) {
+      log.warn("Analysis failed for artifact {}: {}", artifactId, e.getMessage());
+      applyFallback(artifactId);
+    } finally {
+      runningAnalyses.remove(artifactId);
+    }
+  }
+
+  private AnalysisResult analyzeWithTimeout(ArtifactEntity entity) {
+    try {
+      return CompletableFuture
+          .supplyAsync(() -> dispatch(entity))
+          .get(ANALYSIS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      log.warn("Analysis timed out for artifact {} after {}", entity.getId(), ANALYSIS_TIMEOUT);
+      return AnalysisResult.FALLBACK;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return AnalysisResult.FALLBACK;
+    } catch (ExecutionException e) {
+      log.warn("Analysis execution failed for artifact {}: {}", entity.getId(),
+          e.getCause().getMessage());
+      return AnalysisResult.FALLBACK;
+    }
+  }
+
+  private AnalysisResult dispatch(ArtifactEntity entity) {
+    return switch (entity.getKind()) {
+      case TEXT -> textAnalyzer.analyze(entity);
+      case IMAGE -> imageAnalyzer.analyze(entity);
+      case AUDIO -> audioAnalyzer.analyze(entity);
+      case VIDEO -> videoAnalyzer.analyze(entity);
+      case PDF -> pdfAnalyzer.analyze(entity);
+      case OTHER -> AnalysisResult.FALLBACK;
+    };
+  }
+
+  private void applyResult(ArtifactEntity entity, AnalysisResult result, UUID projectId) {
+    entity.setName(result.name());
+    entity.setTitle(result.title());
+    entity.setDescription(result.description());
+    entity.setStatus(ArtifactStatus.MANIFESTED);
+    artifactRepository.save(entity);
+
+    // Trigger indexing for text-based content (same as generated artifacts)
+    if (result.hasIndexableContent()) {
+      Artifact domain = artifactMapper.toDomain(entity);
+      artifactIndexingService.indexManifested(domain, projectId);
+    }
+  }
+
+  private void applyFallback(UUID artifactId) {
+    artifactRepository.findById(artifactId).ifPresent(entity -> {
+      String prefix = entity.getName() != null ? entity.getName() : "unknown_upload";
+      entity.setName(prefix);
+      entity.setTitle("Unknown Upload");
+      entity.setDescription("User-uploaded file (analysis failed)");
+      entity.setStatus(ArtifactStatus.MANIFESTED);
+      artifactRepository.save(entity);
+    });
+  }
 }
 ```
 
-Called from `ArtifactService` in a Spring `@Async` method to avoid blocking the commit path.
-Failures are logged and swallowed — indexing is best-effort, never business-critical.
+### 1.2 AnalysisResult
 
-Requires `@EnableAsync` in a config class if not already present.
-
-### 1.6 Hook into `ArtifactService.persist()`
-
-After `artifactRepository.save(...)`:
 ```java
-if (saved.getStatus() == ArtifactStatus.MANIFESTED) {
-    artifactIndexingService.indexManifested(artifactMapper.toDomain(saved), projectId);
+public record AnalysisResult(String name, String title, String description,
+                              boolean hasIndexableContent) {
+
+  static final AnalysisResult FALLBACK = new AnalysisResult(
+      null, "Unknown Upload", "User-uploaded file (analysis failed)", false);
+
+  boolean isFallback() {
+    return this == FALLBACK || name == null;
+  }
 }
 ```
 
-`ArtifactService` gets `ArtifactIndexingService` as a new dependency.
+### 1.3 Analyzer Interface
+
+```java
+public interface ArtifactContentAnalyzer {
+  AnalysisResult analyze(ArtifactEntity entity);
+}
+```
+
+Each analyzer is a `@Component` implementing this interface.
 
 ---
 
-## Phase 2 — Two New Tools
+## Phase 2 — Analyzers by Kind
 
-### 2.1 `InspectArtifactTool` (`inspect_artifact`)
+### 2.1 Infrastructure Model Access
 
-**No LLM call.** Looks up the artifact by name from the current task execution context via
-`TaskExecutionContextHolder` and formats all fields as structured text.
+All analyzers that need an LLM use the established infrastructure model pattern:
 
 ```java
-@Tool(name = "inspect_artifact", description = """
-    Return the full metadata for a named artifact: kind, status, generation model, generation
-    prompt, provider-specific inputs (e.g. voice_id, spoken text for audio), dimensions,
-    mime type, and error message if failed.
-    For large text fields (script content, long spoken text), returns a 200-character preview
-    and the total size. Use search_project to find specific content within those large fields.
-    """)
-public String inspect(@ToolParam(description = "Artifact name") String name)
+private static final AnthropicChatModelSpec ANALYSIS_MODEL =
+    AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
 ```
 
-**Field formatting rules:**
-- All small fields (≤ 500 chars): return verbatim.
-- `metadata` JSON: traverse recursively. Any leaf-string > 500 chars:
-  `field.path (N chars): "first 200 chars…" [use search_project to access full content]`
-- `inlineContent` → same rule: if > 500 chars, show 200-char preview + size.
+Called via `chatService.call(ANALYSIS_MODEL, systemPrompt, userContent)`.
 
-Returns `"Artifact not found: <name>"` if the name doesn't exist in the current state.
+This is the same pattern used by the Decomposer (hardcoded Opus) and the old ProjectContextTool
+(hardcoded Haiku). These models **never** enter `SemanticSearchModelRegistry` because:
 
-### 2.2 `SearchProjectTool` (`search_project`)
+1. They are internal infrastructure, not user-facing creative tools.
+2. The registry's semantic search matches on task descriptions — "analyze this image" would
+   incorrectly match Haiku as a candidate for image generation tasks.
+3. The registry's output-kind filtering (added for the ElevenLabs fix) would need special-casing
+   to distinguish "can analyze audio" from "can generate audio".
 
-Two paths based on `scope`:
+**Rule: if a model is used for internal plumbing (analysis, decomposition, context Q&A), hardcode
+the enum. If it's used for user-facing creative generation, register it in the platform JSONs.**
 
-**Scope = "history"** (structured, no embeddings):
-- Load task executions for the project via `TaskExecutionRepository`, ordered by
-  `created_at DESC`.
-- Format each as:
-  ```
-  [STATUS] YYYY-MM-DD "execution_name" — commit_message
-    changed: artifact_name (added/edited/deleted), ...
-  ```
-- Default: 50 most recent executions.
-- Accepts optional `offset` parameter (default 0) so the decomposer can paginate further
-  back (e.g. `search_project("...", scope: "history", offset: 50)` returns entries 51–100).
-- The response footer shows `"Showing entries {offset+1}–{offset+count} of {total}"` so the
-  decomposer knows whether more history exists.
-- No embedding, no LLM.
+### 2.2 TextAnalyzer
 
-**Scope = artifact name or null/all** (RAG over indexed chunks):
-- Embed the query: `EmbeddingService.generateEmbedding(query)`
-- If scope is an artifact name:
-  - Resolve the artifact to its UUID via `VersionManagementService.getMaterializedArtifactAt()`
-  - Query `ArtifactChunkRepository.findByArtifactSimilarity(artifactId, queryEmb, PageRequest.of(0, 5))`
-- If scope is null or "all":
-  - Query `ArtifactChunkRepository.findByProjectSimilarity(projectId, queryEmb, PageRequest.of(0, 5))`
-- Format each result chunk as:
-  ```
-  [artifact_name / field_path, chunk N]
-  <verbatim chunk text>
-  ```
-- Return the formatted list.
-
-If no chunks found: `"No matching content found."` — Opus knows the artifact has no indexed
-content (e.g. it's an image) or the concept isn't present in the project.
+Cheapest path. Read `inlineContent` or fetch from storage, send to Haiku.
 
 ```java
-@Tool(name = "search_project", description = """
-    Search project content and history by natural language query.
+@Component
+@RequiredArgsConstructor
+public class TextAnalyzer implements ArtifactContentAnalyzer {
 
-    scope = "history": returns the task execution log (50 at a time) — what was done, what
-                       changed, when. Use offset to paginate further back.
-                       Use to find historical artifact versions, execution names, or past attempts.
-    scope = <artifact name>: semantic search within that artifact's content fields only.
-                       Use when you know which artifact to look in but need specific text
-                       (e.g. a dialogue on page 30 of a script).
-    scope = omitted: semantic search across all artifact content in the project.
-                       Use when you don't know which artifact contains the relevant concept.
+  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
+  private static final int MAX_SAMPLE_CHARS = 4000;
 
-    Returns verbatim matching text chunks with artifact name and field path.
-    """)
-public String search(
-    @ToolParam(description = "Natural language search query") String query,
-    @ToolParam(description = "Artifact name, 'history', or omit for all",
-               required = false) String scope,
-    @ToolParam(description = "For history scope: skip this many entries (default 0) to paginate further back",
-               required = false) Integer offset)
+  private final ChatService chatService;
+  private final StorageService storageService;
+
+  @Override
+  public AnalysisResult analyze(ArtifactEntity entity) {
+    String text = extractText(entity);
+    String sample = text.length() > MAX_SAMPLE_CHARS
+        ? text.substring(0, MAX_SAMPLE_CHARS) : text;
+
+    String response = chatService.call(MODEL, """
+        You are analyzing a user-uploaded text file. Based on the content below, respond with
+        exactly three lines:
+        name: <snake_case_name>
+        title: <Human Readable Title>
+        description: <One sentence describing what this text is about>
+
+        The name should be a short, semantic identifier like "movie_script", "character_bio",
+        "meeting_notes". The title should be human-readable like "Movie Script",
+        "Character Biography", "Meeting Notes".""",
+        sample);
+
+    return parseResponse(response);
+  }
+}
+```
+
+### 2.3 ImageAnalyzer
+
+Vision call to Haiku 4.5 (which supports vision).
+
+```java
+@Component
+@RequiredArgsConstructor
+public class ImageAnalyzer implements ArtifactContentAnalyzer {
+
+  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
+
+  private final ChatService chatService;
+  private final StorageService storageService;
+
+  @Override
+  public AnalysisResult analyze(ArtifactEntity entity) {
+    // Fetch image bytes from storage, encode as base64 for vision
+    byte[] imageBytes = storageService.fetch(entity.getStorageKey());
+
+    String response = chatService.callWithImage(MODEL, """
+        You are analyzing a user-uploaded image. Respond with exactly three lines:
+        name: <snake_case_name>
+        title: <Human Readable Title>
+        description: <One sentence describing what this image shows>
+
+        Examples: name: hero_headshot, title: Hero Headshot,
+        description: A close-up portrait of a young woman with dramatic side lighting.""",
+        imageBytes, entity.getMimeType());
+
+    return parseResponse(response);
+  }
+}
+```
+
+**Note:** `ChatService` needs a new overload `callWithImage(ModelSpecEnum, String system,
+byte[] image, String mimeType)` that constructs a multimodal user message. This is the only new
+method on ChatService — everything else uses existing infrastructure.
+
+### 2.4 AudioAnalyzer
+
+Classify first, then branch.
+
+```java
+@Component
+@RequiredArgsConstructor
+public class AudioAnalyzer implements ArtifactContentAnalyzer {
+
+  private static final Duration SHORT_AUDIO_THRESHOLD = Duration.ofSeconds(5);
+  private static final Duration LONG_AUDIO_THRESHOLD = Duration.ofMinutes(3);
+  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
+
+  private final StorageService storageService;
+  private final TranscriptionService transcriptionService;
+  private final ChatService chatService;
+
+  @Override
+  public AnalysisResult analyze(ArtifactEntity entity) {
+    Duration duration = extractDuration(entity);
+
+    // Heuristic classification
+    if (duration != null && duration.compareTo(SHORT_AUDIO_THRESHOLD) < 0) {
+      return sfxResult(entity, duration);
+    }
+    if (duration != null && duration.compareTo(LONG_AUDIO_THRESHOLD) > 0) {
+      return musicOrLongAudioResult(entity, duration);
+    }
+
+    // Ambiguous range: try transcription on a 15-second sample from 25% in
+    return classifyByTranscription(entity, duration);
+  }
+
+  private AnalysisResult classifyByTranscription(ArtifactEntity entity, Duration duration) {
+    try {
+      TranscriptionResult transcript = transcriptionService.transcribeSample(
+          entity.getStorageKey(), duration, 0.25, Duration.ofSeconds(15));
+
+      if (transcript.isHighConfidence()) {
+        // Speech detected — transcribe fully and generate description
+        String fullTranscript = transcriptionService.transcribeFull(entity.getStorageKey());
+        String sample = fullTranscript.length() > 2000
+            ? fullTranscript.substring(0, 2000) : fullTranscript;
+        return generateFromTranscript(sample);
+      }
+
+      // Low confidence → music or SFX
+      return musicOrLongAudioResult(entity, duration);
+
+    } catch (Exception e) {
+      return durationBasedFallback(entity, duration);
+    }
+  }
+}
+```
+
+**TranscriptionService** wraps OpenAI Whisper API (already available via OpenAI API key in config).
+Two methods:
+- `transcribeSample(storageKey, totalDuration, startFraction, sampleLength)` — extracts a clip,
+  transcribes, returns `TranscriptionResult` with text + confidence.
+- `transcribeFull(storageKey)` — full file transcription.
+
+Whisper cost: ~$0.006/minute. A 15-second probe: ~$0.0015. Full 3-minute transcription: ~$0.018.
+
+### 2.5 VideoAnalyzer
+
+Keyframe extraction + vision. The search strategy prioritizes frames that are most likely to
+contain meaningful content.
+
+```java
+@Component
+@RequiredArgsConstructor
+public class VideoAnalyzer implements ArtifactContentAnalyzer {
+
+  private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
+
+  // Probe positions as fractions of total duration, in priority order.
+  // 25% skips intros/logos. 50% is statistically most representative.
+  // 75% catches back-loaded content. 10% is a last resort past any opening slate.
+  private static final double[] PROBE_POSITIONS = {0.25, 0.50, 0.75, 0.10};
+
+  private static final Set<String> INCONCLUSIVE_MARKERS = Set.of(
+      "black", "blank", "dark screen", "no visible content", "text only",
+      "loading", "title card", "slate", "logo");
+
+  private final StorageService storageService;
+  private final ChatService chatService;
+
+  @Override
+  public AnalysisResult analyze(ArtifactEntity entity) {
+    Duration duration = extractDuration(entity);
+
+    for (double position : PROBE_POSITIONS) {
+      try {
+        byte[] frame = extractKeyframe(entity.getStorageKey(), duration, position);
+        // TODO: extractKeyframe will use FFmpeg integration (see Phase 5)
+        // For now, throw UnsupportedOperationException
+
+        String response = chatService.callWithImage(MODEL, """
+            You are analyzing a single frame from a video. First, assess whether this frame
+            shows meaningful visual content (not a black screen, logo, slate, or loading screen).
+
+            If the frame IS meaningful, respond with:
+            conclusive: true
+            name: <snake_case_name>
+            title: <Human Readable Title>
+            description: <One sentence describing what this video appears to show>
+
+            If the frame is NOT meaningful (black, blank, logo, text-only), respond with:
+            conclusive: false""",
+            frame, "image/jpeg");
+
+        if (isConclusiveResponse(response)) {
+          return parseResponse(response);
+        }
+        // Inconclusive — try next probe position
+
+      } catch (UnsupportedOperationException e) {
+        // FFmpeg not yet integrated — fall through to fallback
+        break;
+      } catch (Exception e) {
+        log.debug("Frame extraction failed at position {} for artifact {}: {}",
+            position, entity.getId(), e.getMessage());
+      }
+    }
+
+    // All probes failed or FFmpeg not available
+    return durationBasedFallback(entity, duration);
+  }
+
+  private byte[] extractKeyframe(String storageKey, Duration duration, double position) {
+    // TODO: Integrate with FFmpeg service when available.
+    // Expected call: ffmpegService.extractFrame(storageKey, duration.multipliedBy(position))
+    // Returns JPEG bytes of a single frame at the given timestamp.
+    // ffmpeg -ss <timestamp> -i <input> -vframes 1 -f image2 pipe:1
+    throw new UnsupportedOperationException(
+        "Video keyframe extraction requires FFmpeg integration (not yet available)");
+  }
+}
+```
+
+### 2.6 PdfAnalyzer
+
+Extract text, then delegate to the text analysis path.
+
+```java
+@Component
+@RequiredArgsConstructor
+public class PdfAnalyzer implements ArtifactContentAnalyzer {
+
+  private final TextAnalyzer textAnalyzer;
+  private final StorageService storageService;
+  private final PdfTextExtractor pdfTextExtractor;
+
+  @Override
+  public AnalysisResult analyze(ArtifactEntity entity) {
+    byte[] pdfBytes = storageService.fetch(entity.getStorageKey());
+    String text = pdfTextExtractor.extract(pdfBytes);
+
+    if (text.isBlank()) {
+      // Scanned PDF with no text layer — treat as image (first page)
+      return AnalysisResult.FALLBACK;
+    }
+
+    // Reuse text analysis with the extracted content
+    return textAnalyzer.analyzeText(text);
+  }
+}
+```
+
+`PdfTextExtractor` wraps Apache PDFBox `PDDocument` / `PDFTextStripper`. Single dependency,
+well-maintained, no native code.
+
+---
+
+## Phase 3 — Upload Flow Changes
+
+### 3.1 ArtifactUploadService Changes
+
+The upload service currently creates artifacts as `MANIFESTED` immediately. Change to `UPLOADED`
+and kick off analysis:
+
+```java
+public ArtifactDto upload(UUID projectId, MultipartFile file, String name, String title,
+    String description) {
+  // ... existing storage logic ...
+
+  boolean clientProvidedMetadata = hasExplicitMetadata(name, title, description);
+
+  ArtifactStatus initialStatus = clientProvidedMetadata
+      ? ArtifactStatus.MANIFESTED
+      : ArtifactStatus.UPLOADED;
+
+  Artifact artifact = Artifact.builder()
+      .name(effectiveName)
+      .kind(kindFromMimeType(mimeType))
+      .storageKey(storageKey)
+      .title(effectiveTitle)
+      .description(effectiveDescription)
+      .status(initialStatus)
+      .mimeType(mimeType)
+      .build();
+
+  Artifact saved = artifactService.persistUpload(artifact, projectId);
+
+  if (initialStatus == ArtifactStatus.UPLOADED) {
+    artifactAnalysisService.analyzeAsync(saved.id(), projectId);
+  }
+
+  return artifactExternalizer.externalize(saved);
+}
+
+private boolean hasExplicitMetadata(String name, String title, String description) {
+  return (name != null && !name.isBlank())
+      && (title != null && !title.isBlank())
+      && (description != null && !description.isBlank());
+}
+```
+
+Only skip analysis when the client provides **all three** fields (name + title + description).
+If even one is missing, analyze.
+
+### 3.2 Artifact Deletion Endpoint
+
+```java
+// In ArtifactController:
+@DeleteMapping(Routes.PROJECT_ARTIFACTS + "/{artifactId}")
+@ResponseStatus(HttpStatus.NO_CONTENT)
+public void deleteArtifact(@PathVariable UUID projectId, @PathVariable UUID artifactId) {
+  artifactAnalysisService.cancelAnalysis(artifactId);
+  artifactService.delete(artifactId, projectId);
+}
+```
+
+### 3.3 Swagger Documentation Update
+
+Per the co-located docs principle, update the `@Parameter` annotations:
+
+```java
+@Parameter(description = """
+    Project-unique semantic name (snake_case). Only provide if the user explicitly named
+    the artifact. Example: "hero_headshot". When omitted, the server analyzes the file to
+    generate an appropriate name.""")
+@RequestParam(value = "name", required = false) String name,
+
+@Parameter(description = """
+    Human-readable title. Only provide if the user explicitly titled the artifact.
+    Example: "Hero Headshot". When omitted, generated from content analysis.""")
+@RequestParam(value = "title", required = false) String title,
+
+@Parameter(description = """
+    Description of the artifact's contents. Only provide if the user explicitly described
+    it. Example: "A close-up portrait of the main character with dramatic lighting".
+    When omitted, generated from content analysis.""")
+@RequestParam(value = "description", required = false) String description
 ```
 
 ---
 
-## Phase 3 — Decomposer Wiring & Prompt Update
+## Phase 4 — Task-Time Integration
 
-### 3.1 Update `Decomposer`
+### 4.1 Await Pending Uploads in TaskService
 
-- Remove `ProjectContextTool` dependency and its registration in `chatService.call(...)`.
-- Add `InspectArtifactTool` and `SearchProjectTool` as constructor dependencies and pass
-  them to `chatService.call(...)`.
+When a task starts, check if any `UPLOADED` artifacts exist for the project. If so, wait for
+them — but with a hard ceiling.
 
-### 3.2 Update `PromptFragments.artifactAwareness()`
+```java
+// In TaskService.executeTask(), after setting context, before todoExecutor.execute():
 
-**No tool documentation here.** Per co-located documentation principle, each tool's `@Tool`
-description (already in the decomposer's context via tool registration) is the single source
-of truth for when and how to use it. The prompt fragment only needs to remove references to the
-deleted `ProjectContextTool`; it does not re-explain the new tools.
+List<ArtifactEntity> pendingUploads = artifactRepository
+    .findByProjectIdAndStatus(projectId, ArtifactStatus.UPLOADED);
 
-### 3.3 Delete `ProjectContextTool`
+if (!pendingUploads.isEmpty()) {
+  todoExecutor.execute("Analyzing uploads...", () -> {
+    awaitPendingAnalyses(pendingUploads);
+    return DecomposerResult.success("Uploads analyzed");
+  });
+}
+
+// Then proceed with the actual task
+var result = todoExecutor.execute(rootLabel, () -> decomposer.execute(task));
+```
+
+### 4.2 The Await Logic — No Busy Wait, No Infinite Block
+
+Virtual threads are enabled (`spring.threads.virtual.enabled: true`), and the run executor uses
+`Executors.newVirtualThreadPerTaskExecutor()`. This means `Thread.sleep()` inside a virtual
+thread is cheap — it doesn't pin a platform thread. Polling is acceptable here.
+
+```java
+private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+private static final Duration MAX_WAIT = Duration.ofMinutes(4);
+// 4 min > 3 min analysis timeout — guarantees the analysis either completes or times out first
+
+private void awaitPendingAnalyses(List<ArtifactEntity> pending) {
+  Instant deadline = Instant.now().plus(MAX_WAIT);
+  Set<UUID> remaining = pending.stream()
+      .map(ArtifactEntity::getId)
+      .collect(Collectors.toCollection(HashSet::new));
+
+  while (!remaining.isEmpty() && Instant.now().isBefore(deadline)) {
+    // Re-query only the ones we're still waiting for
+    List<ArtifactEntity> current = artifactRepository.findAllById(remaining);
+
+    for (ArtifactEntity entity : current) {
+      if (entity.getStatus() != ArtifactStatus.UPLOADED) {
+        remaining.remove(entity.getId()); // analyzed (or deleted)
+      }
+    }
+
+    if (remaining.isEmpty()) break;
+
+    try {
+      Thread.sleep(POLL_INTERVAL);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      break;
+    }
+  }
+
+  // Force-resolve any stragglers
+  if (!remaining.isEmpty()) {
+    log.warn("Analysis did not complete in time for {} artifact(s), applying fallback",
+        remaining.size());
+    for (UUID id : remaining) {
+      artifactAnalysisService.forceComplete(id);
+    }
+  }
+}
+```
+
+The `forceComplete(UUID)` method on `ArtifactAnalysisService` cancels any running future and
+applies the fallback name/title/description, transitioning to `MANIFESTED`. This is the absolute
+last resort — the 3-minute analysis timeout should fire first, then the 4-minute wait timeout
+catches anything that slipped through.
+
+**Why polling and not a `CountDownLatch` / `CompletableFuture.allOf()`:** The analysis runs on a
+separate virtual thread started by `Thread.startVirtualThread()`. We could wire up a
+`CompletableFuture` per artifact, but that adds coordination complexity between the upload path
+and the task path. Polling at 500ms with virtual threads is effectively free (no platform thread
+pinned), simple to reason about, and self-healing (if the analysis thread dies without updating
+the DB, the poll just times out and applies fallback).
+
+### 4.3 TodoList Changes
+
+Currently `todoExecutor.execute()` creates a single top-level todo. With the analysis step, we
+get two top-level todos:
+
+```
+1. [COMPLETED] Analyzing uploads...        ← only if UPLOADED artifacts exist
+2. [IN_PROGRESS] Make the hero taller...   ← the actual task
+```
+
+No structural changes to `TodoList` or `TodoExecutor` are needed — calling `todoExecutor.execute()`
+twice naturally creates two top-level todos. The first one completes before the second starts.
+The SSE stream emits `TodoListUpdatedEvent` on each status change, so the client sees progress
+in real time.
+
+---
+
+## Phase 5 — FFmpeg Integration (Placeholder)
+
+Video keyframe extraction requires FFmpeg. The `VideoAnalyzer.extractKeyframe()` method currently
+throws `UnsupportedOperationException`. When the FFmpeg integration is ready:
+
+1. Inject an `FfmpegService` into `VideoAnalyzer`
+2. Implement `extractFrame(storageKey, timestamp)` → `byte[]` (JPEG)
+3. Remove the `UnsupportedOperationException`
+
+The probe-position logic and vision analysis are already implemented — only the frame extraction
+is blocked on FFmpeg.
+
+---
+
+## Phase 6 — ChatService Vision Overload
+
+Add a single new method to `ChatService`:
+
+```java
+public String callWithImage(ModelSpecEnum spec, String system, byte[] image, String mimeType) {
+  // Build a multimodal user message with the image as a base64-encoded content block
+  // alongside any text instructions from the system prompt.
+  // Uses the same retry/backoff as the existing call() method.
+}
+```
+
+This is needed by `ImageAnalyzer` and `VideoAnalyzer`. The implementation uses Spring AI's
+`UserMessage` with `Media` content — same pattern the framework supports natively.
 
 ---
 
@@ -260,31 +694,33 @@ deleted `ProjectContextTool`; it does not re-explain the new tools.
 
 | File | Purpose |
 |---|---|
-| `src/main/resources/db/migration/V3__artifact_chunks.sql` | New table + indexes |
-| `src/main/java/.../db/ArtifactChunkEntity.java` | JPA entity |
-| `src/main/java/.../repo/ArtifactChunkRepository.java` | Vector similarity queries |
-| `src/main/java/.../service/ArtifactChunker.java` | Text extraction + splitting |
-| `src/main/java/.../service/ArtifactIndexingService.java` | Async indexing on manifest |
-| `src/main/java/.../tool/InspectArtifactTool.java` | Zero-cost metadata lookup |
-| `src/main/java/.../tool/SearchProjectTool.java` | RAG + history search |
+| `service/ArtifactAnalysisService.java` | Async dispatch, timeout, fallback, cancellation |
+| `service/analysis/ArtifactContentAnalyzer.java` | Interface for per-kind analyzers |
+| `service/analysis/AnalysisResult.java` | Name/title/description result record |
+| `service/analysis/TextAnalyzer.java` | Haiku text analysis |
+| `service/analysis/ImageAnalyzer.java` | Haiku vision analysis |
+| `service/analysis/AudioAnalyzer.java` | Whisper classification + transcription |
+| `service/analysis/VideoAnalyzer.java` | Keyframe probing + vision (FFmpeg placeholder) |
+| `service/analysis/PdfAnalyzer.java` | PDFBox extraction → text analysis |
+| `service/TranscriptionService.java` | Whisper API wrapper |
+| `service/PdfTextExtractor.java` | PDFBox wrapper |
 
 ## Files Modified
 
 | File | Change |
 |---|---|
-| `ArtifactService.java` | Add post-persist indexing hook |
-| `Decomposer.java` | Swap `ProjectContextTool` for two new tools |
-| `PromptFragments.java` | Update `artifactAwareness()` |
-
-## Files Deleted
-
-| File | Reason |
-|---|---|
-| `ProjectContextTool.java` | Replaced by `InspectArtifactTool` + `SearchProjectTool` |
+| `ArtifactStatus.java` | Add `UPLOADED` |
+| `ArtifactUploadService.java` | `UPLOADED` status, kick off analysis, skip if all metadata provided |
+| `ArtifactController.java` | Add DELETE endpoint, update Swagger `@Parameter` descriptions |
+| `ArtifactRepository.java` | Add `findByProjectIdAndStatus(UUID, ArtifactStatus)` |
+| `ArtifactService.java` | Add `delete(UUID, UUID)` |
+| `TaskService.java` | Await pending analyses before decomposition |
+| `ChatService.java` | Add `callWithImage()` overload |
+| `Routes.java` | Already has `PROJECT_ARTIFACTS` (no change needed) |
 
 ## Out of Scope
 
-- Backfill of existing artifacts: only newly manifested artifacts get indexed. A one-off
-  migration job can be added later if needed.
-- IVFFlat index tuning: the index degrades gracefully to a sequential scan when the table is
-  small. Production tuning (lists parameter, ANALYZE) can be addressed separately.
+- FFmpeg integration (Phase 5 placeholder only)
+- Music genre classification (unnecessary for naming — duration + "audio file" is sufficient)
+- OCR for scanned PDFs (fallback to `AnalysisResult.FALLBACK`)
+- Batch upload endpoint (one file per request, as designed)
