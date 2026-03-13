@@ -13,6 +13,9 @@ public final class Routes {
   public static final String PROJECTS = "/projects";
   public static final String PROJECT_STATE = PROJECTS + "/{projectId}/state";
 
+  // Artifact routes
+  public static final String PROJECT_ARTIFACTS = PROJECTS + "/{projectId}/artifacts";
+
   // Task routes
   public static final String TASKS = "/tasks";
 
