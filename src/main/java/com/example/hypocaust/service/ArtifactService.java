@@ -2,6 +2,7 @@ package com.example.hypocaust.service;
 
 import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.domain.Artifact;
+import com.example.hypocaust.domain.ArtifactStatus;
 import com.example.hypocaust.mapper.ArtifactMapper;
 import com.example.hypocaust.repo.ArtifactRepository;
 import java.util.Collection;
@@ -25,6 +26,7 @@ public class ArtifactService {
 
   private final ArtifactRepository artifactRepository;
   private final ArtifactMapper artifactMapper;
+  private final ArtifactIndexingService artifactIndexingService;
 
   /**
    * Get domain object for an artifact by ID.
@@ -53,6 +55,10 @@ public class ArtifactService {
   Artifact persist(Artifact artifact, UUID projectId, UUID taskExecutionId) {
     ArtifactEntity saved = artifactRepository.save(artifactMapper.toEntity(
         artifact, projectId, taskExecutionId));
-    return artifactMapper.toDomain(saved);
+    Artifact persisted = artifactMapper.toDomain(saved);
+    if (saved.getStatus() == ArtifactStatus.MANIFESTED) {
+      artifactIndexingService.indexManifested(persisted, projectId);
+    }
+    return persisted;
   }
 }

@@ -22,13 +22,16 @@ class ArtifactServiceTest {
 
   private ArtifactRepository artifactRepository;
   private ArtifactMapper artifactMapper;
+  private ArtifactIndexingService artifactIndexingService;
   private ArtifactService artifactService;
 
   @BeforeEach
   void setUp() {
     artifactRepository = mock(ArtifactRepository.class);
     artifactMapper = mock(ArtifactMapper.class);
-    artifactService = new ArtifactService(artifactRepository, artifactMapper);
+    artifactIndexingService = mock(ArtifactIndexingService.class);
+    artifactService = new ArtifactService(artifactRepository, artifactMapper,
+        artifactIndexingService);
   }
 
   @Test

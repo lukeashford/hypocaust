@@ -5,7 +5,8 @@ import static org.mockito.Mockito.mock;
 
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.events.EventService;
-import com.example.hypocaust.tool.ProjectContextTool;
+import com.example.hypocaust.tool.InspectArtifactTool;
+import com.example.hypocaust.tool.SearchProjectTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
 import com.example.hypocaust.tool.decomposition.SetPlanTool;
@@ -28,7 +29,8 @@ class DecomposerTest {
         mock(SetPlanTool.class),
         mock(SearchToolsTool.class),
         mock(ExecuteToolTool.class),
-        mock(ProjectContextTool.class),
+        mock(InspectArtifactTool.class),
+        mock(SearchProjectTool.class),
         mock(WorkflowSearchTool.class),
         mock(EventService.class),
         objectMapper

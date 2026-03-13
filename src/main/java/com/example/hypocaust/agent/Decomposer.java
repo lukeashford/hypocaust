@@ -10,7 +10,8 @@ import com.example.hypocaust.prompt.PromptBuilder;
 import com.example.hypocaust.prompt.fragments.PromptFragments;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.events.EventService;
-import com.example.hypocaust.tool.ProjectContextTool;
+import com.example.hypocaust.tool.InspectArtifactTool;
+import com.example.hypocaust.tool.SearchProjectTool;
 import com.example.hypocaust.tool.WorkflowSearchTool;
 import com.example.hypocaust.tool.decomposition.InvokeDecomposerTool;
 import com.example.hypocaust.tool.decomposition.SetPlanTool;
@@ -34,7 +35,8 @@ import org.springframework.stereotype.Component;
  *   <li>{@code set_plan} - declare the full list of sub-steps</li>
  *   <li>{@code search_tools} - semantic tool discovery</li>
  *   <li>{@code execute_tool} - generic tool invocation bridge</li>
- *   <li>{@code ask_project_context} - project knowledge (NL Q&A)</li>
+ *   <li>{@code inspect_artifact} - zero-cost metadata lookup</li>
+ *   <li>{@code search_project} - RAG + history search</li>
  *   <li>{@code workflow_search} - domain knowledge advisor</li>
  * </ul>
  */
@@ -53,7 +55,8 @@ public class Decomposer {
   private final SetPlanTool setPlanTool;
   private final SearchToolsTool searchToolsTool;
   private final ExecuteToolTool executeToolTool;
-  private final ProjectContextTool projectContextTool;
+  private final InspectArtifactTool inspectArtifactTool;
+  private final SearchProjectTool searchProjectTool;
   private final WorkflowSearchTool workflowSearchTool;
   private final EventService eventService;
   private final ObjectMapper objectMapper;
@@ -106,7 +109,8 @@ public class Decomposer {
           setPlanTool,
           searchToolsTool,
           executeToolTool,
-          projectContextTool,
+          inspectArtifactTool,
+          searchProjectTool,
           workflowSearchTool
       );
 
