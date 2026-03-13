@@ -94,11 +94,12 @@ List<ArtifactChunkEntity> findByArtifactSimilarity(
 
 Pure utility class (no Spring). Extracts indexable text chunks from an artifact.
 
-**Indexable fields** (only if the text exceeds `CHUNK_THRESHOLD = 500` chars):
-- `inlineContent` — for TEXT artifacts, `inlineContent.asText()`
-- `metadata.providerInput.text` — for AUDIO artifacts (the spoken text)
-- `metadata.generation_details.prompt` — for any artifact, if unexpectedly long
+**Indexable fields** — walks the artifact generically, not a hardcoded list:
+- `inlineContent` (if present) — `inlineContent.asText()`
+- Every leaf-string in the `metadata` JSON tree — traversed recursively, field path tracked
+  (e.g. `metadata.providerInput.text`, `metadata.generation_details.prompt`, or any future field)
 
+Any text value exceeding `CHUNK_THRESHOLD = 500` chars is chunked and indexed.
 Fields under the threshold are fully returned by `inspect_artifact` and don't need indexing.
 
 **Chunking strategy**:
@@ -168,11 +169,10 @@ public String inspect(@ToolParam(description = "Artifact name") String name)
 ```
 
 **Field formatting rules:**
-- All small fields: return verbatim.
-- `metadata` JSON: traverse and format each key-value pair. Known large paths get special treatment:
-  - `metadata.providerInput.text` → if > 500 chars: `providerInput.text (N chars): "preview…" [search_project to access]`
-  - `metadata.generation_details.prompt` → same threshold
-- `inlineContent` for TEXT → if > 500 chars: `inlineContent (N chars): "preview…" [search_project to access]`
+- All small fields (≤ 500 chars): return verbatim.
+- `metadata` JSON: traverse recursively. Any leaf-string > 500 chars:
+  `field.path (N chars): "first 200 chars…" [use search_project to access full content]`
+- `inlineContent` → same rule: if > 500 chars, show 200-char preview + size.
 
 Returns `"Artifact not found: <name>"` if the name doesn't exist in the current state.
 
@@ -181,14 +181,18 @@ Returns `"Artifact not found: <name>"` if the name doesn't exist in the current 
 Two paths based on `scope`:
 
 **Scope = "history"** (structured, no embeddings):
-- Load all task executions for the project via `TaskExecutionRepository`, ordered by
+- Load task executions for the project via `TaskExecutionRepository`, ordered by
   `created_at DESC`.
 - Format each as:
   ```
   [STATUS] YYYY-MM-DD "execution_name" — commit_message
     changed: artifact_name (added/edited/deleted), ...
   ```
-- Return the formatted list, capped at the 50 most recent executions.
+- Default: 50 most recent executions.
+- Accepts optional `offset` parameter (default 0) so the decomposer can paginate further
+  back (e.g. `search_project("...", scope: "history", offset: 50)` returns entries 51–100).
+- The response footer shows `"Showing entries {offset+1}–{offset+count} of {total}"` so the
+  decomposer knows whether more history exists.
 - No embedding, no LLM.
 
 **Scope = artifact name or null/all** (RAG over indexed chunks):
@@ -212,7 +216,8 @@ content (e.g. it's an image) or the concept isn't present in the project.
 @Tool(name = "search_project", description = """
     Search project content and history by natural language query.
 
-    scope = "history": returns the full task execution log — what was done, what changed, when.
+    scope = "history": returns the task execution log (50 at a time) — what was done, what
+                       changed, when. Use offset to paginate further back.
                        Use to find historical artifact versions, execution names, or past attempts.
     scope = <artifact name>: semantic search within that artifact's content fields only.
                        Use when you know which artifact to look in but need specific text
@@ -225,7 +230,9 @@ content (e.g. it's an image) or the concept isn't present in the project.
 public String search(
     @ToolParam(description = "Natural language search query") String query,
     @ToolParam(description = "Artifact name, 'history', or omit for all",
-               required = false) String scope)
+               required = false) String scope,
+    @ToolParam(description = "For history scope: skip this many entries (default 0) to paginate further back",
+               required = false) Integer offset)
 ```
 
 ---
@@ -240,27 +247,10 @@ public String search(
 
 ### 3.2 Update `PromptFragments.artifactAwareness()`
 
-Append a section explaining the tools:
-
-```
-## Exploring artifact content
-
-When the artifact list is not enough:
-
-`inspect_artifact(name)` — Zero-cost metadata lookup. Returns the generation model, prompt,
-all provider inputs (e.g. the spoken text for audio, voice_id), dimensions, and status.
-Call this when you need to know *how* an artifact was made or see a specific metadata field.
-Use this before search_project.
-
-`search_project(query, scope?)` — Semantic search over artifact content and project history.
-- scope = "history": returns the execution log. Use to find historical versions or past attempts.
-- scope = <artifact name>: searches within that artifact's full content (e.g. a specific scene
-  in a script). Use when inspect showed there is a large field you need to dig into.
-- scope omitted: searches all artifact content. Use when you do not know which artifact
-  contains the relevant concept.
-
-Both tools return verbatim data. You interpret it.
-```
+**No tool documentation here.** Per co-located documentation principle, each tool's `@Tool`
+description (already in the decomposer's context via tool registration) is the single source
+of truth for when and how to use it. The prompt fragment only needs to remove references to the
+deleted `ProjectContextTool`; it does not re-explain the new tools.
 
 ### 3.3 Delete `ProjectContextTool`
 
