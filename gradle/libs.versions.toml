@@ -13,6 +13,7 @@ minio = "8.6.0"
 springdoc = "2.8.6"
 testcontainers = "1.21.4"
 testcontainers-minio = "1.21.4"
+pdfbox = "3.0.4"
 
 [libraries]
 # BOMs
@@ -53,13 +54,14 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 
 [bundles]
 # Core Spring Boot functionality
 spring-boot-core = ["spring-boot-starter-actuator", "spring-boot-starter-web", "spring-boot-starter-data-jpa"]
 db = ["postgresql", "hibernate-vector", "flyway-core", "flyway-database-postgresql"]
 spring-ai = ["spring-ai-openai", "spring-ai-anthropic", "spring-ai-client-chat"]
-tools = ["uuid-creator", "jtokkit"]
+tools = ["uuid-creator", "jtokkit", "pdfbox"]
 
 # Testing infrastructure
 testing-core = ["spring-boot-starter-test", "junit-platform-launcher", "mockito-core"]

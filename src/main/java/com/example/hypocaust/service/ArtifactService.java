@@ -55,6 +55,18 @@ public class ArtifactService {
     return persist(artifact, projectId, null);
   }
 
+  @Transactional
+  public void delete(UUID artifactId, UUID projectId) {
+    artifactRepository.findById(artifactId).ifPresent(entity -> {
+      if (!entity.getProjectId().equals(projectId)) {
+        throw new IllegalArgumentException(
+            "Artifact " + artifactId + " does not belong to project " + projectId);
+      }
+      artifactRepository.delete(entity);
+      log.info("Deleted artifact {} from project {}", artifactId, projectId);
+    });
+  }
+
   /**
    * Persist an artifact to the database. The artifact should already be finalized (MANIFESTED,
    * FAILED, or CANCELLED).

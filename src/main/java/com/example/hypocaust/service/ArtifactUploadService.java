@@ -19,6 +19,7 @@ public class ArtifactUploadService {
   private final StorageService storageService;
   private final ArtifactService artifactService;
   private final ArtifactExternalizer artifactExternalizer;
+  private final ArtifactAnalysisService artifactAnalysisService;
 
   public ArtifactDto upload(UUID projectId, MultipartFile file, String name, String title,
       String description) {
@@ -30,6 +31,8 @@ public class ArtifactUploadService {
       throw new IllegalStateException("Failed to read uploaded file", e);
     }
 
+    boolean clientProvidedAllMetadata = hasExplicitMetadata(name, title, description);
+
     String effectiveName = (name != null && !name.isBlank()) ? name
         : sanitizeName(file.getOriginalFilename());
     String effectiveTitle = (title != null && !title.isBlank()) ? title
@@ -37,19 +40,35 @@ public class ArtifactUploadService {
     String effectiveDescription = (description != null && !description.isBlank()) ? description
         : "User-uploaded file";
 
+    ArtifactStatus initialStatus = clientProvidedAllMetadata
+        ? ArtifactStatus.MANIFESTED
+        : ArtifactStatus.UPLOADED;
+
     Artifact artifact = Artifact.builder()
         .name(effectiveName)
         .kind(kindFromMimeType(mimeType))
         .storageKey(storageKey)
         .title(effectiveTitle)
         .description(effectiveDescription)
-        .status(ArtifactStatus.MANIFESTED)
+        .status(initialStatus)
         .mimeType(mimeType)
         .build();
 
     Artifact saved = artifactService.persistUpload(artifact, projectId);
-    log.debug("Stored user upload: artifactId={}, project={}", saved.id(), projectId);
+    log.debug("Stored user upload: artifactId={}, project={}, status={}", saved.id(), projectId,
+        initialStatus);
+
+    if (initialStatus == ArtifactStatus.UPLOADED) {
+      artifactAnalysisService.analyzeAsync(saved.id(), projectId);
+    }
+
     return artifactExternalizer.externalize(saved);
+  }
+
+  private static boolean hasExplicitMetadata(String name, String title, String description) {
+    return (name != null && !name.isBlank())
+        && (title != null && !title.isBlank())
+        && (description != null && !description.isBlank());
   }
 
   private static ArtifactKind kindFromMimeType(String mimeType) {

@@ -4,6 +4,7 @@ import com.example.hypocaust.common.HashCalculator;
 import com.example.hypocaust.exception.StorageException;
 import com.example.hypocaust.service.StorageService;
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -90,6 +91,23 @@ public abstract class AbstractS3StorageService implements StorageService, Health
       return true;
     } catch (Exception e) {
       return false;
+    }
+  }
+
+  @Override
+  public byte[] fetch(String storageKey) {
+    try {
+      log.debug("Fetching file: {}", storageKey);
+      try (var stream = minioClient.getObject(
+          GetObjectArgs.builder()
+              .bucket(storageProperties.getBucketName())
+              .object(storageKey)
+              .build())) {
+        return stream.readAllBytes();
+      }
+    } catch (Exception e) {
+      log.error("Failed to fetch file: {}", storageKey, e);
+      throw new StorageException("Failed to fetch file: " + storageKey, e);
     }
   }
 

@@ -29,6 +29,15 @@ public interface StorageService {
   String store(InputStream inputStream, long contentLength, String contentType);
 
   /**
+   * Fetch a file's contents from storage.
+   *
+   * @param storageKey the storage key
+   * @return the file contents as a byte array
+   * @throws StorageException if the fetch fails
+   */
+  byte[] fetch(String storageKey);
+
+  /**
    * Delete a file from storage.
    *
    * @param storageKey the storage key
