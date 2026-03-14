@@ -145,7 +145,7 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     String queriesResponse;
     try {
       queriesResponse = chatService.call(PROMPT_ENG_MODEL, queriesSystem,
-          "Voice description: " + voiceDescription);
+          "Voice description: " + voiceDescription, String.class);
     } catch (Exception e) {
       log.warn("[ElevenLabs] Query generation failed, skipping library search: {}",
           e.getMessage());
@@ -216,7 +216,8 @@ public class ElevenLabsModelExecutor extends AbstractModelExecutor {
     String selectionUser =
         "Required voice: " + voiceDescription + "\n\nCandidates:\n" + voiceList;
 
-    String response = chatService.call(PROMPT_ENG_MODEL, selectionSystem, selectionUser);
+    String response = chatService.call(PROMPT_ENG_MODEL, selectionSystem, selectionUser,
+        String.class);
     if (response == null || response.isBlank() || "null".equalsIgnoreCase(response.strip())) {
       log.info("[ElevenLabs] Voice match: Haiku found no suitable voice, will design a new one");
       return Optional.empty();

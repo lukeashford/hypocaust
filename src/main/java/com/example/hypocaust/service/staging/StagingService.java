@@ -184,7 +184,7 @@ public class StagingService {
             pending.dataPackageId(), pending.storageKey(), pending.inlineContent(),
             pending.originalFilename(), pending.mimeType(), pending.kind(),
             pending.clientName(), pending.clientTitle(), pending.clientDescription(),
-            AnalysisResult.FALLBACK));
+            null));
       }
     }
   }

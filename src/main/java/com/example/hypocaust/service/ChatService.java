@@ -5,6 +5,7 @@ import com.example.hypocaust.models.enums.ModelSpecEnum;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatClient.CallResponseSpec;
 import org.springframework.ai.chat.messages.Media;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -25,43 +26,16 @@ public class ChatService {
       exceptionExpression = "@retryMatcher.isTransient(#root)",
       backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
   )
-  public String call(ModelSpecEnum spec, String system, String user) {
-    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
-        .prompt()
-        .system(system)
-        .user(user)
-        .call()
-        .content();
-  }
-
-  @Retryable(
-      retryFor = Exception.class,
-      exceptionExpression = "@retryMatcher.isTransient(#root)",
-      backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
-  )
-  public String callWithImage(ModelSpecEnum spec, String system, byte[] image, String mimeType) {
-    var media = new Media(MimeType.valueOf(mimeType), image);
-    var userMessage = new UserMessage("Analyze this image.", List.of(media));
-    var systemMessage = new SystemMessage(system);
-    var prompt = new Prompt(List.of(systemMessage, userMessage));
-    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
-        .prompt(prompt)
-        .call()
-        .content();
-  }
-
-  @Retryable(
-      retryFor = Exception.class,
-      exceptionExpression = "@retryMatcher.isTransient(#root)",
-      backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
-  )
+  @SuppressWarnings("unchecked")
   public <T> T call(ModelSpecEnum spec, String system, String user, Class<T> responseType) {
-    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
+    CallResponseSpec response = ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
         .prompt()
         .system(system)
         .user(user)
-        .call()
-        .entity(responseType);
+        .call();
+    return responseType == String.class
+        ? (T) response.content()
+        : response.entity(responseType);
   }
 
   @Retryable(
@@ -69,16 +43,19 @@ public class ChatService {
       exceptionExpression = "@retryMatcher.isTransient(#root)",
       backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
   )
+  @SuppressWarnings("unchecked")
   public <T> T callWithImage(ModelSpecEnum spec, String system, byte[] image, String mimeType,
       Class<T> responseType) {
     var media = new Media(MimeType.valueOf(mimeType), image);
     var userMessage = new UserMessage("Analyze this image.", List.of(media));
     var systemMessage = new SystemMessage(system);
     var prompt = new Prompt(List.of(systemMessage, userMessage));
-    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
+    CallResponseSpec response = ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
         .prompt(prompt)
-        .call()
-        .entity(responseType);
+        .call();
+    return responseType == String.class
+        ? (T) response.content()
+        : response.entity(responseType);
   }
 
   @Retryable(

@@ -22,7 +22,7 @@ public class TextAnalyzer implements ArtifactContentAnalyzer {
   AnalysisResult analyzeText(String text) {
     ContentDescription description = comprehensionService.analyze(text);
     if (description == null) {
-      return AnalysisResult.FALLBACK;
+      return null;
     }
     return new AnalysisResult(description.name(), description.title(),
         description.description(), null);

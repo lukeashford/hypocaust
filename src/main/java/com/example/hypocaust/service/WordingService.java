@@ -34,7 +34,8 @@ public class WordingService {
     try {
       response = chatService.call(WORDING_MODEL,
           PromptFragments.modelRequirement().text(),
-          "Requirement analysis for the following task: " + task);
+          "Requirement analysis for the following task: " + task,
+          String.class);
 
       if (response != null && !response.isBlank()) {
         response = response.trim().replaceAll("^\"|\"$", "");

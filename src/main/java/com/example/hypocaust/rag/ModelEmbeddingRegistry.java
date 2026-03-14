@@ -282,7 +282,8 @@ public class ModelEmbeddingRegistry {
       final var response = chatService.call(
           AnthropicChatModelSpec.CLAUDE_HAIKU_4_5,
           PromptFragments.modelReranking().text(),
-          sb.toString());
+          sb.toString(),
+          String.class);
 
       return parseRerankResponse(response, candidates);
     } catch (Exception e) {

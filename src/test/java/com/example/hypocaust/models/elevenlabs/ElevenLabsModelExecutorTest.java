@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.example.hypocaust.models.ModelRegistry;
@@ -107,7 +108,8 @@ class ElevenLabsModelExecutorTest {
   @Test
   void testBuildExecutionPhases_ttsWithoutVoiceId() {
     // Query generation returns empty → no search candidates → falls through to design
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString(),
+        eq(String.class)))
         .thenReturn("[]");
 
     ObjectNode input = objectMapper.createObjectNode();
@@ -121,7 +123,8 @@ class ElevenLabsModelExecutorTest {
   @Test
   void testBuildExecutionPhases_voiceDesign() {
     // Query generation returns empty → no search candidates → falls through to design
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString(),
+        eq(String.class)))
         .thenReturn("[]");
 
     ObjectNode input = objectMapper.createObjectNode();
@@ -153,7 +156,8 @@ class ElevenLabsModelExecutorTest {
     when(elevenLabsClient.searchOwnVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
     when(elevenLabsClient.searchSharedVoices(any())).thenReturn(List.of());
     // First call: query generation; second call: voice selection
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString(),
+        eq(String.class)))
         .thenReturn("""
             [{"gender":"male","age":"middle_aged","accent":"british","language":"en","search":"warm storyteller"},
              {"gender":"male","age":"old","accent":"british","language":"en","search":"deep narrator"},
@@ -193,7 +197,8 @@ class ElevenLabsModelExecutorTest {
     when(elevenLabsClient.searchOwnVoices(anyString(), anyInt())).thenReturn(List.of(voiceNode));
     when(elevenLabsClient.searchSharedVoices(any())).thenReturn(List.of());
     // First call: query generation; second call: voice selection
-    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString()))
+    when(chatService.call(any(AnthropicChatModelSpec.class), anyString(), anyString(),
+        eq(String.class)))
         .thenReturn("""
             [{"gender":"female","age":"young","accent":"american","language":"en","search":"warm confident"},
              {"gender":"female","age":"middle_aged","accent":"american","language":"en","search":"narrator voice"},

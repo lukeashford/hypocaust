@@ -45,21 +45,17 @@ public class ArtifactAnalysisService {
     try {
       AnalysisResult result = analyzeWithTimeout(upload);
 
-      batch.complete(dataPackageId, new AnalyzedUpload(
-          dataPackageId, upload.storageKey(), upload.inlineContent(),
-          upload.originalFilename(), upload.mimeType(), upload.kind(),
-          upload.clientName(), upload.clientTitle(), upload.clientDescription(),
-          result));
+      batch.complete(dataPackageId, toAnalyzedUpload(upload, result));
 
-      log.info("Analysis complete for upload {}: name={}, title={}",
-          dataPackageId, result.name(), result.title());
+      if (result != null) {
+        log.info("Analysis complete for upload {}: name={}, title={}",
+            dataPackageId, result.name(), result.title());
+      } else {
+        log.warn("Analysis returned no result for upload {}", dataPackageId);
+      }
     } catch (Exception e) {
       log.warn("Analysis failed for upload {}: {}", dataPackageId, e.getMessage());
-      batch.complete(dataPackageId, new AnalyzedUpload(
-          dataPackageId, upload.storageKey(), upload.inlineContent(),
-          upload.originalFilename(), upload.mimeType(), upload.kind(),
-          upload.clientName(), upload.clientTitle(), upload.clientDescription(),
-          AnalysisResult.FALLBACK));
+      batch.complete(dataPackageId, toAnalyzedUpload(upload, null));
     }
   }
 
@@ -71,15 +67,23 @@ public class ArtifactAnalysisService {
     } catch (TimeoutException e) {
       log.warn("Analysis timed out for upload {} after {}", upload.dataPackageId(),
           ANALYSIS_TIMEOUT);
-      return AnalysisResult.FALLBACK;
+      return null;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return AnalysisResult.FALLBACK;
+      return null;
     } catch (ExecutionException e) {
       log.warn("Analysis execution failed for upload {}: {}", upload.dataPackageId(),
           e.getCause().getMessage());
-      return AnalysisResult.FALLBACK;
+      return null;
     }
+  }
+
+  private static AnalyzedUpload toAnalyzedUpload(PendingUpload upload, AnalysisResult result) {
+    return new AnalyzedUpload(
+        upload.dataPackageId(), upload.storageKey(), upload.inlineContent(),
+        upload.originalFilename(), upload.mimeType(), upload.kind(),
+        upload.clientName(), upload.clientTitle(), upload.clientDescription(),
+        result);
   }
 
   private AnalysisResult dispatch(PendingUpload upload) {
@@ -89,7 +93,7 @@ public class ArtifactAnalysisService {
       case AUDIO -> audioAnalyzer.analyze(upload);
       case VIDEO -> videoAnalyzer.analyze(upload);
       case PDF -> pdfAnalyzer.analyze(upload);
-      case OTHER -> AnalysisResult.FALLBACK;
+      case OTHER -> null;
     };
   }
 }

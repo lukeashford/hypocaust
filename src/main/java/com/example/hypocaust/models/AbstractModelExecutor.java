@@ -165,7 +165,8 @@ public abstract class AbstractModelExecutor implements ModelExecutor {
       userPrompt.append("\n").append(additionalUserContext).append("\n");
     }
 
-    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt.toString());
+    var response = chatService.call(PROMPT_ENG_MODEL, systemPrompt, userPrompt.toString(),
+        String.class);
     try {
       var node = objectMapper.readTree(
           com.example.hypocaust.common.JsonUtils.extractJson(response));

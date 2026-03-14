@@ -20,7 +20,7 @@ public class PdfAnalyzer implements ArtifactContentAnalyzer {
     String text = pdfTextExtractor.extract(pdfBytes);
 
     if (text.isBlank()) {
-      return AnalysisResult.FALLBACK;
+      return null;
     }
 
     return textAnalyzer.analyzeText(text);

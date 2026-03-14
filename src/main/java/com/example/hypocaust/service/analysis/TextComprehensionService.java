@@ -39,7 +39,7 @@ public class TextComprehensionService {
 
     List<String> chunks = chunkText(text);
     List<String> summaries = chunks.stream()
-        .map(chunk -> chatService.call(MODEL, SUMMARY_SYSTEM_PROMPT, chunk))
+        .map(chunk -> chatService.call(MODEL, SUMMARY_SYSTEM_PROMPT, chunk, String.class))
         .toList();
 
     String combined = String.join("\n\n---\n\n", summaries);
