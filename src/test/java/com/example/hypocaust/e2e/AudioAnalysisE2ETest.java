@@ -16,10 +16,8 @@ class AudioAnalysisE2ETest {
 
   // TODO: Fill in with a storage key of a short speech/dialog audio file in MinIO
   private static final String DIALOG_STORAGE_KEY = "TODO";
-  // TODO: Fill in with a storage key of a short music clip in MinIO
+  // TODO: Fill in with a storage key of a non-dialog audio file (music/SFX) in MinIO
   private static final String MUSIC_STORAGE_KEY = "TODO";
-  // TODO: Fill in with a storage key of a very short sound effect in MinIO
-  private static final String SFX_STORAGE_KEY = "TODO";
 
   @Autowired
   private AudioAnalyzer audioAnalyzer;
@@ -39,11 +37,10 @@ class AudioAnalysisE2ETest {
     assertThat(result.enrichedMetadata()).isNotNull();
     assertThat(result.enrichedMetadata().path("audioType").asText()).isEqualTo("DIALOG");
     assertThat(result.enrichedMetadata().path("transcript").asText()).isNotBlank();
-    assertThat(result.hasIndexableContent()).isTrue();
   }
 
   @Test
-  void analyzeMusicAudio_classifiesAsNonSpeech() {
+  void analyzeNonDialogAudio_classifiesAsNonDialog() {
     PendingUpload upload = new PendingUpload(
         UUID.randomUUID(), MUSIC_STORAGE_KEY, null, "background_music.mp3",
         "audio/mpeg", ArtifactKind.AUDIO, null, null, null, null);
@@ -54,19 +51,6 @@ class AudioAnalysisE2ETest {
     assertThat(result.title()).isNotBlank();
     assertThat(result.description()).isNotBlank();
     assertThat(result.enrichedMetadata()).isNotNull();
-    assertThat(result.enrichedMetadata().path("audioType").asText()).isIn("MUSIC", "SFX");
-  }
-
-  @Test
-  void analyzeSfxAudio_classifiesAsNonSpeech() {
-    PendingUpload upload = new PendingUpload(
-        UUID.randomUUID(), SFX_STORAGE_KEY, null, "click.wav",
-        "audio/wav", ArtifactKind.AUDIO, null, null, null, null);
-
-    AnalysisResult result = audioAnalyzer.analyze(upload);
-
-    assertThat(result.name()).isNotBlank();
-    assertThat(result.title()).isNotBlank();
-    assertThat(result.description()).isNotBlank();
+    assertThat(result.enrichedMetadata().path("audioType").asText()).isEqualTo("NON_DIALOG");
   }
 }

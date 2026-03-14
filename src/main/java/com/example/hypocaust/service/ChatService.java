@@ -55,6 +55,37 @@ public class ChatService {
       exceptionExpression = "@retryMatcher.isTransient(#root)",
       backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
   )
+  public <T> T call(ModelSpecEnum spec, String system, String user, Class<T> responseType) {
+    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
+        .prompt()
+        .system(system)
+        .user(user)
+        .call()
+        .entity(responseType);
+  }
+
+  @Retryable(
+      retryFor = Exception.class,
+      exceptionExpression = "@retryMatcher.isTransient(#root)",
+      backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
+  )
+  public <T> T callWithImage(ModelSpecEnum spec, String system, byte[] image, String mimeType,
+      Class<T> responseType) {
+    var media = new Media(MimeType.valueOf(mimeType), image);
+    var userMessage = new UserMessage("Analyze this image.", List.of(media));
+    var systemMessage = new SystemMessage(system);
+    var prompt = new Prompt(List.of(systemMessage, userMessage));
+    return ChatClient.builder(modelRegistry.get(spec.getModelName())).build()
+        .prompt(prompt)
+        .call()
+        .entity(responseType);
+  }
+
+  @Retryable(
+      retryFor = Exception.class,
+      exceptionExpression = "@retryMatcher.isTransient(#root)",
+      backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
+  )
   public String call(String modelName, String system, String user, Object... tools) {
     return ChatClient.builder(modelRegistry.get(modelName))
         .defaultTools(tools)

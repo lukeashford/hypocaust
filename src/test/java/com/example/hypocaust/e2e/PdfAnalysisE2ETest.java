@@ -32,6 +32,5 @@ class PdfAnalysisE2ETest {
     assertThat(result.name()).matches("[a-z_]+");
     assertThat(result.title()).isNotBlank();
     assertThat(result.description()).isNotBlank();
-    assertThat(result.hasIndexableContent()).isTrue();
   }
 }
