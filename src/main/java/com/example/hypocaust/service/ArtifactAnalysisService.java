@@ -6,7 +6,7 @@ import com.example.hypocaust.service.analysis.ImageAnalyzer;
 import com.example.hypocaust.service.analysis.PdfAnalyzer;
 import com.example.hypocaust.service.analysis.TextAnalyzer;
 import com.example.hypocaust.service.analysis.VideoAnalyzer;
-import com.example.hypocaust.service.staging.CompletedUpload;
+import com.example.hypocaust.service.staging.AnalyzedUpload;
 import com.example.hypocaust.service.staging.PendingUpload;
 import com.example.hypocaust.service.staging.StagingBatch;
 import java.time.Duration;
@@ -45,7 +45,7 @@ public class ArtifactAnalysisService {
     try {
       AnalysisResult result = analyzeWithTimeout(upload);
 
-      batch.complete(dataPackageId, new CompletedUpload(
+      batch.complete(dataPackageId, new AnalyzedUpload(
           dataPackageId, upload.storageKey(), upload.inlineContent(),
           upload.originalFilename(), upload.mimeType(), upload.kind(),
           upload.clientName(), upload.clientTitle(), upload.clientDescription(),
@@ -55,7 +55,7 @@ public class ArtifactAnalysisService {
           dataPackageId, result.name(), result.title());
     } catch (Exception e) {
       log.warn("Analysis failed for upload {}: {}", dataPackageId, e.getMessage());
-      batch.complete(dataPackageId, new CompletedUpload(
+      batch.complete(dataPackageId, new AnalyzedUpload(
           dataPackageId, upload.storageKey(), upload.inlineContent(),
           upload.originalFilename(), upload.mimeType(), upload.kind(),
           upload.clientName(), upload.clientTitle(), upload.clientDescription(),

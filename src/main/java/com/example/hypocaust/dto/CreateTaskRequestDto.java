@@ -26,9 +26,7 @@ public record CreateTaskRequestDto(
     String task,
 
     @Schema(
-        description = "Staging batch ID from prior uploads. When provided, the server waits for "
-            + "pending analyses to complete and adds the resulting artifacts to this execution's "
-            + "delta. The batch is consumed and cannot be reused.",
+        description = "Staging batch ID from prior uploads.",
         nullable = true
     )
     UUID batchId

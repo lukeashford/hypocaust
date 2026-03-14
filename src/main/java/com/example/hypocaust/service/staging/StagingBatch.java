@@ -6,26 +6,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.Getter;
 
 public class StagingBatch {
 
+  @Getter
   private final UUID batchId;
+  @Getter
   private final Instant createdAt;
   private final Map<UUID, PendingUpload> pending = new LinkedHashMap<>();
-  private final List<CompletedUpload> completed = new ArrayList<>();
+  private final List<AnalyzedUpload> completed = new ArrayList<>();
   private volatile boolean consumed;
 
   public StagingBatch(UUID batchId) {
     this.batchId = batchId;
     this.createdAt = Instant.now();
-  }
-
-  public UUID getBatchId() {
-    return batchId;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
   }
 
   public synchronized boolean isConsumed() {
@@ -47,7 +42,7 @@ public class StagingBatch {
     return pending.remove(dataPackageId);
   }
 
-  public synchronized void complete(UUID dataPackageId, CompletedUpload upload) {
+  public synchronized void complete(UUID dataPackageId, AnalyzedUpload upload) {
     pending.remove(dataPackageId);
     completed.add(upload);
   }
@@ -56,7 +51,7 @@ public class StagingBatch {
     return !pending.isEmpty();
   }
 
-  public synchronized List<CompletedUpload> getCompleted() {
+  public synchronized List<AnalyzedUpload> getCompleted() {
     return List.copyOf(completed);
   }
 

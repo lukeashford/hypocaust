@@ -5,7 +5,7 @@ import com.example.hypocaust.service.analysis.AnalysisResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 
-public record CompletedUpload(
+public record AnalyzedUpload(
     UUID dataPackageId,
     String storageKey,
     JsonNode inlineContent,

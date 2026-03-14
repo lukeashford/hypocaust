@@ -90,7 +90,7 @@ public class StagingService {
         projectId, FALLBACK_NAME);
 
     List<Artifact> artifacts = new ArrayList<>();
-    for (CompletedUpload upload : batch.getCompleted()) {
+    for (AnalyzedUpload upload : batch.getCompleted()) {
       AnalysisResult result = upload.analysisResult();
 
       String name = resolveWithPriority(upload.clientName(),
@@ -154,7 +154,7 @@ public class StagingService {
         }
         deleteStorage(pending.storageKey());
       }
-      for (CompletedUpload completed : batch.getCompleted()) {
+      for (AnalyzedUpload completed : batch.getCompleted()) {
         deleteStorage(completed.storageKey());
       }
       log.info("Cleaned up expired staging batch {} ({} uploads)", batchId, batch.size());
@@ -180,7 +180,7 @@ public class StagingService {
         if (pending.analysisFuture() != null && !pending.analysisFuture().isDone()) {
           pending.analysisFuture().cancel(true);
         }
-        batch.complete(pending.dataPackageId(), new CompletedUpload(
+        batch.complete(pending.dataPackageId(), new AnalyzedUpload(
             pending.dataPackageId(), pending.storageKey(), pending.inlineContent(),
             pending.originalFilename(), pending.mimeType(), pending.kind(),
             pending.clientName(), pending.clientTitle(), pending.clientDescription(),
