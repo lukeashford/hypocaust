@@ -1,12 +1,14 @@
 package com.example.hypocaust.service.analysis;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 public record AnalysisResult(String name, String title, String description,
-    boolean hasIndexableContent) {
+    boolean hasIndexableContent, String indexableText, JsonNode enrichedMetadata) {
 
-  static final AnalysisResult FALLBACK = new AnalysisResult(
-      null, "Unknown Upload", "User-uploaded file (analysis failed)", false);
+  public static final AnalysisResult FALLBACK = new AnalysisResult(
+      null, null, null, false, null, null);
 
-  boolean isFallback() {
+  public boolean isFallback() {
     return this == FALLBACK || name == null;
   }
 }

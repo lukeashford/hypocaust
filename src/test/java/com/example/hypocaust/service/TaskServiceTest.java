@@ -50,6 +50,9 @@ class TaskServiceTest {
   @Mock
   private TaskExecutionLifecycleService lifecycleService;
 
+  @Mock
+  private com.example.hypocaust.service.staging.StagingService stagingService;
+
   @InjectMocks
   private TaskService taskService;
 
@@ -71,7 +74,7 @@ class TaskServiceTest {
     // Given
     String taskDescription = "test task";
     CreateTaskRequestDto request = new CreateTaskRequestDto(projectId, predecessorId,
-        taskDescription);
+        taskDescription, null);
 
     when(projectService.exists(projectId)).thenReturn(true);
     when(lifecycleService.startExecution(projectId, taskDescription, predecessorId))
@@ -120,7 +123,7 @@ class TaskServiceTest {
   @Test
   void submitTask_projectNotFound_returnsRejected() {
     // Given
-    CreateTaskRequestDto request = new CreateTaskRequestDto(projectId, null, "task");
+    CreateTaskRequestDto request = new CreateTaskRequestDto(projectId, null, "task", null);
     when(projectService.exists(projectId)).thenReturn(false);
 
     // When
@@ -149,7 +152,7 @@ class TaskServiceTest {
 
     // When
     taskService.executeTask(projectId, taskExecutionId, predecessorId, "fail-name",
-        taskDescription);
+        taskDescription, null);
 
     // Then
     verify(lifecycleService).failExecution(eq(taskExecutionId), eq("error"));
@@ -173,7 +176,7 @@ class TaskServiceTest {
 
     // When
     taskService.executeTask(projectId, taskExecutionId, predecessorId, "boom-name",
-        taskDescription);
+        taskDescription, null);
 
     // Then
     verify(lifecycleService).failExecution(eq(taskExecutionId), eq("crash"));

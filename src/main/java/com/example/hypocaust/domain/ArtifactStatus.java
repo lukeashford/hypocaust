@@ -9,10 +9,6 @@ public enum ArtifactStatus {
    */
   GESTATING,
   /**
-   * User-uploaded but not yet analyzed — name, title, and description are placeholders.
-   */
-  UPLOADED,
-  /**
    * Fully persisted — inline content or storage key is available.
    */
   MANIFESTED,

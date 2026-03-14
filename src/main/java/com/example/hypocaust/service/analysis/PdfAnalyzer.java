@@ -1,8 +1,8 @@
 package com.example.hypocaust.service.analysis;
 
-import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.service.PdfTextExtractor;
 import com.example.hypocaust.service.StorageService;
+import com.example.hypocaust.service.staging.PendingUpload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,8 +15,8 @@ public class PdfAnalyzer implements ArtifactContentAnalyzer {
   private final PdfTextExtractor pdfTextExtractor;
 
   @Override
-  public AnalysisResult analyze(ArtifactEntity entity) {
-    byte[] pdfBytes = storageService.fetch(entity.getStorageKey());
+  public AnalysisResult analyze(PendingUpload upload) {
+    byte[] pdfBytes = storageService.fetch(upload.storageKey());
     String text = pdfTextExtractor.extract(pdfBytes);
 
     if (text.isBlank()) {

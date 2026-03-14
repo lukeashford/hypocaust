@@ -23,7 +23,15 @@ public record CreateTaskRequestDto(
         example = "Generate a whimsical illustration of a cat astronaut",
         requiredMode = Schema.RequiredMode.REQUIRED
     )
-    String task
+    String task,
+
+    @Schema(
+        description = "Staging batch ID from prior uploads. When provided, the server waits for "
+            + "pending analyses to complete and adds the resulting artifacts to this execution's "
+            + "delta. The batch is consumed and cannot be reused.",
+        nullable = true
+    )
+    UUID batchId
 ) {
 
 }

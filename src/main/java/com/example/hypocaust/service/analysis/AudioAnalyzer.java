@@ -1,9 +1,12 @@
 package com.example.hypocaust.service.analysis;
 
-import com.example.hypocaust.db.ArtifactEntity;
 import com.example.hypocaust.models.enums.AnthropicChatModelSpec;
 import com.example.hypocaust.service.ChatService;
 import com.example.hypocaust.service.TranscriptionService;
+import com.example.hypocaust.service.staging.PendingUpload;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,86 +18,94 @@ import org.springframework.stereotype.Component;
 public class AudioAnalyzer implements ArtifactContentAnalyzer {
 
   private static final AnthropicChatModelSpec MODEL = AnthropicChatModelSpec.CLAUDE_HAIKU_4_5;
-  private static final Duration SHORT_THRESHOLD = Duration.ofSeconds(5);
-  private static final Duration LONG_THRESHOLD = Duration.ofMinutes(3);
   private static final int MAX_TRANSCRIPT_SAMPLE = 2000;
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private static final String TRANSCRIPT_ANALYSIS_PROMPT = """
-      You are analyzing a transcript from a user-uploaded audio file. Based on the transcript \
-      below, respond with exactly three lines:
-      name: <snake_case_name>
-      title: <Human Readable Title>
-      description: <One sentence describing what this audio contains>
+  private static final String TRANSCRIPT_ANALYSIS_PROMPT =
+      "You are analyzing a transcript from a user-uploaded audio file. "
+          + "Based on the transcript below, " + AnalysisPrompts.outputFormatFor("audio");
 
-      Examples: name: narration_intro, title: Narration Intro, \
-      description: A narrator introduces the main character and setting.""";
+  private static final String NON_SPEECH_PROMPT = """
+      You are analyzing a user-uploaded audio file that contains no detectable speech. \
+      Based on the metadata below, classify it and %s
+
+      Metadata:
+      """.formatted(AnalysisPrompts.outputFormatFor("audio"));
 
   private final TranscriptionService transcriptionService;
   private final ChatService chatService;
 
   @Override
-  public AnalysisResult analyze(ArtifactEntity entity) {
-    Duration duration = extractDuration(entity);
+  public AnalysisResult analyze(PendingUpload upload) {
+    Duration duration = extractDuration(upload);
 
-    if (duration != null && duration.compareTo(SHORT_THRESHOLD) < 0) {
-      return sfxResult(duration);
-    }
-    if (duration != null && duration.compareTo(LONG_THRESHOLD) > 0) {
-      return longAudioResult(duration);
-    }
-
-    return classifyByTranscription(entity, duration);
-  }
-
-  private AnalysisResult classifyByTranscription(ArtifactEntity entity, Duration duration) {
     try {
       TranscriptionService.TranscriptionResult probe = transcriptionService.transcribeSample(
-          entity.getStorageKey(), duration, 0.25, Duration.ofSeconds(15));
+          upload.storageKey(), duration, 0.25, Duration.ofSeconds(15));
 
       if (probe.highConfidence()) {
-        String fullTranscript = transcriptionService.transcribeFull(entity.getStorageKey());
-        String sample = fullTranscript.length() > MAX_TRANSCRIPT_SAMPLE
-            ? fullTranscript.substring(0, MAX_TRANSCRIPT_SAMPLE) : fullTranscript;
-        String response = chatService.call(MODEL, TRANSCRIPT_ANALYSIS_PROMPT, sample);
-        return AnalysisResponseParser.parse(response, true);
+        return analyzeAsDialog(upload, probe.text(), duration);
       }
 
-      return longAudioResult(duration);
+      return analyzeAsNonSpeech(upload, duration);
     } catch (Exception e) {
-      log.debug("Transcription probe failed for artifact {}: {}", entity.getId(), e.getMessage());
-      return durationFallback(duration);
+      log.debug("Audio analysis failed for upload {}: {}", upload.dataPackageId(), e.getMessage());
+      return buildFallback(duration, null);
     }
   }
 
-  private Duration extractDuration(ArtifactEntity entity) {
-    if (entity.getMetadata() == null) {
-      return null;
+  private AnalysisResult analyzeAsDialog(PendingUpload upload, String probeText,
+      Duration duration) {
+    String fullTranscript;
+    try {
+      fullTranscript = transcriptionService.transcribeFull(upload.storageKey());
+    } catch (Exception e) {
+      log.debug("Full transcription failed, using probe text: {}", e.getMessage());
+      fullTranscript = probeText;
     }
-    var durationNode = entity.getMetadata().path("duration_seconds");
-    if (durationNode.isMissingNode() || durationNode.isNull()) {
-      return null;
-    }
-    return Duration.ofSeconds(durationNode.asLong());
-  }
 
-  private AnalysisResult sfxResult(Duration duration) {
-    String durationStr = formatDuration(duration);
-    return new AnalysisResult("sound_effect", "Sound Effect",
-        "Short audio clip (" + durationStr + ")", false);
-  }
+    String sample = fullTranscript.length() > MAX_TRANSCRIPT_SAMPLE
+        ? fullTranscript.substring(0, MAX_TRANSCRIPT_SAMPLE) : fullTranscript;
+    String response = chatService.call(MODEL, TRANSCRIPT_ANALYSIS_PROMPT, sample);
 
-  private AnalysisResult longAudioResult(Duration duration) {
-    String durationStr = duration != null ? formatDuration(duration) : "unknown length";
-    return new AnalysisResult("audio_track", "Audio Track",
-        "Audio file (" + durationStr + ")", false);
-  }
-
-  private AnalysisResult durationFallback(Duration duration) {
+    ObjectNode metadata = MAPPER.createObjectNode();
+    metadata.put("audioType", "DIALOG");
+    metadata.put("transcript", fullTranscript);
     if (duration != null) {
-      return longAudioResult(duration);
+      metadata.put("durationSeconds", duration.toSeconds());
     }
-    return new AnalysisResult("uploaded_audio", "Uploaded Audio", "User-uploaded audio file",
-        false);
+
+    AnalysisResult parsed = AnalysisResponseParser.parse(response, true, fullTranscript, metadata);
+    return parsed.isFallback() ? buildFallback(duration, metadata) : parsed;
+  }
+
+  private AnalysisResult analyzeAsNonSpeech(PendingUpload upload, Duration duration) {
+    String durationStr = duration != null ? formatDuration(duration) : "unknown length";
+    String metadataText = "Duration: " + durationStr + "\nMIME type: " + upload.mimeType();
+
+    String response = chatService.call(MODEL, NON_SPEECH_PROMPT, metadataText);
+
+    String audioType = (duration != null && duration.toSeconds() < 5) ? "SFX" : "MUSIC";
+    ObjectNode metadata = MAPPER.createObjectNode();
+    metadata.put("audioType", audioType);
+    if (duration != null) {
+      metadata.put("durationSeconds", duration.toSeconds());
+    }
+
+    AnalysisResult parsed = AnalysisResponseParser.parse(response, false, null, metadata);
+    return parsed.isFallback() ? buildFallback(duration, metadata) : parsed;
+  }
+
+  private AnalysisResult buildFallback(Duration duration, JsonNode metadata) {
+    String durationStr = duration != null ? formatDuration(duration) : "unknown length";
+    return new AnalysisResult("uploaded_audio", "Uploaded Audio",
+        "User-uploaded audio file (" + durationStr + ")", false, null, metadata);
+  }
+
+  private Duration extractDuration(PendingUpload upload) {
+    // Duration may come from client-provided metadata in the future.
+    // For now, return null — the transcription service handles any length.
+    return null;
   }
 
   private String formatDuration(Duration duration) {

@@ -1,9 +1,10 @@
 package com.example.hypocaust.service;
 
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.ArtifactKind;
-import com.example.hypocaust.domain.ArtifactStatus;
-import com.example.hypocaust.dto.ArtifactDto;
+import com.example.hypocaust.dto.UploadReceiptDto;
+import com.example.hypocaust.service.staging.PendingUpload;
+import com.example.hypocaust.service.staging.StagingBatch;
+import com.example.hypocaust.service.staging.StagingService;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +18,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ArtifactUploadService {
 
   private final StorageService storageService;
-  private final ArtifactService artifactService;
-  private final ArtifactExternalizer artifactExternalizer;
+  private final StagingService stagingService;
   private final ArtifactAnalysisService artifactAnalysisService;
 
-  public ArtifactDto upload(UUID projectId, MultipartFile file, String name, String title,
-      String description) {
+  public UploadReceiptDto upload(UUID projectId, MultipartFile file, String name, String title,
+      String description, UUID batchId) {
     String mimeType = file.getContentType();
     String storageKey;
     try {
@@ -31,44 +31,28 @@ public class ArtifactUploadService {
       throw new IllegalStateException("Failed to read uploaded file", e);
     }
 
-    boolean clientProvidedAllMetadata = hasExplicitMetadata(name, title, description);
+    StagingBatch batch = stagingService.getOrCreateBatch(batchId);
+    UUID dataPackageId = UUID.randomUUID();
 
-    String effectiveName = (name != null && !name.isBlank()) ? name
-        : sanitizeName(file.getOriginalFilename());
-    String effectiveTitle = (title != null && !title.isBlank()) ? title
-        : file.getOriginalFilename();
-    String effectiveDescription = (description != null && !description.isBlank()) ? description
-        : "User-uploaded file";
+    PendingUpload upload = new PendingUpload(
+        dataPackageId,
+        storageKey,
+        null,
+        file.getOriginalFilename(),
+        mimeType,
+        kindFromMimeType(mimeType),
+        nonBlank(name),
+        nonBlank(title),
+        nonBlank(description),
+        null
+    );
 
-    ArtifactStatus initialStatus = clientProvidedAllMetadata
-        ? ArtifactStatus.MANIFESTED
-        : ArtifactStatus.UPLOADED;
+    artifactAnalysisService.analyzeAsync(upload, batch);
 
-    Artifact artifact = Artifact.builder()
-        .name(effectiveName)
-        .kind(kindFromMimeType(mimeType))
-        .storageKey(storageKey)
-        .title(effectiveTitle)
-        .description(effectiveDescription)
-        .status(initialStatus)
-        .mimeType(mimeType)
-        .build();
+    log.debug("Staged upload: dataPackageId={}, batchId={}, project={}",
+        dataPackageId, batch.getBatchId(), projectId);
 
-    Artifact saved = artifactService.persistUpload(artifact, projectId);
-    log.debug("Stored user upload: artifactId={}, project={}, status={}", saved.id(), projectId,
-        initialStatus);
-
-    if (initialStatus == ArtifactStatus.UPLOADED) {
-      artifactAnalysisService.analyzeAsync(saved.id(), projectId);
-    }
-
-    return artifactExternalizer.externalize(saved);
-  }
-
-  private static boolean hasExplicitMetadata(String name, String title, String description) {
-    return (name != null && !name.isBlank())
-        && (title != null && !title.isBlank())
-        && (description != null && !description.isBlank());
+    return new UploadReceiptDto(dataPackageId, batch.getBatchId());
   }
 
   private static ArtifactKind kindFromMimeType(String mimeType) {
@@ -93,12 +77,7 @@ public class ArtifactUploadService {
     return ArtifactKind.OTHER;
   }
 
-  private static String sanitizeName(String filename) {
-    if (filename == null || filename.isBlank()) {
-      return "upload-" + UUID.randomUUID();
-    }
-    int dotIndex = filename.lastIndexOf('.');
-    String stem = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
-    return stem.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+  private static String nonBlank(String value) {
+    return (value != null && !value.isBlank()) ? value : null;
   }
 }

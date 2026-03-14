@@ -47,14 +47,6 @@ public class ArtifactService {
         .toList();
   }
 
-  /**
-   * Persist a user-uploaded artifact to the database. No task execution is associated.
-   */
-  @Transactional
-  public Artifact persistUpload(Artifact artifact, UUID projectId) {
-    return persist(artifact, projectId, null);
-  }
-
   @Transactional
   public void delete(UUID artifactId, UUID projectId) {
     artifactRepository.findById(artifactId).ifPresent(entity -> {

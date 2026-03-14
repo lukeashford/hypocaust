@@ -1,8 +1,8 @@
 package com.example.hypocaust.service.analysis;
 
-import com.example.hypocaust.db.ArtifactEntity;
+import com.example.hypocaust.service.staging.PendingUpload;
 
 public interface ArtifactContentAnalyzer {
 
-  AnalysisResult analyze(ArtifactEntity entity);
+  AnalysisResult analyze(PendingUpload upload);
 }

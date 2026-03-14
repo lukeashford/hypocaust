@@ -1,5 +1,6 @@
 package com.example.hypocaust.service.analysis;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,6 +14,11 @@ final class AnalysisResponseParser {
   }
 
   static AnalysisResult parse(String response, boolean hasIndexableContent) {
+    return parse(response, hasIndexableContent, null, null);
+  }
+
+  static AnalysisResult parse(String response, boolean hasIndexableContent,
+      String indexableText, JsonNode enrichedMetadata) {
     String name = extract(NAME_PATTERN, response);
     String title = extract(TITLE_PATTERN, response);
     String description = extract(DESCRIPTION_PATTERN, response);
@@ -22,7 +28,7 @@ final class AnalysisResponseParser {
     }
 
     return new AnalysisResult(name.strip(), title.strip(), description.strip(),
-        hasIndexableContent);
+        hasIndexableContent, indexableText, enrichedMetadata);
   }
 
   private static String extract(Pattern pattern, String text) {
