@@ -188,7 +188,7 @@ if a timeout is needed, or move the timeout to the drain step where it's already
 
 ---
 
-## Open Items — Need Design Input
+## P2 — Design Fixes (Decided)
 
 ### 13. Index artifacts at add-time, not just on persist/manifest
 
@@ -200,7 +200,7 @@ rejects them. Dead-end loop.
 **Current state:** Indexing happens in `ArtifactService.persist()` → only after task commit.
 User uploads added via `addManifested` live in the changelist with `id == null` until commit.
 
-**Proposed approach:** See discussion below in "Design: Eager Indexing."
+**Fix:** Pre-assign UUIDs to changelist artifacts. See "Design: Eager Indexing" below.
 
 ### 14. Large file memory pressure in analysis pipeline
 
@@ -208,7 +208,19 @@ User uploads added via `addManifested` live in the changelist with `id == null` 
 `storageService.fetch(storageKey)`. A 90-minute podcast (~100+ MB) spikes heap. This is worse
 for video when that pipeline comes online.
 
-**Proposed approach:** See discussion below in "Design: Streaming for Large Files."
+**Fix:** Add `InputStream fetchStream(String storageKey)` to `StorageService`, stream into
+HTTP requests. Add a 25 MB file-size guard for Whisper (its hard limit). See "Design:
+Streaming for Large Files" below.
+
+While implementing this, also document the FFmpeg dependency in both analyzers' stub paths:
+
+- **`AudioAnalyzer`**: files over 25 MB need audio-level splitting (FFmpeg) before
+  transcription. Add a comment/log explaining that Whisper's 25 MB limit is the bottleneck,
+  and that FFmpeg would split long audio into segments, transcribe each, and concatenate.
+- **`VideoAnalyzer`**: keyframe extraction requires FFmpeg. Document that FFmpeg reads from
+  a file path or stdin pipe (not byte arrays), so the natural integration pattern is:
+  stream from S3 to a temp file or pipe S3 → FFmpeg stdin directly. No byte array ever
+  needs to exist in heap.
 
 ### 15. `search_project scope=history` ignores the `query` parameter
 
@@ -216,7 +228,8 @@ for video when that pipeline comes online.
 expecting filtered results. Gets the full chronological log dump instead. The query is
 discarded.
 
-**Proposed approach:** See discussion below in "Design: History Search Strategy."
+**Fix:** Keyword-based `ILIKE` filtering across `name`, `commitMessage`, `task`, and
+artifact names from `delta` JSONB. See "Design: History Search Strategy" below.
 
 ---
 
@@ -225,42 +238,24 @@ discarded.
 The core tension: artifacts need a database ID to be indexed (the `artifact_chunk` table
 references `artifact_id` as a FK), but changelist artifacts don't have IDs until commit.
 
-### Option A — Assign synthetic IDs to changelist artifacts
+### Approach — Pre-assign UUIDs to changelist artifacts
 
 Give each `Artifact` in the changelist a pre-generated UUID at add-time (via
 `UUID.randomUUID()` in the `Artifact.builder()`). Use that ID for indexing. On commit,
 persist with that same ID.
 
-Pros: Simple, no schema changes. Indexing can happen immediately.
-Cons: Need to ensure the pre-generated ID is honored on persist (not overwritten by JPA
-`@GeneratedValue`). If the task fails and artifacts are discarded, orphan chunks remain
-until the next cleanup.
+**JPA requirement:** Ensure `ArtifactEntity` uses `@Id` without `@GeneratedValue` (or uses
+a strategy that respects pre-set values). The pre-assigned ID must survive the persist cycle.
 
-### Option B — Index to an in-memory store, flush on commit
+**Orphan cleanup:** If a task fails and artifacts are discarded, orphan chunks remain in the
+database. Add a scheduled cleanup job (daily, same pattern as `StagingCleanupJob`):
 
-Keep a transient `Map<String, List<Chunk>>` on the `ArtifactsContext` during execution.
-`SearchProjectTool` checks the in-memory store first, falls back to the database.
+```sql
+DELETE FROM artifact_chunk WHERE artifact_id NOT IN (SELECT id FROM artifact)
+```
 
-Pros: No orphan chunks. No ID coordination.
-Cons: Duplicates the search interface. Embedding generation still needed at add-time.
-Memory pressure for large artifacts.
-
-### Option C — Decouple chunk storage from artifact FK
-
-Add a `project_id + artifact_name` composite key to chunks instead of (or alongside) the
-`artifact_id` FK. Index by name, resolve to artifact at query time.
-
-Pros: Decouples indexing from persistence lifecycle.
-Cons: Schema change. Name collisions across executions need handling. Loses CASCADE delete.
-
-### Recommendation
-
-Option A is the simplest path. The `Artifact` record already has an `id()` field — currently
-null for changelist artifacts. Pre-assign it. Ensure `ArtifactEntity` uses `@Id` without
-`@GeneratedValue` (or uses `IDENTITY` that respects pre-set values). Add a scheduled cleanup
-that deletes orphan chunks whose `artifact_id` doesn't exist in the `artifact` table.
-
-The indexing call moves from `ArtifactService.persist()` to `ArtifactsContext.addManifested()`:
+**Indexing call site:** Moves from `ArtifactService.persist()` to
+`ArtifactsContext.addManifested()`:
 
 ```java
 public synchronized Artifact addManifested(...) {
@@ -303,12 +298,30 @@ This requires reworking the multipart body construction to use a streaming appro
 `java.net.http`'s `BodyPublishers.concat()` or a `PipedOutputStream`), but keeps heap
 usage constant regardless of file size.
 
-For the current Whisper integration, the practical limit is Whisper's own 25 MB file size
-cap. Files larger than that need chunking at the audio level (split into segments, transcribe
-each, concatenate). That's a separate concern but worth noting.
+### Whisper's 25 MB limit
 
-For video (future): FFmpeg reads from a file path or pipe, not from a byte array, so
-streaming is the natural fit. Store a temp file reference rather than loading into memory.
+The Whisper API rejects files larger than 25 MB. Add a size check before calling Whisper:
+query the object size from S3 metadata (`statObject`), and if it exceeds 25 MB, return a
+fallback result explaining "file too large for transcription without audio segmentation."
+
+Files over 25 MB need audio-level splitting (into <25 MB segments), transcribing each
+segment independently, and concatenating the results. This requires FFmpeg and is out of
+scope for now. Document this in `AudioAnalyzer`'s fallback path.
+
+### Video and FFmpeg (future context)
+
+FFmpeg reads from a file path or stdin pipe — not from byte arrays. The natural integration
+pattern is: stream from S3 to a temp file, or pipe S3 → FFmpeg stdin directly. No byte
+array ever needs to exist in heap.
+
+For keyframe extraction: `ffmpeg -ss <timestamp> -i <input> -vframes 1 -f image2 pipe:1`
+produces a single JPEG frame on stdout, which can be read as a small byte array for the
+vision API call.
+
+For audio extraction from video: `ffmpeg -i <input> -vn -f mp3 pipe:1` streams the audio
+track, which can be piped to Whisper.
+
+Document these patterns in `VideoAnalyzer` so the FFmpeg integration has a clear spec.
 
 ---
 
@@ -326,54 +339,34 @@ fields: `name`, `commitMessage`, `task`, `status`, `delta` (with artifact names)
 calls this expecting to find "which execution changed the hero design" — but gets a wall of
 unfiltered entries.
 
-### Option A — Full-text filter on structured fields
+### Approach — Keyword `ILIKE` filtering across structured fields
 
-Keep it non-LLM. Use SQL `ILIKE` or PostgreSQL `to_tsvector/to_tsquery` across
-`name`, `commit_message`, and `task` columns:
+No LLM, no embeddings. The agent already phrases queries in the same vocabulary the commit
+messages use (it wrote them), so keyword matching hits in the vast majority of cases.
+
+**Repository method:** Add a native query that filters on `name`, `commit_message`, `task`,
+and artifact names extracted from the `delta` JSONB:
 
 ```sql
-SELECT te FROM TaskExecutionEntity te
-WHERE te.projectId = :projectId
+SELECT te.* FROM task_execution te
+WHERE te.project_id = :projectId
   AND (te.name ILIKE :pattern
-       OR te.commitMessage ILIKE :pattern
-       OR te.task ILIKE :pattern)
-ORDER BY te.createdAt DESC
+       OR te.commit_message ILIKE :pattern
+       OR te.task ILIKE :pattern
+       OR te.delta::text ILIKE :pattern)
+ORDER BY te.created_at DESC
 ```
 
-For the `query` string, split it into keywords and combine with `AND`:
+For the `query` string, split into keywords and combine with `AND`:
 `"character design"` → `%character%` AND `%design%`.
 
-Pros: Fast, no LLM cost, no embedding overhead. Matches on exact words.
-Cons: Won't match synonyms. "hero portrait" won't find "protagonist headshot."
+The `delta::text ILIKE` is a pragmatic shortcut — casting JSONB to text and pattern-matching
+picks up artifact names without needing a jsonb extraction function. It may match on JSON
+syntax in rare cases, but false positives in a history search are harmless (extra context
+for the agent).
 
-Also add the artifact names from `delta` to the search — these are the most useful signals.
-Since `delta` is JSONB, use a native query or a database function to extract artifact names.
+**Fallback:** If zero results match the keyword filter, fall back to the current
+chronological paginated dump so the agent can still browse.
 
-### Option B — Embed execution summaries, semantic search
-
-Generate an embedding for each `TaskExecutionEntity` on commit (concatenate `name + task +
-commitMessage + artifact names`). Store as a vector column on the entity. Use cosine
-similarity at query time.
-
-Pros: Semantic matching. "hero portrait" finds "protagonist headshot."
-Cons: Embedding cost per execution. Another vector column + index. Overkill for structured
-data that already has descriptive text.
-
-### Option C — Hybrid: keyword filter + artifact name matching
-
-Non-LLM keyword matching on execution fields, plus exact matching on artifact names in the
-delta. The delta already contains artifact names as strings — query them directly.
-
-When the `query` matches an artifact name in a delta, surface that execution with its
-full context (what changed, what the task was).
-
-### Recommendation
-
-Option A with artifact-name extraction from delta. History is inherently structured — you
-have dates, names, statuses, and commit messages. Keyword search is the right tool here.
-The agent already phrases queries in terms of artifact names and task descriptions, which
-are exact or near-exact matches against the stored text.
-
-Concrete change: add a repository method that filters on `name ILIKE`, `commitMessage ILIKE`,
-and `task ILIKE`. Tokenize the query into keywords. Return paginated results. If zero results,
-fall back to the current chronological dump so the agent can browse.
+**Pagination:** Use `Pageable` at the repository level (fixes issue #5 simultaneously).
+Return `Page<TaskExecutionEntity>` so the tool gets both results and total count.
