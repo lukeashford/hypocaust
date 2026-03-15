@@ -8,5 +8,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ArtifactRepository extends JpaRepository<ArtifactEntity, UUID> {
 
-  long countByProjectIdAndNameStartingWith(UUID projectId, String namePrefix);
 }

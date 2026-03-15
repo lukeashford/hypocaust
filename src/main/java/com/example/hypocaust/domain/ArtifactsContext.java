@@ -35,13 +35,16 @@ public class ArtifactsContext {
 
   private final Changelist changelist = new Changelist();
 
+  private static final int GENERATED_NAME_MAX_LEN = 30;
+  private static final int UPLOAD_NAME_MAX_LEN = 100;
+
   /**
    * Schedule a new artifact for creation. The preferred name is sanitized and deduplicated; the
    * preferred title is deduplicated by appending a counter if necessary.
    */
   public synchronized Artifact add(String preferredName, String preferredTitle, String description,
       ArtifactKind kind, JsonNode metadata) {
-    String name = NamingUtils.sanitize(preferredName, 30);
+    String name = NamingUtils.sanitize(preferredName, GENERATED_NAME_MAX_LEN);
     name = NamingUtils.appendCounterIfExists(name, collectTakenNames());
 
     String title = NamingUtils.appendCounterIfExists(preferredTitle, collectTakenTitles());
@@ -52,6 +55,36 @@ public class ArtifactsContext {
         .title(title)
         .description(description)
         .status(ArtifactStatus.GESTATING)
+        .metadata(metadata)
+        .build();
+
+    changelist.addArtifact(artifact);
+    eventService.publish(new ArtifactAddedEvent(taskExecutionId, artifact));
+
+    return artifact;
+  }
+
+  /**
+   * Add an already-manifested artifact (e.g. a user upload that has been stored and analyzed). The
+   * preferred name is sanitized and deduplicated; the preferred title is deduplicated.
+   */
+  public synchronized Artifact addManifested(String preferredName, String preferredTitle,
+      String description, ArtifactKind kind, String storageKey, JsonNode inlineContent,
+      String mimeType, JsonNode metadata) {
+    String name = NamingUtils.sanitize(preferredName, UPLOAD_NAME_MAX_LEN);
+    name = NamingUtils.appendCounterIfExists(name, collectTakenNames());
+
+    String title = NamingUtils.appendCounterIfExists(preferredTitle, collectTakenTitles());
+
+    Artifact artifact = Artifact.builder()
+        .name(name)
+        .kind(kind)
+        .title(title)
+        .description(description)
+        .status(ArtifactStatus.MANIFESTED)
+        .storageKey(storageKey)
+        .inlineContent(inlineContent)
+        .mimeType(mimeType)
         .metadata(metadata)
         .build();
 

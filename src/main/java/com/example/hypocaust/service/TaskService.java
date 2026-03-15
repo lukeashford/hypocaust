@@ -4,18 +4,17 @@ import com.example.hypocaust.agent.Decomposer;
 import com.example.hypocaust.agent.DecomposerResult;
 import com.example.hypocaust.agent.TaskExecutionContextHolder;
 import com.example.hypocaust.agent.TodoExecutor;
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.domain.TaskExecutionContext;
 import com.example.hypocaust.domain.TaskExecutionContextFactory;
 import com.example.hypocaust.dto.CreateTaskRequestDto;
 import com.example.hypocaust.dto.TaskResponseDto;
 import com.example.hypocaust.logging.ModelCallLogger;
+import com.example.hypocaust.service.analysis.AnalysisResult;
+import com.example.hypocaust.service.staging.AnalyzedUpload;
 import com.example.hypocaust.service.staging.StagingService;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,7 +70,7 @@ public class TaskService {
 
     try {
       if (batchId != null) {
-        integrateStagedUploads(batchId, projectId, context);
+        integrateStagedUploads(batchId, context);
       }
 
       String rootLabel = task.length() <= 80 ? task : task.substring(0, 77) + "...";
@@ -92,25 +91,63 @@ public class TaskService {
     }
   }
 
-  private void integrateStagedUploads(UUID batchId, UUID projectId,
-      TaskExecutionContext context) {
+  private static final String FALLBACK_NAME = "unknown";
+  private static final String FALLBACK_TITLE = "Unknown Upload";
+  private static final String FALLBACK_DESCRIPTION = "User-uploaded file (analysis unavailable)";
+
+  private void integrateStagedUploads(UUID batchId, TaskExecutionContext context) {
     todoExecutor.execute("Integrating uploads...", () -> {
-      Set<String> takenNames = context.getArtifacts().getAllWithChanges().stream()
-          .map(Artifact::name)
-          .collect(Collectors.toSet());
-      Set<String> takenTitles = context.getArtifacts().getAllWithChanges().stream()
-          .map(Artifact::title)
-          .collect(Collectors.toSet());
+      List<AnalyzedUpload> uploads = stagingService.consumeBatch(batchId);
 
-      List<Artifact> artifacts = stagingService.consumeBatch(batchId, projectId,
-          takenNames, takenTitles);
+      for (AnalyzedUpload upload : uploads) {
+        AnalysisResult result = upload.analysisResult();
 
-      for (Artifact artifact : artifacts) {
-        context.getArtifacts().getChangelist().addArtifact(artifact);
+        String name = resolveWithPriority(upload.clientName(),
+            result != null ? result.name() : null,
+            sanitizeFilename(upload.originalFilename()));
+        String title = resolveWithPriority(upload.clientTitle(),
+            result != null ? result.title() : null,
+            upload.originalFilename());
+        String description = resolveWithPriority(upload.clientDescription(),
+            result != null ? result.description() : null,
+            FALLBACK_DESCRIPTION);
+
+        if (name == null) {
+          name = FALLBACK_NAME;
+        }
+        if (title == null) {
+          title = FALLBACK_TITLE;
+        }
+
+        context.getArtifacts().addManifested(name, title, description, upload.kind(),
+            upload.storageKey(), upload.inlineContent(), upload.mimeType(),
+            result != null ? result.enrichedMetadata() : null);
       }
 
-      log.info("Integrated {} staged uploads into task execution", artifacts.size());
+      log.info("Integrated {} staged uploads into task execution", uploads.size());
       return DecomposerResult.success("Uploads integrated");
     });
+  }
+
+  private static String resolveWithPriority(String clientValue, String analysisValue,
+      String fallbackValue) {
+    if (clientValue != null && !clientValue.isBlank()) {
+      return clientValue;
+    }
+    if (analysisValue != null && !analysisValue.isBlank()) {
+      return analysisValue;
+    }
+    if (fallbackValue != null && !fallbackValue.isBlank()) {
+      return fallbackValue;
+    }
+    return null;
+  }
+
+  private static String sanitizeFilename(String filename) {
+    if (filename == null || filename.isBlank()) {
+      return null;
+    }
+    int dotIndex = filename.lastIndexOf('.');
+    return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
   }
 }

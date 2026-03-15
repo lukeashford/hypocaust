@@ -2,13 +2,13 @@ package com.example.hypocaust.e2e;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.hypocaust.domain.Artifact;
 import com.example.hypocaust.dto.UploadReceiptDto;
 import com.example.hypocaust.service.ArtifactUploadService;
+import com.example.hypocaust.service.analysis.AnalysisResult;
+import com.example.hypocaust.service.staging.AnalyzedUpload;
 import com.example.hypocaust.service.staging.StagingService;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,15 +44,16 @@ class UploadPipelineE2ETest {
     // Wait for analysis to complete (up to 30s)
     Thread.sleep(30_000);
 
-    List<Artifact> artifacts = stagingService.consumeBatch(
-        receipt.batchId(), PROJECT_ID, Set.of(), Set.of());
+    List<AnalyzedUpload> uploads = stagingService.consumeBatch(receipt.batchId());
 
-    assertThat(artifacts).hasSize(1);
-    Artifact artifact = artifacts.getFirst();
-    assertThat(artifact.name()).isNotBlank();
-    assertThat(artifact.title()).isNotBlank();
-    assertThat(artifact.description()).isNotBlank();
-    assertThat(artifact.description()).isNotEqualTo("User-uploaded file (analysis unavailable)");
+    assertThat(uploads).hasSize(1);
+    AnalyzedUpload upload = uploads.getFirst();
+    AnalysisResult result = upload.analysisResult();
+    assertThat(result).isNotNull();
+    assertThat(result.name()).isNotBlank();
+    assertThat(result.title()).isNotBlank();
+    assertThat(result.description()).isNotBlank();
+    assertThat(result.description()).isNotEqualTo("User-uploaded file (analysis unavailable)");
   }
 
   @Test
@@ -71,11 +72,10 @@ class UploadPipelineE2ETest {
 
     Thread.sleep(30_000);
 
-    List<Artifact> artifacts = stagingService.consumeBatch(
-        receipt1.batchId(), PROJECT_ID, Set.of(), Set.of());
+    List<AnalyzedUpload> uploads = stagingService.consumeBatch(receipt1.batchId());
 
-    assertThat(artifacts).hasSize(2);
-    assertThat(artifacts.stream().map(Artifact::name).distinct().count()).isEqualTo(2);
+    assertThat(uploads).hasSize(2);
+    assertThat(uploads.stream().map(AnalyzedUpload::dataPackageId).distinct().count()).isEqualTo(2);
   }
 
   @Test
@@ -89,10 +89,9 @@ class UploadPipelineE2ETest {
 
     Thread.sleep(2_000);
 
-    List<Artifact> artifacts = stagingService.consumeBatch(
-        receipt.batchId(), PROJECT_ID, Set.of(), Set.of());
+    List<AnalyzedUpload> uploads = stagingService.consumeBatch(receipt.batchId());
 
-    assertThat(artifacts).isEmpty();
+    assertThat(uploads).isEmpty();
   }
 
   @Test
@@ -105,13 +104,12 @@ class UploadPipelineE2ETest {
 
     Thread.sleep(30_000);
 
-    List<Artifact> artifacts = stagingService.consumeBatch(
-        receipt.batchId(), PROJECT_ID, Set.of(), Set.of());
+    List<AnalyzedUpload> uploads = stagingService.consumeBatch(receipt.batchId());
 
-    assertThat(artifacts).hasSize(1);
-    Artifact artifact = artifacts.getFirst();
-    assertThat(artifact.name()).isEqualTo("my_custom_name");
-    assertThat(artifact.title()).isEqualTo("My Custom Title");
-    assertThat(artifact.description()).isEqualTo("My custom description");
+    assertThat(uploads).hasSize(1);
+    AnalyzedUpload upload = uploads.getFirst();
+    assertThat(upload.clientName()).isEqualTo("my_custom_name");
+    assertThat(upload.clientTitle()).isEqualTo("My Custom Title");
+    assertThat(upload.clientDescription()).isEqualTo("My custom description");
   }
 }
