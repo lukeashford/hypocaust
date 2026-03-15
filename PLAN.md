@@ -42,6 +42,22 @@ text contains escaped quotes, or the JSON has trailing fields, the parsed value 
 **Fix:** Use `ObjectMapper` (already on the classpath) to parse the Whisper response as a proper
 JSON object. Extract the `"text"` field safely.
 
+### 2b. Hardcoded `audio/mpeg` in Whisper multipart body
+
+**File:** `TranscriptionService.buildMultipartBody` (lines 98-99)
+
+```java
+"Content-Disposition: form-data; name=\"file\"; filename=\"audio.mp3\"\r\n"
++ "Content-Type: audio/mpeg\r\n\r\n";
+```
+
+Always sends `filename="audio.mp3"` and `Content-Type: audio/mpeg` regardless of actual
+format. The actual mime type is available on `PendingUpload` and should be threaded through
+to `callWhisper`. Whisper is lenient about this today, but it's wrong and a latent bug.
+
+**Fix:** Pass the mime type (and derive a matching filename extension) from the caller.
+`transcribeFull` should accept a `mimeType` parameter alongside the `storageKey`.
+
 ---
 
 ## P1 — Crash Risks & Silent Data Corruption
@@ -61,6 +77,18 @@ if (description == null) {
   return null;
 }
 ```
+
+### 3b. `ImageAnalyzer` and `PdfAnalyzer` don't null-check `storageKey`
+
+**Files:** `ImageAnalyzer.analyze` (line 25), `PdfAnalyzer.analyze` (line 19)
+
+Both call `storageService.fetch(upload.storageKey())` without null-checking.
+`TextAnalyzer` correctly guards with `if (upload.storageKey() != null)`. Low probability
+since the upload path always stores to storage, but inconsistent — and an NPE if an upload
+ever has only inline content.
+
+**Fix:** Add the same guard as `TextAnalyzer`. Return null (triggering fallback) if
+`storageKey` is null.
 
 ### 4. `cancelUpload` only removes from `pending`, not `completed`
 
@@ -142,7 +170,16 @@ public void integrateInto(UUID batchId, ArtifactsContext artifacts)
 
 `TaskService` calls one method: `artifactUploadService.integrateInto(batchId, context.getArtifacts())`.
 
-### 9. Remove `volatile` from `StagingBatch.consumed`
+### 9. Remove dead `transcribeSample` method
+
+**File:** `TranscriptionService.transcribeSample` (lines 39-47)
+
+`AudioAnalyzer` only calls `transcribeFull`. The `transcribeSample` method is unused dead
+code left over from a previous design iteration.
+
+**Fix:** Delete the method and its `TranscriptionResult` record (if also unused elsewhere).
+
+### 10. Remove `volatile` from `StagingBatch.consumed`
 
 **File:** `StagingBatch` (line 19)
 
@@ -151,7 +188,7 @@ access is already synchronized, the `volatile` is redundant and misleading.
 
 **Fix:** Remove the `volatile` keyword.
 
-### 10. Rename `TextComprehensionService.chunkText` to avoid confusion with `ArtifactChunker`
+### 11. Rename `TextComprehensionService.chunkText` to avoid confusion with `ArtifactChunker`
 
 Two independent chunking implementations with different strategies and thresholds (50K vs
 500/1000). `TextComprehensionService` chunks for LLM context windows; `ArtifactChunker` chunks
@@ -163,7 +200,7 @@ for embedding. The names are confusingly similar.
 
 ## P2 — Performance
 
-### 11. Replace `drainPending` polling with future-based wait
+### 12. Replace `drainPending` polling with future-based wait
 
 **File:** `StagingService.drainPending` (lines 101-127)
 
@@ -174,7 +211,7 @@ The futures are already on `PendingUpload`.
 a timeout, or simply `future.get(remainingTime, MILLISECONDS)` on each. This gives immediate
 completion when all analyses finish rather than waiting for the next poll tick.
 
-### 12. `analyzeWithTimeout` wraps a virtual thread in another `CompletableFuture.supplyAsync`
+### 13. `analyzeWithTimeout` wraps a virtual thread in another `CompletableFuture.supplyAsync`
 
 **File:** `ArtifactAnalysisService.analyzeWithTimeout` (lines 62-79)
 
@@ -190,7 +227,7 @@ if a timeout is needed, or move the timeout to the drain step where it's already
 
 ## P2 — Design Fixes (Decided)
 
-### 13. Index artifacts at add-time, not just on persist/manifest
+### 14. Index artifacts at add-time, not just on persist/manifest
 
 **Problem:** `SearchProjectTool` (line 119) checks `artifact.id() == null` and returns "Artifact
 not found" for user-uploaded artifacts that haven't been persisted yet. The agent can
@@ -202,7 +239,7 @@ User uploads added via `addManifested` live in the changelist with `id == null` 
 
 **Fix:** Pre-assign UUIDs to changelist artifacts. See "Design: Eager Indexing" below.
 
-### 14. Large file memory pressure in analysis pipeline
+### 15. Large file memory pressure in analysis pipeline
 
 **Problem:** `TranscriptionService.transcribeFull` loads the entire audio file into memory via
 `storageService.fetch(storageKey)`. A 90-minute podcast (~100+ MB) spikes heap. This is worse
@@ -222,7 +259,7 @@ While implementing this, also document the FFmpeg dependency in both analyzers' 
   stream from S3 to a temp file or pipe S3 → FFmpeg stdin directly. No byte array ever
   needs to exist in heap.
 
-### 15. `search_project scope=history` ignores the `query` parameter
+### 16. `search_project scope=history` ignores the `query` parameter
 
 **Problem:** The agent calls `search_project(query="character design", scope="history")`
 expecting filtered results. Gets the full chronological log dump instead. The query is
